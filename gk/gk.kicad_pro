@@ -519,6 +519,14 @@
       {
         "netclass": "MCUPIN",
         "pattern": "SDMMC*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "SPI*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "I2C*"
       }
     ]
   },
