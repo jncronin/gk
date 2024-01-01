@@ -60,7 +60,24 @@
           "width": 0.366268
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        "clearance|97487500|97737500|5578d091-40a1-4945-9b3d-9a9239f4c729|9a0c8164-6307-4a71-85fb-0f764255398f",
+        "clearance|97487500|98762500|16051474-9ccf-48d8-b614-93af262557cc|760bfcb9-5160-47c8-8eb9-aea8c41585e2",
+        "clearance|97487500|99262500|760bfcb9-5160-47c8-8eb9-aea8c41585e2|0481bd15-0c8a-4e1a-b1b1-ddac0abb8dcb",
+        "clearance|98012500|99562500|0481bd15-0c8a-4e1a-b1b1-ddac0abb8dcb|b58729ba-326f-4320-bc44-e8368edb1e5b",
+        "clearance|98837500|97737500|4b758a0e-7f6d-49c5-9972-2509d553959e|81f9e1e9-9c00-49dc-bbe9-0355fd78c39c",
+        "clearance|99012500|99262500|ec0f7029-3e36-4cc8-b6d1-5e34503bad38|7908a05c-622f-42dc-b8df-55421399fa92",
+        "clearance|99362500|97587500|940a6258-dfdb-4dab-a630-770b569015c4|4b758a0e-7f6d-49c5-9972-2509d553959e",
+        "clearance|99812500|98087500|b5b0dfcb-e877-4d9b-a854-588105b198d0|940a6258-dfdb-4dab-a630-770b569015c4",
+        "clearance|99812500|98587500|d4acb1bf-4555-4102-9faa-a6402d591f6f|b5b0dfcb-e877-4d9b-a854-588105b198d0",
+        "clearance|99812500|99087500|7908a05c-622f-42dc-b8df-55421399fa92|d4acb1bf-4555-4102-9faa-a6402d591f6f",
+        "silk_edge_clearance|103125000|177800000|77179ec7-647e-4b58-9122-388dc6efa82f|3391f91b-8ab3-4e57-ab0f-c44fcc9e4bc7",
+        "silk_edge_clearance|54107500|19050000|77179ec7-647e-4b58-9122-388dc6efa82f|df61b687-1de4-4191-a58e-26f6ed918774",
+        "silk_edge_clearance|60307500|19050000|77179ec7-647e-4b58-9122-388dc6efa82f|fe447e34-6aed-46e2-8832-ec889637365d",
+        "silk_edge_clearance|79923500|177800000|77179ec7-647e-4b58-9122-388dc6efa82f|c5455ac5-0a0a-4c04-a025-b9c627677116",
+        "silk_edge_clearance|89123500|177800000|77179ec7-647e-4b58-9122-388dc6efa82f|02194644-2125-416d-b0f9-09cfe18c9d74",
+        "silk_edge_clearance|93725000|177800000|77179ec7-647e-4b58-9122-388dc6efa82f|5a36578f-214c-42ab-b77a-39796bf938cb"
+      ],
       "meta": {
         "version": 2
       },
@@ -100,7 +117,7 @@
         "silk_over_copper": "warning",
         "silk_overlap": "warning",
         "skew_out_of_range": "error",
-        "solder_mask_bridge": "error",
+        "solder_mask_bridge": "ignore",
         "starved_thermal": "error",
         "text_height": "warning",
         "text_thickness": "warning",
@@ -129,7 +146,7 @@
         "min_text_thickness": 0.08,
         "min_through_hole_diameter": 0.19999999999999998,
         "min_track_width": 0.09,
-        "min_via_annular_width": 0.25,
+        "min_via_annular_width": 0.049999999999999996,
         "min_via_diameter": 0.44999999999999996,
         "solder_mask_clearance": 0.0,
         "solder_mask_min_width": 0.0,
@@ -460,6 +477,23 @@
       },
       {
         "bus_width": 12,
+        "clearance": 0.15,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "AUDIO",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.3048,
+        "via_diameter": 0.8,
+        "via_drill": 0.4,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
         "clearance": 0.09,
         "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
@@ -470,7 +504,7 @@
         "name": "MCUPIN",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
+        "track_width": 0.1524,
         "via_diameter": 0.45,
         "via_drill": 0.2,
         "wire_width": 6
@@ -499,8 +533,8 @@
     "net_colors": null,
     "netclass_assignments": {
       "GND": "PWR",
+      "Net-(#FLG03-pwr)": "PWR",
       "Net-(D1-A)": "PWR",
-      "Net-(D1-K)": "PWR",
       "USB_VBUS": "PWR"
     },
     "netclass_patterns": [
@@ -527,6 +561,54 @@
       {
         "netclass": "MCUPIN",
         "pattern": "I2C*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "LCD*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "CTP*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "LSM*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "SAI*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "SW*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "BTN*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "PCM*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "SPKR_*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "WIFI_*"
+      },
+      {
+        "netclass": "AUDIO",
+        "pattern": "SPKR?"
+      },
+      {
+        "netclass": "AUDIO",
+        "pattern": "*COM*"
+      },
+      {
+        "netclass": "AUDIO",
+        "pattern": "*VOUT*"
       }
     ]
   },
