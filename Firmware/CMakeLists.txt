@@ -16,6 +16,7 @@ project(gk C CXX ASM)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
 )
 
 add_executable(${PROJECT_NAME})
@@ -99,3 +100,5 @@ target_link_options(${PROJECT_NAME}
 utils_target_set_linker_script(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/STM32H747BIx_FLASH.ld
 )
+
+utils_target_print_size(${PROJECT_NAME})
