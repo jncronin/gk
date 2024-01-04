@@ -23,7 +23,7 @@ add_executable(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-        "${CMAKE_CUURENT_SOURCE_DIR}/inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
 )
