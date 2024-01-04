@@ -8,8 +8,15 @@ __attribute__((aligned(1024))) __attribute__((section(".sram_bss"))) static uint
 extern int _ecm7_stack;
 extern int _ecm4_stack;
 
+void init_clocks();
+
 void system_init_cm7()
 {
+    // disable LDO, enable SMPS - can only write lower byte once
+    PWR->CR3 = (PWR->CR3 & ~0xffUL) | PWR_CR3_SMPSEN;
+    // check valid
+    while(!(PWR->CSR1 & PWR_CSR1_ACTVOSRDY));
+
     // enable FPU
     SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
    
@@ -36,10 +43,14 @@ void system_init_cm7()
     // disable FMC1 speculative access
     FMC_Bank1_R->BTCR[0] = 0x000030D2;
 
-    // disable LDO
-    PWR->CR3 &= ~PWR_CR3_LDOEN;
+    // perform clock init
+    init_clocks();
 
-    // perform clock init .. TODO
+    // Enable caches
+    SCB_InvalidateDCache();
+    SCB_InvalidateICache();
+    SCB_EnableICache();
+    SCB_EnableDCache();
 }
 
 void system_init_cm4()
@@ -58,4 +69,9 @@ void system_init_cm4()
 
     // enable detection of CPU interrupt whilst in WFI state
     SCB->SCR |= SCB_SCR_SEVONPEND_Msk;
+
+    // enable caches
+    RCC->AHB1ENR |= RCC_AHB1ENR_ARTEN;
+    (void)RCC->AHB1ENR;
+    ART->CTR |= ART_CTR_EN;
 }
