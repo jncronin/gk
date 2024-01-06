@@ -622,6 +622,10 @@
       {
         "netclass": "MCUPIN",
         "pattern": "BTNLED*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "VBAT_STAT"
       }
     ]
   },
