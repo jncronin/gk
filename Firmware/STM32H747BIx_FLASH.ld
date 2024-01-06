@@ -153,6 +153,7 @@ SECTIONS
     . = ALIGN(4);
     _edtcm = .;       /* create a global symbol at ccmram end */
     *(.noinit_dtcm*)  /* for those bits we do not need to initialize */
+    _edtcm2 = .;
   } >DTCM AT> FLASH1
   _sdtcm_flash = LOADADDR(.dtcm);
 
@@ -205,7 +206,7 @@ SECTIONS
 
     . = ALIGN(4);
     _esram_bss = .;         /* define a global symbol at bss end */
-  } >DTCM
+  } >SRAM
   
 
   . = ALIGN(4);
