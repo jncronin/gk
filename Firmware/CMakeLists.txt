@@ -13,13 +13,23 @@ include(cmake/utils.cmake)
 
 project(gk C CXX ASM)
 
+set(FRT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel-STMH7dualcore")
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
 )
 
+file(GLOB FRT_SOURCES CONFIGURE_DEPENDS
+    ${FRT_DIR}/tasks.c
+    ${FRT_DIR}/queue.c
+    ${FRT_DIR}/list.c
+    ${FRT_DIR}/portable/GCC/ARM_CM7_CM4_SMP_MPU/*.c
+)
+
 add_executable(${PROJECT_NAME})
+
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -27,6 +37,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
+        "${FRT_DIR}/include"
+        "${FRT_DIR}/portable/GCC/ARM_CM7_CM4_SMP_MPU"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -38,6 +50,7 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
+        ${FRT_SOURCES}
 )
 
 set_target_properties(${PROJECT_NAME}
@@ -57,7 +70,7 @@ target_compile_options(${PROJECT_NAME}
         -Wextra
         -Werror
         -Wduplicated-cond
-        -Wduplicated-branches
+        -Wno-duplicated-branches
         -Wlogical-op
         -Wnull-dereference
         -Wshadow
