@@ -7,3 +7,7 @@
 [submodule "Firmware/gk-userlandinterface"]
 	path = Firmware/gk-userlandinterface
 	url = https://github.com/jncronin/gk-userlandinterface
+[submodule "Firmware/FreeRTOS-Kernel-STMH7dualcore"]
+	path = Firmware/FreeRTOS-Kernel-STMH7dualcore
+	url = https://github.com/jncronin/FreeRTOS-Kernel-STMH7dualcore.git
+	branch = h7dual
