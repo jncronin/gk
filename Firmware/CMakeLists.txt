@@ -26,6 +26,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
 )
 
 target_compile_definitions(${PROJECT_NAME}
