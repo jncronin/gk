@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "C:/Users/jncro/source/repos/gamekid/Firmware",
+    "cmake.sourceDirectory": "${workspaceFolder}/Firmware",
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/Firmware/cmake/toolchain.cmake"
     },
