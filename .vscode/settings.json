@@ -3,4 +3,7 @@
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/Firmware/cmake/toolchain.cmake"
     },
+    "files.associations": {
+        "atomic.h": "c"
+    },
 }
