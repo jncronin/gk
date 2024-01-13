@@ -49,9 +49,10 @@ void init_clocks()
         PLL3 = HSE16 / M8 * N384
             /P7 = 109 MHz -> unused
             /Q16 = 48 MHz -> USB and SPI5
-            /R64 = 12 MHz -> LTDC (30 Hz refresh), LPTIM1 and I2C4
+            /R64 = 12 MHz -> LTDC (30 Hz refresh) and I2C4
 
         Peripheral clock PER_CLK is HSE16
+            => LPTIM1
     */
     
     // Ensure sysclk is HSI and PLLs disabled
@@ -111,7 +112,7 @@ void init_clocks()
     RCC->D2CCIP1R = (2UL << RCC_D2CCIP1R_SPI45SEL_Pos) |
         (0UL << RCC_D2CCIP1R_SPI123SEL_Pos) |
         (1UL << RCC_D2CCIP1R_SAI1SEL_Pos);
-    RCC->D2CCIP2R = (2UL << RCC_D2CCIP2R_LPTIM1SEL_Pos) |
+    RCC->D2CCIP2R = (5UL << RCC_D2CCIP2R_LPTIM1SEL_Pos) |
         (2UL << RCC_D2CCIP2R_USBSEL_Pos) |
         (1UL << RCC_D2CCIP2R_RNGSEL_Pos);
     RCC->D3CCIPR = (1UL << RCC_D3CCIPR_I2C4SEL_Pos);

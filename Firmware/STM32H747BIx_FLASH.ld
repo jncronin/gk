@@ -216,4 +216,10 @@ SECTIONS
     . = . + 4K;
     _ecm4_stack = .;
   } >SRAM
+
+  /* defines for FreeRTOS MPU */
+  PROVIDE(__FLASH_segment_start__ = 0x08000000);
+  PROVIDE(__FLASH_segment_end__ = 0x08200000);
+  PROVIDE(__SRAM_segment_start = 0x20000000);
+  PROVIDE(__SRAM_segment_end = 0x40000000);
 }

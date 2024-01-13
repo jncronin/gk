@@ -1,6 +1,7 @@
 #include <stm32h7xx.h>
 
 #include "memblk.h"
+#include "FreeRTOS.h"
 
 void system_init_cm7();
 void system_init_cm4();
@@ -9,6 +10,8 @@ int main()
 {
     system_init_cm7();
     init_memblk();
+
+    xPortStartScheduler();
 
     return 0;
 }
@@ -21,6 +24,8 @@ extern "C" int main_cm4()
     {
         __WFI();
     }
+
+    xPortStartScheduler();
 
     return 0;
 }
