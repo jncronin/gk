@@ -4,6 +4,7 @@
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/Firmware/cmake/toolchain.cmake"
     },
     "files.associations": {
-        "atomic.h": "c"
+        "atomic.h": "c",
+        "mutex": "cpp"
     },
 }
