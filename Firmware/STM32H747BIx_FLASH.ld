@@ -217,6 +217,15 @@ SECTIONS
     _ecm4_stack = .;
   } >SRAM
 
+  . = ALIGN(4);
+  .sram4 (NOLOAD) :
+  {
+    _ssram4 = .;
+    *(.sram4)
+    *(.sram4*)
+    _esram4 = .;
+  } >SRAM4
+
   /* defines for FreeRTOS MPU */
   PROVIDE(__FLASH_segment_start__ = 0x08000000);
   PROVIDE(__FLASH_segment_end__ = 0x08200000);

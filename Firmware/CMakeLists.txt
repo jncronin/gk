@@ -89,14 +89,16 @@ target_link_libraries(${PROJECT_NAME}
 target_link_options(${PROJECT_NAME}
     PRIVATE
         -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map,--cref
-        -Wl,--wrap,malloc
-        -Wl,--wrap,_malloc_r
-        -Wl,--wrap,calloc
-        -Wl,--wrap,_calloc_r
-        -Wl,--wrap,realloc
-        -Wl,--wrap,_realloc_r
-        -Wl,--wrap,free
-        -Wl,--wrap,_free_r
+
+
+#        -Wl,--wrap,malloc
+#        -Wl,--wrap,_malloc_r
+#        -Wl,--wrap,calloc
+#        -Wl,--wrap,_calloc_r
+#        -Wl,--wrap,realloc
+#        -Wl,--wrap,_realloc_r
+#        -Wl,--wrap,free
+#        -Wl,--wrap,_free_r
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
