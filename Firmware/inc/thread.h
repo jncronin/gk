@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <osmutex.h>
 #include "region_allocator.h"
+#include "memblk.h"
+#include "ostypes.h"
 
 struct mpu_saved_state
 {
@@ -13,7 +15,8 @@ struct mpu_saved_state
 
 struct thread_saved_state
 {
-    uint32_t psp;   /* All threads, regardless of privilege, use PSP */
+    uint32_t psp;       /* All threads, regardless of privilege, use PSP */
+    uint32_t control;   /* used to decide privileged vs unprivileged mode */
     uint32_t r4;
     uint32_t r5;
     uint32_t r6;
@@ -32,7 +35,6 @@ struct thread_saved_state
 class Thread
 {
     public:
-        enum CPUAffinity { Either = 3, M7Only = 1, M4Only = 2, PreferM7 = 7, PreferM4 = 11 };
 
     public:
         thread_saved_state tss;     /* always first member */
@@ -48,6 +50,16 @@ class Thread
         uint32_t delta_sleep;       /* for sleeping task delta-queue */
 
         bool for_deletion;          /* do we need to delete the thread at next task switch? */
+
+        MemRegion stack;
+
+        typedef void (*threadstart_t)(void *p);
+        static Thread *Create(std::string name,
+            threadstart_t func,
+            void *p,
+            bool is_priv, int priority,
+            CPUAffinity affinity = CPUAffinity::Either,
+            size_t stack_size = 4096);
 };
 
 Thread *GetCurrentThreadForCore(int coreid = -1);

@@ -28,13 +28,14 @@ extern "C" void PendSV_Handler()
         (
             "mrs r12, psp               \n"     // get psp
             "stmia r0!, { r12 }         \n"     // save psp
+            "add r0, r0, #4             \n"     // skip saving control
             "stmia r0!, { r4-r11, lr }  \n"     // save other regs
             
             "tst lr, #0x10              \n"     // FPU lazy store?
             "it eq                      \n"
             "vstmiaeq r0!, {s16-s31}    \n"
 
-            "add r0, r1, #104           \n"     // R0 = &cm7_mpu0
+            "add r0, r1, #108           \n"     // R0 = &cm7_mpu0
             "add r2, r2, r0             \n"     // R2 = &cm7_mpu0 or &cm4_mpu0
             "add r0, r0, #8             \n"     // R0 = &mpuss[0]
 
@@ -57,8 +58,10 @@ extern "C" void PendSV_Handler()
             "dsb                        \n"
 
             "ldmia r1!, { r12 }         \n"     // load registers from tss
-            "ldmia r1!, { r4-r11, lr }  \n"
             "msr psp, r12               \n"
+            "ldmia r1!, { r12 }         \n"
+            "msr control, r12           \n"
+            "ldmia r1!, { r4-r11, lr }  \n"
 
             "tst lr, #0x10              \n"     // FPU load only if lazy store
             "it eq                      \n"

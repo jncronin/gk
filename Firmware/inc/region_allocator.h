@@ -28,12 +28,13 @@ template <class T, int reg_id> struct RegionAllocator
 
         constexpr T* allocate(std::size_t n)
         {
-            throw std::runtime_error("unimplemented");
+            //TODO
+            return nullptr;
         }
 
         constexpr void deallocate(T* p, std::size_t n)
         {
-            throw std::runtime_error("unimplemented");
+            //TODO
         }
 };
 
