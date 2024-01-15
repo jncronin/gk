@@ -16,7 +16,7 @@
     7 - Allocatable to user mode program (e.g. peripheral/SRAM access)
 */
 
-#include "thread.h"
+#include "ostypes.h"
 
 constexpr const uint32_t WBWA_S =       0b101101;
 constexpr const uint32_t WBWA_NS =      0b101001;

@@ -16,16 +16,5 @@ inline __attribute__((always_inline)) static void RestoreInterrupts(uint32_t cps
     __set_PRIMASK(cpsr);
 }
 
-class UninterruptibleGuard
-{
-    public:
-        UninterruptibleGuard();
-        ~UninterruptibleGuard();
-        UninterruptibleGuard(const UninterruptibleGuard&) = delete;
-
-    protected:
-        uint32_t cpsr;
-};
-
 
 #endif

@@ -3,6 +3,8 @@
 #include "thread.h"
 #include "util.h"
 
+#include "scheduler.h"
+
 extern "C" void PendSV_Handler()
 {
     auto cpsr = DisableInterrupts();

@@ -4,12 +4,18 @@
 
 #include <cstring>
 
+#include "scheduler.h"
+
+extern Scheduler s;
+
 Thread *Thread::Create(std::string name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
             CPUAffinity affinity,
-            size_t stack_size)
+            size_t stack_size,
+            mpu_saved_state extra_permissions,
+            mpu_saved_state extra_permissions2)
 {
     SRAM4RegionAllocator<Thread> alloc;
     auto tloc = alloc.allocate(1);
@@ -24,7 +30,7 @@ Thread *Thread::Create(std::string name,
     t->name = name;
 
     t->tss.lr = 0xfffffffdUL;               // return to thread mode, normal frame, use PSP
-    t->tss.control = is_priv ? 0UL : 1UL;   // bit0 = !privilege
+    t->tss.control = is_priv ? 2UL : 3UL;   // bit0 = !privilege, bit1 = use PSP
 
     /* Create stack frame */
     t->stack = memblk_allocate_for_stack(stack_size, affinity);
@@ -66,8 +72,8 @@ Thread *Thread::Create(std::string name,
         WBWA_NS);
     t->tss.mpuss[3] = mpu_sram4;
     t->tss.mpuss[4] = mpu_sdram;
-    t->tss.mpuss[5] = MPUGenerateNonValid(6);
-    t->tss.mpuss[6] = MPUGenerateNonValid(7);
+    t->tss.mpuss[5] = extra_permissions;
+    t->tss.mpuss[6] = extra_permissions2;
 
     return t;
 }
@@ -79,7 +85,10 @@ Thread *GetCurrentThreadForCore(int coreid)
         coreid = GetCoreID();
     }
 
-    return nullptr;
+    {
+        CriticalGuard cg(s.current_thread[coreid].m);
+        return s.current_thread[coreid].v;
+    }
 }
 
 Thread *GetNextThreadForCore(int coreid)
@@ -89,7 +98,7 @@ Thread *GetNextThreadForCore(int coreid)
         coreid = GetCoreID();
     }
 
-    return nullptr;
+    return s.GetNextThread(coreid);
 }
 
 int GetCoreID()
