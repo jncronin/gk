@@ -25,5 +25,29 @@ enum MemRegionAccess
     RW = 2
 };
 
+struct mpu_saved_state
+{
+    uint32_t rbar;
+    uint32_t rasr;
+};
+
+struct thread_saved_state
+{
+    uint32_t psp;       /* All threads, regardless of privilege, use PSP */
+    uint32_t control;   /* used to decide privileged vs unprivileged mode */
+    uint32_t r4;
+    uint32_t r5;
+    uint32_t r6;
+    uint32_t r7;
+    uint32_t r8;
+    uint32_t r9;
+    uint32_t r10;
+    uint32_t r11;
+    uint32_t lr;
+
+    uint32_t fpuregs[16];
+    mpu_saved_state cm7_mpu0, cm4_mpu0; /* MSP - varies depending on which core is running */
+    mpu_saved_state mpuss[7];
+};
 
 #endif
