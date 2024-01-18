@@ -4,11 +4,12 @@
 
 extern "C" void SVC_Handler() __attribute__((naked));
 
-extern "C" void SVC_Handler()
+extern "C" void SVC_Handler()       /* Can we just define this with the parameters of SyscallHandler? */
 {
     __asm
     (
         "bl SyscallHandler      \n"
+        "bx lr                  \n"
         ::: "memory"
     );
 }
