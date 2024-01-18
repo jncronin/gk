@@ -3,7 +3,8 @@
 
 enum syscall_no
 {
-    StartFirstThread = 0
+    StartFirstThread = 0,
+    GetThreadHandle = 1
 };
 
 extern "C" {
