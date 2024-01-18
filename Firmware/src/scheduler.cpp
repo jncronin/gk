@@ -1,10 +1,11 @@
 #include "scheduler.h"
+#include "syscalls.h"
 
 Scheduler::Scheduler()
 {
     for(int i = 0; i < npriorities; i++)
     {
-        tlist[i] = ThreadVector();
+        tlist[i] = LockedIndexedThreadVector();
     }
     dummy_thread.name = "dummy";
     dummy_thread.is_dummy = true;
@@ -34,7 +35,7 @@ void Scheduler::Schedule(Thread *t)
 
     {
         CriticalGuard cg(tlist[prio].m);
-        tlist[prio].v.push_back(t);
+        tlist[prio].v.v.push_back(t);
     }
 }
 
@@ -55,27 +56,40 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         CriticalGuard cg(tlist[i].m);
 
         // First get the front-most marked Either, OnlyMe or PreferMe
-        for(auto iter = tlist[i].v.begin(); iter < tlist[i].v.end(); iter++)
+        auto cur_idx = tlist[i].v.index;
+        auto iter = cur_idx + 1;
+        if(iter >= tlist[i].v.v.size()) iter = 0;
+
+        while(iter != cur_idx)
         {
-            auto cval = *iter;
+            auto cval = tlist[i].v.v[iter];
             if(cval->affinity == CPUAffinity::Either ||
                 cval->affinity == OnlyMe ||
                 cval->affinity == PreferMe)
             {
-                tlist[i].v.erase(iter);
+                tlist[i].v.index = iter;
                 return cval;
             }
+
+            iter++;
+            if(iter >= tlist[i].v.v.size()) iter = 0;
         }
 
         // Now try ones marked PreferOther
-        for(auto iter = tlist[i].v.begin(); iter < tlist[i].v.end(); iter++)
+        iter = cur_idx + 1;
+        if(iter >= tlist[i].v.v.size()) iter = 0;
+
+        while(iter != cur_idx)
         {
-            auto cval = *iter;
+            auto cval = tlist[i].v.v[iter];
             if(cval->affinity == PreferOther)
             {
-                tlist[i].v.erase(iter);
+                tlist[i].v.index = iter;
                 return cval;
             }
+
+            iter++;
+            if(iter >= tlist[i].v.v.size()) iter = 0;
         }
     }
 
@@ -86,11 +100,16 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     }
 }
 
-void Scheduler::StartForCurrentCore()
+void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
     // #switch to first thread by triggering SVC which then triggers pendsv
+    register unsigned int sno asm("r0") = syscall_no::StartFirstThread;
     __asm volatile
     (
-        "svc #0"
+        "svc #0                 \n"
+        :: "r"(sno)
     );
+
+    // shouldn't get here
+    while(true);
 }

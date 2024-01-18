@@ -17,11 +17,17 @@ class Scheduler
             T v;
             Spinlock m;
         };
-        using ThreadVector = locked_val<SRAM4Vector<Thread *>>;
+        struct IndexedThreadVector
+        {
+            SRAM4Vector<Thread *> v;
+            unsigned int index = 0;
+        };
+        using LockedIndexedThreadVector = locked_val<IndexedThreadVector>;
+        using LockedThreadVector = locked_val<SRAM4Vector<Thread *>>;
 
-        ThreadVector tlist[npriorities];
-        ThreadVector sleeping_tasks;
-        ThreadVector blocking_tasks;
+        LockedIndexedThreadVector tlist[npriorities];
+        LockedThreadVector sleeping_tasks;
+        LockedThreadVector blocking_tasks;
 
         Thread dummy_thread;        // used to ensure the first task switch writes saved values somewhere
 
@@ -37,7 +43,7 @@ class Scheduler
         void Sleep(Thread *t, uint32_t nticks);
         Thread *GetNextThread(uint32_t ncore);
 
-        void StartForCurrentCore();
+        void StartForCurrentCore [[noreturn]] ();
 
         using LockedThread = locked_val<Thread *>;
         LockedThread current_thread[ncores];
