@@ -30,6 +30,8 @@ class Thread
 
         MemRegion stack;
 
+        bool is_dummy = false;
+
         typedef void (*threadstart_t)(void *p);
         static Thread *Create(std::string name,
             threadstart_t func,
@@ -41,8 +43,13 @@ class Thread
             mpu_saved_state extra_permissions2 = MPUGenerateNonValid(7));
 };
 
-Thread *GetCurrentThreadForCore(int coreid = -1);
-Thread *GetNextThreadForCore(int coreid = -1);
-int GetCoreID();
+// Called from PendSV therefore not mangled
+extern "C" {
+    Thread *GetCurrentThreadForCore(int coreid = -1);
+    Thread *GetNextThreadForCore(int coreid = -1);
+    int GetCoreID();
+    void SetNextThreadForCore(Thread *t, int coreid = -1);
+    void ScheduleThread(Thread *t);
+}
 
 #endif
