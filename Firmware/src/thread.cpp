@@ -105,3 +105,22 @@ int GetCoreID()
 {
     return (*( ( volatile uint32_t * ) 0xE000ed00 ) & 0xfff0UL) == 0xc240 ? 1 : 0;
 }
+
+void SetNextThreadForCore(Thread *t, int coreid)
+{
+    if(coreid == -1)
+    {
+        coreid = GetCoreID();
+    }
+
+    {
+        CriticalGuard cg(s.current_thread[coreid].m);
+        s.current_thread[coreid].v = t;
+    }    
+}
+
+/* Called from PendSV */
+void ScheduleThread(Thread *t)
+{
+    s.Schedule(t);
+}

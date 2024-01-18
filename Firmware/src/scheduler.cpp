@@ -7,6 +7,7 @@ Scheduler::Scheduler()
         tlist[i] = ThreadVector();
     }
     dummy_thread.name = "dummy";
+    dummy_thread.is_dummy = true;
     for(int i = 0; i < ncores; i++)
     {
         CriticalGuard(current_thread[i].m);
@@ -16,6 +17,11 @@ Scheduler::Scheduler()
 
 void Scheduler::Schedule(Thread *t)
 {
+    if(!t || t->is_dummy)
+    {
+        return;
+    }
+
     auto prio = t->base_priority;
     if(prio >= npriorities)
     {
