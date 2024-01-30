@@ -48,7 +48,22 @@ void idle_thread(void *p)
 }
 
 /* The following just to get it to compile */
+static constexpr uint32_t max_sbrk = 8192;
+__attribute__((section(".sram4"))) static uint8_t malloc_buf[max_sbrk];
+static uint32_t cur_sbrk = 0;
+
 extern "C" void * _sbrk(int n)
 {
-    while(true);
+    if(n < 0) n = 0;
+    auto nn = static_cast<uint32_t>(n);
+
+    if((n + cur_sbrk) > max_sbrk)
+    {
+        return (void *)-1;
+    }
+    auto old_brk = cur_sbrk;
+
+    cur_sbrk += nn;
+
+    return &malloc_buf[old_brk];
 }
