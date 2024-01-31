@@ -83,11 +83,22 @@ extern "C" void * _sbrk(int n)
     return &malloc_buf[old_brk];
 }
 
-volatile uint32_t cfsr, hfsr;
+volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
 extern "C" void HardFault_Handler()
 {
+    uint32_t *pcaddr;
+    __asm(  "TST lr, #4\n"
+            "ITE EQ\n"
+            "MRSEQ %0, MSP\n"
+            "MRSNE %0, PSP\n" // stack pointer now in r0
+            "ldr %0, [%0, #0x18]\n" // stored pc now in r0
+            : "=r"(pcaddr));
+
+    ret_addr = *pcaddr;
+    
     cfsr = SCB->CFSR;
     hfsr = SCB->HFSR;
+    mmfar = SCB->MMFAR;
     
     while(true);
 }

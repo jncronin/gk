@@ -224,7 +224,7 @@ SECTIONS
     *(.sram4)
     *(.sram4*)
     _esram4 = .;
-  } >SRAM4 AT> FLASH
+  } >SRAM4 AT> FLASH1
   _ssram4_flash = LOADADDR(.sram4);
 
   /* defines for FreeRTOS MPU */
