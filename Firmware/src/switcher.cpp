@@ -19,6 +19,7 @@ extern "C" void PendSV_Handler()
         "cpsid i                        \n"
 
         /* Get CoreID */
+        "push {lr}                      \n"
         "push {r3}                      \n"
         "bl GetCoreID                   \n"
         "push {r0}                      \n"
@@ -40,7 +41,7 @@ extern "C" void PendSV_Handler()
         "tst r0, r1                     \n"
         "bne    .L0                     \n"
         "msr primask, r3                \n"
-        "bx lr                          \n"
+        "pop {pc}                       \n"
         ".L0:                           \n"
 
         /* Schedule current thread */
@@ -54,6 +55,8 @@ extern "C" void PendSV_Handler()
         "mov r1, r2                     \n"
         "bl SetNextThreadForCore        \n"
         "pop {r0-r3}                    \n"
+
+        "pop {lr}                       \n"
 
         /* Perform task switch proper */
 
