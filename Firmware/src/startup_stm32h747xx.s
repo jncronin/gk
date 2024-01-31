@@ -155,6 +155,12 @@ LoopFillZerosram_bss:
   bcc FillZerosram_bss
 
 
+  /* __libc_init_array may use FPU - enable it here */
+  ldr.w r0, =0xe000ed88
+  ldr r1, [r0]
+  orr r1, r1, #(0xf << 20)
+  str r1, [r0]
+  
 /* Initialise FreeRTOS malloc */
   /* bl init_malloc */
 

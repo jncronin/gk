@@ -6,7 +6,7 @@ void init_clocks()
 {
     /* Enable clock to the SYSCFG registers */
     RCC->APB4ENR |= RCC_APB4ENR_SYSCFGEN;
-    (void)RCC->APB2ENR;
+    (void)RCC->APB4ENR;
 
     /* Set up the clock system
         We have a 16 MHz HSE oscillator
@@ -14,9 +14,9 @@ void init_clocks()
         Use this as the input to all 3 PLLs (PLLM - 180 Mhz for main, PLLSAI - 48 MHz for SD/USB, PLL12S - 180 MHz for I2S)
     */
 
-    // Enable RTC to use HSE/16
+    // Enable RTC to use HSE/32
     RCC->CFGR &= ~RCC_CFGR_RTCPRE_Msk;
-    RCC->CFGR |= (16UL << RCC_CFGR_RTCPRE_Pos);
+    RCC->CFGR |= (32UL << RCC_CFGR_RTCPRE_Pos);
 
     // First reset backup domain and allow write access
     RCC->BDCR = RCC_BDCR_BDRST;
@@ -36,7 +36,7 @@ void init_clocks()
     while(!(RCC->CR & RCC_CR_HSERDY));
 
     /* Configure PLLs
-        PLL1 = HSE16 / M8 * N384
+        PLL1 = HSE16 / M8 * N384 => TODO: For now halved
             /P2 = 384 MHz -> SYSCLK 
             /Q8 = 96 MHz -> SDMMC1 and SPI1
             /R80 = 9.6 MHz -> unused (only able to use for TRACECLK)
@@ -46,7 +46,7 @@ void init_clocks()
             /Q2 = 172 MHz -> unused
             /R8 = 43 MHz -> unused
             
-        PLL3 = HSE16 / M8 * N384
+        PLL3 = HSE16 / M8 * N384 => TODO: For now halved
             /P7 = 109 MHz -> unused
             /Q16 = 48 MHz -> USB and SPI5
             /R64 = 12 MHz -> LTDC (30 Hz refresh) and I2C4
@@ -55,42 +55,50 @@ void init_clocks()
             => LPTIM1
     */
     
-    // Ensure sysclk is HSI and PLLs disabled
+    // Ensure sysclk is HSI64/4 = HSI16 and PLLs disabled
     RCC->CFGR &= ~RCC_CFGR_SW_Msk;
     while(RCC->CFGR & RCC_CFGR_SWS);
     RCC->CR &= ~(RCC_CR_PLL1ON | RCC_CR_PLL2ON | RCC_CR_PLL3ON);
     while(RCC->CR & (RCC_CR_PLL1RDY | RCC_CR_PLL2RDY | RCC_CR_PLL3RDY));
+    RCC->CR &= ~RCC_CR_HSIDIV;
+    RCC->CR |= 2UL << RCC_CR_HSIDIV_Pos;
 
     // Set voltage scaling 1
     PWR->D3CR = (3UL << PWR_D3CR_VOS_Pos);
     while(!(PWR->D3CR & PWR_D3CR_VOSRDY));
 
     // Set up PLLs as above
-    RCC->PLLCKSELR = (8UL << RCC_PLLCKSELR_DIVM3_Pos) |
-        (8UL << RCC_PLLCKSELR_DIVM2_Pos) |
-        (8UL << RCC_PLLCKSELR_DIVM1_Pos) |
-        (2UL << RCC_PLLCKSELR_PLLSRC);
+    RCC->PLLCKSELR = (2UL << RCC_PLLCKSELR_DIVM3_Pos) |
+        (2UL << RCC_PLLCKSELR_DIVM2_Pos) |
+        (2UL << RCC_PLLCKSELR_DIVM1_Pos) |
+        (0UL << RCC_PLLCKSELR_PLLSRC);
 
-    RCC->PLL2FRACR = 263UL;
+    RCC->PLLCFGR = 0UL;
+    RCC->PLL1FRACR = 0UL;
+    RCC->PLL2FRACR = 65UL;
     RCC->PLLCFGR = RCC_PLLCFGR_DIVR3EN |
         RCC_PLLCFGR_DIVQ3EN |
         RCC_PLLCFGR_DIVP2EN |
         RCC_PLLCFGR_DIVQ1EN |
         RCC_PLLCFGR_DIVP1EN |
+        (2UL << RCC_PLLCFGR_PLL3RGE_Pos) |
+        (2UL << RCC_PLLCFGR_PLL2RGE_Pos) |
+        (2UL << RCC_PLLCFGR_PLL1RGE_Pos) |
+        RCC_PLLCFGR_PLL1FRACEN |
         RCC_PLLCFGR_PLL2FRACEN;
     
-    RCC->PLL1DIVR = (79UL << RCC_PLL1DIVR_R1_Pos) |
+    RCC->PLL1DIVR = (1UL << RCC_PLL1DIVR_R1_Pos) |
         (7UL << RCC_PLL1DIVR_Q1_Pos) |
         (1UL << RCC_PLL1DIVR_P1_Pos) |
-        (383UL << RCC_PLL1DIVR_N1_Pos);
-    RCC->PLL2DIVR = (7UL << RCC_PLL2DIVR_R2_Pos) |
-        (1UL << RCC_PLL2DIVR_Q2_Pos) |
+        (95UL << RCC_PLL1DIVR_N1_Pos);
+    RCC->PLL2DIVR = (1UL << RCC_PLL2DIVR_R2_Pos) |
+        (0UL << RCC_PLL2DIVR_Q2_Pos) |
         (6UL << RCC_PLL2DIVR_P2_Pos) |
-        (171UL << RCC_PLL2DIVR_N2_Pos);
+        (42UL << RCC_PLL2DIVR_N2_Pos);
     RCC->PLL3DIVR = (63UL << RCC_PLL3DIVR_R3_Pos) |
         (15UL << RCC_PLL3DIVR_Q3_Pos) |
-        (6UL << RCC_PLL3DIVR_P3_Pos) |
-        (383UL << RCC_PLL3DIVR_N3_Pos);
+        (0UL << RCC_PLL3DIVR_P3_Pos) |
+        (95UL << RCC_PLL3DIVR_N3_Pos);
     
     RCC->CR |= (RCC_CR_PLL1ON | RCC_CR_PLL2ON | RCC_CR_PLL3ON);
     while(!(RCC->CR & RCC_CR_PLL1RDY));
