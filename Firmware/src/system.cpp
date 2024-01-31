@@ -19,6 +19,11 @@ void system_init_cm7()
 
     // enable FPU
     SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
+
+    // enable bus/usage/memmanage faults
+    SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk |
+        SCB_SHCSR_BUSFAULTENA_Msk |
+        SCB_SHCSR_MEMFAULTENA_Msk;
    
     // copy VTORs to ram
     uint32_t *orig_vtors = (uint32_t *)0x08000000;
@@ -57,6 +62,11 @@ void system_init_cm4()
 {
     // enable FPU
     SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
+
+    // enable bus/usage/memmanage faults
+    SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk |
+        SCB_SHCSR_BUSFAULTENA_Msk |
+        SCB_SHCSR_MEMFAULTENA_Msk;
 
     // copy VTORs to ram
     uint32_t *orig_vtors = (uint32_t *)0x08000000;

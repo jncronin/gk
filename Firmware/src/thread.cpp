@@ -28,6 +28,7 @@ Thread *Thread::Create(std::string name,
     t->base_priority = priority;
     t->is_privileged = is_priv;
     t->name = name;
+    t->is_dummy = false;
 
     t->tss.lr = 0xfffffffdUL;               // return to thread mode, normal frame, use PSP
     t->tss.control = is_priv ? 2UL : 3UL;   // bit0 = !privilege, bit1 = use PSP
