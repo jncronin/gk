@@ -9,6 +9,7 @@ Scheduler::Scheduler()
     }
     dummy_thread.name = "dummy";
     dummy_thread.is_dummy = true;
+    dummy_thread.base_priority = 0;
     for(int i = 0; i < ncores; i++)
     {
         CriticalGuard(current_thread[i].m);
@@ -103,7 +104,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
     __enable_irq();
-    
+
     // #switch to first thread by triggering SVC which then triggers pendsv
     register unsigned int sno asm("r0") = syscall_no::StartFirstThread;
     __asm volatile

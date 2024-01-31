@@ -8,8 +8,9 @@ extern "C" void SVC_Handler()       /* Can we just define this with the paramete
 {
     __asm volatile
     (
+        "push {lr}              \n"
         "bl SyscallHandler      \n"
-        "bx lr                  \n"
+        "pop {lr}               \n"
         ::: "memory"
     );
 }
@@ -20,7 +21,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
     {
         case StartFirstThread:
             // just trigger a PendSV interrupt
-            NVIC_SetPendingIRQ(PendSV_IRQn);
+            SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
             break;
 
         case GetThreadHandle:
