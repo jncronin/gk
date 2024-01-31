@@ -71,7 +71,7 @@ void init_clocks()
     RCC->PLLCKSELR = (2UL << RCC_PLLCKSELR_DIVM3_Pos) |
         (2UL << RCC_PLLCKSELR_DIVM2_Pos) |
         (2UL << RCC_PLLCKSELR_DIVM1_Pos) |
-        (2UL << RCC_PLLCKSELR_PLLSRC);
+        (0UL << RCC_PLLCKSELR_PLLSRC);
 
     RCC->PLLCFGR = 0UL;
     RCC->PLL1FRACR = 0UL;
