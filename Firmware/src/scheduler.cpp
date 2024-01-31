@@ -102,6 +102,8 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
+    __enable_irq();
+    
     // #switch to first thread by triggering SVC which then triggers pendsv
     register unsigned int sno asm("r0") = syscall_no::StartFirstThread;
     __asm volatile

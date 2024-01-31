@@ -10,7 +10,7 @@ extern "C" void PendSV_Handler() __attribute__((naked));
 
 extern "C" void PendSV_Handler()
 {
-    __asm
+    __asm volatile
     (
         /* At entry, we have r0,r1,r2,r3 and r12 to use freely.  Need to save the rest if used */
 
