@@ -33,7 +33,6 @@ int main()
     __enable_irq();
     SysTick->CTRL = 7UL;
 
-    while(true);
     s.StartForCurrentCore();
 
     return 0;
