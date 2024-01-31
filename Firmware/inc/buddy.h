@@ -234,7 +234,10 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                     uint32_t cur_buddy_size = get_smallest_buddy_size_for_block(&cur_addr);
 
                     if(cur_addr >= max_addr || max_addr - cur_addr < min_buddy_size)
+                    {
+                        unlock(cpsr);
                         return;
+                    }
                     
                     auto level = buddy_size_to_level(cur_buddy_size);
                     release_at_level(level, addr_to_bitidx_at_level(level, cur_addr));

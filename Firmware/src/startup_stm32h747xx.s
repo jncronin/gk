@@ -111,6 +111,22 @@ LoopCopyDtcmInit:
   cmp r4, r1
   bcc CopyDtcmInit
 
+/* Copy the sram4 segment initializers from flash to SRAM */  
+  ldr r0, =_ssram4
+  ldr r1, =_esram4
+  ldr r2, =_ssram4_flash
+  movs r3, #0
+  b LoopCopySram4Init
+
+CopySram4Init:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopySram4Init:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopySram4Init
   
 /* Zero fill the bss segment. */
   ldr r2, =_sbss

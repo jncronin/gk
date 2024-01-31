@@ -143,7 +143,7 @@ SECTIONS
     _edtcm_bss = .;         /* define a global symbol at bss end */
   } >DTCM
 
-  .dtcm (NOLOAD) :
+  .dtcm :
   {
     . = ALIGN(4);
     _sdtcm = .;       /* create a global symbol at ccmram start */
@@ -218,13 +218,14 @@ SECTIONS
   } >SRAM
 
   . = ALIGN(4);
-  .sram4 (NOLOAD) :
+  .sram4 :
   {
     _ssram4 = .;
     *(.sram4)
     *(.sram4*)
     _esram4 = .;
-  } >SRAM4
+  } >SRAM4 AT> FLASH
+  _ssram4_flash = LOADADDR(.sram4);
 
   /* defines for FreeRTOS MPU */
   PROVIDE(__FLASH_segment_start__ = 0x08000000);

@@ -148,3 +148,47 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
     ret.length = 0;
     return ret;
 }
+
+MemRegion memblk_allocate(size_t n, MemRegionType rtype)
+{
+    BuddyEntry ret;
+
+    switch(rtype)
+    {
+        case MemRegionType::AXISRAM:
+            ret = b_axisram.acquire(n);
+            break;
+
+        case MemRegionType::DTCM:
+            ret = b_dtcm.acquire(n);
+            break;
+
+        case MemRegionType::SDRAM:
+            ret = b_sdram.acquire(n);
+            break;
+
+        case MemRegionType::SRAM:
+            ret = b_sram.acquire(n);
+            break;
+
+        default:
+            ret.valid = false;
+            break;
+    }
+
+    MemRegion mr;
+    mr.rt = rtype;
+    if(ret.valid)
+    {
+        mr.address = ret.base;
+        mr.length = ret.length;
+    }
+    else
+    {
+        mr.address = 0;
+        mr.length = 0;
+    }
+    mr.valid = ret.valid;
+
+    return mr;
+}
