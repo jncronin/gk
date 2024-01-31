@@ -7,6 +7,9 @@
 
 const int REG_ID_SRAM4 = 4;
 
+extern void *malloc_region(size_t n, int reg_id);
+extern void free_region(void *ptr, int reg_id);
+
 template <class T, int reg_id> struct RegionAllocator
 {
     public:
@@ -28,13 +31,12 @@ template <class T, int reg_id> struct RegionAllocator
 
         constexpr T* allocate(std::size_t n)
         {
-            //TODO
-            return nullptr;
+            return reinterpret_cast<T*>(malloc_region(n * sizeof(T), reg_id));
         }
 
         constexpr void deallocate(T* p, std::size_t n)
         {
-            //TODO
+            free_region(p, reg_id);
         }
 };
 
