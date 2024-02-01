@@ -56,10 +56,17 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     {
         CriticalGuard cg(tlist[i].m);
 
+        if(tlist[i].v.v.empty())
+        {
+            continue;
+        }
+
+        auto vsize = static_cast<int>(tlist[i].v.v.size());
+
         // First get the front-most marked Either, OnlyMe or PreferMe
         auto cur_idx = tlist[i].v.index;
         auto iter = cur_idx + 1;
-        if(iter >= tlist[i].v.v.size()) iter = 0;
+        if(iter >= vsize) iter = 0;
 
         while(iter != cur_idx)
         {
@@ -73,12 +80,12 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
             }
 
             iter++;
-            if(iter >= tlist[i].v.v.size()) iter = 0;
-        }
+            if(iter >= vsize) iter = 0;
+        };
 
         // Now try ones marked PreferOther
         iter = cur_idx + 1;
-        if(iter >= tlist[i].v.v.size()) iter = 0;
+        if(iter >= vsize) iter = 0;
 
         while(iter != cur_idx)
         {
@@ -90,8 +97,8 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
             }
 
             iter++;
-            if(iter >= tlist[i].v.v.size()) iter = 0;
-        }
+            if(iter >= vsize) iter = 0;
+        };
     }
 
     {

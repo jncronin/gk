@@ -20,7 +20,7 @@ class Scheduler
         struct IndexedThreadVector
         {
             SRAM4Vector<Thread *> v;
-            unsigned int index = 0;
+            int index = -1;
         };
         using LockedIndexedThreadVector = locked_val<IndexedThreadVector>;
         using LockedThreadVector = locked_val<SRAM4Vector<Thread *>>;

@@ -56,4 +56,5 @@
         "thread": "cpp",
         "typeinfo": "cpp"
     },
+    "cortex-debug.variableUseNaturalFormat": false,
 }
