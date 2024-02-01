@@ -89,7 +89,7 @@ extern "C" void PendSV_Handler()
 
         "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
         "ldr r5, [r4]               \n"
-        "orr r5, #1                 \n"     // enable mpu
+        "orr r5, #5                 \n"     // enable mpu, default background map
         "str r5, [r4]               \n"
         "dsb                        \n"
 

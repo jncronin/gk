@@ -105,16 +105,19 @@ extern "C" void HardFault_Handler()
 
 extern "C" void MemManage_Handler()
 {
+    HardFault_Handler();
     while(true);
 }
 
 extern "C" void BusFault_Handler()
 {
+    HardFault_Handler();
     while(true);
 }
 
 extern "C" void UsageFault_Handler()
 {
+    HardFault_Handler();
     while(true);
 }
 

@@ -58,9 +58,11 @@ Thread *Thread::Create(std::string name,
     stack[--top_stack] = 0UL;
     stack[--top_stack] = 0UL;
     stack[--top_stack] = 0UL;
+    stack[--top_stack] = 0UL;
     stack[--top_stack] = reinterpret_cast<uint32_t>(p);
 
-    t->tss.psp = t->stack.address + t->stack.length;
+    //t->tss.psp = t->stack.address + t->stack.length;
+    t->tss.psp = reinterpret_cast<uint32_t>(&stack[top_stack]);
     
     /* Create mpu regions */
     t->tss.cm7_mpu0 = mpu_msp_cm7;
