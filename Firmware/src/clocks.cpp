@@ -36,9 +36,9 @@ void init_clocks()
     while(!(RCC->CR & RCC_CR_HSERDY));
 
     /* Configure PLLs
-        PLL1 = HSE16 / M8 * N384 => TODO: For now halved
+        PLL1 = HSE16 / M8 * N384
             /P2 = 384 MHz -> SYSCLK 
-            /Q8 = 96 MHz -> SDMMC1 and SPI1
+            /Q8 = 96 MHz -> SDMMC1, SPI1, FMC
             /R80 = 9.6 MHz -> unused (only able to use for TRACECLK)
             
         PLL2 = HSE16 / M8 * N172 . frac263
@@ -46,7 +46,7 @@ void init_clocks()
             /Q2 = 172 MHz -> unused
             /R8 = 43 MHz -> unused
             
-        PLL3 = HSE16 / M8 * N384 => TODO: For now halved
+        PLL3 = HSE16 / M8 * N384
             /P7 = 109 MHz -> unused
             /Q16 = 48 MHz -> USB and SPI5
             /R64 = 12 MHz -> LTDC (30 Hz refresh) and I2C4
@@ -116,7 +116,7 @@ void init_clocks()
     // Set up peripherals to use the above mappings
     RCC->D1CCIPR = (2UL << RCC_D1CCIPR_CKPERSEL_Pos) |
         (0UL << RCC_D1CCIPR_SDMMCSEL_Pos) |
-        (0UL << RCC_D1CCIPR_FMCSEL_Pos);
+        (1UL << RCC_D1CCIPR_FMCSEL_Pos);
     RCC->D2CCIP1R = (2UL << RCC_D2CCIP1R_SPI45SEL_Pos) |
         (0UL << RCC_D2CCIP1R_SPI123SEL_Pos) |
         (1UL << RCC_D2CCIP1R_SAI1SEL_Pos);
@@ -124,6 +124,42 @@ void init_clocks()
         (2UL << RCC_D2CCIP2R_USBSEL_Pos) |
         (1UL << RCC_D2CCIP2R_RNGSEL_Pos);
     RCC->D3CCIPR = (1UL << RCC_D3CCIPR_I2C4SEL_Pos);
+
+    // Set up LPTIM1 as a 1 kHz tick
+    RCC->APB1LENR |= RCC_APB1LENR_LPTIM1EN;
+    (void)RCC->APB1LENR;
+
+    LPTIM1->CR = 0;
+    LPTIM1->CR = LPTIM_CR_RSTARE;
+    (void)LPTIM1->CR;
+    LPTIM1->CR = 0;
+
+    LPTIM1->CFGR = 4UL << LPTIM_CFGR_PRESC_Pos;     // /16 => 1 MHz tick
+    LPTIM1->IER = LPTIM_IER_ARRMIE;
+    LPTIM1->CR = LPTIM_CR_ENABLE;
+    LPTIM1->ARR = 999;                              // Reload every 1 kHz
+    
+    NVIC_EnableIRQ(LPTIM1_IRQn);
+    __enable_irq();
+    LPTIM1->CR = LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
+}
+
+__attribute__((section(".sram4"))) static volatile uint64_t _cur_ms = 0;
+extern "C" void LPTIM1_IRQHandler()
+{
+    _cur_ms++;
+    LPTIM1->ICR = LPTIM_ICR_ARRMCF;
+}
+
+uint64_t clock_cur_ms()
+{
+    return _cur_ms;
+}
+
+void delay_ms(uint64_t nms)
+{
+    auto await_val = _cur_ms + nms + 1;
+    while(_cur_ms < await_val) __WFI();
 }
 
 bool clock_set_cpu(clock_cpu_speed speed)

@@ -2,6 +2,7 @@
 #include "memblk.h"
 #include "thread.h"
 #include "scheduler.h"
+#include "fmc.h"
 
 void system_init_cm7();
 void system_init_cm4();
@@ -14,6 +15,7 @@ int main()
 {
     system_init_cm7();
     init_memblk();
+    init_sdram();
 
     s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only, 512));
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));

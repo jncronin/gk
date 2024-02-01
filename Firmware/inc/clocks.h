@@ -1,6 +1,8 @@
 #ifndef CLOCKS_H
 #define CLOCKS_H
 
+#include <cstdint>
+
 void init_clocks();
 
 enum clock_cpu_speed
@@ -13,5 +15,6 @@ enum clock_cpu_speed
 
 bool clock_set_cpu(clock_cpu_speed speed);
 
+void delay_ms(uint64_t nms);
 
 #endif
