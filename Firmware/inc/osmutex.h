@@ -3,7 +3,9 @@
 
 #include <memory>
 #include <util.h>
+#include <region_allocator.h>
 
+class Thread;
 class Spinlock
 {
     protected:
@@ -16,9 +18,23 @@ class Spinlock
 
 class Mutex
 {
+    protected:
+        Thread *owner;
+
     public:
         void lock();
         void unlock();
+};
+
+class Condition
+{
+    protected:
+        SRAM4Vector<Thread *> waiting_threads;
+        Spinlock sl;
+
+    public:
+        void Wait();
+        void Signal();
 };
 
 class UninterruptibleGuard

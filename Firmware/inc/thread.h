@@ -22,15 +22,12 @@ class Thread
 
         int base_priority;
 
-        Mutex m_blocking_on;
-        SRAM4Vector<Thread *> blocking_on;
-        uint32_t delta_sleep;       /* for sleeping task delta-queue */
-
         bool for_deletion;          /* do we need to delete the thread at next task switch? */
 
         MemRegion stack;
 
         bool is_dummy = false;
+        bool is_blocking = false;
 
         typedef void (*threadstart_t)(void *p);
         static Thread *Create(std::string name,

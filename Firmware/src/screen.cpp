@@ -10,6 +10,8 @@ __attribute__((section(".sram4"))) static void *scr_bufs[2] = { 0, 0 };
 __attribute__((section(".sram4"))) static int scr_cbuf = 0;
 __attribute__((section(".sram4"))) static uint32_t scr_pf = 0;
 
+__attribute__((section(".sram4"))) Condition scr_vsync;
+
 void *screen_flip()
 {
     CriticalGuard cg(s_scrbuf);
@@ -407,6 +409,9 @@ void init_screen()
     scr_bufs[1] = 0;
 
     /* Enable */
+    LTDC->LIPCR = 0;
+    LTDC->IER = LTDC_IER_LIE;
+    NVIC_EnableIRQ(LTDC_IRQn);
     LTDC->SRCR = LTDC_SRCR_IMR;
     LTDC->GCR |= LTDC_GCR_LTDCEN;
 
@@ -414,4 +419,10 @@ void init_screen()
     pin LED_BACKLIGHT { GPIOA, 11 };
     LED_BACKLIGHT.set_as_output();
     LED_BACKLIGHT.set();
+}
+
+extern "C" void LTDC_IRQHandler()
+{
+    scr_vsync.Signal();
+    LTDC->ICR = LTDC_ICR_CLIF;
 }
