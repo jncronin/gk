@@ -4,6 +4,22 @@
 #include "pins.h"
 #include "clocks.h"
 
+#include "osmutex.h"
+__attribute__((section(".sram4"))) static Spinlock s_scrbuf;
+__attribute__((section(".sram4"))) static void *scr_bufs[2];
+__attribute__((section(".sram4"))) static int scr_cbuf = 0;
+
+void *screen_flip()
+{
+    CriticalGuard cg(s_scrbuf);
+    scr_cbuf++;
+    int wbuf = scr_cbuf & 0x1;
+    int rbuf = wbuf ? 0 : 1;
+    LTDC_Layer1->CFBAR = (uint32_t)(uintptr_t)scr_bufs[rbuf];
+    LTDC->SRCR = LTDC_SRCR_VBR;
+    return scr_bufs[wbuf];
+}
+
 static constexpr pin lcd_pins[] = {
     /* LTDC pins */
     { GPIOA, 1, 14 },       // R2
@@ -381,4 +397,38 @@ void init_screen()
         }
     }
     SCB_CleanDCache_by_Addr((uint32_t *)0xc0000000, 4*640*480);
+
+    auto fbuf2 = (volatile uint32_t *)0xc0200000;
+    for(int y = 0, idx = 0; y < 480; y++)
+    {
+        for(int x = 0; x < 640; x++, idx++)
+        {
+            if(x < 320)
+            {
+                if(y < 240)
+                    fbuf2[idx] = 0xffffffff;
+                else
+                    fbuf2[idx] = 0xff00ff00;
+            }
+            else
+            {
+                if(y < 240)
+                    fbuf2[idx] = 0xff0000ff;
+                else
+                    fbuf2[idx] = 0xffff0000;
+            }
+        }
+    }
+    // black square top-left
+    for(int y = 0; y < 32; y++)
+    {
+        for(int x = 0; x < 32; x++)
+        {
+            fbuf2[x + y * 640] = 0xff000000;
+        }
+    }
+    SCB_CleanDCache_by_Addr((uint32_t *)0xc0200000, 4*640*480);
+
+    scr_bufs[0] = const_cast<uint32_t *>(fbuf);
+    scr_bufs[1] = const_cast<uint32_t *>(fbuf2);
 }

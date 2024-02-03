@@ -1,6 +1,7 @@
 #include <stm32h7xx.h>
 #include "syscalls.h"
 #include "thread.h"
+#include "screen.h"
 
 extern "C" void SVC_Handler() __attribute__((naked));
 
@@ -15,6 +16,10 @@ extern "C" void SVC_Handler()       /* Can we just define this with the paramete
     );
 }
 
+extern "C" {
+    void SyscallHandler(syscall_no num, void *r1, void *r2, void *r3);
+}
+
 void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 {
     switch(sno)
@@ -26,6 +31,10 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case GetThreadHandle:
             *reinterpret_cast<Thread**>(r1) = GetCurrentThreadForCore();
+            break;
+
+        case FlipFrameBuffer:
+            *reinterpret_cast<void **>(r1) = screen_flip();
             break;
     }
 }
