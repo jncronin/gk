@@ -6,34 +6,34 @@
 
 static constexpr pin lcd_pins[] = {
     /* LTDC pins */
-    { GPIOA, 1, 14 },
-    { GPIOA, 2, 14 },
-    { GPIOA, 3, 14 },
-    { GPIOA, 5, 14 },
-    { GPIOA, 6, 14 },
-    { GPIOA, 8, 13 },
-    { GPIOA, 10, 14 },
-    { GPIOB, 0, 9 },
-    { GPIOB, 1, 14 },
-    { GPIOB, 8, 14 },
-    { GPIOB, 9, 14 },
-    { GPIOB, 10, 14 },
-    { GPIOD, 6, 14 },
-    { GPIOE, 6, 14 },
-    { GPIOF, 10, 14 },
-    { GPIOG, 6, 14 },
-    { GPIOG, 7, 14 },
-    { GPIOG, 12, 9 },
-    { GPIOG, 14, 14 },
-    { GPIOH, 2, 14 },
-    { GPIOH, 4, 9 },
-    { GPIOH, 11, 14 },
-    { GPIOH, 12, 14 },
-    { GPIOH, 14, 14 },
-    { GPIOI, 2, 14 },
-    { GPIOI, 9, 14 },
-    { GPIOI, 10, 14 },
-    { GPIOI, 11, 9 },
+    { GPIOA, 1, 14 },       // R2
+    { GPIOA, 2, 14 },       // R1
+    { GPIOA, 3, 14 },       // B5
+    { GPIOA, 5, 14 },       // R4
+    { GPIOA, 6, 14 },       // G2
+    { GPIOA, 8, 13 },       // B3
+    { GPIOA, 10, 14 },      // B1
+    { GPIOB, 0, 9 },        // R3
+    { GPIOB, 1, 14 },       // G0
+    { GPIOB, 8, 14 },       // B6
+    { GPIOB, 9, 14 },       // B7
+    { GPIOB, 10, 14 },      // G4
+    { GPIOD, 6, 14 },       // B2
+    { GPIOE, 6, 14 },       // G1
+    { GPIOF, 10, 14 },      // DE
+    { GPIOG, 6, 14 },       // R7
+    { GPIOG, 7, 14 },       // CLK
+    { GPIOG, 12, 9 },       // B4
+    { GPIOG, 14, 14 },      // B0
+    { GPIOH, 2, 14 },       // R0
+    { GPIOH, 4, 9 },        // G5
+    { GPIOH, 11, 14 },      // R5
+    { GPIOH, 12, 14 },      // R6
+    { GPIOH, 14, 14 },      // G3
+    { GPIOI, 2, 14 },       // G7
+    { GPIOI, 9, 14 },       // VSYNC
+    { GPIOI, 10, 14 },      // HSYNC
+    { GPIOI, 11, 9 },       // G6
 
     /* SPI5 to screen */
     { GPIOF, 6, 5 },
@@ -45,19 +45,66 @@ static constexpr auto n_lcd_pins = sizeof(lcd_pins) / sizeof(pin);
 
 static constexpr pin lcd_reset { GPIOI, 15 };
 
-void SPI_WriteComm(unsigned char i)
+/* void SPI_WriteComm(unsigned char i)
 {
     uint16_t id = (uint16_t)i;
     while(!(SPI5->SR & SPI_SR_TXP));
-    SPI5->TXDR = id;
+    *(volatile uint16_t *)&SPI5->TXDR = id;
 }
 
 void SPI_WriteData(unsigned char i)
 {
     uint16_t id = (uint16_t)i | 0x100;
     while(!(SPI5->SR & SPI_SR_TXP));
-    SPI5->TXDR = id;
+    *(volatile uint16_t *)&SPI5->TXDR = id;
+} */
+
+constexpr pin SPI_DI { GPIOF, 9 };
+constexpr pin SPI_CLK { GPIOF, 7 };
+constexpr pin SPI_CS { GPIOF, 6 };
+
+void SPI_SendData(unsigned char i)
+{  
+   unsigned char n;
+   
+   for(n=0; n<8; n++)			
+   {  
+	  if(i&0x80) SPI_DI.set();
+      	else SPI_DI.clear();
+      i<<= 1;
+
+	  SPI_CLK.clear();//_nop_(); _nop_();_nop_();_nop_();
+      SPI_CLK.set();//_nop_();_nop_();_nop_();_nop_();
+   }
 }
+void SPI_WriteComm(unsigned char i)
+{
+    SPI_CS.clear();
+
+    SPI_DI.clear();
+
+	SPI_CLK.clear();//_nop_(); _nop_();_nop_();_nop_();
+	SPI_CLK.set();//_nop_();_nop_();_nop_();_nop_();
+
+	SPI_SendData(i);
+
+    SPI_CS.set();
+}
+
+void SPI_WriteData(unsigned char i)
+{
+    SPI_CS.clear();
+
+    SPI_DI.set();
+
+	SPI_CLK.clear();//_nop_(); _nop_();_nop_();_nop_();
+	SPI_CLK.set();//_nop_();_nop_();_nop_();_nop_();
+
+	SPI_SendData(i);
+
+    SPI_CS.set();
+}
+
 
 void init_screen()
 {
@@ -66,6 +113,10 @@ void init_screen()
         lcd_pins[i].set_as_af();
     }
     lcd_reset.set_as_output();
+
+    SPI_CS.set_as_output();
+    SPI_DI.set_as_output();
+    SPI_CLK.set_as_output();
 
     // Initial set-up is through SPI5, kernel clock 48 MHz off PLL3Q
     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
@@ -93,7 +144,7 @@ void init_screen()
 
     SPI_WriteComm(0xFF);SPI_WriteData(0x30);
     SPI_WriteComm(0xFF);SPI_WriteData(0x52);
-    SPI_WriteComm(0xFF);SPI_WriteData(0x01);  
+    SPI_WriteComm(0xFF);SPI_WriteData(0x01);  // Page 01
     SPI_WriteComm(0xE3);SPI_WriteData(0x00);  
     SPI_WriteComm(0x40);SPI_WriteData(0x00);
     SPI_WriteComm(0x03);SPI_WriteData(0x40);
@@ -113,17 +164,17 @@ void init_screen()
     SPI_WriteComm(0x26);SPI_WriteData(0x14);
     SPI_WriteComm(0x27);SPI_WriteData(0x14);
 
-    SPI_WriteComm(0x38);SPI_WriteData(0x9C); 
-    SPI_WriteComm(0x39);SPI_WriteData(0xA7); 
-    SPI_WriteComm(0x3A);SPI_WriteData(0x3a); 
+    SPI_WriteComm(0x38);SPI_WriteData(0x9C); // vcom_adj
+    SPI_WriteComm(0x39);SPI_WriteData(0xA7); // vcom_adj
+    SPI_WriteComm(0x3A);SPI_WriteData(0x3a); // vcom_adj
 
     SPI_WriteComm(0x28);SPI_WriteData(0x40);
     SPI_WriteComm(0x29);SPI_WriteData(0x01);
     SPI_WriteComm(0x2A);SPI_WriteData(0xdf);
     SPI_WriteComm(0x49);SPI_WriteData(0x3C);   
-    SPI_WriteComm(0x91);SPI_WriteData(0x57); 
-    SPI_WriteComm(0x92);SPI_WriteData(0x57); 
-    SPI_WriteComm(0xA0);SPI_WriteData(0x55);
+    SPI_WriteComm(0x91);SPI_WriteData(0x57); // pump_ctrl
+    SPI_WriteComm(0x92);SPI_WriteData(0x57); // pump_ctrl
+    SPI_WriteComm(0xA0);SPI_WriteData(0x55); 
     SPI_WriteComm(0xA1);SPI_WriteData(0x50);
     SPI_WriteComm(0xA4);SPI_WriteData(0x9C);
     SPI_WriteComm(0xA7);SPI_WriteData(0x02);  
@@ -150,7 +201,7 @@ void init_screen()
 
     SPI_WriteComm(0xFF);SPI_WriteData(0x30);
     SPI_WriteComm(0xFF);SPI_WriteData(0x52);
-    SPI_WriteComm(0xFF);SPI_WriteData(0x02);
+    SPI_WriteComm(0xFF);SPI_WriteData(0x02); // page 02
     SPI_WriteComm(0xB0);SPI_WriteData(0x0B);
     SPI_WriteComm(0xB1);SPI_WriteData(0x16);
     SPI_WriteComm(0xB2);SPI_WriteData(0x17); 
@@ -187,9 +238,10 @@ void init_screen()
     SPI_WriteComm(0xDF);SPI_WriteData(0x10);
     SPI_WriteComm(0xE0);SPI_WriteData(0x17);    
     SPI_WriteComm(0xE1);SPI_WriteData(0x0A);
+
     SPI_WriteComm(0xFF);SPI_WriteData(0x30);
     SPI_WriteComm(0xFF);SPI_WriteData(0x52);
-    SPI_WriteComm(0xFF);SPI_WriteData(0x03);   
+    SPI_WriteComm(0xFF);SPI_WriteData(0x03);   // page 03
     SPI_WriteComm(0x00);SPI_WriteData(0x2A);
     SPI_WriteComm(0x01);SPI_WriteData(0x2A);
     SPI_WriteComm(0x02);SPI_WriteData(0x2A);
@@ -262,9 +314,10 @@ void init_screen()
     SPI_WriteComm(0x9E);SPI_WriteData(0x0b); 
     SPI_WriteComm(0x9F);SPI_WriteData(0x0d); 
     SPI_WriteComm(0xA0);SPI_WriteData(0x01); 
+
     SPI_WriteComm(0xFF);SPI_WriteData(0x30);
     SPI_WriteComm(0xFF);SPI_WriteData(0x52);
-    SPI_WriteComm(0xFF);SPI_WriteData(0x02);  
+    SPI_WriteComm(0xFF);SPI_WriteData(0x02);  // page 02
     SPI_WriteComm(0x01);SPI_WriteData(0x01);
     SPI_WriteComm(0x02);SPI_WriteData(0xDA);
     SPI_WriteComm(0x03);SPI_WriteData(0xBA);
@@ -281,10 +334,11 @@ void init_screen()
     SPI_WriteComm(0x0E);SPI_WriteData(0x48);
     SPI_WriteComm(0x0F);SPI_WriteData(0x38);
     SPI_WriteComm(0x10);SPI_WriteData(0x2B);
-    SPI_WriteComm(0xFF);SPI_WriteData(0x30);
+
+    SPI_WriteComm(0xFF);SPI_WriteData(0x30);    // page 00
     SPI_WriteComm(0xFF);SPI_WriteData(0x52);
     SPI_WriteComm(0xFF);SPI_WriteData(0x00);   
-    SPI_WriteComm(0x36);SPI_WriteData(0x02);
+    SPI_WriteComm(0x36);SPI_WriteData(0x0A);    // MADCTL - RGB, panel flip horizontal, no flip vertical
                                         
     SPI_WriteComm(0x11);SPI_WriteData(0x00);	 //sleep out
     delay_ms( 200 );
@@ -301,6 +355,7 @@ void init_screen()
         H back porch = 48, V back porch = 13
         Display = 640x480
         H front porch = 16, V front porch = 5
+        Total = 720*500
         
         Values accumulate in the register settings (and always -1 at end) */
     LTDC->SSCR = (1UL << LTDC_SSCR_VSH_Pos) |
@@ -313,10 +368,10 @@ void init_screen()
         (719UL << LTDC_TWCR_TOTALW_Pos);
     
     /* Set all control signals active low */
-    LTDC->GCR = 0UL;
+    LTDC->GCR = 0UL | LTDC_GCR_PCPOL;
 
     /* Back colour (without any layer enabled) */
-    LTDC->BCCR = 0xffffffUL;
+    LTDC->BCCR = 0xff00ffUL;
 
     /* Layers */
     LTDC_Layer1->WHPCR =
@@ -337,10 +392,44 @@ void init_screen()
     LTDC_Layer1->CR = LTDC_LxCR_LEN;
 
     LTDC_Layer2->DCCR = 0UL;
+    LTDC_Layer2->CACR = 0UL;
+    LTDC_Layer2->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
+        (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now
     LTDC_Layer2->CR = 0;
     
 
     /* Enable */
     LTDC->SRCR = LTDC_SRCR_IMR;
     LTDC->GCR |= LTDC_GCR_LTDCEN;
+
+    auto fbuf = (volatile uint32_t *)0xc0000000;
+    for(int y = 0, idx = 0; y < 480; y++)
+    {
+        for(int x = 0; x < 640; x++, idx++)
+        {
+            if(x < 320)
+            {
+                if(y < 240)
+                    fbuf[idx] = 0xffff0000;
+                else
+                    fbuf[idx] = 0xff0000ff;
+            }
+            else
+            {
+                if(y < 240)
+                    fbuf[idx] = 0xff00ff00;
+                else
+                    fbuf[idx] = 0xffffffff;
+            }
+        }
+    }
+    // black square top-left
+    for(int y = 0; y < 32; y++)
+    {
+        for(int x = 0; x < 32; x++)
+        {
+            fbuf[x + y * 640] = 0xff000000;
+        }
+    }
+    SCB_CleanDCache_by_Addr((uint32_t *)0xc0000000, 4*640*480);
 }
