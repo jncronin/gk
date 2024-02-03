@@ -45,7 +45,7 @@ static constexpr auto n_lcd_pins = sizeof(lcd_pins) / sizeof(pin);
 
 static constexpr pin lcd_reset { GPIOI, 15 };
 
-/* void SPI_WriteComm(unsigned char i)
+void SPI_WriteComm(unsigned char i)
 {
     uint16_t id = (uint16_t)i;
     while(!(SPI5->SR & SPI_SR_TXP));
@@ -57,54 +57,7 @@ void SPI_WriteData(unsigned char i)
     uint16_t id = (uint16_t)i | 0x100;
     while(!(SPI5->SR & SPI_SR_TXP));
     *(volatile uint16_t *)&SPI5->TXDR = id;
-} */
-
-constexpr pin SPI_DI { GPIOF, 9 };
-constexpr pin SPI_CLK { GPIOF, 7 };
-constexpr pin SPI_CS { GPIOF, 6 };
-
-void SPI_SendData(unsigned char i)
-{  
-   unsigned char n;
-   
-   for(n=0; n<8; n++)			
-   {  
-	  if(i&0x80) SPI_DI.set();
-      	else SPI_DI.clear();
-      i<<= 1;
-
-	  SPI_CLK.clear();//_nop_(); _nop_();_nop_();_nop_();
-      SPI_CLK.set();//_nop_();_nop_();_nop_();_nop_();
-   }
 }
-void SPI_WriteComm(unsigned char i)
-{
-    SPI_CS.clear();
-
-    SPI_DI.clear();
-
-	SPI_CLK.clear();//_nop_(); _nop_();_nop_();_nop_();
-	SPI_CLK.set();//_nop_();_nop_();_nop_();_nop_();
-
-	SPI_SendData(i);
-
-    SPI_CS.set();
-}
-
-void SPI_WriteData(unsigned char i)
-{
-    SPI_CS.clear();
-
-    SPI_DI.set();
-
-	SPI_CLK.clear();//_nop_(); _nop_();_nop_();_nop_();
-	SPI_CLK.set();//_nop_();_nop_();_nop_();_nop_();
-
-	SPI_SendData(i);
-
-    SPI_CS.set();
-}
-
 
 void init_screen()
 {
@@ -113,10 +66,6 @@ void init_screen()
         lcd_pins[i].set_as_af();
     }
     lcd_reset.set_as_output();
-
-    SPI_CS.set_as_output();
-    SPI_DI.set_as_output();
-    SPI_CLK.set_as_output();
 
     // Initial set-up is through SPI5, kernel clock 48 MHz off PLL3Q
     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
@@ -338,7 +287,7 @@ void init_screen()
     SPI_WriteComm(0xFF);SPI_WriteData(0x30);    // page 00
     SPI_WriteComm(0xFF);SPI_WriteData(0x52);
     SPI_WriteComm(0xFF);SPI_WriteData(0x00);   
-    SPI_WriteComm(0x36);SPI_WriteData(0x0A);    // MADCTL - RGB, panel flip horizontal, no flip vertical
+    SPI_WriteComm(0x36);SPI_WriteData(0x0A);    // MADCTL - BGR, panel flip horizontal, no flip vertical
                                         
     SPI_WriteComm(0x11);SPI_WriteData(0x00);	 //sleep out
     delay_ms( 200 );
