@@ -49,7 +49,8 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     int cur_prio;
     {
         CriticalGuard cg(current_thread[ncore].m);
-        cur_prio = current_thread[ncore].v->base_priority;
+        cur_prio = current_thread[ncore].v->is_blocking ? 0 :
+            current_thread[ncore].v->base_priority;
     }
 
     for(int i = npriorities-1; i >= cur_prio; i--)
@@ -71,9 +72,10 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         while(iter != cur_idx)
         {
             auto cval = tlist[i].v.v[iter];
-            if(cval->affinity == CPUAffinity::Either ||
+            if(cval->is_blocking == false &&
+                (cval->affinity == CPUAffinity::Either ||
                 cval->affinity == OnlyMe ||
-                cval->affinity == PreferMe)
+                cval->affinity == PreferMe))
             {
                 tlist[i].v.index = iter;
                 return cval;
@@ -90,7 +92,8 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         while(iter != cur_idx)
         {
             auto cval = tlist[i].v.v[iter];
-            if(cval->affinity == PreferOther)
+            if(cval->is_blocking == false &&
+                cval->affinity == PreferOther)
             {
                 tlist[i].v.index = iter;
                 return cval;

@@ -9,6 +9,7 @@
 #include "SEGGER_RTT.h"
 
 Spinlock s_rtt;
+extern Condition scr_vsync;
 
 void system_init_cm7();
 void system_init_cm4();
@@ -32,7 +33,7 @@ int main()
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
 
     s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
-    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 5));
+    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6));
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5));
 
@@ -49,7 +50,7 @@ int main()
     }
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
-    SysTick->LOAD = 47999;      // assume 48 MHz => 1 kHz tick
+    SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
     __enable_irq();
     SysTick->CTRL = 7UL;
 
@@ -103,8 +104,11 @@ void b_thread(void *p)
     (void)p;
     while(true)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_PutChar(0, 'B');
+        scr_vsync.Wait();
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_PutChar(0, 'B');
+        }
     }
 }
 
@@ -179,10 +183,5 @@ extern "C" void UsageFault_Handler()
 
 extern "C" void SysTick_Handler()
 {
-    static int i = 0;
-    i++;
-    if(i >= 100)    // ms between task switches
-    {
-        SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
-    }
+    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
 }

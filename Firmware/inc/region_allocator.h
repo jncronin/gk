@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <unordered_set>
 
 const int REG_ID_SRAM4 = 4;
 
@@ -45,5 +46,6 @@ template <class T> using SRAM4RegionAllocator = RegionAllocator<T, REG_ID_SRAM4>
 template <class CharT> using SRAM4BasicString = std::basic_string<CharT, std::char_traits<CharT>, SRAM4RegionAllocator<CharT>>;
 using SRAM4String = SRAM4BasicString<char>;
 template <class T> using SRAM4Vector = std::vector<T, SRAM4RegionAllocator<T>>;
+template <class T> using SRAM4UnorderedSet = std::unordered_set<T, std::hash<T>, std::equal_to<T>, SRAM4RegionAllocator<T>>;
 
 #endif
