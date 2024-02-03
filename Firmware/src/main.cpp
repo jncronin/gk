@@ -6,6 +6,9 @@
 #include "pins.h"
 #include "screen.h"
 #include "syscalls.h"
+#include "SEGGER_RTT.h"
+
+Spinlock s_rtt;
 
 void system_init_cm7();
 void system_init_cm4();
@@ -13,6 +16,8 @@ void system_init_cm4();
 static void idle_thread(void *p);
 
 void bluescreen_thread(void *p);
+void b_thread(void *p);
+void x_thread(void *p);
 
 __attribute__((section(".sram4")))Scheduler s;
 
@@ -27,6 +32,9 @@ int main()
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
 
     s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
+    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 5));
+    s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
+    s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5));
 
     // Get systick to flash an LED for now (BTNLED_R = PC6)
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
@@ -83,8 +91,32 @@ void bluescreen_thread(void *p)
         ((volatile uint32_t *)0xc0000000)[i] = 0xff0000ff;
     }
     __syscall_FlipFrameBuffer();
-    while(true);
+    while(true)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_PutChar(0, 'A');
+    }
 }
+
+void b_thread(void *p)
+{
+    (void)p;
+    while(true)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_PutChar(0, 'B');
+    }
+}
+
+void x_thread(void *p)
+{
+    while(true)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_PutChar(0, (char)(uintptr_t)p);
+    }
+}
+
 
 /* The following just to get it to compile */
 static constexpr uint32_t max_sbrk = 8192;
@@ -149,17 +181,8 @@ extern "C" void SysTick_Handler()
 {
     static int i = 0;
     i++;
-    if(i >= 4)
+    if(i >= 100)    // ms between task switches
     {
-        screen_flip();
-        i = 0;
+        SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
     }
-    /*if(GPIOC->ODR & (1UL << 6))
-    {
-        GPIOC->BSRR = 1UL << 22;
-    }
-    else
-    {
-        GPIOC->BSRR = 1UL << 6;
-    }*/
 }
