@@ -135,6 +135,13 @@ extern "C" void UsageFault_Handler()
 
 extern "C" void SysTick_Handler()
 {
+    static int i = 0;
+    i++;
+    if(i >= 4)
+    {
+        screen_flip();
+        i = 0;
+    }
     /*if(GPIOC->ODR & (1UL << 6))
     {
         GPIOC->BSRR = 1UL << 22;
