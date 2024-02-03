@@ -5,11 +5,14 @@
 #include "fmc.h"
 #include "pins.h"
 #include "screen.h"
+#include "syscalls.h"
 
 void system_init_cm7();
 void system_init_cm4();
 
 static void idle_thread(void *p);
+
+void bluescreen_thread(void *p);
 
 __attribute__((section(".sram4")))Scheduler s;
 
@@ -22,6 +25,8 @@ int main()
 
     s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only, 512));
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
+
+    s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
 
     // Get systick to flash an LED for now (BTNLED_R = PC6)
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
@@ -67,6 +72,18 @@ void idle_thread(void *p)
     {
         __WFI();
     }
+}
+
+void bluescreen_thread(void *p)
+{
+    (void)p;
+    __syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0000000, ARGB8888);
+    for(int i = 0; i < 640*480; i++)
+    {
+        ((volatile uint32_t *)0xc0000000)[i] = 0xff0000ff;
+    }
+    __syscall_FlipFrameBuffer();
+    while(true);
 }
 
 /* The following just to get it to compile */
