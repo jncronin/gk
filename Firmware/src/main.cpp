@@ -23,11 +23,6 @@ int main()
     s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only, 512));
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
 
-    // switch on backlight
-    pin LED_BACKLIGHT { GPIOA, 11 };
-    LED_BACKLIGHT.set_as_output();
-    LED_BACKLIGHT.set();
-
     // Get systick to flash an LED for now (BTNLED_R = PC6)
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
     (void)RCC->AHB4ENR;

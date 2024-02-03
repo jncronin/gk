@@ -6,8 +6,9 @@
 
 #include "osmutex.h"
 __attribute__((section(".sram4"))) static Spinlock s_scrbuf;
-__attribute__((section(".sram4"))) static void *scr_bufs[2];
+__attribute__((section(".sram4"))) static void *scr_bufs[2] = { 0, 0 };
 __attribute__((section(".sram4"))) static int scr_cbuf = 0;
+__attribute__((section(".sram4"))) static uint32_t scr_pf = 0;
 
 void *screen_flip()
 {
@@ -16,8 +17,48 @@ void *screen_flip()
     int wbuf = scr_cbuf & 0x1;
     int rbuf = wbuf ? 0 : 1;
     LTDC_Layer1->CFBAR = (uint32_t)(uintptr_t)scr_bufs[rbuf];
+    LTDC_Layer1->PFCR = scr_pf;
+    switch(scr_pf)
+    {
+        case 0:
+            LTDC_Layer1->CFBLR = (2560UL << LTDC_LxCFBLR_CFBP_Pos) |
+                (2567UL << LTDC_LxCFBLR_CFBLL_Pos);
+            break;
+        case 1:
+            LTDC_Layer1->CFBLR = (1920UL << LTDC_LxCFBLR_CFBP_Pos) |
+                (1927UL << LTDC_LxCFBLR_CFBLL_Pos);
+            break;
+        case 2:
+        case 3:
+        case 4:
+        case 7:
+            LTDC_Layer1->CFBLR = (1280UL << LTDC_LxCFBLR_CFBP_Pos) |
+                (1287UL << LTDC_LxCFBLR_CFBLL_Pos);
+            break;
+        case 5:
+        case 6:
+            LTDC_Layer1->CFBLR = (640UL << LTDC_LxCFBLR_CFBP_Pos) |
+                (647UL << LTDC_LxCFBLR_CFBLL_Pos);
+            break;
+    }
+    if(scr_bufs[rbuf])
+    {
+        LTDC_Layer1->CR |= LTDC_LxCR_LEN;
+    }
+    else
+    {
+        LTDC_Layer1->CR &= ~LTDC_LxCR_LEN;
+    }
     LTDC->SRCR = LTDC_SRCR_VBR;
     return scr_bufs[wbuf];
+}
+
+void screen_set_frame_buffer(void *b0, void *b1, uint32_t pf)
+{
+    CriticalGuard cg(s_scrbuf);
+    scr_bufs[0] = b0;
+    scr_bufs[1] = b1;
+    scr_pf = pf;
 }
 
 static constexpr pin lcd_pins[] = {
@@ -350,11 +391,11 @@ void init_screen()
     LTDC_Layer1->DCCR = 0UL;
     LTDC_Layer1->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
         (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now
-    LTDC_Layer1->CFBAR = 0xc0000000;
+    LTDC_Layer1->CFBAR = 0;
     LTDC_Layer1->CFBLR = (2560UL << LTDC_LxCFBLR_CFBP_Pos) |
         (2567UL << LTDC_LxCFBLR_CFBLL_Pos);
     LTDC_Layer1->CFBLNR = 480UL;
-    LTDC_Layer1->CR = LTDC_LxCR_LEN;
+    LTDC_Layer1->CR = 0;
 
     LTDC_Layer2->DCCR = 0UL;
     LTDC_Layer2->CACR = 0UL;
@@ -362,73 +403,15 @@ void init_screen()
         (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now
     LTDC_Layer2->CR = 0;
     
+    scr_bufs[0] = 0;
+    scr_bufs[1] = 0;
 
     /* Enable */
     LTDC->SRCR = LTDC_SRCR_IMR;
     LTDC->GCR |= LTDC_GCR_LTDCEN;
 
-    auto fbuf = (volatile uint32_t *)0xc0000000;
-    for(int y = 0, idx = 0; y < 480; y++)
-    {
-        for(int x = 0; x < 640; x++, idx++)
-        {
-            if(x < 320)
-            {
-                if(y < 240)
-                    fbuf[idx] = 0xffff0000;
-                else
-                    fbuf[idx] = 0xff0000ff;
-            }
-            else
-            {
-                if(y < 240)
-                    fbuf[idx] = 0xff00ff00;
-                else
-                    fbuf[idx] = 0xffffffff;
-            }
-        }
-    }
-    // black square top-left
-    for(int y = 0; y < 32; y++)
-    {
-        for(int x = 0; x < 32; x++)
-        {
-            fbuf[x + y * 640] = 0xff000000;
-        }
-    }
-    SCB_CleanDCache_by_Addr((uint32_t *)0xc0000000, 4*640*480);
-
-    auto fbuf2 = (volatile uint32_t *)0xc0200000;
-    for(int y = 0, idx = 0; y < 480; y++)
-    {
-        for(int x = 0; x < 640; x++, idx++)
-        {
-            if(x < 320)
-            {
-                if(y < 240)
-                    fbuf2[idx] = 0xffffffff;
-                else
-                    fbuf2[idx] = 0xff00ff00;
-            }
-            else
-            {
-                if(y < 240)
-                    fbuf2[idx] = 0xff0000ff;
-                else
-                    fbuf2[idx] = 0xffff0000;
-            }
-        }
-    }
-    // black square top-left
-    for(int y = 0; y < 32; y++)
-    {
-        for(int x = 0; x < 32; x++)
-        {
-            fbuf2[x + y * 640] = 0xff000000;
-        }
-    }
-    SCB_CleanDCache_by_Addr((uint32_t *)0xc0200000, 4*640*480);
-
-    scr_bufs[0] = const_cast<uint32_t *>(fbuf);
-    scr_bufs[1] = const_cast<uint32_t *>(fbuf2);
+    // switch on backlight
+    pin LED_BACKLIGHT { GPIOA, 11 };
+    LED_BACKLIGHT.set_as_output();
+    LED_BACKLIGHT.set();
 }

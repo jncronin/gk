@@ -36,5 +36,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case FlipFrameBuffer:
             *reinterpret_cast<void **>(r1) = screen_flip();
             break;
+
+        case SetFrameBuffer:
+            screen_set_frame_buffer(r1, r2, (uint32_t)r3);
+            break;
     }
 }
