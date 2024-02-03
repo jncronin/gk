@@ -3,6 +3,8 @@
 #include "thread.h"
 #include "scheduler.h"
 #include "fmc.h"
+#include "pins.h"
+#include "screen.h"
 
 void system_init_cm7();
 void system_init_cm4();
@@ -16,18 +18,26 @@ int main()
     system_init_cm7();
     init_memblk();
     init_sdram();
+    init_screen();
 
     s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only, 512));
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
+
+    // switch on backlight
+    pin LED_BACKLIGHT { GPIOA, 11 };
+    LED_BACKLIGHT.set_as_output();
+    LED_BACKLIGHT.set();
 
     // Get systick to flash an LED for now (BTNLED_R = PC6)
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
     (void)RCC->AHB4ENR;
     {
         auto gc = GPIOC->MODER;
-        gc &= ~(3UL << 12);
-        gc |= 1UL << 12;
+        gc &= ~(3UL << 14);
+        gc |= 1UL << 14;
         GPIOC->MODER = gc;
+
+        GPIOC->ODR = (1UL << 7);
     }
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
@@ -125,12 +135,12 @@ extern "C" void UsageFault_Handler()
 
 extern "C" void SysTick_Handler()
 {
-    if(GPIOC->ODR & (1UL << 6))
+    /*if(GPIOC->ODR & (1UL << 6))
     {
         GPIOC->BSRR = 1UL << 22;
     }
     else
     {
         GPIOC->BSRR = 1UL << 6;
-    }
+    }*/
 }

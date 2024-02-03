@@ -95,7 +95,7 @@ void init_clocks()
         (0UL << RCC_PLL2DIVR_Q2_Pos) |
         (6UL << RCC_PLL2DIVR_P2_Pos) |
         (42UL << RCC_PLL2DIVR_N2_Pos);
-    RCC->PLL3DIVR = (63UL << RCC_PLL3DIVR_R3_Pos) |
+    RCC->PLL3DIVR = (31UL << RCC_PLL3DIVR_R3_Pos) |
         (15UL << RCC_PLL3DIVR_Q3_Pos) |
         (0UL << RCC_PLL3DIVR_P3_Pos) |
         (95UL << RCC_PLL3DIVR_N3_Pos);
