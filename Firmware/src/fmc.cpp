@@ -112,7 +112,7 @@ void init_sdram()
         (mode << FMC_SDCMR_MRD_Pos);
 
     // Set refresh period
-    FMC_Bank5_6_R->SDRTR = 683UL << 1;  // refresh period = 64 ms / rows = 8192 * HCLK/2 - 20
+    FMC_Bank5_6_R->SDRTR = 729UL << 1;  // refresh period = 64 ms / rows = 8192 * SDCLK - 20
 
     for(unsigned int i = 0; i < 256; i += 4)
     {

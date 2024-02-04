@@ -124,7 +124,7 @@ void b_thread(void *p)
             
         }
 
-        //GPIOC->BSRR = GPIO_BSRR_BS7;
+        GPIOC->BSRR = GPIO_BSRR_BS7;
 
         auto fbuf = reinterpret_cast<uint32_t *>(__syscall_GetFrameBuffer());
         if(fbuf)
@@ -156,7 +156,7 @@ void b_thread(void *p)
             if(cc >= 256) cc = 0;
         }
 
-        //GPIOC->BSRR = GPIO_BSRR_BR7;
+        GPIOC->BSRR = GPIO_BSRR_BR7;
     }
 }
 
