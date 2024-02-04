@@ -7,6 +7,7 @@
 #include "screen.h"
 #include "syscalls.h"
 #include "SEGGER_RTT.h"
+#include "clocks.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -108,6 +109,8 @@ void b_thread(void *p)
     __syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
     RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
     (void)RCC->AHB3ENR;
+
+    clock_set_cpu(clock_cpu_speed::cpu_384_192);
 
     uint32_t cc = 0;
     while(true)
