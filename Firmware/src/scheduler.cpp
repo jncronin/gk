@@ -120,6 +120,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
+    SCB_CleanInvalidateDCache();
     __enable_irq();
 
     // #switch to first thread by triggering SVC which then triggers pendsv

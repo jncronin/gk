@@ -114,6 +114,8 @@ int GetCoreID()
 
 void SetNextThreadForCore(Thread *t, int coreid)
 {
+    bool flush_cache = false;
+
     if(coreid == -1)
     {
         coreid = GetCoreID();
@@ -127,16 +129,30 @@ void SetNextThreadForCore(Thread *t, int coreid)
             CriticalGuard cg2(s.current_thread[coreid].v->sl);
             s.current_thread[coreid].v->chosen_for_core = 0;
             s.current_thread[coreid].v->running_on_core = 0;
+            if(s.current_thread[coreid].v->is_dummy)
+            {
+                flush_cache = true;
+            }
         }
 
         {
             CriticalGuard cg2(t->sl);
             t->chosen_for_core = 0;
             t->running_on_core = coreid + 1;
+
+            if(t->is_blocking)
+            {
+                while(true);
+            }
         }
 
         s.current_thread[coreid].v = t;
-    }    
+    }
+
+    if(flush_cache)
+    {
+        SCB_CleanInvalidateDCache();
+    }
 }
 
 /* Called from PendSV */
