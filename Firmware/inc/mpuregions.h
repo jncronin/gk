@@ -92,9 +92,9 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
 }
 
 // TODO: make first 64 kB of DTCM and SRAM usuable as stacks
-constexpr mpu_saved_state mpu_msp_cm7 = MPUGenerate(0x20000000, 65536, 0, false,
+constexpr mpu_saved_state mpu_msp_cm7 = MPUGenerate(0x20001000, 4096, 0, false,
     MemRegionAccess::RW, MemRegionAccess::NoAccess, WBWA_NS);
-constexpr mpu_saved_state mpu_msp_cm4 = MPUGenerate(0x30000000, 65536, 0, false,
+constexpr mpu_saved_state mpu_msp_cm4 = MPUGenerate(0x30001000, 4096, 0, false,
     MemRegionAccess::RW, MemRegionAccess::NoAccess, WBWA_NS);
 constexpr mpu_saved_state mpu_flash = MPUGenerate(0x08000000, 0x200000, 1, true,
     MemRegionAccess::RO, MemRegionAccess::NoAccess, WT_NS);

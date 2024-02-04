@@ -1,6 +1,9 @@
 #ifndef OSTYPES_H
 #define OSTYPES_H
 
+#include <cstddef>
+#include <cstdint>
+
 enum MemRegionType
 {
     AXISRAM = 0,
@@ -49,5 +52,8 @@ struct thread_saved_state
     mpu_saved_state cm7_mpu0, cm4_mpu0; /* MSP - varies depending on which core is running */
     mpu_saved_state mpuss[7];
 };
+
+static_assert(sizeof(thread_saved_state) == 45 * 4);
+static_assert(offsetof(thread_saved_state, cm7_mpu0) == 108);
 
 #endif

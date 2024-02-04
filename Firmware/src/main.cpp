@@ -8,7 +8,7 @@
 #include "syscalls.h"
 #include "SEGGER_RTT.h"
 
-Spinlock s_rtt;
+__attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
 
 void system_init_cm7();

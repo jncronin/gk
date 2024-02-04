@@ -3,6 +3,8 @@
 
 Scheduler::Scheduler()
 {
+    RCC->AHB4ENR |= RCC_AHB4ENR_HSEMEN;
+    
     for(int i = 0; i < npriorities; i++)
     {
         tlist[i] = LockedIndexedThreadVector();

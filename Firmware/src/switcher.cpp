@@ -73,7 +73,7 @@ extern "C" void PendSV_Handler()
         /* Set up new task MPU, can discard R0 now */
         "add r0, r1, #108           \n"     // R0 = &cm7_mpu0
         "add r2, r0, r2, lsl #2     \n"     // R2 = &cm7_mpu0 or &cm4_mpu0
-        "add r0, r0, #8             \n"     // R0 = &mpuss[0]
+        "add r0, r0, #16            \n"     // R0 = &mpuss[0]
 
         "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
         "ldr r5, [r4]               \n"

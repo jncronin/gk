@@ -1,7 +1,7 @@
 /* malloc interface */
 #include "osmutex.h"
 #include "region_allocator.h"
-static Spinlock sl_sram4;
+__attribute__((section(".sram4"))) static Spinlock sl_sram4;
 
 extern "C"
 {
