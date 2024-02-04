@@ -16,6 +16,7 @@
     7 - Allocatable to user mode program (e.g. peripheral/SRAM access)
 */
 
+#include <cstdint>
 #include "ostypes.h"
 
 constexpr const uint32_t WBWA_S =       0b101101;
@@ -42,7 +43,7 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     uint32_t cur_i = 4;
     for(; cur_i < 32; cur_i++, cur_size *= 2)
     {
-        if(cur_size < length)
+        if(cur_size >= length)
             break;
     }
 
