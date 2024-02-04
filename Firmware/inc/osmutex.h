@@ -14,6 +14,7 @@ class Spinlock
     public:
         void lock();
         void unlock();
+        Spinlock();
 };
 
 class Mutex

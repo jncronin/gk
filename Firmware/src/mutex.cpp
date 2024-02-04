@@ -4,6 +4,28 @@
 
 extern Scheduler s;
 
+/* Need to use HSEM here because STM32H7 does not implement bus locking on AXI */
+template <typename T> static inline void cmpxchg(T* ptr, T* oldval, T newval)
+{
+    while(HSEM->RLR[0] == 0);
+    if(*ptr == *oldval)
+    {
+        *ptr = newval;
+    }
+    else
+    {
+        *oldval = *ptr;
+    }
+    HSEM->R[0] = 0;
+}
+
+template <typename T> static inline void set(T* ptr, T newval)
+{
+    while(HSEM->RLR[0] == 0);
+    *ptr = newval;
+    HSEM->R[0] = 0;
+}
+
 UninterruptibleGuard::UninterruptibleGuard()
 {
     cpsr = DisableInterrupts();
@@ -26,13 +48,18 @@ CriticalGuard::~CriticalGuard()
     RestoreInterrupts(cpsr);
 }
 
+Spinlock::Spinlock()
+{
+    RCC->AHB3ENR |= RCC_AHB4ENR_HSEMEN;
+    (void)RCC->AHB3ENR;
+}
+
 void Spinlock::lock()
 {
     while(true)
     {
         uint32_t expected_zero = 0;
-        __atomic_compare_exchange_n(&_lock_val, &expected_zero, 1UL, false,
-            __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+        cmpxchg(&_lock_val, &expected_zero, 1UL);
         if(expected_zero)
         {
             // spin in non-locking mode until unset
@@ -48,7 +75,7 @@ void Spinlock::lock()
 
 void Spinlock::unlock()
 {
-    __atomic_store_n(&_lock_val, 0, __ATOMIC_RELAXED);
+    set(&_lock_val, 0UL);
     __DMB();
 }
 

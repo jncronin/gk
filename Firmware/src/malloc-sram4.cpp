@@ -2446,7 +2446,7 @@ typedef struct malloc_state *mstate;
    all zeroes (as is true of C statics).
 */
 
-static struct malloc_state av_;  /* never directly referenced */
+__attribute__((section(".sram4"))) static struct malloc_state av_;  /* never directly referenced */
 
 /*
    All uses of av_ are via get_malloc_state().

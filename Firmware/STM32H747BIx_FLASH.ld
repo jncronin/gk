@@ -186,13 +186,12 @@ SECTIONS
   } >AXISRAM
 
   /* Initial stack for CM7 */
-  . = ALIGN(4);
-  .cm7_stack (NOLOAD) :
+  .cm7_stack 0x20001000 (NOLOAD)  :
   {
     _scm7_stack = .;
     . = . + 4K;
     _ecm7_stack = .;
-  } >AXISRAM
+  } >DTCM
 
   /* Initial stack for CM4 */
   . = ALIGN(4);
@@ -209,8 +208,7 @@ SECTIONS
   } >SRAM
   
 
-  . = ALIGN(4);
-  .cm4_stack (NOLOAD) :
+  .cm4_stack 0x30001000 (NOLOAD) :
   {
     _scm4_stack = .;
     . = . + 4K;

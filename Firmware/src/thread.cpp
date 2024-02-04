@@ -78,6 +78,9 @@ Thread *Thread::Create(std::string name,
     t->tss.mpuss[5] = extra_permissions;
     t->tss.mpuss[6] = extra_permissions2;
 
+    SCB_CleanDCache_by_Addr((uint32_t *)t, sizeof(Thread));
+    SCB_CleanDCache_by_Addr((uint32_t *)t->stack.address, t->stack.length);
+
     return t;
 }
 
@@ -131,7 +134,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
             t->chosen_for_core = 0;
             t->running_on_core = coreid + 1;
         }
-        
+
         s.current_thread[coreid].v = t;
     }    
 }
