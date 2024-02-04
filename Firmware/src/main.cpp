@@ -33,7 +33,9 @@ int main()
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
 
     s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
-    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6));
+    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, CPUAffinity::Either, 4096,
+        MPUGenerate(0xc0000000, 0x400000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
+        WT_NS)));
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5));
 
