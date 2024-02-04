@@ -38,7 +38,7 @@ void init_clocks()
     /* Configure PLLs
         PLL1 = HSE16 / M8 * N384
             /P2 = 384 MHz -> SYSCLK 
-            /Q8 = 96 MHz -> SDMMC1, SPI1, FMC
+            /Q4 = 192 MHz -> SDMMC1, SPI1, FMC
             /R80 = 9.6 MHz -> unused (only able to use for TRACECLK)
             
         PLL2 = HSE16 / M8 * N172 . frac263
@@ -88,7 +88,7 @@ void init_clocks()
         RCC_PLLCFGR_PLL2FRACEN;
     
     RCC->PLL1DIVR = (1UL << RCC_PLL1DIVR_R1_Pos) |
-        (7UL << RCC_PLL1DIVR_Q1_Pos) |
+        (3UL << RCC_PLL1DIVR_Q1_Pos) |
         (1UL << RCC_PLL1DIVR_P1_Pos) |
         (95UL << RCC_PLL1DIVR_N1_Pos);
     RCC->PLL2DIVR = (1UL << RCC_PLL2DIVR_R2_Pos) |
