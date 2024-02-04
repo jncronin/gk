@@ -106,6 +106,8 @@ void b_thread(void *p)
     (void)p;
 
     __syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
+    RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
+    (void)RCC->AHB3ENR;
 
     uint32_t cc = 0;
     while(true)
@@ -131,10 +133,20 @@ void b_thread(void *p)
                     fbuf[x + y * 640] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
                 }
             }*/
-            for(int i = 0; i < 640*480; i++)
+            /*for(int i = 0; i < 640*480; i++)
             {
                 fbuf[i] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
-            }
+            }*/
+            DMA2D->OPFCCR = 0UL;
+            DMA2D->OCOLR = 0xff000000 | (cc << 16) | (cc << 8) | cc;
+            DMA2D->OMAR = (uint32_t)(uintptr_t)fbuf;
+            DMA2D->OOR = 0;
+            DMA2D->NLR = (640UL << DMA2D_NLR_PL_Pos) |
+                (480UL << DMA2D_NLR_NL_Pos);
+            DMA2D->CR = (3UL << DMA2D_CR_MODE_Pos) |
+                DMA2D_CR_START;
+
+            while(DMA2D->CR & DMA2D_CR_START);
             SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
             __syscall_FlipFrameBuffer();
             cc++;
