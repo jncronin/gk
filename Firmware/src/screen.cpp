@@ -427,14 +427,14 @@ void init_screen()
     LED_BACKLIGHT.set();
 }
 
-__attribute__((section(".sram4"))) static bool led_set = false;
+//__attribute__((section(".sram4"))) static bool led_set = false;
 
 extern "C" void LTDC_IRQHandler()
 {
 
     if(LTDC->ISR & LTDC_ISR_LIF)
     {
-        if(led_set)
+        /*if(led_set)
         {
             GPIOC->BSRR = GPIO_BSRR_BR7;
             led_set = false;
@@ -443,7 +443,7 @@ extern "C" void LTDC_IRQHandler()
         {
             GPIOC->BSRR = GPIO_BSRR_BS7;
             led_set = true;
-        }
+        }*/
 
         scr_vsync.Signal();
     }
