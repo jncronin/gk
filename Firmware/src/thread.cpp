@@ -125,5 +125,5 @@ void SetNextThreadForCore(Thread *t, int coreid)
 /* Called from PendSV */
 void ScheduleThread(Thread *t)
 {
-    s.Schedule(t);
+    //s.Schedule(t);
 }

@@ -6,6 +6,7 @@
 #include "region_allocator.h"
 #include "memblk.h"
 #include "ostypes.h"
+#include "osmutex.h"
 
 #include "mpuregions.h"
 
@@ -28,6 +29,10 @@ class Thread
 
         bool is_dummy = false;
         bool is_blocking = false;
+
+        Spinlock sl;
+        int running_on_core = 0;
+        int chosen_for_core = 0;
 
         typedef void (*threadstart_t)(void *p);
         static Thread *Create(std::string name,

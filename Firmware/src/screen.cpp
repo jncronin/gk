@@ -12,6 +12,12 @@ __attribute__((section(".sram4"))) static uint32_t scr_pf = 0;
 
 __attribute__((section(".sram4"))) Condition scr_vsync;
 
+void *screen_get_frame_buffer()
+{
+    CriticalGuard cg(s_scrbuf);
+    return scr_bufs[scr_cbuf & 0x1];
+}
+
 void *screen_flip()
 {
     CriticalGuard cg(s_scrbuf);
@@ -373,7 +379,7 @@ void init_screen()
     LTDC->AWCR = (494UL << LTDC_AWCR_AAH_Pos) |
         (703UL << LTDC_AWCR_AAW_Pos);
     LTDC->TWCR = (499UL << LTDC_TWCR_TOTALH_Pos) |
-        (719UL << LTDC_TWCR_TOTALW_Pos);
+        (799UL << LTDC_TWCR_TOTALW_Pos);
     
     /* Set all control signals active low */
     LTDC->GCR = 0UL | LTDC_GCR_PCPOL;
@@ -409,7 +415,7 @@ void init_screen()
     scr_bufs[1] = 0;
 
     /* Enable */
-    LTDC->LIPCR = 0;
+    LTDC->LIPCR = 499;
     LTDC->IER = LTDC_IER_LIE;
     NVIC_EnableIRQ(LTDC_IRQn);
     LTDC->SRCR = LTDC_SRCR_IMR;
@@ -423,6 +429,10 @@ void init_screen()
 
 extern "C" void LTDC_IRQHandler()
 {
-    scr_vsync.Signal();
-    LTDC->ICR = LTDC_ICR_CLIF;
+    if(LTDC->ISR & LTDC_ISR_LIF)
+    {
+        scr_vsync.Signal();
+    }
+
+    LTDC->ICR = 0xf;
 }
