@@ -69,6 +69,19 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         auto iter = cur_idx + 1;
         if(iter >= vsize) iter = 0;
 
+        if(iter == cur_idx && i != cur_prio && tlist[i].v.v[iter]->is_blocking == false)
+        {
+            auto cval = tlist[i].v.v[iter];
+            if(cval->affinity == CPUAffinity::Either ||
+                cval->affinity == OnlyMe ||
+                cval->affinity == PreferMe)
+            {
+                // Special case waking up the only thread in this level
+                tlist[i].v.index = iter;
+                return cval;
+            }
+        }
+
         while(iter != cur_idx)
         {
             auto cval = tlist[i].v.v[iter];
@@ -88,6 +101,17 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         // Now try ones marked PreferOther
         iter = cur_idx + 1;
         if(iter >= vsize) iter = 0;
+
+        if(iter == cur_idx && i != cur_prio && tlist[i].v.v[iter]->is_blocking == false)
+        {
+            auto cval = tlist[i].v.v[iter];
+            if(cval->affinity == PreferOther)
+            {
+                // Special case waking up the only thread in this level
+                tlist[i].v.index = iter;
+                return cval;
+            }
+        }
 
         while(iter != cur_idx)
         {
