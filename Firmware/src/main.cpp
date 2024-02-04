@@ -150,7 +150,7 @@ void b_thread(void *p)
                 DMA2D_CR_START;
 
             while(DMA2D->CR & DMA2D_CR_START);
-            SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
+            //SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
             __syscall_FlipFrameBuffer();
             cc++;
             if(cc >= 256) cc = 0;
