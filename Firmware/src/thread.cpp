@@ -118,6 +118,20 @@ void SetNextThreadForCore(Thread *t, int coreid)
 
     {
         CriticalGuard cg(s.current_thread[coreid].m);
+
+        if(s.current_thread[coreid].v)
+        {
+            CriticalGuard cg2(s.current_thread[coreid].v->sl);
+            s.current_thread[coreid].v->chosen_for_core = 0;
+            s.current_thread[coreid].v->running_on_core = 0;
+        }
+
+        {
+            CriticalGuard cg2(t->sl);
+            t->chosen_for_core = 0;
+            t->running_on_core = coreid + 1;
+        }
+        
         s.current_thread[coreid].v = t;
     }    
 }

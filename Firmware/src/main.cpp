@@ -86,12 +86,12 @@ void idle_thread(void *p)
 void bluescreen_thread(void *p)
 {
     (void)p;
-    __syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
+    /*__syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
     for(int i = 0; i < 640*480; i++)
     {
         ((volatile uint32_t *)0xc0000000)[i] = 0xff0000ff;
     }
-    __syscall_FlipFrameBuffer();
+    __syscall_FlipFrameBuffer();*/
     while(true)
     {
         CriticalGuard cg(s_rtt);
@@ -102,6 +102,9 @@ void bluescreen_thread(void *p)
 void b_thread(void *p)
 {
     (void)p;
+
+    __syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
+
     uint32_t cc = 0;
     while(true)
     {
@@ -114,30 +117,29 @@ void b_thread(void *p)
             
         }
 
-        static bool gpio_set = false;
-        if(gpio_set)
-        {
-            GPIOC->BSRR = GPIO_BSRR_BR7;
-            gpio_set = false;
-        }
-        else
-        {
-            GPIOC->BSRR = GPIO_BSRR_BS7;
-            gpio_set = true;
-        }
+        GPIOC->BSRR = GPIO_BSRR_BS7;
 
         auto fbuf = reinterpret_cast<uint32_t *>(__syscall_GetFrameBuffer());
         if(fbuf)
         {
-            for(int i = 0; i < 640*480; i++)
+            for(int y = 0; y < 32; y++)
+            {
+                for(int x = 0; x < 32; x++)
+                {
+                    fbuf[x + y * 640] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
+                }
+            }
+            /*for(int i = 0; i < 640*480; i++)
             {
                 fbuf[i] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
-            }
+            }*/
             SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
             __syscall_FlipFrameBuffer();
             cc++;
             if(cc >= 256) cc = 0;
         }
+
+        GPIOC->BSRR = GPIO_BSRR_BR7;
     }
 }
 

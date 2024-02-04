@@ -66,66 +66,47 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
         // First get the front-most marked Either, OnlyMe or PreferMe
         auto cur_idx = tlist[i].v.index;
-        auto iter = cur_idx + 1;
-        if(iter >= vsize) iter = 0;
 
-        if(iter == cur_idx && i != cur_prio && tlist[i].v.v[iter]->is_blocking == false)
+        for(int basei = 0; basei < vsize; basei++)
         {
+            auto iter = (basei + cur_idx + 1) % vsize;
             auto cval = tlist[i].v.v[iter];
-            if(cval->affinity == CPUAffinity::Either ||
-                cval->affinity == OnlyMe ||
-                cval->affinity == PreferMe)
             {
-                // Special case waking up the only thread in this level
-                tlist[i].v.index = iter;
-                return cval;
+                CriticalGuard cg2(cval->sl);
+                if(cval->running_on_core || cval->chosen_for_core)
+                    continue;
+                
+                if(cval->is_blocking == false &&
+                    (cval->affinity == CPUAffinity::Either ||
+                    cval->affinity == OnlyMe ||
+                    cval->affinity == PreferMe))
+                {
+                    tlist[i].v.index = iter;
+                    cval->chosen_for_core = ncore + 1;
+                    return cval;
+                }
             }
         }
-
-        while(iter != cur_idx)
-        {
-            auto cval = tlist[i].v.v[iter];
-            if(cval->is_blocking == false &&
-                (cval->affinity == CPUAffinity::Either ||
-                cval->affinity == OnlyMe ||
-                cval->affinity == PreferMe))
-            {
-                tlist[i].v.index = iter;
-                return cval;
-            }
-
-            iter++;
-            if(iter >= vsize) iter = 0;
-        };
 
         // Now try ones marked PreferOther
-        iter = cur_idx + 1;
-        if(iter >= vsize) iter = 0;
-
-        if(iter == cur_idx && i != cur_prio && tlist[i].v.v[iter]->is_blocking == false)
+        for(int basei = 0; basei < vsize; basei++)
         {
+            auto iter = (basei + cur_idx + 1) % vsize;
             auto cval = tlist[i].v.v[iter];
-            if(cval->affinity == PreferOther)
             {
-                // Special case waking up the only thread in this level
-                tlist[i].v.index = iter;
-                return cval;
+                CriticalGuard cg2(cval->sl);
+                if(cval->running_on_core || cval->chosen_for_core)
+                    continue;
+                
+                if(cval->is_blocking == false &&
+                    (cval->affinity == PreferOther))
+                {
+                    tlist[i].v.index = iter;
+                    cval->chosen_for_core = ncore + 1;
+                    return cval;
+                }
             }
         }
-
-        while(iter != cur_idx)
-        {
-            auto cval = tlist[i].v.v[iter];
-            if(cval->is_blocking == false &&
-                cval->affinity == PreferOther)
-            {
-                tlist[i].v.index = iter;
-                return cval;
-            }
-
-            iter++;
-            if(iter >= vsize) iter = 0;
-        };
     }
 
     {
