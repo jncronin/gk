@@ -8,6 +8,7 @@
 #include "syscalls.h"
 #include "SEGGER_RTT.h"
 #include "clocks.h"
+#include "gpu.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -39,6 +40,7 @@ int main()
         WT_NS)));
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5));
+    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9));
 
     // Get systick to flash an LED for now (BTNLED_R = PC6)
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
@@ -140,7 +142,10 @@ void b_thread(void *p)
             {
                 fbuf[i] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
             }*/
-            DMA2D->OPFCCR = 0UL;
+            GPUEnqueueFBColor(0xff000000 | (cc << 16) | (cc << 8) | cc);
+            GPUEnqueueFlip();
+
+            /* DMA2D->OPFCCR = 0UL;
             DMA2D->OCOLR = 0xff000000 | (cc << 16) | (cc << 8) | cc;
             DMA2D->OMAR = (uint32_t)(uintptr_t)fbuf;
             DMA2D->OOR = 0;
@@ -151,7 +156,7 @@ void b_thread(void *p)
 
             while(DMA2D->CR & DMA2D_CR_START);
             //SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
-            __syscall_FlipFrameBuffer();
+            __syscall_FlipFrameBuffer(); */
             cc++;
             if(cc >= 256) cc = 0;
         }
