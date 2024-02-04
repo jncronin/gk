@@ -122,17 +122,17 @@ void b_thread(void *p)
         auto fbuf = reinterpret_cast<uint32_t *>(__syscall_GetFrameBuffer());
         if(fbuf)
         {
-            for(int y = 0; y < 32; y++)
+            /*for(int y = 0; y < 32; y++)
             {
                 for(int x = 0; x < 32; x++)
                 {
                     fbuf[x + y * 640] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
                 }
-            }
-            /*for(int i = 0; i < 640*480; i++)
+            }*/
+            for(int i = 0; i < 640*480; i++)
             {
                 fbuf[i] = 0xff000000 | (cc << 16) | (cc << 8) | cc;
-            }*/
+            }
             SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
             __syscall_FlipFrameBuffer();
             cc++;
