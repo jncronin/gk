@@ -9,6 +9,7 @@
 #include "SEGGER_RTT.h"
 #include "clocks.h"
 #include "gpu.h"
+#include <cstdlib>
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -36,7 +37,7 @@ int main()
 
     s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
     s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, CPUAffinity::Either, 4096,
-        MPUGenerate(0xc0000000, 0x400000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
+        MPUGenerate(0xc0000000, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
         WT_NS)));
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5));
@@ -99,9 +100,15 @@ void bluescreen_thread(void *p)
     __syscall_FlipFrameBuffer();*/
     while(true)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_PutChar(0, 'A');
+        //CriticalGuard cg(s_rtt);
+        //SEGGER_RTT_PutChar(0, 'A');
     }
+}
+
+static uint32_t rrand()
+{
+    while(!(RNG->SR & RNG_SR_DRDY));
+    return RNG->DR;
 }
 
 void b_thread(void *p)
@@ -112,13 +119,106 @@ void b_thread(void *p)
     RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
     (void)RCC->AHB3ENR;
 
+    RCC->AHB2ENR |= RCC_AHB2ENR_RNGEN;
+    (void)RCC->AHB2ENR;
+
     clock_set_cpu(clock_cpu_speed::cpu_384_192);
 
-    uint32_t cc = 0;
+    uint32_t *backbuffer = (uint32_t *)0xc0400000;
+    int cur_m = 320;
+    int cur_y = 0;
+    int cur_w = 80;
+
+    RNG->CR = RNG_CR_RNGEN;
+
+    //uint32_t cc = 0;
+    int nframes = 0;
     while(true)
     {
         scr_vsync.Wait();
+        nframes++;
 
+        while(GPUBusy())
+        {
+            scr_vsync.Wait();
+            nframes++;
+        }
+
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "nframes: %d\n", nframes);            
+        }
+        nframes = 0;
+
+
+        int l_val = cur_m - cur_w / 2;
+        int r_val = cur_m + cur_w / 2;
+        if(l_val < 5) l_val = 5;
+        if(r_val >= 635) r_val = 634;
+        uint32_t *row = &backbuffer[cur_y * 640];
+        for(int i = 0; i < 640; i++)
+        {
+            if(i < l_val)
+            {
+                row[i] = 0xff00ff00;
+            }
+            else if(i < (l_val + 5))
+            {
+                row[i] = 0xffffff00;
+            }
+            else if(i < (r_val - 5))
+            {
+                row[i] = 0xff0000ff;
+            }
+            else if(i < r_val)
+            {
+                row[i] = 0xffffff00;
+            }
+            else
+            {
+                row[i] = 0xff00ff00;
+            }
+        }
+        SCB_CleanDCache_by_Addr(row, 640*4);
+
+        auto r1 = rrand() % 4;
+        auto r2 = rrand() % 4;
+        if(r1 == 2)
+        {
+            cur_m++;
+            if(cur_m >= 480) cur_m = 480;
+        }
+        if(r1 == 3)
+        {
+            cur_m--;
+            if(cur_m <= 160) cur_m = 160;
+        }
+        if(r2 == 2)
+        {
+            cur_w++;
+            if(cur_w >= 230) cur_w = 230;
+        }
+        if(r2 == 3)
+        {
+            cur_w--;
+            if(cur_w <= 30) cur_w = 30;
+        }
+        cur_y++;
+        if(cur_y >= 480) cur_y = 0;
+
+        // blit
+        gpu_message gpu_msgs[] =
+        {
+            GPUMessageBlitRectangle(backbuffer, 0, cur_y, 640, 480 - cur_y, 0, 0),
+            GPUMessageBlitRectangle(backbuffer, 0, 0, 640, cur_y, 0, 480 - cur_y),
+            GPUMessageFlip()
+        };
+        GPUEnqueueMessages(gpu_msgs, sizeof(gpu_msgs)/sizeof(gpu_message));
+        //GPUEnqueueBlitRectangle(backbuffer, 0, cur_y, 640, 480 - cur_y, 0, 0);
+        //GPUEnqueueBlitRectangle(backbuffer, 0, 0, 640, cur_y, 0, 480 - cur_y);
+        //GPUEnqueueFlip();
+
+#if 0
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_PutChar(0, '\n');
@@ -162,6 +262,7 @@ void b_thread(void *p)
         }
 
         GPIOC->BSRR = GPIO_BSRR_BR7;
+#endif
     }
 }
 
@@ -169,8 +270,8 @@ void x_thread(void *p)
 {
     while(true)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_PutChar(0, (char)(uintptr_t)p);
+        //CriticalGuard cg(s_rtt);
+        //SEGGER_RTT_PutChar(0, (char)(uintptr_t)p);
     }
 }
 
