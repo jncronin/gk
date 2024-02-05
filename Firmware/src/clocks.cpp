@@ -38,7 +38,7 @@ void init_clocks()
     /* Configure PLLs
         PLL1 = HSE16 / M8 * N384
             /P2 = 384 MHz -> SYSCLK 
-            /Q4 = 192 MHz -> SDMMC1, SPI1, FMC
+            /Q4 = 192 MHz -> SDMMC1, SPI1, FMC, RNG
             /R80 = 9.6 MHz -> unused (only able to use for TRACECLK)
             
         PLL2 = HSE16 / M8 * N172 . frac263
