@@ -148,38 +148,42 @@ void b_thread(void *p)
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "nframes: %d\n", nframes);            
         }
-        nframes = 0;
-
 
         int l_val = cur_m - cur_w / 2;
         int r_val = cur_m + cur_w / 2;
         if(l_val < 5) l_val = 5;
         if(r_val >= 635) r_val = 634;
-        uint32_t *row = &backbuffer[cur_y * 640];
-        for(int i = 0; i < 640; i++)
+
+        for(int f = 0; f < nframes; f++, cur_y++)
         {
-            if(i < l_val)
+            uint32_t *row = &backbuffer[cur_y * 640];
+            for(int i = 0; i < 640; i++)
             {
-                row[i] = 0xff00ff00;
+                if(i < l_val)
+                {
+                    row[i] = 0xff00ff00;
+                }
+                else if(i < (l_val + 5))
+                {
+                    row[i] = 0xffffff00;
+                }
+                else if(i < (r_val - 5))
+                {
+                    row[i] = 0xff0000ff;
+                }
+                else if(i < r_val)
+                {
+                    row[i] = 0xffffff00;
+                }
+                else
+                {
+                    row[i] = 0xff00ff00;
+                }
             }
-            else if(i < (l_val + 5))
-            {
-                row[i] = 0xffffff00;
-            }
-            else if(i < (r_val - 5))
-            {
-                row[i] = 0xff0000ff;
-            }
-            else if(i < r_val)
-            {
-                row[i] = 0xffffff00;
-            }
-            else
-            {
-                row[i] = 0xff00ff00;
-            }
+            SCB_CleanDCache_by_Addr(row, 640*4);
+
+            if(cur_y >= 480) cur_y = 0;
         }
-        SCB_CleanDCache_by_Addr(row, 640*4);
 
         auto r1 = rrand() % 4;
         auto r2 = rrand() % 4;
@@ -203,8 +207,7 @@ void b_thread(void *p)
             cur_w--;
             if(cur_w <= 30) cur_w = 30;
         }
-        cur_y++;
-        if(cur_y >= 480) cur_y = 0;
+        nframes = 0;
 
         // blit
         gpu_message gpu_msgs[] =
