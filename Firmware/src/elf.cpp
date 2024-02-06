@@ -255,5 +255,5 @@ void elf_load_memory(const void *e)
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));
 
-    SEGGER_RTT_printf(0, "successfully loaded\n");
+    SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
 }
