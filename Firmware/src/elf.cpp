@@ -6,6 +6,7 @@
 
 #include "thread.h"
 #include "scheduler.h"
+#include "region_allocator.h"
 
 extern Scheduler s;
 
@@ -224,9 +225,35 @@ void elf_load_memory(const void *e)
     // get start address
     auto start = (void (*)(void *))(base_ptr + ehdr->e_entry);
 
-    s.Schedule(Thread::Create("elffile", start, nullptr, true, 8,
+    // Create process and the first thread
+    SRAM4RegionAllocator<Process> alloc;
+    auto ploc = alloc.allocate(1);
+    if(!ploc)
+    {
+        __BKPT();
+        while(true);
+        return;
+    }
+
+    auto proc = new(ploc) Process();
+    proc->name = "elffile";
+    proc->brk = 0;
+    proc->code_data = memblk;
+    proc->heap = memblk_allocate(8192, MemRegionType::AXISRAM);
+    if(!proc->heap.valid)
+    {
+        proc->heap = memblk_allocate(8192, MemRegionType::SDRAM);
+    }
+    if(!proc->heap.valid)
+    {
+        __BKPT();
+        while(true);
+    }
+
+    s.Schedule(Thread::Create("elffile", start, nullptr, true, 8, *proc,
         CPUAffinity::Either, stack,
-        MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::NoAccess, WBWA_NS)));
+        MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
+        MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));
 
     SEGGER_RTT_printf(0, "successfully loaded\n");
 }

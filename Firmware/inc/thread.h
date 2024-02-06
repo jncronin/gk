@@ -2,6 +2,7 @@
 #define THREAD_H
 
 #include <cstdint>
+#include <cstddef>
 #include <osmutex.h>
 #include "region_allocator.h"
 #include "memblk.h"
@@ -9,6 +10,8 @@
 #include "osmutex.h"
 
 #include "mpuregions.h"
+
+#include "process.h"
 
 class Thread
 {
@@ -27,18 +30,22 @@ class Thread
 
         MemRegion stack;
 
-        bool is_dummy = false;
         bool is_blocking = false;
 
         Spinlock sl;
         int running_on_core = 0;
         int chosen_for_core = 0;
 
+        Process &p;
+
+        Thread(Process &owning_process);
+
         typedef void (*threadstart_t)(void *p);
         static Thread *Create(std::string name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
+            Process &owning_process,
             CPUAffinity affinity = CPUAffinity::Either,
             MemRegion stack = InvalidMemregion(),
             mpu_saved_state extra_permissions = MPUGenerateNonValid(6),

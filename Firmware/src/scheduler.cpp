@@ -1,5 +1,9 @@
 #include "scheduler.h"
 #include "syscalls.h"
+#include "SEGGER_RTT.h"
+
+extern Process kernel_proc;
+__attribute__((section(".sram4"))) Thread dt(kernel_proc);
 
 Scheduler::Scheduler()
 {
@@ -9,19 +13,23 @@ Scheduler::Scheduler()
     {
         tlist[i] = LockedIndexedThreadVector();
     }
-    dummy_thread.name = "dummy";
-    dummy_thread.is_dummy = true;
-    dummy_thread.base_priority = 0;
+    dt.name = "dummy";
+    dt.base_priority = 0;
+
+    SEGGER_RTT_printf(0, "&dt: %x\n", (uint32_t)(uintptr_t)&dt);
+    SEGGER_RTT_printf(0, "&dt.tss: %x\n", (uint32_t)(uintptr_t)&dt.tss);
+
     for(int i = 0; i < ncores; i++)
     {
         CriticalGuard(current_thread[i].m);
-        current_thread[i].v = &dummy_thread;
+        current_thread[i].v = &dt;
+        scheduler_running[i] = false;
     }
 }
 
 void Scheduler::Schedule(Thread *t)
 {
-    if(!t || t->is_dummy)
+    if(!t || t == &dt)
     {
         return;
     }

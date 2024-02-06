@@ -29,8 +29,6 @@ class Scheduler
         LockedThreadVector sleeping_tasks;
         LockedThreadVector blocking_tasks;
 
-        Thread dummy_thread;        // used to ensure the first task switch writes saved values somewhere
-
     public:
         Scheduler();
         Scheduler(const Scheduler &) = delete;
@@ -47,7 +45,18 @@ class Scheduler
 
         using LockedThread = locked_val<Thread *>;
         LockedThread current_thread[ncores];
+
+        bool scheduler_running[ncores];
 };
+
+extern Scheduler s;
+static inline void Yield()
+{
+    if(s.scheduler_running[GetCoreID()])
+    {
+        SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+    }
+}
 
 
 #endif
