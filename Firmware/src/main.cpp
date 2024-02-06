@@ -10,6 +10,7 @@
 #include "clocks.h"
 #include "gpu.h"
 #include <cstdlib>
+#include "elf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -25,12 +26,16 @@ void x_thread(void *p);
 
 __attribute__((section(".sram4")))Scheduler s;
 
+extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
+
 int main()
 {
     system_init_cm7();
     init_memblk();
     init_sdram();
     init_screen();
+
+    elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start);
 
     s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only, 512));
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
@@ -303,7 +308,7 @@ extern "C" void * _sbrk(int n)
 volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
 extern "C" void HardFault_Handler()
 {
-    uint32_t *pcaddr;
+    /*uint32_t *pcaddr;
     __asm(  "TST lr, #4\n"
             "ITE EQ\n"
             "MRSEQ %0, MSP\n"
@@ -311,7 +316,7 @@ extern "C" void HardFault_Handler()
             "ldr %0, [%0, #0x18]\n" // stored pc now in r0
             : "=r"(pcaddr));
 
-    ret_addr = *pcaddr;
+    ret_addr = *pcaddr;*/
     
     cfsr = SCB->CFSR;
     hfsr = SCB->HFSR;
