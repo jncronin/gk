@@ -86,6 +86,10 @@ void elf_load_memory(const void *e)
 
     // TODO: allocate this MPU region for us
 
+    // Create a stack for thread0
+    auto stack = memblk_allocate_for_stack(4096, CPUAffinity::Either);
+    auto stack_end = stack.address + stack.length;
+
     // Load segments
     auto base_ptr = memblk.address;
     for(unsigned int i = 0; i < ehdr->e_phnum; i++)
@@ -142,11 +146,10 @@ void elf_load_memory(const void *e)
             uint32_t A = *(uint32_t *)dest;
             uint32_t P = (uint32_t)dest;
             [[maybe_unused]] uint32_t Pa = P & 0xfffffffc;
-            uint32_t T = ((r_sym->st_info & 0xf) == STT_FUNC) ? 1 : 0;
-            uint32_t S = base_ptr + r_sym->st_value;
+            [[maybe_unused]] uint32_t T = ((r_sym->st_info & 0xf) == STT_FUNC) ? 1 : 0;
+            [[maybe_unused]] uint32_t S = base_ptr + r_sym->st_value;
             uint32_t mask = 0xffffffff;
             uint32_t value = 0;
-            uint32_t nvalue = 0;
 
             /*if((uint32_t)dest >= 0x240020d4 && (uint32_t)dest <= 0x240020d8)
             {
@@ -157,114 +160,64 @@ void elf_load_memory(const void *e)
                 );
             }*/
 
+            /* We generate executables with the -q option, therefore relocations are already applied
+                The only changes we need to make are to absolute relocations where we add base_ptr */
+
             switch(r_type)
             {
                 case R_ARM_TARGET1:
                 case R_ARM_ABS32:
-                    mask = 0xffffffffUL;
-                    A &= mask;
-                    value = (S + A) | T;
-                    nvalue = value;
+                    {
+                        bool is_stack = false;
+
+                        if(r_sym->st_shndx == SHN_UNDEF)
+                        {
+                            // need to special-case "_stack" label
+                            auto strtab_idx = symtab->sh_link;
+                            auto strtab = reinterpret_cast<const Elf32_Shdr *>(shdrs + strtab_idx * ehdr->e_shentsize);
+                            if(r_sym->st_name)
+                            {
+                                if(strcmp("__stack", &p[strtab->sh_offset + r_sym->st_name]) == 0)
+                                {
+                                    is_stack = true;
+                                }
+                            }
+
+                            if(!is_stack)
+                            {
+                                break;      // leave as zero
+                            }
+                        }
+                    
+                        mask = 0xffffffffUL;
+                        A &= mask;
+                        value = A + base_ptr;
+
+                        if(is_stack)
+                        {
+                            value = stack_end;
+                        }
+
+                        {
+                            auto cval = *(uint32_t *)dest;
+                            cval &= ~mask;
+                            cval |= (value & mask);
+                            *(uint32_t *)dest = cval;
+                        }
+                    }
+
                     break;
 
                 case R_ARM_THM_JUMP24:
                 case R_ARM_THM_CALL:
-                    mask = 0x2fff07ffUL;
-                    {
-                        auto imm10 = A & 0x3ffUL;
-                        auto Sp = (A >> 10) & 0x1;
-                        auto imm11 = (A >> 16) & 0x7ffUL;
-                        auto J1 = (A >> 29) & 0x1;
-                        auto J2 = (A >> 27) & 0x1;
-
-                        auto I1 = (J1 ^ Sp) ? 0UL : 1UL;
-                        auto I2 = (J2 ^ Sp) ? 0UL : 1UL;
-
-                        A = (imm11 << 1) | (imm10 << 12) | (I2 << 22) | (I1 << 23) | (Sp << 24);
-                        if(Sp)
-                            A |= 0xfe000000UL;
-                    }
-
-                    /* We are using -q for link, therefore the value stored in the opcode has already
-                        been relocated according to:
-                            value = ((S + A) | T) - P
-                            
-                            
-                    */
-                    
-                    value = ((S + A) | T) - P;
-
-                    {
-                        auto Sp = (value >> 24) & 0x1;
-                        auto I1 = (value >> 23) & 0x1;
-                        auto I2 = (value >> 22) & 0x1;
-                        auto imm10 = (value >> 12) & 0x3ffUL;
-                        auto imm11 = (value >> 1) & 0x7ffUL;
-                        auto nSp = Sp ? 0UL : 1UL;
-                        auto J1 = I1 ? Sp : nSp;
-                        auto J2 = I2 ? Sp : nSp;
-
-                        nvalue = (J1 << 29) | (J2 << 27) | (imm11 << 16) |
-                            (S << 10) | imm10;
-                    }
-                    break;
-
-#if 0
-                case R_ARM_THM_JUMP24:
-                    mask = 0x2fff03ffUL;
-                    {
-                        auto imm10 = A & 0x3ffUL;
-                        auto Sp = (A & 0x400UL) ? 1UL : 0UL;
-                        auto imm11 = (A >> 16) & 0x7ffUL;
-                        auto J1 = A & 0x20000000UL;
-                        auto J2 = A & 0x08000000UL;
-
-                        auto I1 = ((J1 && Sp) || (J1 == 0 && S == 0)) ? 1UL : 0UL;
-                        auto I2 = ((J2 && Sp) || (J2 == 0 && S == 0)) ? 1UL : 0UL;
-
-                        A = (imm11 << 1) | (imm10 << 12) | (I2 << 22) | (I1 << 23) | (Sp << 24);
-                        if(Sp)
-                            A |= 0xfe000000UL;
-                    }
-                    
-                    value = ((S + A) | T) - P;
-
-                    {
-                        auto Sp = (value & 0x80000000UL) ? 1UL : 0UL;
-                        auto I1 = (value & (1UL << 23)) ? 1UL : 0UL;
-                        auto I2 = (value & (1UL << 22)) ? 1UL : 0UL;
-                        auto imm10 = (value >> 12) & 0x3ffUL;
-                        auto imm11 = (value >> 1) & 0x7ffUL;
-                        auto J1 = ((I1 && Sp) || (I1 == 0 && Sp == 0)) ? 1UL : 0UL;
-                        auto J2 = ((I2 && Sp) || (I2 == 0 && Sp == 0)) ? 1UL : 0UL;
-
-                        value = (J1 << 29) | (J2 << 27) | (imm11 << 16) |
-                            (S << 10) | imm10;
-                    }
-                    break;
-#endif
-
                 case R_ARM_PREL31:
-                    mask = 0x7fffffffUL;
-                    if(A & (1UL << 30))
-                        A |= 0xf0000000UL;
-                    value = ((S + A) | T) - P;
-                    nvalue = value;
-
+                    /* relative reloc, do nothing */
                     break;
 
                 default:
                     SEGGER_RTT_printf(0, "unknown rel type %d\n", r_type);
                     return;
             }
-
-            auto cval = *(uint32_t *)dest;
-            cval &= ~mask;
-            cval |= (nvalue & mask);
-            *(uint32_t *)dest = cval;
-
-            SEGGER_RTT_printf(0, "%d, %d (%d): dest: %x, S: %x, A: %x, P: %x, T: %x, value: %x\n",
-                i, j, r_type, (uint32_t)dest, S, A, P, T, value);
         }
     }
 
@@ -272,7 +225,7 @@ void elf_load_memory(const void *e)
     auto start = (void (*)(void *))(base_ptr + ehdr->e_entry);
 
     s.Schedule(Thread::Create("elffile", start, nullptr, true, 8,
-        CPUAffinity::Either, 4096,
+        CPUAffinity::Either, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::NoAccess, WBWA_NS)));
 
     SEGGER_RTT_printf(0, "successfully loaded\n");

@@ -37,11 +37,13 @@ int main()
 
     elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start);
 
-    s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only, 512));
-    s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only, 512));
+    s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only,
+        memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
+    s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only,
+        memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
 
     s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
-    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, CPUAffinity::Either, 4096,
+    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, CPUAffinity::Either, InvalidMemregion(),
         MPUGenerate(0xc0000000, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
         WT_NS)));
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
