@@ -40,7 +40,7 @@ class Thread
             void *p,
             bool is_priv, int priority,
             CPUAffinity affinity = CPUAffinity::Either,
-            size_t stack_size = 4096,
+            MemRegion stack = InvalidMemregion(),
             mpu_saved_state extra_permissions = MPUGenerateNonValid(6),
             mpu_saved_state extra_permissions2 = MPUGenerateNonValid(7));
 };

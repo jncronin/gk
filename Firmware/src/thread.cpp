@@ -13,7 +13,7 @@ Thread *Thread::Create(std::string name,
             void *p,
             bool is_priv, int priority,
             CPUAffinity affinity,
-            size_t stack_size,
+            MemRegion stackblk,
             mpu_saved_state extra_permissions,
             mpu_saved_state extra_permissions2)
 {
@@ -34,7 +34,14 @@ Thread *Thread::Create(std::string name,
     t->tss.control = is_priv ? 2UL : 3UL;   // bit0 = !privilege, bit1 = use PSP
 
     /* Create stack frame */
-    t->stack = memblk_allocate_for_stack(stack_size, affinity);
+    if(stackblk.valid)
+    {
+        t->stack = stackblk;
+    }
+    else
+    {
+        t->stack = memblk_allocate_for_stack(4096U, affinity);
+    }
     if(!t->stack.valid)
         return nullptr;
 
