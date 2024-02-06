@@ -1,0 +1,49 @@
+
+
+Breakpoint=C:/Users/jncro/source/repos/gamekid/Firmware/src/syscalls.cpp:98:13, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gamekid/Firmware/src/malloc-sram4.cpp:3284, State=BP_STATE_ON
+Breakpoint=C:/Users/jncro/source/repos/gamekid/Firmware/src/malloc_wrapper.cpp:49, State=BP_STATE_ON
+Breakpoint=0x0800767A, State=BP_STATE_DISABLED
+DataBreakpoint=*(uint32_t*)0x2400cff8, State=On
+OpenDocument="thread.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/thread.cpp", Line=51
+OpenDocument="malloc-sram4.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/malloc-sram4.cpp", Line=3014
+OpenDocument="malloc_wrapper.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/malloc_wrapper.cpp", Line=0
+OpenDocument="stl_iterator.h", FilePath="c:/program files (x86)/arm gnu toolchain arm-none-eabi/11.3 rel1/arm-none-eabi/include/c++/11.3.1/bits/stl_iterator.h", Line=1009
+OpenDocument="screen.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/screen.cpp", Line=388
+OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/main.cpp", Line=16
+OpenDocument="stl_vector.h", FilePath="c:/program files (x86)/arm gnu toolchain arm-none-eabi/11.3 rel1/arm-none-eabi/include/c++/11.3.1/bits/stl_vector.h", Line=1170
+OpenDocument="osqueue.h", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/inc/osqueue.h", Line=29
+OpenDocument="alloc_traits.h", FilePath="c:/program files (x86)/arm gnu toolchain arm-none-eabi/11.3 rel1/arm-none-eabi/include/c++/11.3.1/bits/alloc_traits.h", Line=240
+OpenDocument="core_cm7.h", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/cmsis_Core/Include/core_cm7.h", Line=1890
+OpenDocument="region_allocator.h", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/inc/region_allocator.h", Line=0
+OpenDocument="syscalls.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/syscalls.cpp", Line=35
+OpenDocument="new_allocator.h", FilePath="c:/program files (x86)/arm gnu toolchain arm-none-eabi/11.3 rel1/arm-none-eabi/include/c++/11.3.1/ext/new_allocator.h", Line=32
+OpenDocument="gpu.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/gpu.cpp", Line=0
+OpenDocument="switcher.cpp", FilePath="C:/Users/jncro/source/repos/gamekid/Firmware/src/switcher.cpp", Line=0
+OpenToolbar="Debug", Floating=0, x=0, y=0
+OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=3, w=1652, h=239, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=6, w=1652, h=291, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
+OpenWindow="Source Files", DockArea=LEFT, x=0, y=2, w=708, h=293, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=1652, h=354, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Memory 1", DockArea=BOTTOM, x=2, y=0, w=1485, h=332, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x2400CF50
+OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1652, h=229, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Local Data", DockArea=RIGHT, x=0, y=1, w=1652, h=167, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1652, h=272, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Functions", DockArea=LEFT, x=0, y=1, w=708, h=795, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Code Profile", DockArea=LEFT, x=0, y=3, w=708, h=436, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, GroupByFiles=0, SortRespectsFilters=0, ParentRelativeLoad=0
+OpenWindow="Instruction Trace", DockArea=LEFT, x=0, y=0, w=708, h=69, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Terminal", DockArea=BOTTOM, x=1, y=0, w=1248, h=332, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Console", DockArea=BOTTOM, x=0, y=0, w=1105, h=332, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="RTOS", DockArea=RIGHT, x=0, y=5, w=1652, h=38, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing=""
+TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[262;101;170;100;391;0;594]
+TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[1290;131;100;110;27;1807]
+TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Frame";"Source";"PC";"Return Address";"Stack Used"], ColWidths=[273;196;100;131;300;652]
+TableHeader="Source Files", SortCol="File", SortOrder="ASCENDING", VisibleCols=["File";"Status";"Size";"#Insts";"Path"], ColWidths=[284;108;100;110;1884]
+TableHeader="Code Profile", SortCol="File / Function", SortOrder="ASCENDING", VisibleCols=["File / Function";"Source Coverage";"Inst. Coverage";"Run Count";"Fetch Count";"Load"], ColWidths=[451;208;222;149;162;131]
+TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
+TableHeader="Registers 1", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Description"], ColWidths=[455;496;667]
+TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;221;156;1415]
+TableHeader="Global Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[104;101;127;100;100;112;974]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh";"Access"], ColWidths=[123;133;186;100;1110]
+WatchedExpression="*(uint32_t*)0x2400cff8", DisplayFormat=DISPLAY_FORMAT_HEX, Window=Watched Data 1

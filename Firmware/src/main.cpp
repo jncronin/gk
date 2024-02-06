@@ -25,6 +25,7 @@ void b_thread(void *p);
 void x_thread(void *p);
 
 __attribute__((section(".sram4")))Scheduler s;
+__attribute__((section(".sram4")))Process kernel_proc;
 
 extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 
@@ -37,18 +38,20 @@ int main()
 
     elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start);
 
-    s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, CPUAffinity::M7Only,
+    kernel_proc.name = "kernel";
+
+    s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, 0, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
-    s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, CPUAffinity::M4Only,
+    s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, kernel_proc, CPUAffinity::M4Only,
         memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
 
-    s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5));
-    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, CPUAffinity::Either, InvalidMemregion(),
+    s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, kernel_proc, CPUAffinity::Either, InvalidMemregion(),
         MPUGenerate(0xc0000000, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
         WT_NS)));
-    s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5));
-    s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5));
-    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9));
+    s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5, kernel_proc));
+    s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
+    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
 
     // Get systick to flash an LED for now (BTNLED_R = PC6)
     RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
@@ -64,8 +67,6 @@ int main()
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
     SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
-    __enable_irq();
-    SysTick->CTRL = 7UL;
 
     s.StartForCurrentCore();
 
@@ -307,7 +308,7 @@ extern "C" void * _sbrk(int n)
     return &malloc_buf[old_brk];
 }
 
-volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
+__attribute__((section(".sram4"))) volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
 extern "C" void HardFault_Handler()
 {
     /*uint32_t *pcaddr;
@@ -347,5 +348,5 @@ extern "C" void UsageFault_Handler()
 
 extern "C" void SysTick_Handler()
 {
-    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+    //Yield();
 }

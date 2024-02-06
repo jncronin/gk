@@ -2,6 +2,9 @@
 #include "syscalls.h"
 #include "thread.h"
 #include "screen.h"
+#include "scheduler.h"
+
+extern Scheduler s;
 
 extern "C" void SVC_Handler() __attribute__((naked));
 
@@ -11,7 +14,7 @@ extern "C" void SVC_Handler()       /* Can we just define this with the paramete
     (
         "push {lr}              \n"
         "bl SyscallHandler      \n"
-        "pop {lr}               \n"
+        "pop {pc}               \n"
         ::: "memory"
     );
 }
@@ -25,8 +28,12 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
     switch(sno)
     {
         case StartFirstThread:
-            // just trigger a PendSV interrupt
+            // enable systick and trigger a PendSV IRQ
+            SysTick->CTRL = 7UL;
             SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+            s.scheduler_running[GetCoreID()] = true;
+
+            SCB_CleanInvalidateDCache();
             break;
 
         case GetThreadHandle:
@@ -43,6 +50,53 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case SetFrameBuffer:
             screen_set_frame_buffer(r1, r2, (uint32_t)r3);
+            break;
+
+        case __syscall_sbrk:
+            {
+                auto t = GetCurrentThreadForCore();
+                auto &p = t->p;
+
+                CriticalGuard cg(p.sl);
+                if(p.heap.valid)
+                {
+                    auto nbytes = (int)r2;
+
+                    if(nbytes == 0)
+                    {
+                        *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
+                    }
+                    else if(nbytes > 0)
+                    {
+                        auto unbytes = static_cast<uint32_t>(nbytes);
+
+                        if((p.heap.length - p.brk) < unbytes)
+                        {
+                            *reinterpret_cast<int *>(r1) = -1;
+                        }
+                        else
+                        {
+                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address;
+                            p.brk += unbytes;
+                        }
+                    }
+                    else
+                    {
+                        // nbytes < 0
+                        auto unbytes = static_cast<uint32_t>(-nbytes);
+
+                        if(p.brk < unbytes)
+                        {
+                            *reinterpret_cast<int *>(r1) = -1;
+                        }
+                        else
+                        {
+                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address;
+                            p.brk -= unbytes;
+                        }
+                    }
+                }
+            }
             break;
 
         default:

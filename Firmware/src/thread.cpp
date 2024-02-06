@@ -7,11 +7,15 @@
 #include "scheduler.h"
 
 extern Scheduler s;
+extern Thread dt;
+
+Thread::Thread(Process &owning_process) : p(owning_process) {}
 
 Thread *Thread::Create(std::string name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
+            Process &owning_process,
             CPUAffinity affinity,
             MemRegion stackblk,
             mpu_saved_state extra_permissions,
@@ -21,14 +25,13 @@ Thread *Thread::Create(std::string name,
     auto tloc = alloc.allocate(1);
     if(!tloc)
         return nullptr;
-    auto t = new(tloc) Thread;
+    auto t = new(tloc) Thread(owning_process);
     memset(&t->tss, 0, sizeof(thread_saved_state));
 
     t->affinity = affinity;
     t->base_priority = priority;
     t->is_privileged = is_priv;
     t->name = name;
-    t->is_dummy = false;
 
     t->tss.lr = 0xfffffffdUL;               // return to thread mode, normal frame, use PSP
     t->tss.control = is_priv ? 2UL : 3UL;   // bit0 = !privilege, bit1 = use PSP
@@ -88,6 +91,11 @@ Thread *Thread::Create(std::string name,
     SCB_CleanDCache_by_Addr((uint32_t *)t, sizeof(Thread));
     SCB_CleanDCache_by_Addr((uint32_t *)t->stack.address, t->stack.length);
 
+    {
+        CriticalGuard cg(owning_process.sl);
+        owning_process.threads.push_back(t);
+    }
+
     return t;
 }
 
@@ -136,7 +144,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
             CriticalGuard cg2(s.current_thread[coreid].v->sl);
             s.current_thread[coreid].v->chosen_for_core = 0;
             s.current_thread[coreid].v->running_on_core = 0;
-            if(s.current_thread[coreid].v->is_dummy)
+            if(s.current_thread[coreid].v == &dt)
             {
                 flush_cache = true;
             }

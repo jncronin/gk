@@ -2,6 +2,7 @@
 #define QUEUE_H
 
 #include "region_allocator.h"
+#include "scheduler.h"
 #include "osmutex.h"
 #include "thread.h"
 #include <queue>
@@ -38,7 +39,7 @@ template <typename T, int nitems> class FixedQueue
             waiting_threads.clear();
             if(hpt)
             {
-                SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+                Yield();
             }
         }
 
@@ -82,20 +83,33 @@ template <typename T, int nitems> class FixedQueue
             
             while(true)
             {
-                CriticalGuard cg(sl);
-                if(empty())
                 {
-                    auto t = GetCurrentThreadForCore();
-                    waiting_threads.push_back(t);
-                    t->is_blocking = true;
-                    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+                    CriticalGuard cg(sl);
+                    if(empty())
+                    {
+                        auto t = GetCurrentThreadForCore();
+                        bool already_waiting = false;
+                        for(const auto it : waiting_threads)
+                        {
+                            if(it == t)
+                            {
+                                already_waiting = true;
+                                break;
+                            }
+                        }
+                        if(!already_waiting)
+                            waiting_threads.push_back(t);
+                        t->is_blocking = true;
+                        Yield();
+                    }
+                    else
+                    {
+                        *v = _b[_rptr];
+                        _rptr = ptr_plus_one(_rptr);
+                        return true;
+                    }
                 }
-                else
-                {
-                    *v = _b[_rptr];
-                    _rptr = ptr_plus_one(_rptr);
-                    return true;
-                }
+                __DMB();
             }
         }
 };

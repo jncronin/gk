@@ -1,6 +1,7 @@
 #include <stm32h7xx.h>
 #include "memblk.h"
 #include "buddy.h"
+#include "SEGGER_RTT.h"
 
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_axisram;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
@@ -189,6 +190,8 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
         mr.length = 0;
     }
     mr.valid = ret.valid;
+
+    SEGGER_RTT_printf(0, "memblk allocate: %x - %x\n", mr.address, mr.address + mr.length);
 
     return mr;
 }

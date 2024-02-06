@@ -83,9 +83,19 @@ void Condition::Wait()
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
-    waiting_threads.push_back(t);
+    bool already_waiting = false;
+    for(const auto it : waiting_threads)
+    {
+        if(it == t)
+        {
+            already_waiting = true;
+            break;
+        }
+    }
+    if(!already_waiting)
+        waiting_threads.push_back(t);
     t->is_blocking = true;
-    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+    Yield();
 }
 
 void Condition::Signal()
@@ -102,6 +112,6 @@ void Condition::Signal()
     waiting_threads.clear();
     if(hpt)
     {
-        SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+        Yield();
     }
 }
