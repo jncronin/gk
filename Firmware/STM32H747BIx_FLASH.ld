@@ -84,6 +84,7 @@ SECTIONS
     . = ALIGN(4);
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
+    KEEP(*gk-test*(.data))
     . = ALIGN(4);
   } >FLASH1
 
