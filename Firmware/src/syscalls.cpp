@@ -3,6 +3,7 @@
 #include "thread.h"
 #include "screen.h"
 #include "scheduler.h"
+#include "syscalls_int.h"
 
 extern Scheduler s;
 
@@ -96,6 +97,21 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         }
                     }
                 }
+            }
+            break;
+
+        case __syscall_fstat:
+            {
+                int ret = syscall_fstat((int)r2, (struct stat *)r3);
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_write:
+            {
+                auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
+                int ret = syscall_write(p->file, p->ptr, p->len);
+                *reinterpret_cast<int *>(r1) = ret;
             }
             break;
 
