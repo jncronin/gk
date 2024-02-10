@@ -77,7 +77,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         }
                         else
                         {
-                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address;
+                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
                             p.brk += unbytes;
                         }
                     }
@@ -92,7 +92,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         }
                         else
                         {
-                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address;
+                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
                             p.brk -= unbytes;
                         }
                     }
