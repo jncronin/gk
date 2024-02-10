@@ -20,6 +20,9 @@ class Process
         MemRegion code_data;
 
         uint32_t brk = 0;
+
+        int rc;
+        bool for_deletion = false;
 };
 
 

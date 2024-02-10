@@ -4,28 +4,6 @@
 
 extern Scheduler s;
 
-/* Need to use HSEM here because STM32H7 does not implement bus locking on AXI */
-template <typename T> static inline void cmpxchg(T* ptr, T* oldval, T newval)
-{
-    while(HSEM->RLR[0] == 0);
-    if(*ptr == *oldval)
-    {
-        *ptr = newval;
-    }
-    else
-    {
-        *oldval = *ptr;
-    }
-    HSEM->R[0] = 0;
-}
-
-template <typename T> static inline void set(T* ptr, T newval)
-{
-    while(HSEM->RLR[0] == 0);
-    *ptr = newval;
-    HSEM->R[0] = 0;
-}
-
 UninterruptibleGuard::UninterruptibleGuard()
 {
     cpsr = DisableInterrupts();

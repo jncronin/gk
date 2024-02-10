@@ -115,6 +115,32 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_exit:
+            {
+                auto rc = reinterpret_cast<int>(r1);
+
+                auto t = GetCurrentThreadForCore();
+                auto &p = t->p;
+
+                CriticalGuard cg(p.sl);
+                for(auto pt : p.threads)
+                {
+                    CriticalGuard cg2(pt->sl);
+                    pt->for_deletion = true;
+                    pt->is_blocking = true;
+                    memblk_deallocate(pt->stack);
+                }
+
+                memblk_deallocate(p.code_data);
+                memblk_deallocate(p.heap);
+
+                p.rc = rc;
+                p.for_deletion = true;
+
+                Yield();
+            }
+            break;
+
         default:
             while(true);
             break;

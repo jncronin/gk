@@ -9,7 +9,7 @@ class Thread;
 class Spinlock
 {
     protected:
-        uint32_t _lock_val = 0;
+        volatile uint32_t _lock_val = 0;
 
     public:
         void lock();

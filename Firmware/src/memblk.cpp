@@ -150,6 +150,33 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
     return ret;
 }
 
+void memblk_deallocate(MemRegion &r)
+{
+    BuddyEntry be;
+    be.base = r.address;
+    be.length = r.length;
+    be.valid = true;
+
+    switch(r.rt)
+    {
+        case MemRegionType::AXISRAM:
+            b_axisram.release(be);
+            break;
+
+        case MemRegionType::DTCM:
+            b_dtcm.release(be);
+            break;
+
+        case MemRegionType::SDRAM:
+            b_sdram.release(be);
+            break;
+
+        case MemRegionType::SRAM:
+            b_sram.release(be);
+            break;
+    }
+}
+
 MemRegion memblk_allocate(size_t n, MemRegionType rtype)
 {
     BuddyEntry ret;
