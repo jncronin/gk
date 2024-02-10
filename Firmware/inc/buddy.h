@@ -97,8 +97,7 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
             while(true)
             {
                 uint32_t expected_zero = 0;
-                __atomic_compare_exchange_n(&_lock_val, &expected_zero, 1UL, false,
-                    __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+                cmpxchg(&_lock_val, &expected_zero, 1UL);
                 if(expected_zero)
                 {
                     // spin in non-locking mode until unset
@@ -114,7 +113,7 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
 
         void unlock(uint32_t cpsr)
         {
-            __atomic_store_n(&_lock_val, 0, __ATOMIC_RELAXED);
+            set(&_lock_val, 0UL);
             __DMB();
             RestoreInterrupts(cpsr);
         }
