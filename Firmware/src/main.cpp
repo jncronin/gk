@@ -11,6 +11,7 @@
 #include "gpu.h"
 #include <cstdlib>
 #include "elf.h"
+#include "btnled.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -35,6 +36,9 @@ int main()
     init_memblk();
     init_sdram();
     init_screen();
+    init_btnled();
+
+    btnled_setcolor(0x020202UL);
 
     elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start);
 
@@ -53,17 +57,7 @@ int main()
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
     s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
 
-    // Get systick to flash an LED for now (BTNLED_R = PC6)
-    RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOCEN;
-    (void)RCC->AHB4ENR;
-    {
-        auto gc = GPIOC->MODER;
-        gc &= ~(3UL << 14);
-        gc |= 1UL << 14;
-        GPIOC->MODER = gc;
-
-        GPIOC->ODR = (1UL << 7);
-    }
+    // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
     SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
@@ -82,6 +76,11 @@ extern "C" int main_cm4()
     {
         __WFI();
     }
+
+    // Prepare systick
+    SysTick->CTRL = 0;
+    SysTick->VAL = 0;
+    SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
 
     s.StartForCurrentCore();
 
@@ -237,8 +236,6 @@ void b_thread(void *p)
             
         }
 
-        GPIOC->BSRR = GPIO_BSRR_BS7;
-
         auto fbuf = reinterpret_cast<uint32_t *>(__syscall_GetFrameBuffer());
         if(fbuf)
         {
@@ -272,7 +269,6 @@ void b_thread(void *p)
             if(cc >= 256) cc = 0;
         }
 
-        GPIOC->BSRR = GPIO_BSRR_BR7;
 #endif
     }
 }
