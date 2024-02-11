@@ -130,6 +130,10 @@ void elf_load_memory(const void *e)
 
         auto symtab = reinterpret_cast<const Elf32_Shdr *>(shdrs + symtab_idx * ehdr->e_shentsize);
         [[maybe_unused]] auto relsect = reinterpret_cast<const Elf32_Shdr *>(shdrs + relsect_idx * ehdr->e_shentsize);
+        if(!(relsect->sh_flags & SHF_ALLOC))
+        {
+            continue;
+        }
 
         auto relocs = p + shdr->sh_offset;
 
