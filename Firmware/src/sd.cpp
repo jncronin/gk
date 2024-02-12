@@ -3,8 +3,38 @@
 #include "sd.h"
 #include <cstdio>
 #include "pins.h"
+#include "osqueue.h"
+#include "osmutex.h"
+#include "SEGGER_RTT.h"
+
+#define DEBUG_SD    1
+
+extern Spinlock s_rtt;
 
 #define SDCLK   192000000
+
+#define SDCLK_IDENT     200000
+#define SDCLK_DS        25000000
+#define SDCLK_HS        50000000
+
+#define SDT_DATA    __attribute__((section(".sdt_data")))
+
+SDT_DATA static int clock_speed = 0;
+SDT_DATA static int clock_period_ns = 0;
+
+SDT_DATA static uint32_t cid[4] = { 0 };
+SDT_DATA static uint32_t csd[4] = { 0 };
+SDT_DATA static uint32_t rca;
+SDT_DATA static uint32_t scr[2];
+SDT_DATA static bool is_4bit = false;
+SDT_DATA volatile bool sd_ready = false;
+SDT_DATA static bool is_hc = false;
+SDT_DATA static volatile bool tfer_inprogress = false;
+SDT_DATA static volatile bool dma_ready = false;
+SDT_DATA static volatile uint32_t sd_status = 0;
+SDT_DATA static volatile bool sd_multi = false;
+
+SDT_DATA static uint32_t cmd6_buf[512/32];
 
 static constexpr pin sd_pins[] =
 {
@@ -16,37 +46,22 @@ static constexpr pin sd_pins[] =
     { GPIOD, 2, 12 }
 };
 
-static int clock_speed = 0;
-static int clock_period_ns = 0;
 
-static uint32_t cid[4];
-static uint32_t csd[4];
-static uint32_t rca;
-static uint32_t scr[2];
-static bool is_4bit = false;
-volatile bool sd_ready = false;
-static bool is_hc = false;
-static volatile bool tfer_inprogress = false;
-static volatile bool dma_ready = false;
-static volatile uint32_t sd_status = 0;
-static volatile bool sd_multi = false;
+__attribute__((section(".sram4"))) FixedQueue<uint32_t, 32> sdt_queue;
 
-static uint32_t cmd6_buf[512/32];
-
-SemaphoreHandle_t sd_sem;
-TaskHandle_t sd_task = nullptr;
 
 enum class resp_type { None, R1, R1b, R2, R3, R4, R4b, R5, R6, R7 };
 enum class data_dir { None, ReadBlock, WriteBlock, ReadStream, WriteStream };
 
 enum StatusFlags { CCRCFAIL = 1, DCRCFAIL = 2, CTIMEOUT = 4, DTIMEOUT = 8,
     TXUNDERR = 0x10, RXOVERR = 0x20, CMDREND = 0x40, CMDSENT = 0x80,
-    DATAEND = 0x100, /* reserved */ DBCKEND = 0x400, CMDACT = 0x800,
-    TXACT = 0x1000, RXACT = 0x2000, TXFIFOHE = 0x4000, RXFIFOHF = 0x8000,
-    TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000,
-    TXDAVL = 0x100000, RXDAVL = 0x200000, SDIOIT = 0x400000 };
+    DATAEND = 0x100, /* reserved */ DBCKEND = 0x400, DABORT = 0x800,
+    DPSMACT = 0x1000, CPSMACT = 0x2000, TXFIFOHE = 0x4000, RXFIFOHF = 0x8000,
+    TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000 };
 
-static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, uint32_t *resp = nullptr, bool ignore_crc = false,
+static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, uint32_t *resp = nullptr, 
+    bool with_data = false,
+    bool ignore_crc = false,
     int timeout_retry = 10)
 {
     int tcnt = 0;
@@ -56,7 +71,9 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         ITM_SendChar('m');
         if(tcnt > 0)
         {
-            printf("sd_issue_command: retry %i for command %lu\n", tcnt, command);
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "sd_issue_command: retry %d for command %lu, sta: %lx\n", tcnt, command,
+                SDMMC1->STA);
         }
 #endif
 
@@ -65,7 +82,8 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
         if(SDMMC1->STA & cmd_flags)
         {
-            printf("sd_issue_command: unhandled flags: %lx\n", SDMMC1->STA);
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "sd_issue_command: unhandled flags: %lx\n", SDMMC1->STA);
             return -1;
         }
 
@@ -77,13 +95,15 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                 break;
             case resp_type::R1:
             case resp_type::R1b:
-            case resp_type::R3:
             case resp_type::R4:
             case resp_type::R4b:
             case resp_type::R5:
             case resp_type::R6:
             case resp_type::R7:
                 waitresp = 1;
+                break;
+            case resp_type::R3:
+                waitresp = 2;
                 break;
             case resp_type::R2:
                 waitresp = 3;
@@ -103,12 +123,15 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
         SDMMC1->ARG = arg;
 
-        SDMMC1->CMD = command | (waitresp << 6) | SDMMC_CMD_CPSMEN;
+        uint32_t start_data = with_data ? SDMMC_CMD_CMDTRANS : 0UL;
+
+        SDMMC1->CMD = command | (waitresp << SDMMC_CMD_WAITRESP_Pos) | SDMMC_CMD_CPSMEN | start_data;
 
         if(rt == resp_type::None)
         {
             while(!(SDMMC1->STA & CMDSENT));      // TODO: WFI
-            printf("sd_issue_command: sent %lu no response expected\n", command);
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "sd_issue_command: sent %lu no response expected\n", command);
             SDMMC1->ICR = CMDSENT;
             return 0;
         }
@@ -125,7 +148,8 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                     break;
                 }
 
-                printf("sd_issue_command: sent %lu invalid crc response\n", command);
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "sd_issue_command: sent %lu invalid crc response\n", command);
                 SDMMC1->ICR = CCRCFAIL;
                 return CCRCFAIL;
             }
@@ -140,13 +164,22 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
         if(timeout)
         {
-            if(tcnt)
-                vTaskDelay(pdMS_TO_TICKS(tcnt * 5));
+#ifdef DEBUG_SD
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "sd_issue_command: timeout, sta: %lx, cmdr: %lx, dctrl: %lx\n",
+                    SDMMC1->STA, SDMMC1->CMD, SDMMC1->DCTRL);
+            }
+#endif
+            delay_ms(tcnt * 5);
             continue;
         }
 
     #ifdef DEBUG_SD
-        printf("sd_issue_command: sent %lu received reponse", command);
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "sd_issue_command: sent %lu received reponse", command);
+        }
     #endif
 
         if(resp)
@@ -156,14 +189,20 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
             {
                 resp[nresp - i - 1] = (&SDMMC1->RESP1)[i];
     #ifdef DEBUG_SD
-                printf(" %lx", resp[i]);
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, " %lx", resp[nresp - i - 1]);
+                }
     #endif
             }
         }
 
         
     #ifdef DEBUG_SD
-        printf("\n");
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "\n");
+        }
     #endif
 
         SDMMC1->ICR = CMDREND;
@@ -171,29 +210,42 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
     }
 
     // timeout
-    printf("sd_issue_command: sent %lu command timeout\n", command);
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "sd_issue_command: sent %lu command timeout\n", command);
+    }
     return CTIMEOUT;
 }
 
 static void SDMMC_set_clock(int freq)
 {
-    // Anything less than 48 MHz needs a divider
     auto div = SDCLK / freq;
     auto rem = SDCLK - (freq * div);
     if(rem)
         div++;
+
+    if(div == 1)
+    {
+        div = 0;
+    }
+    else
+    {
+        div = div / 2;
+    }
     
-    div -= 1;
     if(div > 1023) div = 1023;
     if(div < 0) div = 0;
 
     auto clkcr = SDMMC1->CLKCR;
     clkcr &= ~SDMMC_CLKCR_CLKDIV_Msk;
     clkcr |= div;
-    SDMMC1->CLKCR;
+    SDMMC1->CLKCR = clkcr;
 
-    clock_speed = SDCLK / (div + 1);
-    printf("SDIO clock set to %d (div = %d)\n", clock_speed, div);
+    clock_speed = (div == 0) ? SDCLK : (SDCLK / (div * 2));
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "SDIO clock set to %d (div = %d)\n", clock_speed, div);
+    }
 
     clock_period_ns = 1000000000 / clock_speed;
 }
@@ -201,70 +253,66 @@ static void SDMMC_set_clock(int freq)
 
 void init_sd()
 {
-    sd_sem = xSemaphoreCreateMutex();
-    if(!sd_sem)
-    {
-        printf("Couldn't allocate sd mutex\n");
-        while(true);
-    }
 }
 
 void sd_reset()
 {
     sd_ready = false;
+    is_4bit = false;
+    is_hc = false;
+    tfer_inprogress = false;
+    dma_ready = false;
+    sd_multi = false;
+    sd_status = 0;
+    
     // Assume SD is already inserted, panic otherwise
 
+    // This follows RM 58.6.7
 
-    // Init DMA2 for SD reads (we use DMA1 for I2S writes, overkill but allows truly concurrent DMA)
-    //  SDIO is mapped to Stream 3, Channel 4
-    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
-    (void)RCC->AHB1ENR;
-
-    // Disable DMA channel
-    DMA2_Stream3->CR = 0;
-
-
-    /* Pins:
-        D0:     PC8
-        D1:     PC9
-        D2:     PC10
-        D3:     PC11
-        CK:     PC12
-        CMD:    PD2
-
-        all AF12, all push-pull
-        */
-
-    // Reset SDIO
+    // Reset SDMMC
     RCC->AHB3RSTR = RCC_AHB3RSTR_SDMMC1RST;
     (void)RCC->AHB3RSTR;
     RCC->AHB3RSTR = 0;
     (void)RCC->AHB3RSTR;
 
-    
-    // Clock SDIO
+    // Clock SDMMC
     RCC->AHB3ENR |= RCC_AHB3ENR_SDMMC1EN;
     (void)RCC->AHB3ENR;
 
+    /* Pins */
     for(const auto &p : sd_pins)
     {
         p.set_as_af();
     }
 
-    /* Input clock is 192 MHz
-        We need to set to < 400 kHz for start-up
-    */
-    SDMMC1->CLKCR = 0;    // reset value - ensure 1 bit data bus
-    SDMMC1->MASK = 0;     // no interrupts during init
-    is_4bit = false;
-    SDMMC_set_clock(350000);
-    
-    // Clock SDIO
-    SDMMC1->POWER = SDMMC_POWER_PWRCTRL_Msk;
-    (void)SDMMC1->POWER;
-    while(SDMMC1->POWER != SDMMC_POWER_PWRCTRL_Msk);
-    printf("SDIO clock started\n");
+    // Ensure clock is set-up for identification mode - other bits are zero after reset
+    SDMMC_set_clock(SDCLK_IDENT);
 
+    // Hardware flow control
+    SDMMC1->CLKCR |= SDMMC_CLKCR_HWFC_EN;
+
+    // TODO: power-cycle card here (need external FET not currently on pcb)
+
+    // set SDMMC state to power cycle (no drive on any pins)
+    SDMMC1->POWER = 2UL << SDMMC_POWER_PWRCTRL_Pos;
+
+    // wait 1 ms
+    delay_ms(1);
+
+    // TODO: enable card VCC and wait power ramp-up time
+
+    // disable SDMMC output
+    SDMMC1->POWER = 0UL;
+
+    // wait 1 ms
+    delay_ms(1);
+
+    // Enable clock to card
+    SDMMC1->POWER = 3UL << SDMMC_POWER_PWRCTRL_Pos;
+
+    // Wait 74 CK cycles = 0.37 ms at 200 kHz
+    delay_ms(1);
+    
     // Issue CMD0 (go idle state)
     auto ret = sd_issue_command(0, resp_type::None);
     if(ret != 0)
@@ -277,7 +325,8 @@ void sd_reset()
     if(ret == CTIMEOUT)
     {
         is_v2 = false;
-        printf("init_sd: CMD8 timed out - assuming <v2 card\n");
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: CMD8 timed out - assuming <v2 card\n");
     }
     else if(ret == 0)
     {
@@ -287,7 +336,8 @@ void sd_reset()
         }
         else
         {
-            printf("init_sd: CMD8 invalid response %lx\n", resp[0]);
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "init_sd: CMD8 invalid response %lx\n", resp[0]);
             return;
         }
     }
@@ -308,7 +358,8 @@ void sd_reset()
     // We can promise ~3.1-3.4 V
     if(!(resp[0] & 0x380000))
     {
-        printf("init_sd: invalid voltage range\n");
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: invalid voltage range\n");
         return;
     }
 
@@ -334,7 +385,10 @@ void sd_reset()
                 is_hc = true;
             }
 
-            printf("init_sd: %s capacity card ready\n", is_hc ? "high" : "normal");
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "init_sd: %s capacity card ready\n", is_hc ? "high" : "normal");
+            }
             is_ready = true;
         }
 
@@ -354,18 +408,20 @@ void sd_reset()
 
     if(cmd3_ret & (7UL << 13))
     {
-        printf("init_sd: card error %lx\n", cmd3_ret & 0xffff);
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: card error %lx\n", cmd3_ret & 0xffff);
         return;
     }
     if(!(cmd3_ret & (1UL << 8)))
     {
-        printf("init_sd: card not ready for data\n");
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: card not ready for data\n");
         return;
     }
     rca = cmd3_ret & 0xffff0000;
 
     // We know the card is an SD card so can cope with 25 MHz
-    SDMMC_set_clock(25000000);
+    //SDMMC_set_clock(SDCLK_DS);
 
     // Get card status - should be in data transfer mode, standby state
     ret = sd_issue_command(13, resp_type::R1, rca, resp);
@@ -374,7 +430,8 @@ void sd_reset()
     
     if(resp[0] != 0x700)
     {
-        printf("init_sd: card not in standby state\n");
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: card not in standby state\n");
         return;
     }
 
@@ -383,8 +440,11 @@ void sd_reset()
     if(ret != 0)
         return;
 
-    printf("init_sd: CSD: %lx, %lx, %lx, %lx\n", csd[0], csd[1], csd[2], csd[3]);
-    printf("init_sd: sd card size %llu bytes\n", sd_get_size());
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: CSD: %lx, %lx, %lx, %lx\n", csd[0], csd[1], csd[2], csd[3]);
+        SEGGER_RTT_printf(0, "init_sd: sd card size %lu kB\n", sd_get_size() / 1024);
+    }
 
     // Select card to put it in transfer state
     ret = sd_issue_command(7, resp_type::R1b, rca, resp);
@@ -398,7 +458,8 @@ void sd_reset()
     
     if(resp[0] != 0x900)
     {
-        printf("init_sd: card not in transfer state\n");
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: card not in transfer state\n");
         return;
     }
 
@@ -411,48 +472,53 @@ void sd_reset()
     }
 
     // Empty FIFO
-    while(SDMMC1->STA & RXDAVL)
-        (void)SDMMC1->FIFO;
+    //while(!(SDMMC1->STA & RXFIFOE))
+    //    (void)SDMMC1->FIFO;
 
     // Read SCR register - 64 bits from card in transfer mode - ACMD51 with data
-    ret = sd_issue_command(55, resp_type::R1, rca);
-    if(ret != 0)
-        return;
-
-    
-    // read data
-    //int timeout_ns = 20000000;   // 20ms
+    SDMMC1->DCTRL = 0;
     int timeout_ns = 200000000;
     SDMMC1->DTIMER = timeout_ns / clock_period_ns;
     SDMMC1->DLEN = 8;
-    SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
+    SDMMC1->DCTRL = 
         SDMMC_DCTRL_DTDIR |
         (3UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
+
+    ret = sd_issue_command(55, resp_type::R1, rca);
+    if(ret != 0)
+        return;
     
-    ret = sd_issue_command(51, resp_type::R1, 0, resp);
+    ret = sd_issue_command(51, resp_type::R1, 0, resp, true);
     if(ret != 0)
         return;
 
+    int scr_idx = 0;
     while(!(SDMMC1->STA & DBCKEND) && !(SDMMC1->STA & DATAEND) && !(SDMMC1->STA & DTIMEOUT))
     {
         if(SDMMC1->STA & DCRCFAIL)
         {
-            printf("init_sd: dcrc fail\n");
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "init_sd: dcrc fail\n");
             return;
         }
         if(SDMMC1->STA & DTIMEOUT)
         {
-            printf("init_sd: dtimeout\n");
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "init_sd: dtimeout\n");
+            return;
+        }
+        if(scr_idx < 2 && !(SDMMC1->STA & SDMMC_STA_RXFIFOE))
+        {
+            scr[1 - scr_idx] = __builtin_bswap32(SDMMC1->FIFO);
+            scr_idx++;
         }
     }
     SDMMC1->ICR = DBCKEND | DATAEND;
     
-    for(int i = 0; i < 2; i++)
     {
-        scr[1 - i] = __builtin_bswap32(SDMMC1->FIFO);
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: scr %lx %lx, dcount %lx, sta %lx\n", scr[0], scr[1], SDMMC1->DCOUNT, SDMMC1->STA);
     }
-
-    printf("init_sd: scr %lx %lx, dcount %lx, sta %lx\n", scr[0], scr[1], SDMMC1->DCOUNT, SDMMC1->STA);
 
     // can we use 4-bit signalling?
     if((scr[1] & (0x5UL << (48-32))) == (0x5UL << (48-32)))
@@ -464,7 +530,10 @@ void sd_reset()
         if(ret != 0)
             return;
 
-        printf("init_sd: set to 4-bit mode\n");
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "init_sd: set to 4-bit mode\n");
+        }
         is_4bit = true;
         SDMMC1->CLKCR |= SDMMC_CLKCR_WIDBUS_0;
     }
@@ -475,128 +544,117 @@ void sd_reset()
         // supports CMD6
 
         // send inquiry CMD6
-        SDMMC1->DLEN = 512/8;
-        SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
+        SDMMC1->DLEN = 64;
+        SDMMC1->DCTRL = 
             SDMMC_DCTRL_DTDIR |
             (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
 
-        ret = sd_issue_command(6, resp_type::R1, 0);
+        ret = sd_issue_command(6, resp_type::R1, 0, nullptr, true);
         if(ret != 0)
             return;
         
         // read response
-        for(int i = 0; i < 512/32; i++)
-        {
-            while(!(SDMMC1->STA & RXDAVL) && !(SDMMC1->STA & DCRCFAIL) && !(SDMMC1->STA & DTIMEOUT));
-            if(SDMMC1->STA & DCRCFAIL)
-            {
-                printf("dcrcfail\n");
-                return;
-            }
-            if(SDMMC1->STA & DTIMEOUT)
-            {
-                printf("dtimeout\n");
-                return;
-            }
-            cmd6_buf[512/32 - 1 - i] = __builtin_bswap32(SDMMC1->FIFO);
-        }
-
+        int cmd6_buf_idx = 0;
         while(!(SDMMC1->STA & DBCKEND) && !(SDMMC1->STA & DATAEND) && !(SDMMC1->STA & DTIMEOUT))
         {
             if(SDMMC1->STA & DCRCFAIL)
             {
-                printf("init_sd: dcrc fail\n");
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "dcrcfail\n");
                 return;
             }
             if(SDMMC1->STA & DTIMEOUT)
             {
-                printf("init_sd: dtimeout\n");
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "dtimeout\n");
+                return;
+            }
+            if(cmd6_buf_idx < 16 && !(SDMMC1->STA & SDMMC_STA_RXFIFOE))
+            {
+                cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(SDMMC1->FIFO);
+                cmd6_buf_idx++;
             }
         }
+
         SDMMC1->ICR = DBCKEND | DATAEND;
 
         // can we enable high speed mode? - check bits 415:400
         auto fg1_support = (cmd6_buf[12] >> 16) & 0xffffUL;
-        printf("init_sd: cmd6: fg1_support: %lx\n", fg1_support);
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "init_sd: cmd6: fg1_support: %lx\n", fg1_support);
+        }
 
         if(fg1_support & 0x2)
         {
             // try and switch to high speed mode
-            SDMMC1->DLEN = 512/8;
-            SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
+            SDMMC1->DCTRL = 0;
+            SDMMC1->DLEN = 64;
+            SDMMC1->DCTRL = 
                 SDMMC_DCTRL_DTDIR |
                 (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
             
-            ret = sd_issue_command(6, resp_type::R1, 0x80000001);
+            ret = sd_issue_command(6, resp_type::R1, 0x80000001, nullptr, true);
             if(ret != 0)
                 return;
             
-            // read response
-            for(int i = 0; i < 512/32; i++)
-            {
-                while(!(SDMMC1->STA & RXDAVL) && !(SDMMC1->STA & DCRCFAIL) && !(SDMMC1->STA & DTIMEOUT));
-                if(SDMMC1->STA & DCRCFAIL)
-                {
-                    printf("dcrcfail\n");
-                    return;
-                }
-                if(SDMMC1->STA & DTIMEOUT)
-                {
-                    printf("dtimeout\n");
-                    return;
-                }
-                cmd6_buf[512/32 - 1 - i] = __builtin_bswap32(SDMMC1->FIFO);
-            }
-
+            cmd6_buf_idx = 0;
             while(!(SDMMC1->STA & DBCKEND) && !(SDMMC1->STA & DATAEND) && !(SDMMC1->STA & DTIMEOUT))
             {
                 if(SDMMC1->STA & DCRCFAIL)
                 {
-                    printf("init_sd: dcrc fail\n");
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "dcrcfail\n");
                     return;
                 }
                 if(SDMMC1->STA & DTIMEOUT)
                 {
-                    printf("init_sd: dtimeout\n");
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "dtimeout\n");
+                    return;
+                }
+                if(cmd6_buf_idx < 16 && !(SDMMC1->STA & SDMMC_STA_RXFIFOE))
+                {
+                    cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(SDMMC1->FIFO);
+                    cmd6_buf_idx++;
                 }
             }
             SDMMC1->ICR = DBCKEND | DATAEND;
 
             auto fg1_setting = (cmd6_buf[11] >> 24) & 0xfUL;
-            printf("init_sd: cmd6: fg1_setting: %lx\n", fg1_setting);
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "init_sd: cmd6: fg1_setting: %lx\n", fg1_setting);
+            }
 
             if(fg1_setting == 1)
             {
                 SDMMC_set_clock(48000000);
-                printf("init_sd: set to high speed mode\n");
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "init_sd: set to high speed mode\n");
+                }
             }
-
         }
     }
 
     // Hardware flow control - prevents buffer under/overruns
     SDMMC1->CLKCR |= SDMMC_CLKCR_HWFC_EN;
 
-    // Init DMA2 for SD reads (we use DMA1 for I2S writes, overkill but allows truly concurrent DMA)
-    //  SDIO is mapped to Stream 3, Channel 4
-    RCC->AHB1ENR |= RCC_AHB1ENR_DMA2EN;
-    (void)RCC->AHB1ENR;
-
     // Enable interrupts
     SDMMC1->MASK = DCRCFAIL | DTIMEOUT |
         TXUNDERR | RXOVERR | DATAEND;
-    //NVIC_SetPriority(DMA2_Stream3_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-    //NVIC_SetPriority(SDMMC1_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
-    NVIC_EnableIRQ(DMA2_Stream3_IRQn);
     NVIC_EnableIRQ(SDMMC1_IRQn);
     
-    printf("init_sd: success\n");
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "init_sd: success\n");
+    }
     tfer_inprogress = false;
     sd_ready = true;
-
-
 }
 
+#if 0
 int sd_read_block_async(uint32_t block_addr, void *ptr)
 {
     // only one thread can use SD at a time
@@ -1037,54 +1095,16 @@ int sd_write_block(uint32_t block_addr, const void *ptr)
     }*/
     return ret;
 }
-
-extern "C" void DMA2_Stream3_IRQHandler() __attribute__((section(".itcm")));
-extern "C" void DMA2_Stream3_IRQHandler()
-{
-#ifdef DEBUG_SD
-    ITM_SendChar('D');
 #endif
-    //printf("DMA IRQ: %lx\n", DMA2->LISR);
-    BaseType_t hpt1 = pdFALSE, hpt2 = pdFALSE;
-    auto lisr = DMA2->LISR;
-    if(lisr & DMA_LISR_TCIF3)
-    {
-#ifdef DEBUG_SD
-        ITM_SendChar('C');
-#endif
-        // tfer complete
-        sd_status = 0;
-        xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
-    }
-    else
-    {
-#ifdef DEBUG_SD
-        ITM_SendChar('E');
-#endif
-        // error
-        sd_status |= (lisr & 0x0f400000UL) | SDMMC1->STA |
-            (((DMA2_Stream3->FCR >> 3) & 0x7) << 28);
-        sd_ready = false;
-        DMA2_Stream3->CR = 0;
-        xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt2);
-    }
-    DMA2->LIFCR = DMA_LIFCR_CTCIF3 |
-        DMA_LIFCR_CTEIF3 |
-        DMA_LIFCR_CFEIF3;
-    //SDMMC1->ICR = DATAEND | DBCKEND;
 
-    if(hpt2) hpt1 = pdTRUE;
-    portYIELD_FROM_ISR(hpt1);
-}
-
-extern "C" void SDMMC1_IRQHandler() __attribute__((section(".itcm")));
+//extern "C" void SDMMC1_IRQHandler() __attribute__((section(".itcm")));
 extern "C" void SDMMC1_IRQHandler()
 {
 #ifdef DEBUG_SD
     ITM_SendChar('S');
 #endif
     //printf("SDIO IRQ: %lx\n", SDMMC1->STA);
-    BaseType_t hpt1 = pdFALSE;
+    //BaseType_t hpt1 = pdFALSE;
     auto const errors = DCRCFAIL |
         DTIMEOUT |
         TXUNDERR | RXOVERR;
@@ -1097,7 +1117,7 @@ extern "C" void SDMMC1_IRQHandler()
         sd_status = SDMMC1->STA;
         sd_ready = false;
         DMA2_Stream3->CR = 0;
-        xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
+        //xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
     }
     else if(sta & DATAEND)
     {
@@ -1105,7 +1125,7 @@ extern "C" void SDMMC1_IRQHandler()
         ITM_SendChar('c');
 #endif
         sd_status = 0;
-        xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
+        //xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
     }
     else
     {
@@ -1116,7 +1136,7 @@ extern "C" void SDMMC1_IRQHandler()
 
     SDMMC1->ICR = sta & (errors | DATAEND) & 0x4005ff;
 
-    portYIELD_FROM_ISR(hpt1);
+    //portYIELD_FROM_ISR(hpt1);
 }
 
 bool sd_get_ready()
