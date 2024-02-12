@@ -127,7 +127,12 @@ SECTIONS
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
 
-    . = ALIGN(4);
+    . = ALIGN(1K);
+    _ssdt_data = .;
+    *(.sdt_data)
+    *(.sdt_data*)
+    _esdt_data = .;
+
     _edata = .;        /* define a global symbol at data end */
   } >AXISRAM AT> FLASH1
 

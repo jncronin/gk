@@ -33,7 +33,7 @@ struct sd_request
     uint32_t block_count;
     void *mem_address;
     bool is_read;
-    Condition *completion_event;
+    SimpleSignal *completion_event;
     int *res_out;
 };
 

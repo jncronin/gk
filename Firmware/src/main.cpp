@@ -13,6 +13,7 @@
 #include "elf.h"
 #include "btnled.h"
 #include "sd.h"
+#include <cstring>
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -141,6 +142,19 @@ void b_thread(void *p)
     int cur_w = 80;
 
     RNG->CR = RNG_CR_RNGEN;
+
+    // try and load mbr
+    auto mbr = memblk_allocate(512, MemRegionType::AXISRAM);
+    SetMPUForCurrentThread(MPUGenerate(mbr.address, mbr.length, 7, false,
+        RW, NoAccess, WBWA_NS));
+    //SCB_CleanInvalidateDCache();
+    memset((void*)mbr.address, 0, 512);
+    auto sdt = sd_perform_transfer(0, 1, (void*)mbr.address, true);
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "sdtest: %d, last word: %lx\n", sdt,
+            *(uint32_t *)(mbr.address + 508));
+    }
 
     //uint32_t cc = 0;
     int nframes = 0;
@@ -309,6 +323,8 @@ extern "C" void * _sbrk(int n)
 }
 
 __attribute__((section(".sram4"))) volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
+__attribute__((section(".sram4"))) volatile mpu_saved_state mpuregs[8];
+__attribute__((section(".sram4"))) volatile Thread *fault_thread;
 extern "C" void HardFault_Handler()
 {
     /*uint32_t *pcaddr;
@@ -320,7 +336,15 @@ extern "C" void HardFault_Handler()
             : "=r"(pcaddr));
 
     ret_addr = *pcaddr;*/
-    
+
+    fault_thread = GetCurrentThreadForCore();
+    for(int i = 0; i < 8; i++)
+    {
+        MPU->RNR = i;
+        mpuregs[i].rbar = MPU->RBAR;
+        mpuregs[i].rasr = MPU->RASR;
+    }
+
     cfsr = SCB->CFSR;
     hfsr = SCB->HFSR;
     mmfar = SCB->MMFAR;
@@ -348,5 +372,5 @@ extern "C" void UsageFault_Handler()
 
 extern "C" void SysTick_Handler()
 {
-    //Yield();
+    Yield();
 }
