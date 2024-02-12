@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include "elf.h"
 #include "btnled.h"
+#include "sd.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -37,6 +38,9 @@ int main()
     init_sdram();
     init_screen();
     init_btnled();
+    init_sd();
+
+    sd_reset();
 
     btnled_setcolor(0x020202UL);
 
@@ -153,7 +157,7 @@ void b_thread(void *p)
 
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "nframes: %d\n", nframes);            
+            //SEGGER_RTT_printf(0, "nframes: %d\n", nframes);            
         }
 
         int l_val = cur_m - cur_w / 2;
