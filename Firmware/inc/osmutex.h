@@ -38,6 +38,19 @@ class Condition
         void Signal();
 };
 
+class SimpleSignal
+{
+    protected:
+        Thread *waiting_thread = nullptr;
+        bool is_signalled = false;
+        Spinlock sl;
+
+    public:
+        bool Wait();
+        void Signal();
+        void Reset();
+};
+
 class UninterruptibleGuard
 {
     public:

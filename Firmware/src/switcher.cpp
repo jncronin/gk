@@ -92,6 +92,7 @@ extern "C" void PendSV_Handler()
         "orr r5, #1                 \n"     // enable mpu, default background map
         "str r5, [r4]               \n"
         "dsb                        \n"
+        "isb                        \n"
 
         /* Load saved tss registers */
         "ldmia r1!, { r12 }         \n"     // load registers from tss

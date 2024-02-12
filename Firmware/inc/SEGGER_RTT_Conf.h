@@ -123,6 +123,7 @@ Revision: $Rev: 24316 $
 *       This is may be required with memory access restrictions,
 *       such as on Cortex-A devices with MMU.
 */
+#define SEGGER_RTT_MEMCPY_USE_BYTELOOP    1
 #ifndef   SEGGER_RTT_MEMCPY_USE_BYTELOOP
   #define SEGGER_RTT_MEMCPY_USE_BYTELOOP              0 // 0: Use memcpy/SEGGER_RTT_MEMCPY, 1: Use a simple byte-loop
 #endif

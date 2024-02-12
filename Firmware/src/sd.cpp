@@ -30,14 +30,16 @@ SDT_DATA static uint32_t csd[4] = { 0 };
 SDT_DATA static uint32_t rca;
 SDT_DATA static uint32_t scr[2];
 SDT_DATA static bool is_4bit = false;
-SDT_DATA volatile bool sd_ready = false;
+__attribute__((section(".sram4"))) volatile bool sd_ready = false;
 SDT_DATA static bool is_hc = false;
 SDT_DATA static volatile bool tfer_inprogress = false;
 SDT_DATA static volatile bool dma_ready = false;
-SDT_DATA static volatile uint32_t sd_status = 0;
+__attribute__((section(".sram4"))) static volatile uint32_t sd_status = 0;
 SDT_DATA static volatile bool sd_multi = false;
 
 SDT_DATA static uint32_t cmd6_buf[512/32];
+
+extern char _ssdt_data, _esdt_data;
 
 static constexpr pin sd_pins[] =
 {
@@ -51,7 +53,7 @@ static constexpr pin sd_pins[] =
 
 
 __attribute__((section(".sram4"))) FixedQueue<sd_request, 32> sdt_queue;
-__attribute__((section(".sram4"))) Condition sdt_ready;
+__attribute__((section(".sram4"))) SimpleSignal sdt_ready;
 
 enum class resp_type { None, R1, R1b, R2, R3, R4, R4b, R5, R6, R7 };
 enum class data_dir { None, ReadBlock, WriteBlock, ReadStream, WriteStream };
@@ -258,7 +260,12 @@ static void SDMMC_set_clock(int freq)
 
 void init_sd()
 {
-    s.Schedule(Thread::Create("sd", sd_thread, nullptr, true, 5, kernel_proc));
+    uint32_t data_start = (uint32_t)&_ssdt_data;
+    uint32_t data_end = (uint32_t)&_esdt_data;
+
+    s.Schedule(Thread::Create("sd", sd_thread, nullptr, true, 5, kernel_proc, 
+        Either, InvalidMemregion(),
+        MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS)));
 }
 
 void sd_reset()
@@ -659,26 +666,6 @@ void sd_reset()
     }
     tfer_inprogress = false;
     sd_ready = true;
-
-
-    // Now, test IDMA read of first 32 kB
-    auto dbuf = memblk_allocate(32*1024, MemRegionType::AXISRAM);
-    SEGGER_RTT_printf(0, "sd_test: loading to %x\n", dbuf.address);
-    SDMMC1->DCTRL = 0;
-    SDMMC1->DLEN = 32*1024;
-    SDMMC1->DCTRL = 
-        SDMMC_DCTRL_DTDIR |
-        (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
-    SDMMC1->CMD = 0;
-    SDMMC1->CMD = SDMMC_CMD_CMDTRANS;
-    SDMMC1->IDMABASE0 = dbuf.address;
-    SDMMC1->IDMACTRL = SDMMC_IDMA_IDMAEN;
-    ret = sd_issue_command(18, resp_type::R1, 0x0 * (is_hc ? 1 : 512), nullptr, true);
-    SEGGER_RTT_printf(0, "sd_test: resp: %d\n", ret);
-
-    while(!(SDMMC1->STA & SDMMC_STA_DATAEND));
-    SEGGER_RTT_printf(0, "sd_test: done\n");
-    SDMMC1->ICR = SDMMC_ICR_DATAENDC;
 }
 
 // sd thread function
@@ -742,6 +729,7 @@ void sd_thread(void *param)
                 }
             }
 
+            sdt_ready.Reset();
             auto ret = sd_issue_command(cmd_id, resp_type::R1, sdr.block_start * (is_hc ? 1 : 512), nullptr, true);
 
             if(ret != 0)
@@ -784,11 +772,11 @@ int sd_perform_transfer_async(const sd_request &req)
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read)
 {
-    SRAM4RegionAllocator<Condition> ralloc;
-    auto cond_loc = ralloc.allocate(1);
-    if(!cond_loc)
+    SRAM4RegionAllocator<SimpleSignal> ralloc;
+    auto cond = ralloc.allocate(1);
+    if(!cond)
         return -3;
-    auto cond = new(cond_loc) Condition();
+    new(cond) SimpleSignal();
 
     SRAM4RegionAllocator<int> ialloc;
     auto ret = ialloc.allocate(1);
@@ -812,7 +800,7 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     auto send_ret = sd_perform_transfer_async(req);
     if(send_ret)
     {
-        cond->~Condition();
+        cond->~SimpleSignal();
         ralloc.deallocate(cond, 1);
         ialloc.deallocate(ret, 1);
         return send_ret;
@@ -827,7 +815,7 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
 
     int cret = *ret;
 
-    cond->~Condition();
+    cond->~SimpleSignal();
     ralloc.deallocate(cond, 1);
     ialloc.deallocate(ret, 1);
 
