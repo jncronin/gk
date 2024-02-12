@@ -6,10 +6,13 @@
 #include "osqueue.h"
 #include "osmutex.h"
 #include "SEGGER_RTT.h"
+#include "scheduler.h"
 
 #define DEBUG_SD    1
 
 extern Spinlock s_rtt;
+extern Scheduler s;
+extern Process kernel_proc;
 
 #define SDCLK   192000000
 
@@ -47,8 +50,8 @@ static constexpr pin sd_pins[] =
 };
 
 
-__attribute__((section(".sram4"))) FixedQueue<uint32_t, 32> sdt_queue;
-
+__attribute__((section(".sram4"))) FixedQueue<sd_request, 32> sdt_queue;
+__attribute__((section(".sram4"))) Condition sdt_ready;
 
 enum class resp_type { None, R1, R1b, R2, R3, R4, R4b, R5, R6, R7 };
 enum class data_dir { None, ReadBlock, WriteBlock, ReadStream, WriteStream };
@@ -58,6 +61,8 @@ enum StatusFlags { CCRCFAIL = 1, DCRCFAIL = 2, CTIMEOUT = 4, DTIMEOUT = 8,
     DATAEND = 0x100, /* reserved */ DBCKEND = 0x400, DABORT = 0x800,
     DPSMACT = 0x1000, CPSMACT = 0x2000, TXFIFOHE = 0x4000, RXFIFOHF = 0x8000,
     TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000 };
+
+static void sd_thread(void *param);
 
 static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, uint32_t *resp = nullptr, 
     bool with_data = false,
@@ -253,6 +258,7 @@ static void SDMMC_set_clock(int freq)
 
 void init_sd()
 {
+    s.Schedule(Thread::Create("sd", sd_thread, nullptr, true, 5, kernel_proc));
 }
 
 void sd_reset()
@@ -421,7 +427,7 @@ void sd_reset()
     rca = cmd3_ret & 0xffff0000;
 
     // We know the card is an SD card so can cope with 25 MHz
-    //SDMMC_set_clock(SDCLK_DS);
+    SDMMC_set_clock(SDCLK_DS);
 
     // Get card status - should be in data transfer mode, standby state
     ret = sd_issue_command(13, resp_type::R1, rca, resp);
@@ -630,6 +636,7 @@ void sd_reset()
             if(fg1_setting == 1)
             {
                 SDMMC_set_clock(48000000);
+                SDMMC1->DTIMER = timeout_ns / clock_period_ns;
                 {
                     CriticalGuard cg(s_rtt);
                     SEGGER_RTT_printf(0, "init_sd: set to high speed mode\n");
@@ -652,491 +659,203 @@ void sd_reset()
     }
     tfer_inprogress = false;
     sd_ready = true;
-}
-
-#if 0
-int sd_read_block_async(uint32_t block_addr, void *ptr)
-{
-    // only one thread can use SD at a time
-    while(!xSemaphoreTake(sd_sem, portMAX_DELAY));
-    sd_task = xTaskGetCurrentTaskHandle();
-    sd_status = 0;
-    sd_multi = false;
-
-    while(!sd_ready)
-        sd_reset();
-
-    SDMMC1->ICR = 0xffffffff;
-    
-    SDMMC1->DLEN = 512;
-
-    //while(SDMMC1->STA & (SDMMC_STA_TXACT | SDMMC_STA_RXACT | SDMMC_STA_CMDACT));
-
-    // set up DMA
-    while(DMA2_Stream3->CR & DMA_SxCR_EN);
-
-#ifdef DEBUG_SD
-    ITM_SendChar('\n');
-    ITM_SendChar('r');
-#endif
-
-    DMA2->LIFCR = DMA_LIFCR_CDMEIF3 |
-        DMA_LIFCR_CTEIF3 |
-        DMA_LIFCR_CHTIF3 |
-        DMA_LIFCR_CTCIF3;
-    DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t)(uintptr_t)&SDMMC1->FIFO;
-    DMA2_Stream3->M0AR = (uint32_t)(uintptr_t)ptr;
-    //DMA2_Stream3->NDTR = 128;
-    DMA2_Stream3->CR = DMA_SxCR_CHSEL_2 |
-        DMA_SxCR_MSIZE_1 |
-        DMA_SxCR_PSIZE_1 |
-        DMA_SxCR_MINC |
-        DMA_SxCR_MBURST_0 |
-        DMA_SxCR_PBURST_0 |
-        DMA_SxCR_PFCTRL |
-        DMA_SxCR_TEIE /*|
-        DMA_SxCR_TCIE*/;
-    DMA2_Stream3->FCR = DMA_SxFCR_FTH_Msk |
-        DMA_SxFCR_DMDIS /*|
-        DMA_SxFCR_FEIE */;
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-
-    SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
-        SDMMC_DCTRL_DTDIR |
-        (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos) |
-        SDMMC_DCTRL_DMAEN;
-
-    auto ret = sd_issue_command(17, resp_type::R1, block_addr * (is_hc ? 1 : 512));
-    if(ret != 0)
-    {
-        xSemaphoreGive(sd_sem);
-        return ret;
-    }    
-
-    return 0;
-}
-
-int sd_read_blocks_async(uint32_t block_addr, uint32_t block_count, void *ptr)
-{
-    // only one thread can use SD at a time
-    while(!xSemaphoreTake(sd_sem, portMAX_DELAY));
-    sd_task = xTaskGetCurrentTaskHandle();
-    sd_status = 0;
-    sd_multi = true;
-
-    while(!sd_ready)
-        sd_reset();
-
-    SDMMC1->ICR = 0xffffffff;
-    
-    SDMMC1->DLEN = 512 * block_count;
-
-    while(SDMMC1->STA & (SDMMC_STA_TXACT | SDMMC_STA_RXACT | SDMMC_STA_CMDACT));
-
-    // set up DMA
-    while(DMA2_Stream3->CR & DMA_SxCR_EN);
-
-#ifdef DEBUG_SD
-    ITM_SendChar('\n');
-    ITM_SendChar('R');
-#endif
-
-    DMA2->LIFCR = DMA_LIFCR_CDMEIF3 |
-        DMA_LIFCR_CTEIF3 |
-        DMA_LIFCR_CHTIF3 |
-        DMA_LIFCR_CTCIF3;
-    DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t)(uintptr_t)&SDMMC1->FIFO;
-    DMA2_Stream3->M0AR = (uint32_t)(uintptr_t)ptr;
-    //DMA2_Stream3->NDTR = 128 * block_count;
-    DMA2_Stream3->CR = DMA_SxCR_CHSEL_2 |
-        DMA_SxCR_MSIZE_1 |
-        DMA_SxCR_PSIZE_1 |
-        DMA_SxCR_MINC |
-        DMA_SxCR_MBURST_0 |
-        DMA_SxCR_PBURST_0 |
-        DMA_SxCR_PFCTRL |
-        DMA_SxCR_TEIE /*|
-        DMA_SxCR_TCIE*/;
-    DMA2_Stream3->FCR = DMA_SxFCR_FTH_Msk |
-        DMA_SxFCR_DMDIS /*|
-        DMA_SxFCR_FEIE*/;
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-
-    SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
-        SDMMC_DCTRL_DTDIR |
-        (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos) |
-        SDMMC_DCTRL_DMAEN;
-
-    auto ret = sd_issue_command(18, resp_type::R1, block_addr * (is_hc ? 1 : 512));
-    if(ret != 0)
-    {
-        xSemaphoreGive(sd_sem);
-        return ret;
-    }    
-
-    return 0;
-}
-
-int sd_write_block_async(uint32_t block_addr, const void *ptr)
-{
-    // only one thread can use SD at a time
-    while(!xSemaphoreTake(sd_sem, portMAX_DELAY));
-    sd_task = xTaskGetCurrentTaskHandle();
-    sd_status = 0;
-    sd_multi = false;
-
-    while(!sd_ready)
-        sd_reset();
-
-    SDMMC1->ICR = 0xffffffff;
-    
-    SDMMC1->DLEN = 512;
-
-    while(SDMMC1->STA & (SDMMC_STA_TXACT | SDMMC_STA_RXACT | SDMMC_STA_CMDACT));
-
-    // set up DMA
-    while(DMA2_Stream3->CR & DMA_SxCR_EN);
-
-#ifdef DEBUG_SD
-    ITM_SendChar('\n');
-    ITM_SendChar('w');
-#endif
-
-    DMA2->LIFCR = DMA_LIFCR_CDMEIF3 |
-        DMA_LIFCR_CTEIF3 |
-        DMA_LIFCR_CHTIF3 |
-        DMA_LIFCR_CTCIF3;
-    DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t)(uintptr_t)&SDMMC1->FIFO;
-    DMA2_Stream3->M0AR = (uint32_t)(uintptr_t)ptr;
-    //DMA2_Stream3->NDTR = 128;
-    DMA2_Stream3->CR = DMA_SxCR_CHSEL_2 |
-        DMA_SxCR_MSIZE_1 |
-        DMA_SxCR_PSIZE_1 |
-        DMA_SxCR_MINC |
-        DMA_SxCR_MBURST_0 |
-        DMA_SxCR_PBURST_0 |
-        DMA_SxCR_PFCTRL |
-        DMA_SxCR_TEIE |
-        DMA_SxCR_DIR_0 /*|
-        DMA_SxCR_TCIE*/;
-    DMA2_Stream3->FCR = DMA_SxFCR_FTH_Msk |
-        DMA_SxFCR_DMDIS /*|
-        DMA_SxFCR_FEIE */;
-    SCB_CleanDCache_by_Addr((uint32_t *)ptr, 512);
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-
-    auto ret = sd_issue_command(24, resp_type::R1, block_addr * (is_hc ? 1 : 512));
-    if(ret != 0)
-    {
-        xSemaphoreGive(sd_sem);
-        return ret;
-    }
-
-    SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
-        //SDMMC_DCTRL_DTDIR |
-        (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos) |
-        SDMMC_DCTRL_DMAEN;
 
 
-    return 0;
-}
-
-int sd_write_blocks_async(uint32_t block_addr, uint32_t block_count, const void *ptr)
-{
-    // only one thread can use SD at a time
-    while(!xSemaphoreTake(sd_sem, portMAX_DELAY));
-    sd_task = xTaskGetCurrentTaskHandle();
-    sd_status = 0;
-    sd_multi = true;
-
-    while(!sd_ready)
-        sd_reset();
-
-    SDMMC1->ICR = 0xffffffff;
-    
-    SDMMC1->DLEN = 512 * block_count;
-
-    while(SDMMC1->STA & (SDMMC_STA_TXACT | SDMMC_STA_RXACT | SDMMC_STA_CMDACT));
-
-    // set up DMA
-    while(DMA2_Stream3->CR & DMA_SxCR_EN);
-
-#ifdef DEBUG_SD
-    ITM_SendChar('\n');
-    ITM_SendChar('W');
-#endif
-
-    DMA2->LIFCR = DMA_LIFCR_CDMEIF3 |
-        DMA_LIFCR_CTEIF3 |
-        DMA_LIFCR_CHTIF3 |
-        DMA_LIFCR_CTCIF3;
-    DMA2_Stream3->CR = 0;
-    DMA2_Stream3->PAR = (uint32_t)(uintptr_t)&SDMMC1->FIFO;
-    DMA2_Stream3->M0AR = (uint32_t)(uintptr_t)ptr;
-    //DMA2_Stream3->NDTR = 128 * block_count;
-    DMA2_Stream3->CR = DMA_SxCR_CHSEL_2 |
-        DMA_SxCR_MSIZE_1 |
-        DMA_SxCR_PSIZE_1 |
-        DMA_SxCR_MINC |
-        DMA_SxCR_MBURST_0 |
-        DMA_SxCR_PBURST_0 |
-        DMA_SxCR_PFCTRL |
-        DMA_SxCR_TEIE |
-        DMA_SxCR_DIR_0 /*|
-        DMA_SxCR_TCIE */;
-    DMA2_Stream3->FCR = DMA_SxFCR_FTH_Msk |
-        DMA_SxFCR_DMDIS /*|
-        DMA_SxFCR_FEIE*/;
-    
-    SCB_CleanDCache_by_Addr((uint32_t *)ptr, 512 * block_count);
-    DMA2_Stream3->CR |= DMA_SxCR_EN;
-
-    auto ret = sd_issue_command(25, resp_type::R1, block_addr * (is_hc ? 1 : 512));
-    if(ret != 0)
-    {
-        xSemaphoreGive(sd_sem);
-        return ret;
-    }    
-
-    SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
-        //SDMMC_DCTRL_DTDIR |
-        (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos) |
-        SDMMC_DCTRL_DMAEN;
-
-    return 0;
-}
-
-
-
-int sd_read_block_poll(uint32_t block_addr, void *ptr)
-{
-    // only one thread can use SD at a time
-    while(!xSemaphoreTake(sd_sem, portMAX_DELAY));
-    sd_task = xTaskGetCurrentTaskHandle();
-    sd_status = 0;
-    sd_multi = false;
-
-    SDMMC1->ICR = 0xffffffff;
-    SDMMC1->DLEN = 512;
-    SDMMC1->DCTRL = SDMMC_DCTRL_DTEN |
+    // Now, test IDMA read of first 32 kB
+    auto dbuf = memblk_allocate(32*1024, MemRegionType::AXISRAM);
+    SEGGER_RTT_printf(0, "sd_test: loading to %x\n", dbuf.address);
+    SDMMC1->DCTRL = 0;
+    SDMMC1->DLEN = 32*1024;
+    SDMMC1->DCTRL = 
         SDMMC_DCTRL_DTDIR |
         (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
+    SDMMC1->CMD = 0;
+    SDMMC1->CMD = SDMMC_CMD_CMDTRANS;
+    SDMMC1->IDMABASE0 = dbuf.address;
+    SDMMC1->IDMACTRL = SDMMC_IDMA_IDMAEN;
+    ret = sd_issue_command(18, resp_type::R1, 0x0 * (is_hc ? 1 : 512), nullptr, true);
+    SEGGER_RTT_printf(0, "sd_test: resp: %d\n", ret);
 
-    uint32_t ret = 0;
-    
-    sd_issue_command(17, resp_type::R1, block_addr * (is_hc ? 1 : 512));
-    for(int i = 0; i < 512/4; i++)
+    while(!(SDMMC1->STA & SDMMC_STA_DATAEND));
+    SEGGER_RTT_printf(0, "sd_test: done\n");
+    SDMMC1->ICR = SDMMC_ICR_DATAENDC;
+}
+
+// sd thread function
+void sd_thread(void *param)
+{
+    (void)param;
+
+    while(true)
     {
-        while(!(SDMMC1->STA & SDMMC_STA_RXDAVL))
+        if(!sd_ready)
         {
+            sd_reset();
+            continue;
+        }
+
+        sd_request sdr;
+        if(sdt_queue.Pop(&sdr))
+        {
+            if(sdr.block_count == 0 || !sdr.completion_event || !sdr.mem_address)
+            {
+                if(sdr.res_out)
+                {
+                    *sdr.res_out = -2;
+                }
+                continue;
+            }
+
+            SDMMC1->DCTRL = 0;
+            SDMMC1->DLEN = sdr.block_count * 512;
+            SDMMC1->DCTRL = 
+                (sdr.is_read ? SDMMC_DCTRL_DTDIR : 0UL) |
+                (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
+            SDMMC1->CMD = 0;
+            SDMMC1->CMD = SDMMC_CMD_CMDTRANS;
+            SDMMC1->IDMABASE0 = (uint32_t)(uintptr_t)sdr.mem_address;
+            SDMMC1->IDMACTRL = SDMMC_IDMA_IDMAEN;
+
+            int cmd_id = 0;
+            if(sdr.block_count == 1)
+            {
+                sd_multi = false;
+                if(sdr.is_read)
+                {
+                    cmd_id = 17;
+                }
+                else
+                {
+                    cmd_id = 24;
+                }
+            }
+            else
+            {
+                sd_multi = true;
+                if(sdr.is_read)
+                {
+                    cmd_id = 18;
+                }
+                else
+                {
+                    cmd_id = 25;
+                }
+            }
+
+            auto ret = sd_issue_command(cmd_id, resp_type::R1, sdr.block_start * (is_hc ? 1 : 512), nullptr, true);
+
+            if(ret != 0)
+            {
+                sd_ready = false;
+                if(sdr.res_out)
+                {
+                    *sdr.res_out = ret;
+                }
+            }
+
+            sdt_ready.Wait();
+            if(sdr.res_out)
+            {
+                *sdr.res_out = sd_status;
+            }
             if(sd_status)
             {
-                xSemaphoreGive(sd_sem);
-                return sd_status;
+                sd_ready = false;
+            }
+            else if(sd_multi)
+            {
+                // send stop command
+                sd_issue_command(12, resp_type::R1b);
+                sd_multi = false;
+            }
+            if(sdr.completion_event)
+            {
+                sdr.completion_event->Signal();
             }
         }
-        ((uint32_t *)ptr)[i] = SDMMC1->FIFO;
     }
-
-    while(!xTaskNotifyWaitIndexed(2, 0, 0, &ret, portMAX_DELAY));
-    SDMMC1->ICR = 0xffffffff;
-    printf("sd_block_read %lx block_addr %lx ptr %lx status %lx\n", ret, block_addr,
-        (uint32_t)(uintptr_t)ptr, SDMMC1->STA);
-    xSemaphoreGive(sd_sem);
-
-    return 0;
 }
 
-int sd_read_blocks(uint32_t block_addr, uint32_t block_count, void *ptr)
+int sd_perform_transfer_async(const sd_request &req)
 {
-    if(((uint32_t)(uintptr_t)ptr) & 0x1f)
-    {
-        printf("sd unaligned buffer\n");
-        while(true);
-    }
-
-    auto ret = sd_read_blocks_async(block_addr, block_count, ptr);
-    if(ret != 0)
-    {
-        printf("sd_read_blocks_async failed %d\n", ret);
-        return ret;
-    }
-
-    while(!xTaskNotifyWaitIndexed(2, 0, 0, (uint32_t *)&ret, portMAX_DELAY));
-    SCB_InvalidateDCache_by_Addr((uint32_t *)ptr, 512 * block_count);
-    SDMMC1->ICR = 0xffffffff;
-    if(ret)
-    {
-        printf("sd_blocks_read %x block_addr %lx ptr %lx status %lx\n", ret, block_addr,
-            (uint32_t)(uintptr_t)ptr, SDMMC1->STA);
-    }
-    else if(sd_ready)
-        sd_issue_command(12, resp_type::R1b);   // stop
-    xSemaphoreGive(sd_sem);
-
-    return ret;
+    return sdt_queue.Push(req) ? 0 : -1;
 }
 
-int sd_write_blocks(uint32_t block_addr, uint32_t block_count, const void *ptr)
+int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
+    void *mem_address, bool is_read)
 {
-    if(((uint32_t)(uintptr_t)ptr) & 0x1f)
+    SRAM4RegionAllocator<Condition> ralloc;
+    auto cond_loc = ralloc.allocate(1);
+    if(!cond_loc)
+        return -3;
+    auto cond = new(cond_loc) Condition();
+
+    SRAM4RegionAllocator<int> ialloc;
+    auto ret = ialloc.allocate(1);
+    if(!ret)
+        return -5;
+    *ret = -4;
+
+    sd_request req;
+    req.block_start = block_start;
+    req.block_count = block_count;
+    req.mem_address = mem_address;
+    req.is_read = is_read;
+    req.completion_event = cond;
+    req.res_out = ret;
+
+    if(!is_read)
     {
-        printf("sd unaligned buffer\n");
-        while(true);
+        SCB_CleanDCache_by_Addr((uint32_t *)mem_address, block_count * 512);
     }
 
-    auto ret = sd_write_blocks_async(block_addr, block_count, ptr);
-    if(ret != 0)
+    auto send_ret = sd_perform_transfer_async(req);
+    if(send_ret)
     {
-        printf("sd_write_blocks_async failed %d\n", ret);
-        return ret;
+        cond->~Condition();
+        ralloc.deallocate(cond, 1);
+        ialloc.deallocate(ret, 1);
+        return send_ret;
+    }
+    
+    cond->Wait();
+
+    if(is_read)
+    {
+        SCB_InvalidateDCache_by_Addr((uint32_t *)mem_address, block_count * 512);
     }
 
-    while(!xTaskNotifyWaitIndexed(2, 0, 0, (uint32_t *)&ret, portMAX_DELAY));
-    SDMMC1->ICR = 0xffffffff;
-    if(ret)
-    {
-        printf("sd_blocks_write %x block_addr %lx ptr %lx status %lx\n", ret, block_addr,
-            (uint32_t)(uintptr_t)ptr, SDMMC1->STA);
-    }
-    else if(sd_ready)
-        sd_issue_command(12, resp_type::R1b);   // stop
-    xSemaphoreGive(sd_sem);
+    int cret = *ret;
 
-    return ret;
+    cond->~Condition();
+    ralloc.deallocate(cond, 1);
+    ialloc.deallocate(ret, 1);
+
+    return cret;
 }
 
-int sd_read_block(uint32_t block_addr, void *ptr)
-{
-    //uint32_t unaligned_buf[128];
-    auto obuf = ptr;
-
-    //printf("sd_block_read start addr %lx status %lx\n", block_addr, SDMMC1->STA);
-
-    if(((uint32_t)(uintptr_t)obuf) & 0x1f)
-    {
-        printf("sd unaligned buffer\n");
-        while(true);
-    }
-        //ptr = unaligned_buf;
-
-    auto ret = sd_read_block_async(block_addr, ptr);
-    if(ret != 0)
-    {
-        printf("sd_read_block_async failed %d\n", ret);
-        return ret;
-    }
-
-    while(!xTaskNotifyWaitIndexed(2, 0, 0, (uint32_t *)&ret, portMAX_DELAY));
-    SCB_InvalidateDCache_by_Addr((uint32_t *)ptr, 512);
-    SDMMC1->ICR = 0xffffffff;
-    if(ret)
-    {
-        printf("sd_block_read %x block_addr %lx ptr %lx status %lx\n", ret, block_addr,
-            (uint32_t)(uintptr_t)ptr, SDMMC1->STA);
-    }
-    xSemaphoreGive(sd_sem);
-
-    /*if(ret == 0 && ((uint32_t)(uintptr_t)obuf) & 0x3)
-    {
-        uint8_t *d = (uint8_t *)obuf;
-        const uint8_t *s = (const uint8_t *)unaligned_buf;
-        for(int i = 0; i < 512; i++)
-            d[i] = s[i];
-    }*/
-    return ret;
-}
-
-int sd_write_block(uint32_t block_addr, const void *ptr)
-{
-    if(((uint32_t)(uintptr_t)ptr) & 0x1f)
-    {
-        printf("sd unaligned buffer\n");
-        while(true);
-    }
-    //uint32_t unaligned_buf[128];
-    auto obuf = ptr;
-
-    //printf("sd_block_read start addr %lx status %lx\n", block_addr, SDMMC1->STA);
-
-    if(((uint32_t)(uintptr_t)obuf) & 0x3)
-    {
-        printf("sd unaligned buffer\n");
-        while(true);
-    }
-        //ptr = unaligned_buf;
-
-    auto ret = sd_write_block_async(block_addr, ptr);
-    if(ret != 0)
-    {
-        printf("sd_write_block_async failed %d\n", ret);
-        return ret;
-    }
-
-    while(!xTaskNotifyWaitIndexed(2, 0, 0, (uint32_t *)&ret, portMAX_DELAY));
-    SDMMC1->ICR = 0xffffffff;
-    if(ret)
-    {
-        printf("sd_block_write %x block_addr %lx ptr %lx status %lx\n", ret, block_addr,
-            (uint32_t)(uintptr_t)ptr, SDMMC1->STA);
-    }
-
-    xSemaphoreGive(sd_sem);
-
-    /*if(ret == 0 && ((uint32_t)(uintptr_t)obuf) & 0x3)
-    {
-        uint8_t *d = (uint8_t *)obuf;
-        const uint8_t *s = (const uint8_t *)unaligned_buf;
-        for(int i = 0; i < 512; i++)
-            d[i] = s[i];
-    }*/
-    return ret;
-}
-#endif
-
-//extern "C" void SDMMC1_IRQHandler() __attribute__((section(".itcm")));
 extern "C" void SDMMC1_IRQHandler()
 {
-#ifdef DEBUG_SD
-    ITM_SendChar('S');
-#endif
-    //printf("SDIO IRQ: %lx\n", SDMMC1->STA);
-    //BaseType_t hpt1 = pdFALSE;
     auto const errors = DCRCFAIL |
         DTIMEOUT |
         TXUNDERR | RXOVERR;
     auto sta = SDMMC1->STA;
     if(sta & errors)
     {
-#ifdef DEBUG_SD
-        ITM_SendChar('e');
-#endif
         sd_status = SDMMC1->STA;
         sd_ready = false;
-        DMA2_Stream3->CR = 0;
-        //xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
+        sdt_ready.Signal();
     }
     else if(sta & DATAEND)
     {
-#ifdef DEBUG_SD
-        ITM_SendChar('c');
-#endif
         sd_status = 0;
-        //xTaskNotifyIndexedFromISR(sd_task, 2, sd_status, eSetValueWithOverwrite, &hpt1);
+        sdt_ready.Signal();
     }
     else
     {
-#ifdef DEBUG_SD
-        ITM_SendChar('u');
-#endif
     }
 
     SDMMC1->ICR = sta & (errors | DATAEND) & 0x4005ff;
-
-    //portYIELD_FROM_ISR(hpt1);
 }
 
 bool sd_get_ready()
