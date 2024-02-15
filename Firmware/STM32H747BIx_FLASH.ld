@@ -84,6 +84,7 @@ SECTIONS
     . = ALIGN(4);
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
+    KEEP(*gk-test*(.data))
     . = ALIGN(4);
   } >FLASH1
 
@@ -126,7 +127,26 @@ SECTIONS
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
 
-    . = ALIGN(4);
+    . = ALIGN(1K);
+    _ssdt_data = .;
+    *(.sdt_data)
+    *(.sdt_data*)
+    _esdt_data = .;
+
+    . = ALIGN(1K);
+    _sext4_data = .;
+    *(.ext4_data)
+    *(.ext4_data*)
+    *liblwext4.a:*(.data)
+    *liblwext4.a:*(.data*)
+    *liblwext4.a:*(.bss)
+    *liblwext4.a:*(.bss*)
+    *libblockdev.a:*(.data)
+    *libblockdev.a:*(.data*)
+    *libblockdev.a:*(.bss)
+    *libblockdev.a:*(.bss*)
+    _eext4_data = .;
+
     _edata = .;        /* define a global symbol at data end */
   } >AXISRAM AT> FLASH1
 
@@ -143,7 +163,7 @@ SECTIONS
     _edtcm_bss = .;         /* define a global symbol at bss end */
   } >DTCM
 
-  .dtcm (NOLOAD) :
+  .dtcm :
   {
     . = ALIGN(4);
     _sdtcm = .;       /* create a global symbol at ccmram start */
@@ -186,13 +206,12 @@ SECTIONS
   } >AXISRAM
 
   /* Initial stack for CM7 */
-  . = ALIGN(4);
-  .cm7_stack (NOLOAD) :
+  .cm7_stack 0x20001000 (NOLOAD)  :
   {
     _scm7_stack = .;
     . = . + 4K;
     _ecm7_stack = .;
-  } >AXISRAM
+  } >DTCM
 
   /* Initial stack for CM4 */
   . = ALIGN(4);
@@ -209,13 +228,22 @@ SECTIONS
   } >SRAM
   
 
-  . = ALIGN(4);
-  .cm4_stack (NOLOAD) :
+  .cm4_stack 0x30001000 (NOLOAD) :
   {
     _scm4_stack = .;
     . = . + 4K;
     _ecm4_stack = .;
   } >SRAM
+
+  . = ALIGN(4);
+  .sram4 :
+  {
+    _ssram4 = .;
+    *(.sram4)
+    *(.sram4*)
+    _esram4 = .;
+  } >SRAM4 AT> FLASH1
+  _ssram4_flash = LOADADDR(.sram4);
 
   /* defines for FreeRTOS MPU */
   PROVIDE(__FLASH_segment_start__ = 0x08000000);
