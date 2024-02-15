@@ -22,8 +22,8 @@ void OnProjectLoad (void) {
   //
   // Dialog-generated settings
   //
-  Project.AddPathSubstitute ("C:/Users/jncro/source/repos/gamekid/Firmware", "$(ProjectDir)");
-  Project.AddPathSubstitute ("c:/users/jncro/source/repos/gamekid/firmware", "$(ProjectDir)");
+  Project.AddPathSubstitute ("C:/Users/jncro/source/repos/gk/Firmware", "$(ProjectDir)");
+  Project.AddPathSubstitute ("c:/users/jncro/source/repos/gk/firmware", "$(ProjectDir)");
   Project.SetDevice ("STM32H747BI_M7");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
@@ -32,7 +32,7 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
-  File.Open ("C:/Users/jncro/source/repos/gamekid/build/gk.elf");
+  File.Open ("C:/Users/jncro/source/repos/gk/build/gk.elf");
 }
 
 /*********************************************************************
