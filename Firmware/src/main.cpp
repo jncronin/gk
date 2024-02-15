@@ -13,6 +13,7 @@
 #include "elf.h"
 #include "btnled.h"
 #include "sd.h"
+#include "ext4_thread.h"
 #include <cstring>
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -40,8 +41,7 @@ int main()
     init_screen();
     init_btnled();
     init_sd();
-
-    sd_reset();
+    init_ext4();
 
     btnled_setcolor(0x020202UL);
 
@@ -302,6 +302,24 @@ void x_thread(void *p)
 
 
 /* The following just to get it to compile */
+extern "C" void *malloc(size_t nbytes)
+{
+    return malloc_region(nbytes, REG_ID_SRAM4);
+}
+extern "C" void *realloc(void *ptr, size_t nbytes)
+{
+    return realloc_region(ptr, nbytes, REG_ID_SRAM4);
+}
+extern "C" void free(void *ptr)
+{
+    free_region(ptr, REG_ID_SRAM4);
+}
+extern "C" void *calloc(size_t nmemb, size_t size)
+{
+    return calloc_region(nmemb, size, REG_ID_SRAM4);
+}
+
+#if 1
 static constexpr uint32_t max_sbrk = 8192;
 __attribute__((section(".sram4"))) static uint8_t malloc_buf[max_sbrk];
 static uint32_t cur_sbrk = 0;
@@ -321,6 +339,7 @@ extern "C" void * _sbrk(int n)
 
     return &malloc_buf[old_brk];
 }
+#endif
 
 __attribute__((section(".sram4"))) volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
 __attribute__((section(".sram4"))) volatile mpu_saved_state mpuregs[8];
