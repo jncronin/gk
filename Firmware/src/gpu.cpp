@@ -6,6 +6,9 @@
 __attribute__((section (".sram4"))) static Condition gpu_ready;
 __attribute__((section (".sram4"))) static FixedQueue<gpu_message, 8> gpu_msg_list;
 
+extern Spinlock s_rtt;
+#include "SEGGER_RTT.h"
+
 void gpu_thread(void *p)
 {
     (void)p;
@@ -20,6 +23,12 @@ void gpu_thread(void *p)
         gpu_message g;
         if(!gpu_msg_list.Pop(&g))
             continue;
+
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "gpu: type: %d, dest_addr: %x, src_addr_color: %x\n",
+                g.type, g.dest_addr, g.src_addr_color);
+        }
         
         switch(g.type)
         {
