@@ -24,11 +24,13 @@ void gpu_thread(void *p)
         if(!gpu_msg_list.Pop(&g))
             continue;
 
+#ifdef GPU_DEBUG
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "gpu: type: %d, dest_addr: %x, src_addr_color: %x\n",
                 g.type, g.dest_addr, g.src_addr_color);
         }
+#endif
         
         switch(g.type)
         {
