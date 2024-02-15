@@ -11,3 +11,6 @@
 	path = Firmware/FreeRTOS-Kernel-STMH7dualcore
 	url = https://github.com/jncronin/FreeRTOS-Kernel-STMH7dualcore.git
 	branch = h7dual
+[submodule "Firmware/lwext4"]
+	path = Firmware/lwext4
+	url = https://github.com/jncronin/lwext4

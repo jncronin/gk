@@ -11,21 +11,16 @@ message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 
 include(cmake/utils.cmake)
 
-project(gk C CXX ASM)
+add_subdirectory(lwext4)
+set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
-set(FRT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel-STMH7dualcore")
+project(gk C CXX ASM)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
-)
-
-file(GLOB FRT_SOURCES CONFIGURE_DEPENDS
-    ${FRT_DIR}/tasks.c
-    ${FRT_DIR}/queue.c
-    ${FRT_DIR}/list.c
-    ${FRT_DIR}/portable/GCC/ARM_CM7_CM4_SMP_MPU/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/gk-test.obj
 )
 
 add_executable(${PROJECT_NAME})
@@ -37,8 +32,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
-        "${FRT_DIR}/include"
-        "${FRT_DIR}/portable/GCC/ARM_CM7_CM4_SMP_MPU"
+        "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
+        "${LWEXT4_GENERATED_DIR}"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -50,7 +45,6 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
-        ${FRT_SOURCES}
 )
 
 set_target_properties(${PROJECT_NAME}
@@ -96,19 +90,22 @@ target_compile_options(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         -lm
+        lwext4
 )
 
 target_link_options(${PROJECT_NAME}
     PRIVATE
         -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map,--cref
-        -Wl,--wrap,malloc
-        -Wl,--wrap,_malloc_r
-        -Wl,--wrap,calloc
-        -Wl,--wrap,_calloc_r
-        -Wl,--wrap,realloc
-        -Wl,--wrap,_realloc_r
-        -Wl,--wrap,free
-        -Wl,--wrap,_free_r
+
+
+#        -Wl,--wrap,malloc
+#        -Wl,--wrap,_malloc_r
+#        -Wl,--wrap,calloc
+#        -Wl,--wrap,_calloc_r
+#        -Wl,--wrap,realloc
+#        -Wl,--wrap,_realloc_r
+#        -Wl,--wrap,free
+#        -Wl,--wrap,_free_r
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
