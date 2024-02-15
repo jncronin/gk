@@ -36,6 +36,7 @@ SDT_DATA static volatile bool tfer_inprogress = false;
 SDT_DATA static volatile bool dma_ready = false;
 __attribute__((section(".sram4"))) static volatile uint32_t sd_status = 0;
 SDT_DATA static volatile bool sd_multi = false;
+__attribute__((section(".sram4"))) volatile uint64_t sd_size = 0;
 
 SDT_DATA static uint32_t cmd6_buf[512/32];
 
@@ -458,6 +459,7 @@ void sd_reset()
         SEGGER_RTT_printf(0, "init_sd: CSD: %lx, %lx, %lx, %lx\n", csd[0], csd[1], csd[2], csd[3]);
         SEGGER_RTT_printf(0, "init_sd: sd card size %lu kB\n", sd_get_size() / 1024);
     }
+    sd_size = sd_get_size();
 
     // Select card to put it in transfer state
     ret = sd_issue_command(7, resp_type::R1b, rca, resp);
