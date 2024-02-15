@@ -319,27 +319,11 @@ extern "C" void *calloc(size_t nmemb, size_t size)
     return calloc_region(nmemb, size, REG_ID_SRAM4);
 }
 
-#if 1
-static constexpr uint32_t max_sbrk = 8192;
-__attribute__((section(".sram4"))) static uint8_t malloc_buf[max_sbrk];
-static uint32_t cur_sbrk = 0;
-
 extern "C" void * _sbrk(int n)
 {
-    if(n < 0) n = 0;
-    auto nn = static_cast<uint32_t>(n);
-
-    if((n + cur_sbrk) > max_sbrk)
-    {
-        return (void *)-1;
-    }
-    auto old_brk = cur_sbrk;
-
-    cur_sbrk += nn;
-
-    return &malloc_buf[old_brk];
+    // shouldn't get here
+    while(true);
 }
-#endif
 
 __attribute__((section(".sram4"))) volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
 __attribute__((section(".sram4"))) volatile mpu_saved_state mpuregs[8];
