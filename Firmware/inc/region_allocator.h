@@ -10,6 +10,8 @@ const int REG_ID_SRAM4 = 4;
 
 extern void *malloc_region(size_t n, int reg_id);
 extern void free_region(void *ptr, int reg_id);
+extern void *realloc_region(void *ptr, size_t size, int reg_id);
+extern void *calloc_region(size_t nmemb, size_t size, int reg_id);
 
 template <class T, int reg_id> struct RegionAllocator
 {

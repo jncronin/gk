@@ -86,7 +86,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 #endif
 
         // For now, error here if there are unhandled CMD flags
-        const auto cmd_flags = CCRCFAIL | CTIMEOUT | CMDREND | CMDSENT;
+        const auto cmd_flags = CCRCFAIL | CTIMEOUT | CMDREND | CMDSENT | TXUNDERR | RXOVERR;
 
         if(SDMMC1->STA & cmd_flags)
         {
@@ -771,7 +771,7 @@ int sd_perform_transfer_async(const sd_request &req)
     return sdt_queue.Push(req) ? 0 : -1;
 }
 
-int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
+static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read)
 {
     SRAM4RegionAllocator<SimpleSignal> ralloc;
@@ -821,7 +821,38 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     ralloc.deallocate(cond, 1);
     ialloc.deallocate(ret, 1);
 
+    if(cret != 0)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x\n",
+            is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret);
+    }
+
     return cret;
+}
+
+int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
+    void *mem_address, bool is_read, int nretries)
+{
+    int ret = 0;
+    for(int i = 0; i < nretries; i++)
+    {
+        ret = sd_perform_transfer_int(block_start, block_count,
+            mem_address, is_read);
+        
+        if(ret == 0)
+        {
+            return 0;
+        }
+    }
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x\n",
+            is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, ret);
+    }
+
+    return ret;
 }
 
 extern "C" void SDMMC1_IRQHandler()

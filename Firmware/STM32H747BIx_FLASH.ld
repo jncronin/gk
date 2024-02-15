@@ -133,6 +133,20 @@ SECTIONS
     *(.sdt_data*)
     _esdt_data = .;
 
+    . = ALIGN(1K);
+    _sext4_data = .;
+    *(.ext4_data)
+    *(.ext4_data*)
+    *liblwext4.a:*(.data)
+    *liblwext4.a:*(.data*)
+    *liblwext4.a:*(.bss)
+    *liblwext4.a:*(.bss*)
+    *libblockdev.a:*(.data)
+    *libblockdev.a:*(.data*)
+    *libblockdev.a:*(.bss)
+    *libblockdev.a:*(.bss*)
+    _eext4_data = .;
+
     _edata = .;        /* define a global symbol at data end */
   } >AXISRAM AT> FLASH1
 

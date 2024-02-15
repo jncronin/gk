@@ -7,6 +7,8 @@ extern "C"
 {
     void *dlmalloc(size_t n);
     void dlfree(void *p);
+    void *dlcalloc(size_t nmemb, size_t size);
+    void *dlrealloc(void *ptr, size_t size);
 }
 
 void *malloc_region(size_t n, int reg_id)
@@ -36,6 +38,36 @@ void free_region(void *p, int reg_id)
 
         default:
             return;
+    }
+}
+
+void *realloc_region(void *ptr, size_t n, int reg_id)
+{
+    switch(reg_id)
+    {
+        case REG_ID_SRAM4:
+            {
+                CriticalGuard cg(sl_sram4);
+                return dlrealloc(ptr, n);
+            }
+
+        default:
+            return nullptr;
+    }
+}
+
+void *calloc_region(size_t nmemb, size_t size, int reg_id)
+{
+    switch(reg_id)
+    {
+        case REG_ID_SRAM4:
+            {
+                CriticalGuard cg(sl_sram4);
+                return dlcalloc(nmemb, size);
+            }
+
+        default:
+            return nullptr;
     }
 }
 
