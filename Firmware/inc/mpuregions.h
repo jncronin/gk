@@ -30,6 +30,18 @@ constexpr const uint32_t N_NC_NS =      0b001000;
 constexpr const uint32_t N_NC_S =       0b001100;
 constexpr const uint32_t SO_S =         0b000000;
 
+static constexpr uint32_t align_up(uint32_t v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+
 constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     uint32_t length,
     uint32_t reg_id,
@@ -39,6 +51,13 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     uint32_t tex_scb)
 {
     mpu_saved_state ret { 0, 0 };
+
+    // base_addr must be aligned on length
+    uint32_t end = base_addr + length;
+    length = align_up(length);
+    base_addr &= ~(length - 1);
+    length = align_up(end - base_addr);
+
     ret.rbar = (reg_id & 0x7UL) | (1UL << 4) | (base_addr & ~0x1fUL);
 
     // encode size
