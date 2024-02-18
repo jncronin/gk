@@ -123,7 +123,7 @@ constexpr mpu_saved_state mpu_flash = MPUGenerate(0x08000000, 0x200000, 1, true,
 constexpr mpu_saved_state mpu_periph = MPUGenerate(0x40000000, 0x20000000, 2, false,
     MemRegionAccess::RW, MemRegionAccess::NoAccess, DEV_S);
 constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 4, false,
-    MemRegionAccess::RW, MemRegionAccess::RO, SO_S);
+    MemRegionAccess::RW, MemRegionAccess::RO, N_NC_S);
 constexpr mpu_saved_state mpu_sdram = MPUGenerate(0xc0000000, 0x04000000, 5, true,
     MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS);
 

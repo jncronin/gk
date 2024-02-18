@@ -7,6 +7,9 @@ class Thread;
 #include "region_allocator.h"
 #include <string>
 #include "osmutex.h"
+#include "osfile.h"
+
+#define GK_MAX_OPEN_FILES      16
 
 class Process
 {
@@ -23,6 +26,8 @@ class Process
 
         int rc;
         bool for_deletion = false;
+
+        File *open_files[GK_MAX_OPEN_FILES];
 };
 
 

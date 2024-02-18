@@ -253,6 +253,10 @@ void elf_load_memory(const void *e)
         __BKPT();
         while(true);
     }
+    memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
+    proc->open_files[STDIN_FILENO] = new SeggerRTTFile(0, true, false);
+    proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
+    proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
     s.Schedule(Thread::Create("elffile", start, nullptr, true, 8, *proc,
         CPUAffinity::Either, stack,
