@@ -74,6 +74,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         if((p.heap.length - p.brk) < unbytes)
                         {
                             *reinterpret_cast<int *>(r1) = -1;
+                            *reinterpret_cast<int *>(r3) = ENOMEM;
                         }
                         else
                         {
@@ -89,6 +90,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         if(p.brk < unbytes)
                         {
                             *reinterpret_cast<int *>(r1) = -1;
+                            *reinterpret_cast<int *>(r3) = ENOMEM;
                         }
                         else
                         {
@@ -102,7 +104,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_fstat:
             {
-                int ret = syscall_fstat((int)r2, (struct stat *)r3);
+                auto p = reinterpret_cast<struct __syscall_fstat_params *>(r2);
+                int ret = syscall_fstat(p->fd, p->buf, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -110,7 +113,39 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_write:
             {
                 auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
-                int ret = syscall_write(p->file, p->ptr, p->len);
+                int ret = syscall_write(p->file, p->ptr, p->len, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_read:
+            {
+                auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
+                int ret = syscall_read(p->file, p->ptr, p->len, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_isatty:
+            {
+                auto p = reinterpret_cast<int>(r2);
+                int ret = syscall_isatty(p, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_lseek:
+            {
+                auto p = reinterpret_cast<__syscall_lseek_params *>(r2);
+                int ret = syscall_lseek(p->file, p->offset, p->whence, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_open:
+            {
+                auto p = reinterpret_cast<__syscall_open_params *>(r2);
+                int ret = syscall_open(p->name, p->flags, p->mode, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
