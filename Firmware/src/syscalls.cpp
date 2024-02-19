@@ -150,6 +150,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_close:
+            {
+                auto f = reinterpret_cast<int>(r2);
+                int ret = syscall_close(f, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         case __syscall_exit:
             {
                 auto rc = reinterpret_cast<int>(r1);
@@ -173,6 +181,21 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 p.for_deletion = true;
 
                 Yield();
+            }
+            break;
+
+        case WaitSimpleSignal:
+            {
+                auto t = GetCurrentThreadForCore();
+                CriticalGuard cg(t->sl);
+                auto wss_ret = t->ss.WaitOnce();
+                if(wss_ret)
+                {
+                    auto p = reinterpret_cast<WaitSimpleSignal_params *>(r2);
+                    *p = t->ss_p;
+                    t->ss.Reset();
+                }
+                *reinterpret_cast<uint32_t *>(r1) = wss_ret;
             }
             break;
 

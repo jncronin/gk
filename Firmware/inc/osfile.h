@@ -15,8 +15,9 @@ class File
         virtual off_t Lseek(off_t offset, int whence, int *_errno) = 0;
 
         virtual int Isatty(int *_errno);
+        virtual int Close(int *_errno);
 
-        virtual ~File();
+        virtual ~File() = default;
 };
 
 class SeggerRTTFile : public File
@@ -48,10 +49,9 @@ class LwextFile : public File
         int Fstat(struct stat *buf, int *_errno);
         off_t Lseek(off_t offset, int whence, int *_errno);
 
-        ~LwextFile();
-        LwextFile(ext4_file fildes, std::string fname);
+        int Close(int *_errno);
 
-    protected:
+        LwextFile(ext4_file fildes, std::string fname);
         ext4_file f;
         std::string fname;
 };

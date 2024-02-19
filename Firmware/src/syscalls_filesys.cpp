@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <ext4.h>
 
+#include "ext4_thread.h"
+
 extern Spinlock s_rtt;
 
 int syscall_fstat(int file, struct stat *st, int *_errno)
@@ -77,7 +79,8 @@ off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
 int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 {
     // try and get free process file handle
-    auto p = GetCurrentThreadForCore()->p;
+    auto t = GetCurrentThreadForCore();
+    auto p = t->p;
     CriticalGuard cg(p.sl);
     int fd = -1;
     for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
@@ -111,52 +114,18 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         return fd;
     }
 
-    // try and load in file system
-    ext4_file f;
-    char fmode[8];
-
-    // convert newlib flags to lwext4 flags
-    auto pflags = flags & (O_RDONLY | O_WRONLY | O_CREAT | O_TRUNC | O_APPEND | O_RDWR);
-    switch(pflags)
+    // use lwext4
+    auto lwf = new LwextFile({ 0 }, pathname);
+    p.open_files[fd] = lwf;
+    auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
+        p, fd, t->ss, t->ss_p);
+    if(ext4_send_message(msg))
+        return -2;  // deferred return
+    else
     {
-        case O_RDONLY:
-            strcpy(fmode, "r");
-            break;
-
-        case O_WRONLY | O_CREAT | O_TRUNC:
-            strcpy(fmode, "w");
-            break;
-
-        case O_WRONLY | O_CREAT | O_APPEND:
-            strcpy(fmode, "a");
-            break;
-
-        case O_RDWR:
-            strcpy(fmode, "r+");
-            break;
-
-        case O_RDWR | O_CREAT | O_TRUNC:
-            strcpy(fmode, "w+");
-            break;
-
-        case O_RDWR | O_CREAT | O_APPEND:
-            strcpy(fmode, "a+");
-            break;
-
-        default:
-            *_errno = EINVAL;
-            return -1;
+        *_errno = ENOMEM;
+        return -1;
     }
-    
-    auto extret = ext4_fopen(&f, pathname, fmode);
-    if(extret == EOK)
-    {
-        p.open_files[fd] = new LwextFile(f, pathname);
-        return fd;
-    }
-
-    *_errno = extret;
-    return -1;
 }
 
 int syscall_close(int file, int *_errno)
@@ -169,8 +138,12 @@ int syscall_close(int file, int *_errno)
         return -1;
     }
 
-    delete p.open_files[file];
-    p.open_files[file] = nullptr;
+    auto ret = p.open_files[file]->Close(_errno);
+    if(ret == 0 || ret == -2)
+    {
+        delete p.open_files[file];
+        p.open_files[file] = nullptr;
+    }
 
-    return 0;
+    return ret;
 }
