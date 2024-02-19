@@ -52,6 +52,8 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
 {
     mpu_saved_state ret { 0, 0 };
 
+    if(length < 32) length = 32;
+
     // base_addr must be aligned on length
     uint32_t end = base_addr + length;
     length = align_up(length);
