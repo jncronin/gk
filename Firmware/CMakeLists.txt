@@ -21,6 +21,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gk-test.obj
+    ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src/*.c
 )
 
 add_executable(${PROJECT_NAME})
@@ -34,6 +35,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
 )
 
 target_compile_definitions(${PROJECT_NAME}
