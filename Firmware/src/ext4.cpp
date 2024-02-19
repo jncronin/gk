@@ -328,6 +328,9 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_blksize = 512;
     buf.st_blocks = (f->fsize + 511) / 512; // round up
 
+    SetMPUForCurrentThread(MPUGenerate((uint32_t)(uintptr_t)msg.params.fstat_params.st,
+        sizeof(struct stat), 5, false, MemRegionAccess::RW,
+        MemRegionAccess::NoAccess, N_NC_NS));
     *msg.params.fstat_params.st = buf;
     msg.ss_p->ival1 = 0;
     msg.ss->Signal(thread_signal_lwext);
