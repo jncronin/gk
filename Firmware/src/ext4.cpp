@@ -9,8 +9,11 @@
 #include "memblk.h"
 #include "scheduler.h"
 #include "sd.h"
-
+#include "osqueue.h"
 #include "SEGGER_RTT.h"
+#include "ext4_thread.h"
+
+#include <sys/stat.h>
 
 extern Spinlock s_rtt;
 
@@ -40,6 +43,9 @@ EXT4_DATA static ext4_blockdev sd_part;
 /* Handle buffer allocations to return regions in AXISRAM */
 EXT4_DATA static uint32_t buf_min = 0xffffffffUL;
 EXT4_DATA static uint32_t buf_max = 0UL;
+
+/* message queue */
+__attribute__((section(".sram4"))) static FixedQueue<ext4_message, 8> ext4_queue;
 
 extern "C" void *ext4_user_buf_alloc(size_t n)
 {
@@ -161,6 +167,209 @@ static bool prepare_ext4()
     }
 }
 
+static void handle_open_message(ext4_message &msg)
+{
+    // try and load in file system
+    ext4_file f;
+    char fmode[8];
+
+    // convert newlib flags to lwext4 flags
+    auto pflags = msg.params.open_params.flags & (O_RDONLY | O_WRONLY | O_CREAT | O_TRUNC | O_APPEND | O_RDWR);
+    switch(pflags)
+    {
+        case O_RDONLY:
+            strcpy(fmode, "r");
+            break;
+
+        case O_WRONLY | O_CREAT | O_TRUNC:
+            strcpy(fmode, "w");
+            break;
+
+        case O_WRONLY | O_CREAT | O_APPEND:
+            strcpy(fmode, "a");
+            break;
+
+        case O_RDWR:
+            strcpy(fmode, "r+");
+            break;
+
+        case O_RDWR | O_CREAT | O_TRUNC:
+            strcpy(fmode, "w+");
+            break;
+
+        case O_RDWR | O_CREAT | O_APPEND:
+            strcpy(fmode, "a+");
+            break;
+
+        default:
+            msg.ss_p->ival1 = -1;
+            msg.ss_p->ival2 = EINVAL;
+            msg.ss->Signal(thread_signal_lwext);
+            return;
+    }
+
+    auto extret = ext4_fopen(&f, msg.params.open_params.pathname, fmode);
+    {
+        CriticalGuard cg(msg.params.open_params.p->sl);
+
+        if(extret == EOK)
+        {
+            auto lwfile = reinterpret_cast<LwextFile *>(
+                msg.params.open_params.p->open_files[msg.params.open_params.f]);
+            lwfile->f = f;
+            msg.ss_p->ival1 = msg.params.open_params.f;
+            msg.ss->Signal(thread_signal_lwext);
+        }
+        else
+        {
+            delete msg.params.open_params.p->open_files[msg.params.open_params.f];
+            msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
+
+            msg.ss_p->ival1 = -1;
+            msg.ss_p->ival2 = extret;
+            msg.ss->Signal(thread_signal_lwext);
+        }
+    }
+}
+
+static void handle_read_message(ext4_message &msg)
+{
+    size_t br;
+    auto extret = ext4_fread(msg.params.rw_params.e4f,
+        msg.params.rw_params.buf, msg.params.rw_params.nbytes,
+        &br);
+    if(extret == EOK)
+    {
+        msg.ss_p->ival1 = static_cast<int>(br);
+        msg.ss->Signal(thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(thread_signal_lwext);
+    }
+}
+
+static void handle_write_message(ext4_message &msg)
+{
+    size_t bw;
+    auto extret = ext4_fwrite(msg.params.rw_params.e4f,
+        msg.params.rw_params.buf, msg.params.rw_params.nbytes,
+        &bw);
+    if(extret == EOK)
+    {
+        msg.ss_p->ival1 = static_cast<int>(bw);
+        msg.ss->Signal(thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(thread_signal_lwext);
+    }
+}
+
+struct timespec lwext_time_to_timespec(uint32_t t)
+{
+    timespec ret;
+    ret.tv_nsec = 0;
+    ret.tv_sec = t;
+    return ret;
+}
+
+static void handle_fstat_message(ext4_message &msg)
+{
+    struct stat buf = { 0 };
+
+    int extret;
+
+    uint32_t t;
+    auto fname = msg.params.fstat_params.pathname;
+    auto f = msg.params.fstat_params.e4f;
+
+    if((extret = ext4_atime_get(fname, &t)) != EOK)
+        goto _err;
+    buf.st_atim = lwext_time_to_timespec(t);
+
+    if((extret = ext4_ctime_get(fname, &t)) != EOK)
+        goto _err;
+    buf.st_ctim = lwext_time_to_timespec(t);
+
+    if((extret = ext4_mtime_get(fname, &t)) != EOK)
+        goto _err;
+    buf.st_mtim = lwext_time_to_timespec(t);
+
+    buf.st_dev = 0;
+    buf.st_ino = f->inode;
+    buf.st_mode = _IFREG;
+    
+    uint32_t mode;
+    if((extret = ext4_mode_get(fname, &mode)) != EOK)
+        goto _err;
+    buf.st_mode |= mode;
+    buf.st_nlink = 1;
+    
+    uint32_t uid;
+    uint32_t gid;
+    if((extret = ext4_owner_get(fname, &uid, &gid)) != EOK)
+        goto _err;
+    buf.st_uid = static_cast<uid_t>(uid);
+    buf.st_gid = static_cast<gid_t>(gid);
+
+    buf.st_rdev = 0;
+    buf.st_size = f->fsize;
+    buf.st_blksize = 512;
+    buf.st_blocks = (f->fsize + 511) / 512; // round up
+
+    *msg.params.fstat_params.st = buf;
+    msg.ss_p->ival1 = 0;
+    msg.ss->Signal(thread_signal_lwext);
+    
+    return;
+
+_err:
+    msg.ss_p->ival1 = -1;
+    msg.ss_p->ival2 = extret;
+    msg.ss->Signal(thread_signal_lwext);
+}
+
+void handle_lseek_message(ext4_message &msg)
+{
+    auto f = msg.params.lseek_params.e4f;
+    auto extret = ext4_fseek(f,
+        msg.params.lseek_params.offset,
+        msg.params.lseek_params.whence);
+    if(extret == EOK)
+    {
+        msg.ss_p->ival1 = f->fpos;
+        msg.ss->Signal();
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(thread_signal_lwext);
+    }
+}
+
+void handle_close_message(ext4_message &msg)
+{
+    auto &f = msg.params.close_params.e4f;
+    auto extret = ext4_fclose(&f);
+    if(extret == EOK)
+    {
+        msg.ss_p->ival1 = 0;
+        msg.ss->Signal(thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(thread_signal_lwext);
+    }
+}
+
 void ext4_thread(void *_p)
 {
     (void)_p;
@@ -168,32 +377,38 @@ void ext4_thread(void *_p)
     // test lwext4
     prepare_ext4();
 
-    ext4_file f;
-    if(ext4_fopen(&f, "/README", "r") == EOK)
-    {
-        auto fs = ext4_fsize(&f);
-
-        char *strbuf = (char *)alloca(fs + 1);
-        memset(strbuf, 0, fs + 1);
-        size_t br;
-        ext4_fread(&f, strbuf, fs, &br);
-        ext4_fclose(&f);
-
-        {
-            CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "/README: %s\n", strbuf);
-        }
-    }
-    else
-    {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: couldn't open README\n");
-    }
-
-
     while(true)
     {
+        ext4_message msg;
+        if(!ext4_queue.Pop(&msg))
+            continue;
+        
+        switch(msg.type)
+        {
+            case ext4_message::msg_type::Open:
+                handle_open_message(msg);
+                break;
 
+            case ext4_message::msg_type::Read:
+                handle_read_message(msg);
+                break;
+
+            case ext4_message::msg_type::Write:
+                handle_write_message(msg);
+                break;
+
+            case ext4_message::msg_type::Fstat:
+                handle_fstat_message(msg);
+                break;
+
+            case ext4_message::msg_type::Lseek:
+                handle_lseek_message(msg);
+                break;
+
+            case ext4_message::msg_type::Close:
+                handle_close_message(msg);
+                break;
+        }
     }
 }
 
@@ -262,4 +477,9 @@ int sd_close(struct ext4_blockdev *bdev)
 {
     (void)bdev;
     return EOK;
+}
+
+bool ext4_send_message(ext4_message &msg)
+{
+    return ext4_queue.Push(msg);
 }

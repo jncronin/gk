@@ -12,6 +12,9 @@
 #include "mpuregions.h"
 
 #include "process.h"
+#include "syscalls.h"
+
+static constexpr uint32_t thread_signal_lwext = 0x1;
 
 class Thread
 {
@@ -37,6 +40,10 @@ class Thread
         int chosen_for_core = 0;
 
         Process &p;
+
+        /* Used for waiting on inter-process RPC returns */
+        SimpleSignal ss;
+        WaitSimpleSignal_params ss_p;
 
         Thread(Process &owning_process);
 

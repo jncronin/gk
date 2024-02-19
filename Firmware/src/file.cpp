@@ -6,7 +6,8 @@ int File::Isatty(int *_errno)
     return 0;
 }
 
-File::~File()
+int File::Close(int *_errno)
 {
-
+    (void)_errno;
+    return 0;
 }
