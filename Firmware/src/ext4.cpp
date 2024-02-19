@@ -235,6 +235,9 @@ static void handle_open_message(ext4_message &msg)
 static void handle_read_message(ext4_message &msg)
 {
     size_t br;
+    SetMPUForCurrentThread(MPUGenerate((uint32_t)(uintptr_t)msg.params.rw_params.buf,
+        msg.params.rw_params.nbytes, 5, false, MemRegionAccess::RW,
+        MemRegionAccess::NoAccess, N_NC_NS));
     auto extret = ext4_fread(msg.params.rw_params.e4f,
         msg.params.rw_params.buf, msg.params.rw_params.nbytes,
         &br);
@@ -254,6 +257,9 @@ static void handle_read_message(ext4_message &msg)
 static void handle_write_message(ext4_message &msg)
 {
     size_t bw;
+    SetMPUForCurrentThread(MPUGenerate((uint32_t)(uintptr_t)msg.params.rw_params.buf,
+        msg.params.rw_params.nbytes, 5, false, MemRegionAccess::RO,
+        MemRegionAccess::NoAccess, N_NC_NS));
     auto extret = ext4_fwrite(msg.params.rw_params.e4f,
         msg.params.rw_params.buf, msg.params.rw_params.nbytes,
         &bw);

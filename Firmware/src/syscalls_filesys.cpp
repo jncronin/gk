@@ -13,7 +13,7 @@ extern Spinlock s_rtt;
 
 int syscall_fstat(int file, struct stat *st, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
     if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
@@ -26,7 +26,7 @@ int syscall_fstat(int file, struct stat *st, int *_errno)
 
 int syscall_write(int file, char *buf, int nbytes, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
     if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
@@ -39,7 +39,7 @@ int syscall_write(int file, char *buf, int nbytes, int *_errno)
 
 int syscall_read(int file, char *buf, int nbytes, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
     if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
@@ -52,7 +52,7 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
 
 int syscall_isatty(int file, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
     if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
@@ -65,7 +65,7 @@ int syscall_isatty(int file, int *_errno)
 
 off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
     if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
@@ -80,7 +80,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 {
     // try and get free process file handle
     auto t = GetCurrentThreadForCore();
-    auto p = t->p;
+    auto &p = t->p;
     CriticalGuard cg(p.sl);
     int fd = -1;
     for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
@@ -130,7 +130,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 
 int syscall_close(int file, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
     if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
