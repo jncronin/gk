@@ -57,6 +57,8 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     length = align_up(length);
     base_addr &= ~(length - 1);
     length = align_up(end - base_addr);
+    base_addr &= ~(length - 1);             // Recheck alignment as length may have increased in previous step
+    length = align_up(end - base_addr);
 
     ret.rbar = (reg_id & 0x7UL) | (1UL << 4) | (base_addr & ~0x1fUL);
 
