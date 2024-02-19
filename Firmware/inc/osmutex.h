@@ -42,12 +42,13 @@ class SimpleSignal
 {
     protected:
         Thread *waiting_thread = nullptr;
-        bool is_signalled = false;
+        uint32_t signal_value = 0;
         Spinlock sl;
 
     public:
-        bool Wait();
-        void Signal();
+        uint32_t Wait();
+        uint32_t WaitOnce();
+        void Signal(uint32_t val = 0x1);
         void Reset();
 };
 

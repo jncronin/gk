@@ -57,21 +57,31 @@ void Spinlock::unlock()
     __DMB();
 }
 
-bool SimpleSignal::Wait()
+uint32_t SimpleSignal::WaitOnce()
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     if(waiting_thread && t != waiting_thread)
         return false;
-    if(is_signalled)
-        return true;
+    if(signal_value)
+        return signal_value;
     waiting_thread = t;
     t->is_blocking = true;
     Yield();
-    return true;
+    return signal_value;    
 }
 
-void SimpleSignal::Signal()
+uint32_t SimpleSignal::Wait()
+{
+    while(true)
+    {
+        auto sv = WaitOnce();
+        if(sv)
+            return sv;
+    }
+}
+
+void SimpleSignal::Signal(uint32_t val)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -83,7 +93,7 @@ void SimpleSignal::Signal()
             hpt = true;
         waiting_thread = nullptr;
     }
-        is_signalled = true;
+    signal_value = true;
     if(hpt)
     {
         Yield();
@@ -94,7 +104,7 @@ void SimpleSignal::Reset()
 {
     CriticalGuard cg(sl);
     waiting_thread = nullptr;
-    is_signalled = false;
+    signal_value = 0;
 }
 
 void Condition::Wait()
