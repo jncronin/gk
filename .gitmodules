@@ -14,3 +14,6 @@
 [submodule "Firmware/lwext4"]
 	path = Firmware/lwext4
 	url = https://github.com/jncronin/lwext4
+[submodule "Firmware/tinyusb"]
+	path = Firmware/tinyusb
+	url = https://github.com/hathach/tinyusb.git
