@@ -149,7 +149,6 @@ static bool prepare_ext4()
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: recover failed %d\n", r);
-        return false;
     }
 
     r = ext4_journal_start("/");
