@@ -87,6 +87,21 @@ class BaseQueue
             return true;
         }
 
+        bool TryPop(void *v)
+        {
+            CriticalGuard cg(sl);
+            if(empty())
+            {
+                return false;
+            }
+            else
+            {
+                memcpy(v, &(reinterpret_cast<char *>(_b)[_rptr * sz]), sz);
+                _rptr = ptr_plus_one(_rptr);
+                return true;
+            }
+        }
+
         bool Pop(void *v)
         {
             if(!v)
