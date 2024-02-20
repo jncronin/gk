@@ -6,6 +6,7 @@
 
 #include "osmutex.h"
 #include "SEGGER_RTT.h"
+#include "thread.h"
 
 extern Spinlock s_rtt;
 
@@ -50,11 +51,29 @@ void init_usb()
 
     // Clock USB
     RCC->D2CCIP2R |= RCC_D2CCIP2R_USBSEL_Msk;   // HSI48
+
+    // Disable voltage detect
+    USB1_OTG_HS->GCCFG &= ~USB_OTG_GCCFG_VBDEN;
+
+    // B-peripheral session valid override enable
+    USB1_OTG_HS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOEN;
+    USB1_OTG_HS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOVAL;
+
+    // Force device mode
+    USB1_OTG_HS->GUSBCFG &= ~USB_OTG_GUSBCFG_FHMOD;
+    USB1_OTG_HS->GUSBCFG |= USB_OTG_GUSBCFG_FDMOD;
 }
 
 extern "C" void OTG_HS_IRQHandler()
 {
-    tud_int_handler(0);
+    // tud_int_handler edits stuff in out private data space, so get access to it
+    uint32_t data_start = (uint32_t)&_stusb_data;
+    uint32_t data_end = (uint32_t)&_etusb_data;
+
+    auto old_mpu6 = GetCurrentThreadForCore()->tss.mpuss[5];
+    SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS));
+    tud_int_handler(1);
+    SetMPUForCurrentThread(old_mpu6);
 }
 
 void usb_task(void *pvParams)
