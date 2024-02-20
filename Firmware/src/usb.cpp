@@ -2,6 +2,12 @@
 #include "pins.h"
 
 #include "tusb.h"
+#include "mpuregions.h"
+
+#include "osmutex.h"
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
 
 /* Using USB_OTG_HS1 in FS mode with integrated PHY */
 static constexpr pin usb_pins[] = {
@@ -9,6 +15,8 @@ static constexpr pin usb_pins[] = {
     { GPIOB, 15, 12 },
 };
 constexpr pin usb_vbus = { GPIOB, 13 };
+
+char _stusb_data, _etusb_data;
 
 void init_usb()
 {
@@ -53,6 +61,12 @@ void usb_task(void *pvParams)
 {
     (void)pvParams;
 
+    uint32_t data_start = (uint32_t)&_stusb_data;
+    uint32_t data_end = (uint32_t)&_etusb_data;
+    SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false,
+        RW, NoAccess, WBWA_NS));
+
+
     init_usb();
     tusb_init();
 
@@ -62,4 +76,15 @@ void usb_task(void *pvParams)
     {
         tud_task();
     }
+}
+
+extern "C" int rtt_printf_wrapper(const char *format, ...)
+{
+    CriticalGuard cg(s_rtt);
+    int r;
+    va_list ParamList;
+    va_start(ParamList, format);
+    r = SEGGER_RTT_vprintf(0, format, &ParamList);
+    va_end(ParamList);
+    return r;
 }

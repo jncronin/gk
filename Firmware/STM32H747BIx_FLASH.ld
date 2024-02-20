@@ -122,10 +122,21 @@ SECTIONS
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
   {
+
     . = ALIGN(4);
     _sdata = .;        /* create a global symbol at data start */
-    *(.data)           /* .data sections */
-    *(.data*)          /* .data* sections */
+
+    . = ALIGN(1K);
+    _stusb_data = .;
+    *(.tusb_data)
+    *(.tusb_data*)
+    *(.tusb_bss)
+    *(.tusb_bss*)
+    *libtusb.a:*(.data)
+    *libtusb.a:*(.data*)
+    *libtusb.a:*(.bss)
+    *libtusb.a:*(.bss*)
+    _etusb_data = .;
 
     . = ALIGN(1K);
     _ssdt_data = .;
@@ -146,6 +157,10 @@ SECTIONS
     *libblockdev.a:*(.bss)
     *libblockdev.a:*(.bss*)
     _eext4_data = .;
+
+    . = ALIGN(1K);
+    *(.data)           /* .data sections */
+    *(.data*)          /* .data* sections */
 
     _edata = .;        /* define a global symbol at data end */
   } >AXISRAM AT> FLASH1

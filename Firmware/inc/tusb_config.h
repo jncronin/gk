@@ -59,6 +59,8 @@
 
 #define CFG_TUD_MSC_EP_BUFSIZE  512
 
+#define CFG_TUSB_DEBUG_PRINTF   rtt_printf_wrapper
+
 #ifdef __cplusplus
  }
 #endif
