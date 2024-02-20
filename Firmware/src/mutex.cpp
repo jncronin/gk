@@ -143,3 +143,45 @@ void Condition::Signal()
         Yield();
     }
 }
+
+void Mutex::lock()
+{
+    while(!try_lock());
+}
+
+bool Mutex::try_lock()
+{
+    CriticalGuard cg(sl);
+    auto t = GetCurrentThreadForCore();
+    if(owner == nullptr)
+    {
+        owner = t;
+        return true;
+    }
+    else
+    {
+        t->is_blocking = true;
+        t->blocking_on = owner;
+        waiting_threads.push_back(t);
+        Yield();
+        return false;
+    }
+}
+
+bool Mutex::unlock()
+{
+    CriticalGuard cg(sl);
+    auto t = GetCurrentThreadForCore();
+    if(owner != t)
+    {
+        return false;
+    }
+    for(auto wt : waiting_threads)
+    {
+        wt->is_blocking = false;
+        wt->blocking_on = nullptr;
+    }
+    waiting_threads.clear();
+    owner = nullptr;
+    return true;
+}

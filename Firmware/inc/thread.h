@@ -34,6 +34,7 @@ class Thread
         MemRegion stack;
 
         bool is_blocking = false;
+        Thread *blocking_on = nullptr;
 
         Spinlock sl;
         int running_on_core = 0;

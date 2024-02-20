@@ -20,11 +20,14 @@ class Spinlock
 class Mutex
 {
     protected:
-        Thread *owner;
+        Thread *owner = nullptr;
+        Spinlock sl;
+        SRAM4Vector<Thread *> waiting_threads;
 
     public:
         void lock();
-        void unlock();
+        bool try_lock();
+        bool unlock();
 };
 
 class Condition
