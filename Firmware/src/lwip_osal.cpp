@@ -118,14 +118,15 @@ err_t sys_mbox_trypost_fromisr(sys_mbox_t *mbox, void *msg)
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 {
-    auto tout_time = clock_cur_ms() + (uint64_t)timeout;
+    auto now = clock_cur_ms();
+    auto tout_time = now + (uint64_t)timeout;
     auto q = reinterpret_cast<Queue *>(mbox->mbx);
     do
     {
         auto ret = q->TryPop(msg);
         if(ret)
         {
-            return ERR_OK;
+            return clock_cur_ms() - now;
         }
         Yield();
     } while(clock_cur_ms() < tout_time);
