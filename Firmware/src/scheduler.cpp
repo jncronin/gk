@@ -81,6 +81,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         {
             auto iter = (basei + cur_idx + 1) % vsize;
             auto cval = tlist[i].v.v[iter];
+            cval = get_blocker(cval);
             {
                 CriticalGuard cg2(cval->sl);
                 if(cval->running_on_core || cval->chosen_for_core)
@@ -103,6 +104,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         {
             auto iter = (basei + cur_idx + 1) % vsize;
             auto cval = tlist[i].v.v[iter];
+            cval = get_blocker(cval);
             {
                 CriticalGuard cg2(cval->sl);
                 if(cval->running_on_core || cval->chosen_for_core)
@@ -141,4 +143,15 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
 
     // shouldn't get here
     while(true);
+}
+
+Thread *Scheduler::get_blocker(Thread *t)
+{
+    while(true)
+    {
+        CriticalGuard cg(t->sl);
+        if(t->blocking_on == nullptr)
+            return t;
+        t = t->blocking_on;
+    }
 }

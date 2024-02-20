@@ -29,6 +29,9 @@ class Scheduler
         LockedThreadVector sleeping_tasks;
         LockedThreadVector blocking_tasks;
 
+        /* Follows the chain of 'blocking_on' to allow priority escalation */
+        Thread *get_blocker(Thread *t);
+
     public:
         Scheduler();
         Scheduler(const Scheduler &) = delete;
