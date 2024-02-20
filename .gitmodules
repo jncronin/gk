@@ -17,3 +17,6 @@
 [submodule "Firmware/tinyusb"]
 	path = Firmware/tinyusb
 	url = https://github.com/hathach/tinyusb.git
+[submodule "Firmware/lwip"]
+	path = Firmware/lwip
+	url = https://github.com/lwip-tcpip/lwip.git
