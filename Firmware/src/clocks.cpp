@@ -2,7 +2,7 @@
 
 #include "clocks.h"
 
-uint32_t SystemCoreClock;
+__attribute__((section(".sram4"))) uint32_t SystemCoreClock;
 
 void init_clocks()
 {
