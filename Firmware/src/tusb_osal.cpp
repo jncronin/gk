@@ -2,9 +2,9 @@
 #include "osqueue.h"
 #include "osmutex.h"
 
-osal_queue_t osal_queue_create(osal_queue_def_t qd)
+osal_queue_t osal_queue_create(osal_queue_def_t *qd)
 {
-    auto ret = new Queue(qd.depth, qd.item_sz);
+    auto ret = new Queue(qd->depth, qd->item_sz);
     return ret;
 }
 
@@ -12,6 +12,16 @@ bool osal_queue_send(osal_queue_t qhdl, void const * data, bool in_isr)
 {
     (void)in_isr;
     return reinterpret_cast<Queue *>(qhdl)->Push(data);
+}
+
+bool osal_queue_receive(osal_queue_t qhdl, void* data, uint32_t msec)
+{
+    return reinterpret_cast<Queue *>(qhdl)->Pop(data);
+}
+
+bool osal_queue_empty(osal_queue_t qhdl)
+{
+    return reinterpret_cast<Queue *>(qhdl)->empty();
 }
 
 osal_mutex_t osal_mutex_create(osal_mutex_def_t* mdef)
