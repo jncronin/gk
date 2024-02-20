@@ -22,4 +22,31 @@
 #define DEFAULT_ACCEPTMBOX_SIZE       32
 #define DEFAULT_UDP_RECVMBOX_SIZE       32
 
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void sys_sl_lock(uint32_t *sl);
+void sys_sl_unlock(uint32_t *sl);
+uint32_t sys_disable_interrupts();
+void sys_restore_interrupts(uint32_t cpsr);
+#ifdef __cplusplus
+}
+#endif
+
+#define SYS_ARCH_DECL_PROTECT(lev) uint32_t lev; \
+    __attribute__((section(".sram4"))) static uint32_t lev##__sl
+
+#define SYS_ARCH_PROTECT(lev) \
+    lev = sys_disable_interrupts(); \
+    sys_sl_lock(& lev##__sl )
+
+#define SYS_ARCH_UNPROTECT(lev) \
+    sys_sl_unlock(& lev##__sl ); \
+    sys_restore_interrupts(lev)
+
+
+
+
 #endif

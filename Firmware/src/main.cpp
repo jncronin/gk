@@ -16,6 +16,7 @@
 #include "ext4_thread.h"
 #include <cstring>
 #include "usb.h"
+#include "lwip/tcpip.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -63,6 +64,8 @@ int main()
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
     s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
     s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, 5, kernel_proc));
+
+    tcpip_init(nullptr, nullptr);
 
     // Prepare systick
     SysTick->CTRL = 0;

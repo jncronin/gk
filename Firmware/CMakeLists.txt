@@ -81,6 +81,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/lwip/src/include"
 )
 
 target_compile_definitions(${PROJECT_NAME}
