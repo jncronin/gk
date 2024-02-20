@@ -16,5 +16,6 @@ enum clock_cpu_speed
 bool clock_set_cpu(clock_cpu_speed speed);
 
 void delay_ms(uint64_t nms);
+uint64_t clock_cur_ms();
 
 #endif
