@@ -1,5 +1,6 @@
 #include "tusb.h"
 #include "stm32h7xx.h"
+#include "mpuregions.h"
 
 #define USB_VID     0xdeed
 #define USB_PID     0x474b
@@ -76,6 +77,23 @@ TUSB_DATA char const *string_desc_arr[] =
 // Invoked when received GET STRING DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
 TUSB_BSS static uint16_t _desc_str[32];
+TUSB_BSS static char chip_id_str[32];
+
+TUSB_DATA static char hexchars[] = "0123456789ABCDEF";
+
+static void u8_to_hex(char *dest, uint32_t v)
+{
+  *dest++ = hexchars[(v >> 8) & 0xf];
+  *dest = hexchars[v & 0xf];
+}
+static void u32_to_hex(char *dest, uint32_t v)
+{
+  u8_to_hex(&dest[0], (v >> 24) & 0xff);
+  u8_to_hex(&dest[2], (v >> 16) & 0xff);
+  u8_to_hex(&dest[4], (v >> 8) & 0xff);
+  u8_to_hex(&dest[6], v & 0xff);
+}
+
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
   (void) langid;
@@ -97,13 +115,12 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     if(index == 3)
     {
+        SetMPUForCurrentThread(MPUGenerate(UID_BASE, 32, 7, false, RO, NoAccess, DEV_S));
         // use 96-bit chip ID instead
-        static char chip_id_str[32];
-        snprintf(chip_id_str, 31, "%8lX%8lX%8lX",
-            *(volatile uint32_t *)UID_BASE,
-            *(volatile uint32_t *)(UID_BASE + 4),
-            *(volatile uint32_t *)(UID_BASE + 8));
-        chip_id_str[31] = 0;
+        u32_to_hex(&chip_id_str[0], *(volatile uint32_t *)UID_BASE);
+        u32_to_hex(&chip_id_str[8], *(volatile uint32_t *)(UID_BASE + 4));
+        u32_to_hex(&chip_id_str[16], *(volatile uint32_t *)(UID_BASE + 8));
+        chip_id_str[24] = 0;
 
         str = chip_id_str;
     }
