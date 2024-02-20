@@ -2,6 +2,8 @@
 
 #include "clocks.h"
 
+uint32_t SystemCoreClock;
+
 void init_clocks()
 {
     /* Enable clock to the SYSCFG registers */
@@ -180,6 +182,7 @@ bool clock_set_cpu(clock_cpu_speed speed)
             RCC->D1CFGR = (0UL << RCC_D1CFGR_D1CPRE_Pos) |
                 (4UL << RCC_D1CFGR_D1PPRE_Pos) |
                 (8UL << RCC_D1CFGR_HPRE_Pos);
+            SystemCoreClock = 384000000;
             break;
             
         case clock_cpu_speed::cpu_192_192:
@@ -188,6 +191,7 @@ bool clock_set_cpu(clock_cpu_speed speed)
             RCC->D1CFGR = (8UL << RCC_D1CFGR_D1CPRE_Pos) |
                 (4UL << RCC_D1CFGR_D1PPRE_Pos) |
                 (0UL << RCC_D1CFGR_HPRE_Pos);
+            SystemCoreClock = 192000000;
             break;
 
         case clock_cpu_speed::cpu_96_96:
@@ -196,6 +200,7 @@ bool clock_set_cpu(clock_cpu_speed speed)
             RCC->D1CFGR = (9UL << RCC_D1CFGR_D1CPRE_Pos) |
                 (4UL << RCC_D1CFGR_D1PPRE_Pos) |
                 (0UL << RCC_D1CFGR_HPRE_Pos);
+            SystemCoreClock = 96000000;
             break;
 
         case clock_cpu_speed::cpu_48_48:
@@ -204,6 +209,7 @@ bool clock_set_cpu(clock_cpu_speed speed)
             RCC->D1CFGR = (10UL << RCC_D1CFGR_D1CPRE_Pos) |
                 (4UL << RCC_D1CFGR_D1PPRE_Pos) |
                 (0UL << RCC_D1CFGR_HPRE_Pos);
+            SystemCoreClock = 48000000;
             break;
     }
 
