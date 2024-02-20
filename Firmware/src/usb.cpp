@@ -56,6 +56,8 @@ void usb_task(void *pvParams)
     init_usb();
     tusb_init();
 
+    NVIC_EnableIRQ(OTG_HS_IRQn);
+
     while(true)
     {
         tud_task();
