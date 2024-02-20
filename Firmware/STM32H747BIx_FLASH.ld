@@ -159,6 +159,19 @@ SECTIONS
     _eext4_data = .;
 
     . = ALIGN(1K);
+    _slwip_data = .;
+    *(.lwip_data)
+    *(.lwip_data*)
+    *(.lwip_bss)
+    *(.lwip_bss*)
+    *liblwipcore.a:*(.data)
+    *liblwipcore.a:*(.data*)
+    *liblwipcore.a:*(.bss)
+    *liblwipcore.a:*(.bss*)
+    _elwip_data = .;
+
+
+    . = ALIGN(1K);
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
 
