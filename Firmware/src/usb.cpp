@@ -53,15 +53,19 @@ void init_usb()
     RCC->D2CCIP2R |= RCC_D2CCIP2R_USBSEL_Msk;   // HSI48
 
     // Disable voltage detect
-    USB1_OTG_HS->GCCFG &= ~USB_OTG_GCCFG_VBDEN;
+    USB1_OTG_HS->GCCFG |= USB_OTG_GCCFG_VBDEN;
 
     // B-peripheral session valid override enable
-    USB1_OTG_HS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOEN;
-    USB1_OTG_HS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOVAL;
+    //USB1_OTG_HS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOEN;
+    //USB1_OTG_HS->GOTGCTL |= USB_OTG_GOTGCTL_BVALOVAL;
 
     // Force device mode
     USB1_OTG_HS->GUSBCFG &= ~USB_OTG_GUSBCFG_FHMOD;
     USB1_OTG_HS->GUSBCFG |= USB_OTG_GUSBCFG_FDMOD;
+
+    // Enable USB power supervisor
+    PWR->CR3 |= PWR_CR3_USB33DEN;
+    while(!(PWR->CR3 & PWR_CR3_USB33RDY));
 }
 
 extern "C" void OTG_HS_IRQHandler()
