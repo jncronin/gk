@@ -39,6 +39,8 @@ enum
 {
     ITF_NUM_CDC = 0,
     ITF_NUM_CDC_DATA,
+    ITF_NUM_ETH,
+    ITH_NUM_ETH_DATA,
     ITF_NUM_TOTAL
 };
 
@@ -49,13 +51,18 @@ enum
 #define EPNUM_MSC_OUT     0x03
 #define EPNUM_MSC_IN      0x83
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
+#define EPNUM_ETH_NOTIF   0x84
+#define EPNUM_ETH_OUT     0x05
+#define EPNUM_ETH_IN      0x85
+
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RNDIS_DESC_LEN)
 
 TUSB_DATA uint8_t desc_fs_configuration[] =
 {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0, 500),
 
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64)
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
+    TUD_RNDIS_DESCRIPTOR(ITF_NUM_ETH, 5, EPNUM_ETH_NOTIF, 8, EPNUM_ETH_OUT, EPNUM_ETH_IN, CFG_TUD_NET_ENDPOINT_SIZE)
 };
 
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
@@ -72,6 +79,7 @@ TUSB_DATA char const *string_desc_arr[] =
     "gk",
     "123456",                           // use chip ID here
     "Terminal",
+    "GKNetwork"
 };
 
 // Invoked when received GET STRING DESCRIPTOR request
