@@ -6,13 +6,20 @@
 #include "osmutex.h"
 #include "thread.h"
 #include <queue>
+#include <cstring>
 
 template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
 
-template <typename T, int nitems> class FixedQueue
+class BaseQueue
 {
+    public:
+        BaseQueue(void *buf, int _nitems, size_t item_size) : _b(buf), nitems(_nitems), sz(item_size) {}
+
     protected:
-        T _b[nitems];
+        void *_b;
+        int nitems;
+        size_t sz;
+
         Spinlock sl;
         int _wptr = 0;
         int _rptr = 0;
@@ -54,18 +61,20 @@ template <typename T, int nitems> class FixedQueue
             return ptr_plus_one(_wptr) == _rptr;
         }
 
-        bool Push(const T& v)
+        bool Push(const void *v)
         {
             CriticalGuard cg(sl);
             if(full())
                 return false;
-            _b[_wptr] = v;
+
+            memcpy(&(reinterpret_cast<char *>(_b)[_wptr * sz]), v, sz);
+            //_b[_wptr] = v;
             _wptr = ptr_plus_one(_wptr);
             signal_waiting();
             return true;
         }
 
-        bool Peek(T *v)
+        bool Peek(void *v)
         {
             if(!v)
                 return false;
@@ -73,10 +82,12 @@ template <typename T, int nitems> class FixedQueue
             CriticalGuard cg(sl);
             if(empty())
                 return false;
-            return _b[_rptr];
+
+            memcpy(v, &(reinterpret_cast<char *>(_b)[_rptr * sz]), sz);
+            return true;
         }
 
-        bool Pop(T *v)
+        bool Pop(void *v)
         {
             if(!v)
                 return false;
@@ -104,7 +115,7 @@ template <typename T, int nitems> class FixedQueue
                     }
                     else
                     {
-                        *v = _b[_rptr];
+                        memcpy(v, &(reinterpret_cast<char *>(_b)[_rptr * sz]), sz);
                         _rptr = ptr_plus_one(_rptr);
                         return true;
                     }
@@ -112,6 +123,40 @@ template <typename T, int nitems> class FixedQueue
                 __DMB();
             }
         }
+
+};
+
+template <typename T, int _nitems> class FixedQueue : public BaseQueue
+{
+    public:
+        FixedQueue() : BaseQueue(buf, _nitems, sizeof(T)) {}
+
+        bool Push(const T& v)
+        {
+            return BaseQueue::Push(&v);
+        }
+
+    protected:
+        T buf[_nitems];
+};
+
+class Queue : public BaseQueue
+{
+    public:
+        Queue(int _nitems, size_t item_size) : BaseQueue(nullptr, _nitems, item_size)
+        {
+            buf = malloc_region(_nitems * item_size, REG_ID_SRAM4);
+            _b = buf;
+        }
+
+        ~Queue()
+        {
+            if(buf)
+                free_region(buf, REG_ID_SRAM4);
+        }
+
+    protected:
+        void *buf = nullptr;
 };
 
 #endif
