@@ -21,8 +21,32 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gk-test.obj
+)
+
+file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src/*.c
 )
+
+add_library(tusb)
+target_include_directories(tusb
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
+)
+target_compile_definitions(tusb
+    PRIVATE
+        STM32H747xx
+        CORE_CM7
+)
+
+target_sources(tusb
+    PRIVATE
+        ${TUSB_SOURCES}
+)
+
 
 add_executable(${PROJECT_NAME})
 
@@ -93,6 +117,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         -lm
         lwext4
+        tusb
 )
 
 target_link_options(${PROJECT_NAME}

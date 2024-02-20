@@ -6,8 +6,11 @@
 #define USB_BCD     0x0200
 #define DEVICE_BCD  0x0100
 
+#define TUSB_DATA __attribute__((section(".tusb_data")))
+#define TUSB_BSS __attribute__((section(".tusb_bss")))
+
 // device descriptor
-tusb_desc_device_t desc_device =
+TUSB_DATA tusb_desc_device_t desc_device =
 {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
@@ -47,7 +50,7 @@ enum
 
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
 
-uint8_t const desc_fs_configuration[] =
+TUSB_DATA uint8_t desc_fs_configuration[] =
 {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0, 500),
 
@@ -61,7 +64,7 @@ uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 }
 
 // String descriptors
-char const *string_desc_arr[] =
+TUSB_DATA char const *string_desc_arr[] =
 {
     (const char[]) { 0x09, 0x04 },      // supported language English
     "JC",
@@ -72,7 +75,7 @@ char const *string_desc_arr[] =
 
 // Invoked when received GET STRING DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-static uint16_t _desc_str[32];
+TUSB_BSS static uint16_t _desc_str[32];
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
   (void) langid;
