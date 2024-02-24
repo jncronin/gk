@@ -58,7 +58,21 @@ class LwextFile : public File
 
 // TODO: pipe
 
-// TODO: socket
+// socket
+class SocketFile : public File
+{
+    public:
+        ssize_t Write(const char *buf, size_t count, int *_errno);
+        ssize_t Read(char *buf, size_t count, int *_errno);
 
+        int Fstat(struct stat *buf, int *_errno);
+        off_t Lseek(off_t offset, int whence, int *_errno);
+
+        int Close(int *_errno);
+
+        SocketFile(int _lwip_fildes);
+
+        int lwip_fildes;
+};
 
 #endif
