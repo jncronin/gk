@@ -22,28 +22,30 @@ function task_get_name(t)
     return namestr;
 }
 
-function blocking_on(t, cur_str)
+function blocking_on(t)
 {
-    cur_str += task_get_name(t);
-
-    if(cur_str.length >= 64)
-    {
-        return cur_str;
-    }
-    
     if(Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
     {
         var t_block = Debug.evaluate("((Thread *)" + t + ")->blocking_on");
         if(t_block)
         {
-            cur_str = blocking_on(t_block, cur_str + " (") + ")";
+            var ret = task_get_name(t_block);
+            var t_block_str = blocking_on(t_block);
+            if(t_block_str != "")
+            {
+                ret += "(" + t_block_str + ")";
+            }
+            return ret;
         }
         else
         {
-            cur_str += " (*)";
+            return "*";
         }
     }
-    return cur_str;
+    else
+    {
+        return "";
+    }
 }
 
 function getregs(t)
@@ -118,7 +120,7 @@ function update()
 
             Threads.add((t - 0x38000000).toString(16), namestr, i,
                 getregs(t)[15].toString(16), t_status,
-                blocking_on(t, ""), t);
+                blocking_on(t), t);
 
             vcur += 4;
         }
