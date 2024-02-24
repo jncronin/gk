@@ -11,5 +11,7 @@ int syscall_isatty(int file, int *_errno);
 off_t syscall_lseek(int file, off_t offset, int whence, int *_errno);
 int syscall_open(const char *pathname, int flags, int mode, int *_errno);
 int syscall_close(int file, int *_errno);
+int syscall_socket(int domain, int type, int protocol, int *_errno);
+int syscall_bind(int sockfd, void *addr, unsigned int addrlen, int *_errno);
 
 #endif
