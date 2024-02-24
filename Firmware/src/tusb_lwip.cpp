@@ -7,6 +7,7 @@
 #include <lwip/ethip6.h>
 #include <lwip/init.h>
 #include <lwip/etharp.h>
+#include "dhserver.h"
 #include <tusb.h>
 #include <SEGGER_RTT.h>
 #include <osmutex.h>
@@ -23,6 +24,25 @@ LWIP_DATA static struct netif netif_data;
 LWIP_DATA static ip4_addr_t ipaddr  = INIT_IP4(192, 168, 7, 1);
 LWIP_DATA static ip4_addr_t netmask = INIT_IP4(255, 255, 255, 0);
 LWIP_DATA static ip4_addr_t gateway = INIT_IP4(0, 0, 0, 0);
+
+LWIP_DATA static dhcp_entry_t entries[] =
+{
+    /* mac ip address                          lease time */
+    { {0}, INIT_IP4(192, 168, 7, 2), 24 * 60 * 60 },
+    { {0}, INIT_IP4(192, 168, 7, 3), 24 * 60 * 60 },
+    { {0}, INIT_IP4(192, 168, 7, 4), 24 * 60 * 60 },
+};
+
+LWIP_DATA static dhcp_config_t dhcp_config =
+{
+    .router = ipaddr,            /* router address (if any) */
+    .port = 67,                                /* listen port */
+    .dns = INIT_IP4(8, 8, 8, 8),               /* dns server (if any) */
+    .listen_on = ipaddr,
+    "usb",                                     /* dns suffix */
+    TU_ARRAY_SIZE(entries),                    /* num entry */
+    entries                                    /* entries */
+};
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
 {
@@ -138,4 +158,6 @@ void tud_network_init_cb(void)
     netif_create_ip6_linklocal_address(netif, 1);
 #endif
     netif_set_default(netif);
+
+    dhserv_init(&dhcp_config);
 }
