@@ -183,3 +183,4 @@ $RECYCLE.BIN/
 build/
 Firmware/gk.jdebug
 Firmware/gk.jdebug.user
+Firmware/src/*.bin
