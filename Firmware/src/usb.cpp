@@ -17,7 +17,7 @@ static constexpr pin usb_pins[] = {
 };
 constexpr pin usb_vbus = { GPIOB, 13 };
 
-char _stusb_data, _etusb_data;
+char _stusb_data, _etusb_data, _slwip_data, _elwip_data;
 
 void tusb_lwip_service_traffic(void);
 
@@ -90,6 +90,12 @@ void usb_task(void *pvParams)
     uint32_t data_end = (uint32_t)&_etusb_data;
     SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false,
         RW, NoAccess, WBWA_NS));
+
+    data_start = (uint32_t)&_slwip_data;
+    data_end = (uint32_t)&_elwip_data;
+    SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 7, false,
+        RW, NoAccess, WBWA_NS));
+
 
 
     init_usb();
