@@ -84,7 +84,19 @@ function getregs(t)
     aRegs[16] = TargetInterface.peekWord(addr);
     addr += 4;
 
-    aRegs[13] = SP;
+    // adjust SP based upon whether FPU regs were pushed
+    if((LR & 0x10) == 0)
+    {
+        addr += 4*18;       // s0-15, fpscr, 1x reserved word
+    }
+
+    // adjust SP based upon whether 8-byte stack alignment occured
+    if(aRegs[16] & (1<<9))
+    {
+        addr += 4;
+    }
+
+    aRegs[13] = addr;
 
     return aRegs;
 }
