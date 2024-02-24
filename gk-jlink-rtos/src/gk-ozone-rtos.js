@@ -8,13 +8,13 @@ function init()
 
 function task_get_name(t)
 {
-    namelen = Debug.evaluate("((Thread *)" + t + ")->name._M_string_length");
-    nameaddr = Debug.evaluate("&((Thread *)" + t + ")->name._M_dataplus._M_p");
-    nameaddr2 = Debug.evaluate("*(uint32_t *)" + nameaddr);
+    var namelen = Debug.evaluate("((Thread *)" + t + ")->name._M_string_length");
+    var nameaddr = Debug.evaluate("&((Thread *)" + t + ")->name._M_dataplus._M_p");
+    var nameaddr2 = Debug.evaluate("*(uint32_t *)" + nameaddr);
 
-    namebytes = TargetInterface.peekBytes(nameaddr2, namelen);
+    var namebytes = TargetInterface.peekBytes(nameaddr2, namelen);
     namestr = "";
-    for(j = 0; j < namelen; j++)
+    for(var j = 0; j < namelen; j++)
     {
         namestr += String.fromCharCode(namebytes[j]);
     }
@@ -33,7 +33,7 @@ function blocking_on(t, cur_str)
     
     if(Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
     {
-        t_block = Debug.evaluate("((Thread *)" + t + ")->blocking_on");
+        var t_block = Debug.evaluate("((Thread *)" + t + ")->blocking_on");
         if(t_block)
         {
             cur_str = blocking_on(t_block, cur_str + " (") + ")";
@@ -49,11 +49,16 @@ function blocking_on(t, cur_str)
 function getregs(t)
 {
     var aRegs = new Array(17);
+    for(var i = 0; i < 17; i++)
+    {
+        aRegs[i] = 0;
+    }
+
     var SP = Debug.evaluate("((Thread *)" + t + ")->tss.psp");
     var addr = Debug.evaluate("&((Thread *)" + t + ")->tss.r4");
 
     /* Get saved values from tss */
-    for(i = 4; i < 12; i++)
+    for(var i = 4; i < 12; i++)
     {
         aRegs[i] = TargetInterface.peekWord(addr);
         addr += 4;
@@ -63,7 +68,7 @@ function getregs(t)
     
     /* Get rest from stack */
     addr = SP;
-    for(i = 0; i < 4; i++)
+    for(var i = 0; i < 4; i++)
     {
         aRegs[i] = TargetInterface.peekWord(addr);
         addr += 4;
@@ -88,20 +93,20 @@ function update()
 
     TargetInterface.message("s at " + Debug.evaluate("&s"));
 
-    for(i = 0; i < 10; i++)
+    for(var i = 0; i < 10; i++)
     {
-        vec = Debug.evaluate("&s.tlist[" + i + "].v.v");
-        vstart = TargetInterface.peekWord(vec);
-        vend = TargetInterface.peekWord(vec + 4);
+        var vec = Debug.evaluate("&s.tlist[" + i + "].v.v");
+        var vstart = TargetInterface.peekWord(vec);
+        var vend = TargetInterface.peekWord(vec + 4);
 
-        vcur = vstart;
+        var vcur = vstart;
         while(vcur < vend)
         {
-            t = TargetInterface.peekWord(vcur);
+            var t = TargetInterface.peekWord(vcur);
             
-            namestr = task_get_name(t);
+            var namestr = task_get_name(t);
 
-            t_status = "waiting";
+            var t_status = "waiting";
             if(Debug.evaluate("((Thread *)" + t + ")->running_on_core"))
             {
                 t_status = "executing";
