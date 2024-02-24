@@ -130,5 +130,6 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
         }
         Yield();
     } while(clock_cur_ms() < tout_time);
+    *msg = nullptr;
     return SYS_ARCH_TIMEOUT;
 }

@@ -46,7 +46,14 @@ void sys_restore_interrupts(uint32_t cpsr);
     sys_sl_unlock(& lev##__sl ); \
     sys_restore_interrupts(lev)
 
+#ifdef __cplusplus
+extern "C"
+#endif
+int rtt_printf_wrapper(const char * format, ...);
 
+#define LWIP_PLATFORM_ASSERT(x) do { rtt_printf_wrapper("Assertion \"%s\" failed at line %d in %s\n", \
+                                     x, __LINE__, __FILE__); __asm__ volatile ("bkpt #0\n");} while(0)
+#define LWIP_PLATFORM_DIAG(x) do { rtt_printf_wrapper x; } while(0)
 
 
 #endif
