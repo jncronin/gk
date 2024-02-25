@@ -11,11 +11,13 @@ class File
         virtual ssize_t Write(const char *buf, size_t count, int *_errno) = 0;
         virtual ssize_t Read(char *buf, size_t count, int *_errno) = 0;
 
-        virtual int Fstat(struct stat *buf, int *_errno) = 0;
-        virtual off_t Lseek(off_t offset, int whence, int *_errno) = 0;
+        virtual int Fstat(struct stat *buf, int *_errno);
+        virtual off_t Lseek(off_t offset, int whence, int *_errno);
 
         virtual int Isatty(int *_errno);
         virtual int Close(int *_errno);
+
+        virtual int Bind(void *addr, unsigned int addrlen, int *_errno);
 
         virtual ~File() = default;
 };
@@ -65,8 +67,10 @@ class SocketFile : public File
         ssize_t Write(const char *buf, size_t count, int *_errno);
         ssize_t Read(char *buf, size_t count, int *_errno);
 
-        int Fstat(struct stat *buf, int *_errno);
-        off_t Lseek(off_t offset, int whence, int *_errno);
+        //int Fstat(struct stat *buf, int *_errno);
+        //off_t Lseek(off_t offset, int whence, int *_errno);
+
+        int Bind(void *addr, unsigned int addrlen, int *_errno);
 
         int Close(int *_errno);
 

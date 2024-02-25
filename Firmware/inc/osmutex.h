@@ -53,6 +53,7 @@ class SimpleSignal
         uint32_t WaitOnce();
         void Signal(uint32_t val = 0x1);
         void Reset();
+        SimpleSignal(uint32_t val = 0);
 };
 
 class UninterruptibleGuard

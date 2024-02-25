@@ -40,3 +40,15 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
 
     return fd;
 }
+
+int syscall_bind(int sockfd, void *addr, unsigned int addrlen, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    auto p = t->p;
+    if(sockfd < 0 || sockfd >= GK_MAX_OPEN_FILES || p.open_files[sockfd] == nullptr)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    return p.open_files[sockfd]->Bind(addr, addrlen, _errno);
+}
