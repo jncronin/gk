@@ -175,7 +175,7 @@ u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
     auto ss = reinterpret_cast<SimpleSignal *>(sem->sem);
     if(timeout == 0)
     {
-        while(!ss->Wait()) Yield();
+        while(!ss->Wait(SimpleSignal::Set, 0)) Yield();
         return 0;
     }
     else
@@ -184,12 +184,11 @@ u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
         auto tout_time = now + (uint64_t)timeout;
         do
         {
-            auto ret = ss->WaitOnce();
+            auto ret = ss->WaitOnce(SimpleSignal::Set, 0);
             if(ret)
             {
                 return clock_cur_ms() - now;
             }
-            Yield();
         } while(clock_cur_ms() < tout_time);
         return SYS_ARCH_TIMEOUT;
     }    

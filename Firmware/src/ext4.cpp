@@ -203,7 +203,7 @@ static void handle_open_message(ext4_message &msg)
         default:
             msg.ss_p->ival1 = -1;
             msg.ss_p->ival2 = EINVAL;
-            msg.ss->Signal(thread_signal_lwext);
+            msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
             return;
     }
 
@@ -217,7 +217,7 @@ static void handle_open_message(ext4_message &msg)
                 msg.params.open_params.p->open_files[msg.params.open_params.f]);
             lwfile->f = f;
             msg.ss_p->ival1 = msg.params.open_params.f;
-            msg.ss->Signal(thread_signal_lwext);
+            msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
         }
         else
         {
@@ -226,7 +226,7 @@ static void handle_open_message(ext4_message &msg)
 
             msg.ss_p->ival1 = -1;
             msg.ss_p->ival2 = extret;
-            msg.ss->Signal(thread_signal_lwext);
+            msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
         }
     }
 }
@@ -243,13 +243,13 @@ static void handle_read_message(ext4_message &msg)
     if(extret == EOK)
     {
         msg.ss_p->ival1 = static_cast<int>(br);
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
     else
     {
         msg.ss_p->ival1 = -1;
         msg.ss_p->ival2 = extret;
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
 }
 
@@ -265,13 +265,13 @@ static void handle_write_message(ext4_message &msg)
     if(extret == EOK)
     {
         msg.ss_p->ival1 = static_cast<int>(bw);
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
     else
     {
         msg.ss_p->ival1 = -1;
         msg.ss_p->ival2 = extret;
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
 }
 
@@ -332,14 +332,14 @@ static void handle_fstat_message(ext4_message &msg)
         MemRegionAccess::NoAccess, N_NC_NS));
     *msg.params.fstat_params.st = buf;
     msg.ss_p->ival1 = 0;
-    msg.ss->Signal(thread_signal_lwext);
+    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     
     return;
 
 _err:
     msg.ss_p->ival1 = -1;
     msg.ss_p->ival2 = extret;
-    msg.ss->Signal(thread_signal_lwext);
+    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
 }
 
 void handle_lseek_message(ext4_message &msg)
@@ -357,7 +357,7 @@ void handle_lseek_message(ext4_message &msg)
     {
         msg.ss_p->ival1 = -1;
         msg.ss_p->ival2 = extret;
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
 }
 
@@ -368,13 +368,13 @@ void handle_close_message(ext4_message &msg)
     if(extret == EOK)
     {
         msg.ss_p->ival1 = 0;
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
     else
     {
         msg.ss_p->ival1 = -1;
         msg.ss_p->ival2 = extret;
-        msg.ss->Signal(thread_signal_lwext);
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
 }
 

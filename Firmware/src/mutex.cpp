@@ -60,31 +60,35 @@ void Spinlock::unlock()
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 {}
 
-uint32_t SimpleSignal::WaitOnce()
+uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     if(waiting_thread && t != waiting_thread)
         return false;
     if(signal_value)
-        return signal_value;
+    {
+        auto ret = signal_value;
+        do_op(op, vop);
+        return ret;
+    }
     waiting_thread = t;
     t->is_blocking = true;
     Yield();
     return signal_value;    
 }
 
-uint32_t SimpleSignal::Wait()
+uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop)
 {
     while(true)
     {
-        auto sv = WaitOnce();
+        auto sv = WaitOnce(op, vop);
         if(sv)
             return sv;
     }
 }
 
-void SimpleSignal::Signal(uint32_t val)
+void SimpleSignal::Signal(SignalOperation op, uint32_t val)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -96,10 +100,37 @@ void SimpleSignal::Signal(uint32_t val)
             hpt = true;
         waiting_thread = nullptr;
     }
-    signal_value = true;
+    do_op(op, val);
     if(hpt)
     {
         Yield();
+    }
+}
+
+void SimpleSignal::do_op(SignalOperation op, uint32_t vop)
+{
+    switch(op)
+    {
+        case SignalOperation::Add:
+            signal_value += vop;
+            break;
+        case SignalOperation::And:
+            signal_value &= vop;
+            break;
+        case SignalOperation::Noop:
+            break;
+        case SignalOperation::Or:
+            signal_value |= vop;
+            break;
+        case SignalOperation::Set:
+            signal_value = vop;
+            break;
+        case SignalOperation::Sub:
+            signal_value -= vop;
+            break;
+        case SignalOperation::Xor:
+            signal_value ^= vop;
+            break;
     }
 }
 
@@ -127,6 +158,37 @@ void Condition::Wait()
         waiting_threads.push_back(t);
     t->is_blocking = true;
     Yield();
+}
+
+void BinarySemaphore::Signal()
+{
+    ss.Signal();
+}
+
+bool BinarySemaphore::Wait()
+{
+    return ss.Wait(SimpleSignal::Set, 0) != 0;
+}
+
+bool BinarySemaphore::WaitOnce()
+{
+    return ss.WaitOnce(SimpleSignal::Set, 0) != 0;
+}
+
+void CountingSemaphore::Signal()
+{
+    ss.Signal(SimpleSignal::Add, 1);
+}
+
+
+bool CountingSemaphore::Wait()
+{
+    return ss.Wait(SimpleSignal::Sub, 1) != 0;
+}
+
+bool CountingSemaphore::WaitOnce()
+{
+    return ss.WaitOnce(SimpleSignal::Sub, 1) != 0;
 }
 
 void Condition::Signal()
