@@ -199,6 +199,7 @@ void Condition::Signal()
     for(auto bt : waiting_threads)
     {
         bt->is_blocking = false;
+        bt->block_until = 0;
         if(bt->base_priority > t->base_priority)
             hpt = true;
     }
@@ -244,6 +245,7 @@ bool Mutex::unlock()
     for(auto wt : waiting_threads)
     {
         wt->is_blocking = false;
+        wt->block_until = 0;
         wt->blocking_on = nullptr;
     }
     waiting_threads.clear();

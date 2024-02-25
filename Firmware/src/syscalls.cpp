@@ -215,6 +215,22 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_listen:
+            {
+                auto p = reinterpret_cast<__syscall_listen_params *>(r2);
+                int ret = syscall_listen(p->sockfd, p->backlog, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_accept:
+            {
+                auto p = reinterpret_cast<__syscall_accept_params *>(r2);
+                int ret = syscall_accept(p->sockfd, p->addr, (unsigned int *)p->addrlen, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);

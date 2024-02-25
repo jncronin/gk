@@ -8,7 +8,7 @@
 class Scheduler
 {
     public:
-        constexpr static const int npriorities = 10;
+        constexpr static const int npriorities = GK_NPRIORITIES;
         constexpr static const int ncores = 2;
 
     protected:
@@ -31,6 +31,12 @@ class Scheduler
 
         /* Follows the chain of 'blocking_on' to allow priority escalation */
         Thread *get_blocker(Thread *t);
+
+        /* Unblocks threads waiting on a certain delay */
+        void unblock_delayer(Thread *t);
+
+        /* Report chosen thread */
+        void report_chosen(Thread *old_t, Thread *new_t);
 
     public:
         Scheduler();
@@ -61,5 +67,16 @@ static inline void Yield()
     }
 }
 
+[[maybe_unused]] static /*inline*/ void Block(uint64_t until = UINT64_MAX, Thread *block_on = nullptr)
+{
+    auto t = GetCurrentThreadForCore();
+    {
+        CriticalGuard cg(t->sl);
+        t->is_blocking = true;
+        t->blocking_on = block_on;
+        t->block_until = until;
+    }
+    Yield();
+}
 
 #endif

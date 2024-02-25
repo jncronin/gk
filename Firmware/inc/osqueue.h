@@ -40,6 +40,7 @@ class BaseQueue
             for(auto bt : waiting_threads)
             {
                 bt->is_blocking = false;
+                bt->block_until = 0;
                 if(bt->base_priority > t->base_priority)
                     hpt = true;
             }
@@ -160,18 +161,14 @@ class Queue : public BaseQueue
     public:
         Queue(int _nitems, size_t item_size) : BaseQueue(nullptr, _nitems, item_size)
         {
-            buf = malloc_region(_nitems * item_size, REG_ID_SRAM4);
-            _b = buf;
+            _b = malloc_region(_nitems * item_size, REG_ID_SRAM4);
         }
 
         ~Queue()
         {
-            if(buf)
-                free_region(buf, REG_ID_SRAM4);
+            if(_b)
+                free_region(_b, REG_ID_SRAM4);
         }
-
-    protected:
-        void *buf = nullptr;
 };
 
 #endif

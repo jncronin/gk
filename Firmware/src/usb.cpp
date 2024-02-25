@@ -73,13 +73,13 @@ void init_usb()
 extern "C" void OTG_HS_IRQHandler()
 {
     // tud_int_handler edits stuff in out private data space, so get access to it
-    uint32_t data_start = (uint32_t)&_stusb_data;
-    uint32_t data_end = (uint32_t)&_etusb_data;
+    //uint32_t data_start = (uint32_t)&_stusb_data;
+    //uint32_t data_end = (uint32_t)&_etusb_data;
 
-    auto old_mpu6 = GetCurrentThreadForCore()->tss.mpuss[5];
-    SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS));
+    //auto old_mpu6 = GetCurrentThreadForCore()->tss.mpuss[5];
+    //SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS));
     tud_int_handler(1);
-    SetMPUForCurrentThread(old_mpu6);
+    //SetMPUForCurrentThread(old_mpu6);
 }
 
 void usb_task(void *pvParams)

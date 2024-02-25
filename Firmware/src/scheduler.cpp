@@ -1,6 +1,9 @@
 #include "scheduler.h"
 #include "syscalls.h"
 #include "SEGGER_RTT.h"
+#include "clocks.h"
+
+#define DEBUG_SCHEDULER 1
 
 extern Process kernel_proc;
 __attribute__((section(".sram4"))) Thread dt(kernel_proc);
@@ -56,10 +59,12 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     CPUAffinity PreferMe = (ncore == 0) ? CPUAffinity::PreferM7 : CPUAffinity::PreferM4;
     CPUAffinity PreferOther = (ncore == 0) ? CPUAffinity::PreferM4 : CPUAffinity::PreferM7;
 
+    Thread *cur_t;
     int cur_prio;
     {
         CriticalGuard cg(current_thread[ncore].m);
-        cur_prio = current_thread[ncore].v->is_blocking ? 0 :
+        cur_t = current_thread[ncore].v;
+        cur_prio = cur_t->is_blocking ? 0 :
             current_thread[ncore].v->base_priority;
     }
 
@@ -94,6 +99,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
                 {
                     tlist[i].v.index = iter;
                     cval->chosen_for_core = ncore + 1;
+#if DEBUG_SCHEDULER
+                    report_chosen(cur_t, cval);
+#endif
                     return cval;
                 }
             }
@@ -115,6 +123,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
                 {
                     tlist[i].v.index = iter;
                     cval->chosen_for_core = ncore + 1;
+#if DEBUG_SCHEDULER
+                    report_chosen(cur_t, cval);
+#endif
                     return cval;
                 }
             }
@@ -124,6 +135,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     {
         // We didn't find any valid thread with equal or higher priority than the current one
         CriticalGuard cg(current_thread[ncore].m);
+#if DEBUG_SCHEDULER
+        report_chosen(cur_t, current_thread[ncore].v);
+#endif
         return current_thread[ncore].v;
     }
 }
@@ -150,8 +164,28 @@ Thread *Scheduler::get_blocker(Thread *t)
     while(true)
     {
         CriticalGuard cg(t->sl);
+        unblock_delayer(t);
         if(t->blocking_on == nullptr)
             return t;
         t = t->blocking_on;
     }
+}
+
+void Scheduler::unblock_delayer(Thread *t)
+{
+    if(t->is_blocking && t->block_until && clock_cur_ms() >= t->block_until)
+    {
+        t->is_blocking = false;
+        t->block_until = 0;
+        t->blocking_on = nullptr;
+    }
+}
+
+extern Spinlock s_rtt;
+void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
+{
+    CriticalGuard cg(s_rtt);
+    SEGGER_RTT_printf(0, "%d: sched: %s (%d) to %s (%d)\n", (uint32_t)clock_cur_ms(),
+        old_t->name.c_str(), old_t->base_priority,
+        new_t->name.c_str(), new_t->base_priority);
 }

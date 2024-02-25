@@ -124,9 +124,7 @@ function update()
 
     for(var i = 0; i < 10; i++)
     {
-        TargetInterface.message("saddr: " + saddr);
         var vec = Debug.evaluate("&((Scheduler *)" + saddr + ")->tlist[" + i + "].v.v");
-        TargetInterface.message("vec: " + vec);
         var vstart = TargetInterface.peekWord(vec);
         var vend = TargetInterface.peekWord(vec + 4);
 
