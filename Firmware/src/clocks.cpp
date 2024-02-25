@@ -53,7 +53,7 @@ void init_clocks()
             /Q16 = 48 MHz -> USB and SPI5
             /R64 = 12 MHz -> LTDC (30 Hz refresh) and I2C4
 
-        Peripheral clock PER_CLK is HSE16
+        Peripheral clock PER_CLK is HSI16
             => LPTIM1
     */
     
@@ -116,7 +116,7 @@ void init_clocks()
     clock_set_cpu(clock_cpu_speed::cpu_48_48);
 
     // Set up peripherals to use the above mappings
-    RCC->D1CCIPR = (2UL << RCC_D1CCIPR_CKPERSEL_Pos) |
+    RCC->D1CCIPR = (0UL << RCC_D1CCIPR_CKPERSEL_Pos) |
         (0UL << RCC_D1CCIPR_SDMMCSEL_Pos) |
         (1UL << RCC_D1CCIPR_FMCSEL_Pos);
     RCC->D2CCIP1R = (2UL << RCC_D2CCIP1R_SPI45SEL_Pos) |

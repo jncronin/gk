@@ -264,7 +264,7 @@ void init_sd()
     uint32_t data_start = (uint32_t)&_ssdt_data;
     uint32_t data_end = (uint32_t)&_esdt_data;
 
-    s.Schedule(Thread::Create("sd", sd_thread, nullptr, true, 5, kernel_proc, 
+    s.Schedule(Thread::Create("sd", sd_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
         Either, InvalidMemregion(),
         MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS)));
 }

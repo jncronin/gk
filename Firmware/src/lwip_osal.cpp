@@ -79,7 +79,7 @@ sys_thread_t sys_thread_new(const char *name, lwip_thread_fn thread, void *arg, 
 {
     uint32_t data_start = (uint32_t)&_slwip_data;
     uint32_t data_end = (uint32_t)&_elwip_data;
-    auto t = Thread::Create(name, thread, arg, true, 5, kernel_proc, Either, InvalidMemregion(),
+    auto t = Thread::Create(name, thread, arg, true, GK_NPRIORITIES - 1, kernel_proc, Either, InvalidMemregion(),
         MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS));
     s.Schedule(t);
     sys_thread_t tret;
@@ -138,20 +138,28 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
 
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 {
-    auto now = clock_cur_ms();
-    auto tout_time = now + (uint64_t)timeout;
     auto q = reinterpret_cast<Queue *>(mbox->mbx);
-    do
+    if(timeout == 0)
     {
-        auto ret = q->TryPop(msg);
-        if(ret)
+        while(!q->Pop(msg)) Yield();
+        return 0;
+    }
+    else
+    {
+        auto now = clock_cur_ms();
+        auto tout_time = now + (uint64_t)timeout;
+        do
         {
-            return clock_cur_ms() - now;
-        }
-        Yield();
-    } while(clock_cur_ms() < tout_time);
-    *msg = nullptr;
-    return SYS_ARCH_TIMEOUT;
+            auto ret = q->TryPop(msg);
+            if(ret)
+            {
+                return clock_cur_ms() - now;
+            }
+            Block(tout_time);
+        } while(clock_cur_ms() < tout_time);
+        *msg = nullptr;
+        return SYS_ARCH_TIMEOUT;
+    }
 }
 
 err_t sys_sem_new(sys_sem_t *sem, u8_t count)
@@ -189,6 +197,7 @@ u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
             {
                 return clock_cur_ms() - now;
             }
+            Block(tout_time);
         } while(clock_cur_ms() < tout_time);
         return SYS_ARCH_TIMEOUT;
     }    

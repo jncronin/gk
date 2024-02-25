@@ -30,3 +30,14 @@ off_t File::Lseek(off_t offset, int whence, int *_errno)
     return (off_t)-1;
 }
 
+int File::Listen(int backlog, int *_errno)
+{
+    *_errno = EBADF;
+    return -1;
+}
+
+int File::Accept(void *addr, unsigned int *addrlen, int *_errno)
+{
+    *_errno = EBADF;
+    return -1;
+}

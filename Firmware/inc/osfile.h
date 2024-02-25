@@ -18,6 +18,8 @@ class File
         virtual int Close(int *_errno);
 
         virtual int Bind(void *addr, unsigned int addrlen, int *_errno);
+        virtual int Listen(int backlog, int *_errno);
+        virtual int Accept(void *addr, unsigned int *addrlen, int *_errno);
 
         virtual ~File() = default;
 };
@@ -71,12 +73,15 @@ class SocketFile : public File
         //off_t Lseek(off_t offset, int whence, int *_errno);
 
         int Bind(void *addr, unsigned int addrlen, int *_errno);
+        virtual int Listen(int backlog, int *_errno);
+        virtual int Accept(void *addr, unsigned int *addrlen, int *_errno);
 
         int Close(int *_errno);
 
-        SocketFile(int _lwip_fildes);
+        SocketFile(int _lwip_fildes, bool _is_non_block = false);
 
         int lwip_fildes;
+        bool is_non_block;
 };
 
 #endif

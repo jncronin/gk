@@ -15,6 +15,7 @@
 #include "syscalls.h"
 
 static constexpr uint32_t thread_signal_lwext = 0x1;
+#define GK_NPRIORITIES      10
 
 class Thread
 {
@@ -35,6 +36,7 @@ class Thread
 
         bool is_blocking = false;
         Thread *blocking_on = nullptr;
+        uint64_t block_until = 0;
 
         Spinlock sl;
         int running_on_core = 0;

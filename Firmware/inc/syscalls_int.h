@@ -13,5 +13,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno);
 int syscall_close(int file, int *_errno);
 int syscall_socket(int domain, int type, int protocol, int *_errno);
 int syscall_bind(int sockfd, void *addr, unsigned int addrlen, int *_errno);
+int syscall_listen(int sockfd, int backlog, int *_errno);
+int syscall_accept(int sockfd, void *addr, unsigned int *addrlen, int *_errno);
 
 #endif
