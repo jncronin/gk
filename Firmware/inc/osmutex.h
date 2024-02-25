@@ -49,11 +49,37 @@ class SimpleSignal
         Spinlock sl;
 
     public:
-        uint32_t Wait();
-        uint32_t WaitOnce();
-        void Signal(uint32_t val = 0x1);
+        enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
+        uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0);
+        uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0);
+        void Signal(SignalOperation op = Set, uint32_t val = 0x1);
         void Reset();
         SimpleSignal(uint32_t val = 0);
+
+    protected:
+        void do_op(SignalOperation op, uint32_t vop);
+};
+
+class BinarySemaphore
+{
+    protected:
+        SimpleSignal ss;
+
+    public:
+        bool Wait();
+        bool WaitOnce();
+        void Signal();
+};
+
+class CountingSemaphore
+{
+    protected:
+        SimpleSignal ss;
+
+    public:
+        bool Wait();
+        bool WaitOnce();
+        void Signal();
 };
 
 class UninterruptibleGuard
