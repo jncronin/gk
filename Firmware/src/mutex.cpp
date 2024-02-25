@@ -57,6 +57,9 @@ void Spinlock::unlock()
     __DMB();
 }
 
+SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
+{}
+
 uint32_t SimpleSignal::WaitOnce()
 {
     CriticalGuard cg(sl);

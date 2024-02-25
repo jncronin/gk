@@ -93,6 +93,16 @@ err_t sys_mbox_new(sys_mbox_t *mbox, int size)
     return ERR_OK;
 }
 
+void sys_mbox_free(sys_mbox_t *mbox)
+{
+    if(mbox->mbx)
+    {
+        auto q = reinterpret_cast<Queue *>(mbox->mbx);
+        delete q;
+        mbox->mbx = nullptr;
+    }
+}
+
 void sys_mbox_post(sys_mbox_t *mbox, void *msg)
 {
     auto q = reinterpret_cast<Queue *>(mbox->mbx);
@@ -116,6 +126,16 @@ err_t sys_mbox_trypost_fromisr(sys_mbox_t *mbox, void *msg)
     return sys_mbox_trypost(mbox, msg);
 }
 
+u32_t sys_arch_mbox_tryfetch(sys_mbox_t *mbox, void **msg)
+{
+    auto q = reinterpret_cast<Queue *>(mbox->mbx);
+    auto ret = q->TryPop(msg);
+    if(ret)
+        return 0;
+    else
+        return SYS_MBOX_EMPTY;
+}
+
 u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
 {
     auto now = clock_cur_ms();
@@ -132,4 +152,55 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *mbox, void **msg, u32_t timeout)
     } while(clock_cur_ms() < tout_time);
     *msg = nullptr;
     return SYS_ARCH_TIMEOUT;
+}
+
+err_t sys_sem_new(sys_sem_t *sem, u8_t count)
+{
+    sem->sem = new SimpleSignal(count);
+    if(sem->sem == nullptr)
+    {
+        return ERR_MEM;
+    }
+    return ERR_OK;
+}
+
+void sys_sem_signal(sys_sem_t *sem)
+{
+    auto ss = reinterpret_cast<SimpleSignal *>(sem->sem);
+    ss->Signal();
+}
+
+u32_t sys_arch_sem_wait(sys_sem_t *sem, u32_t timeout)
+{
+    auto ss = reinterpret_cast<SimpleSignal *>(sem->sem);
+    if(timeout == 0)
+    {
+        while(!ss->Wait()) Yield();
+        return 0;
+    }
+    else
+    {
+        auto now = clock_cur_ms();
+        auto tout_time = now + (uint64_t)timeout;
+        do
+        {
+            auto ret = ss->WaitOnce();
+            if(ret)
+            {
+                return clock_cur_ms() - now;
+            }
+            Yield();
+        } while(clock_cur_ms() < tout_time);
+        return SYS_ARCH_TIMEOUT;
+    }    
+}
+
+void sys_sem_free(sys_sem_t *sem)
+{
+    if(sem->sem)
+    {
+        auto ss = reinterpret_cast<SimpleSignal *>(sem->sem);
+        delete ss;
+        sem->sem = nullptr;
+    }
 }
