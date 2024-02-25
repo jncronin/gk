@@ -1,9 +1,12 @@
+var saddr;
+
 function init()
 {
     Threads.clear();
     Threads.newqueue("Task List");
     Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn");
     Threads.setColor("Status", "ready", "executing", "blocked");
+    saddr = Debug.evaluate("&s");
 }
 
 function task_get_name(t)
@@ -27,13 +30,27 @@ function blocking_on(t)
     if(Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
     {
         var t_block = Debug.evaluate("((Thread *)" + t + ")->blocking_on");
-        if(t_block)
+        var t_block_until = Debug.evaluate("((Thread *)" + t + ")->block_until");
+        if(t_block || t_block_until != 0)
         {
-            var ret = task_get_name(t_block);
-            var t_block_str = blocking_on(t_block);
-            if(t_block_str != "")
+            var ret = "";
+            if(t_block)
             {
-                ret += "(" + t_block_str + ")";
+                ret += task_get_name(t_block);
+                var t_block_str = blocking_on(t_block);
+                if(t_block_str != "")
+                {
+                    ret += "(" + t_block_str + ")";
+                }
+            }
+            if(t_block && t_block_until != 0)
+            {
+                ret += " OR ";
+            }
+            if(t_block_until != 0)
+            {
+                ret += t_block_until.toString();
+                ret += " ms";
             }
             return ret;
         }
@@ -105,11 +122,11 @@ function update()
 {
     Threads.clear();
 
-    TargetInterface.message("s at " + Debug.evaluate("&s"));
-
     for(var i = 0; i < 10; i++)
     {
-        var vec = Debug.evaluate("&s.tlist[" + i + "].v.v");
+        TargetInterface.message("saddr: " + saddr);
+        var vec = Debug.evaluate("&((Scheduler *)" + saddr + ")->tlist[" + i + "].v.v");
+        TargetInterface.message("vec: " + vec);
         var vstart = TargetInterface.peekWord(vec);
         var vend = TargetInterface.peekWord(vec + 4);
 
