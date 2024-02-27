@@ -140,7 +140,7 @@ target_link_libraries(${PROJECT_NAME}
         -lm
         lwext4
         tusb
-        lwipcore
+        #lwipcore
 )
 
 target_link_options(${PROJECT_NAME}
