@@ -17,6 +17,7 @@
 #include <cstring>
 #include "usb.h"
 #include "lwip/tcpip.h"
+#include "osnet.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -44,6 +45,7 @@ int main()
     init_btnled();
     init_sd();
     init_ext4();
+    init_net();
 
     btnled_setcolor(0x020202UL);
 

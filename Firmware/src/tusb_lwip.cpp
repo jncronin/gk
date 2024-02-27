@@ -33,7 +33,7 @@ bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
         return false;
     
     memcpy(pbuf, src, size);
-    net_inject_ethernet_packet(pbuf, size, rndis_if);
+    net_inject_ethernet_packet(pbuf, size, &rndis_if);
     tud_network_recv_renew();
 
     return true;
