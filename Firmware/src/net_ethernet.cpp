@@ -5,10 +5,8 @@
 
 extern Spinlock s_rtt;
 
-int net_inject_ethernet_packet(const char *buf, size_t n, const NetInterface &iface)
+int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
 {
-    // TODO: add packet to a queue for service by the net thread
-
     // for now, just examine the sorts of packets we receive
     HwAddr dest(buf);
     HwAddr src(&buf[6]);
@@ -37,21 +35,38 @@ int net_inject_ethernet_packet(const char *buf, size_t n, const NetInterface &if
 
     if(dest == HwAddr::multicast)
         is_multicast = true;
-    if(dest == iface.GetHwAddr())
+    if(dest == iface->GetHwAddr())
         to_us = true;
     
     if(to_us || is_multicast)
     {
-        if(ethertype == 0x800)
+        EthernetPacket epkt { .src = src, .dest = dest, .ethertype = ethertype,
+            .contents = &buf[ptr], .n = n - ptr - 4,
+            .iface = iface };
+        switch (ethertype)
         {
-            net_handle_ip4_packet(&buf[ptr], n - ptr - 4, src, dest, iface);
+            case 0x0800:
+                return net_handle_ip4_packet(epkt);
+
+            case 0x0806:
+                return net_handle_arp_packet(epkt);
+
+            default:
+                return NET_NOTSUPP;
         }
     }
 
-    // TODO: deallocate in separate thread
-    net_deallocate_pbuf(const_cast<char *>(buf));
+    return NET_NOTUS;
+}
 
+int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
+{
+    // add packet to a queue for service by the net thread
+    net_msg m;
+    m.msg_type = net_msg::net_msg_type::InjectPacket;
+    m.msg_data.packet.buf = buf;
+    m.msg_data.packet.n = n;
+    m.msg_data.packet.iface = iface;
 
-
-    return 0;
+    return net_queue_msg(m);
 }
