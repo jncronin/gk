@@ -3,7 +3,7 @@
 #include "SEGGER_RTT.h"
 #include "clocks.h"
 
-#define DEBUG_SCHEDULER 1
+#define DEBUG_SCHEDULER 0
 
 extern Process kernel_proc;
 __attribute__((section(".sram4"))) Thread dt(kernel_proc);
@@ -171,17 +171,26 @@ Thread *Scheduler::get_blocker(Thread *t)
     }
 }
 
+extern Spinlock s_rtt;
+
 void Scheduler::unblock_delayer(Thread *t)
 {
     if(t->is_blocking && t->block_until && clock_cur_ms() >= t->block_until)
     {
+#if DEBUG_SCHEDULER
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "%d: sched awaken sleeping thread %s\n",
+                (uint32_t)clock_cur_ms(),
+                t->name.c_str());
+        }
+#endif
         t->is_blocking = false;
         t->block_until = 0;
         t->blocking_on = nullptr;
     }
 }
 
-extern Spinlock s_rtt;
 void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 {
     CriticalGuard cg(s_rtt);

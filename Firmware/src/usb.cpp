@@ -19,8 +19,6 @@ constexpr pin usb_vbus = { GPIOB, 13 };
 
 char _stusb_data, _etusb_data, _slwip_data, _elwip_data;
 
-void tusb_lwip_service_traffic(void);
-
 void init_usb()
 {
     RCC->AHB1RSTR = RCC_AHB1RSTR_USB1OTGHSRST;
@@ -106,7 +104,6 @@ void usb_task(void *pvParams)
     while(true)
     {
         tud_task();
-        tusb_lwip_service_traffic();
     }
 }
 

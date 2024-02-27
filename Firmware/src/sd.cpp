@@ -584,6 +584,12 @@ void sd_reset()
                 SEGGER_RTT_printf(0, "dtimeout\n");
                 return;
             }
+            if(SDMMC1->STA & SDMMC_STA_RXOVERR)
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "rxoverr\n");
+                return;
+            }
             if(cmd6_buf_idx < 16 && !(SDMMC1->STA & SDMMC_STA_RXFIFOE))
             {
                 cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(SDMMC1->FIFO);
@@ -626,6 +632,12 @@ void sd_reset()
                 {
                     CriticalGuard cg(s_rtt);
                     SEGGER_RTT_printf(0, "dtimeout\n");
+                    return;
+                }
+                if(SDMMC1->STA & SDMMC_STA_RXOVERR)
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "rxoverr\n");
                     return;
                 }
                 if(cmd6_buf_idx < 16 && !(SDMMC1->STA & SDMMC_STA_RXFIFOE))
@@ -680,6 +692,8 @@ void sd_thread(void *param)
         if(!sd_ready)
         {
             sd_reset();
+            if(!sd_ready)
+                Block(clock_cur_ms() + 1000ULL);
             continue;
         }
 
