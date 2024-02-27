@@ -25,7 +25,23 @@ class HwAddr
 class NetInterface
 {
     public:
-        HwAddr hwaddr;
+        virtual const HwAddr &GetHwAddr() const = 0;
+        virtual bool GetLinkActive() const = 0;
+        virtual int SendEthernetPacket(const char *buf, size_t n) = 0;
+};
+
+class TUSBNetInterface : public NetInterface
+{
+    protected:
+        HwAddr our_hwaddr, peer_hwaddr;
+        bool is_up = false;
+
+    public:
+        const HwAddr &GetHwAddr() const;
+        bool GetLinkActive() const;
+        int SendEthernetPacket(const char *buf, size_t n);
+
+        friend void tud_network_init_cb(void);
 };
 
 

@@ -37,7 +37,7 @@ int net_inject_ethernet_packet(const char *buf, size_t n, const NetInterface &if
 
     if(dest == HwAddr::multicast)
         is_multicast = true;
-    if(dest == iface.hwaddr)
+    if(dest == iface.GetHwAddr())
         to_us = true;
     
     if(to_us || is_multicast)
