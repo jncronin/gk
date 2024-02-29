@@ -55,7 +55,6 @@ target_include_directories(tusb
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lwip/src/include"
 )
 target_compile_definitions(tusb
     PRIVATE
@@ -81,7 +80,6 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lwip/src/include"
 )
 
 target_compile_definitions(${PROJECT_NAME}

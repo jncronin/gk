@@ -41,3 +41,8 @@ int File::Accept(void *addr, unsigned int *addrlen, int *_errno)
     *_errno = EBADF;
     return -1;
 }
+
+FileType File::GetType() const
+{
+    return type;
+}

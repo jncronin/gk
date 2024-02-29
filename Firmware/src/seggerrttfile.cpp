@@ -4,7 +4,9 @@
 
 SeggerRTTFile::SeggerRTTFile(unsigned int buf, bool for_read, bool for_write) :
     buf_idx(buf), can_read(for_read), can_write(for_write)
-{}
+{
+    type = FileType::FT_SeggerRTT;
+}
 
 ssize_t SeggerRTTFile::Write(const char *buf, size_t count, int *_errno)
 {

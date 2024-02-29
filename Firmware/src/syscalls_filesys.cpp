@@ -76,12 +76,9 @@ off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
     return p.open_files[file]->Lseek(offset, whence, _errno);
 }
 
-int syscall_open(const char *pathname, int flags, int mode, int *_errno)
+int get_free_fildes(Process &p)
 {
     // try and get free process file handle
-    auto t = GetCurrentThreadForCore();
-    auto &p = t->p;
-    CriticalGuard cg(p.sl);
     int fd = -1;
     for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
     {
@@ -91,6 +88,16 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             break;
         }
     }
+    return fd;
+}
+
+int syscall_open(const char *pathname, int flags, int mode, int *_errno)
+{
+    // try and get free process file handle
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    CriticalGuard cg(p.sl);
+    int fd = get_free_fildes(p);
     if(fd == -1)
     {
         *_errno = EMFILE;

@@ -6,7 +6,9 @@
 #include "thread.h"
 
 LwextFile::LwextFile(ext4_file fildes, std::string _fname) : f(fildes), fname(_fname)
-{ }
+{ 
+    type = FileType::FT_Lwext;
+}
 
 ssize_t LwextFile::Read(char *buf, size_t count, int *_errno)
 {
