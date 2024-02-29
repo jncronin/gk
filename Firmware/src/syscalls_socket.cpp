@@ -1,17 +1,10 @@
 #include "syscalls.h"
 
-#include <lwip/sockets.h>
 #include <errno.h>
 
 #include "thread.h"
 
 #define SOCK_NONBLOCK 0x20000000
-
-int syscall_socket(int domain, int type, int protocol, int *_errno)
-{
-    *_errno = ENOTSUP;
-    return -1;
-}
 
 int syscall_bind(int sockfd, void *addr, unsigned int addrlen, int *_errno)
 {

@@ -62,13 +62,13 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     
     switch(protocol)
     {
-        case 0x01:
+        case IPPROTO_ICMP:
             return net_handle_icmp_packet(ipkt);
 
-        case 0x06:
+        case IPPROTO_TCP:
             return net_handle_tcp_packet(ipkt);
 
-        case 0x11:
+        case IPPROTO_UDP:
             return net_handle_udp_packet(ipkt);
     }
     return NET_NOTSUPP;

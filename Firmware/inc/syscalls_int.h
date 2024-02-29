@@ -4,6 +4,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "thread.h"
+
+int get_free_fildes(Process &p);
+
 int syscall_fstat(int file, struct stat *st, int *_errno);
 int syscall_write(int file, char *buf, int nbytes, int *_errno);
 int syscall_read(int file, char *buf, int nbytes, int *_errno);

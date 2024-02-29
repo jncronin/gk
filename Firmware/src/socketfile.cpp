@@ -1,11 +1,11 @@
 #include "osfile.h"
-#include <lwip/sockets.h>
 #include <errno.h>
+#include "osnet.h"
 
-SocketFile::SocketFile(int lwfildes, bool _is_non_block)
+SocketFile::SocketFile(Socket *_sck)
 {
-    lwip_fildes = lwfildes;
-    is_non_block = _is_non_block;
+    sck = _sck;
+    type = FileType::FT_Socket;
 }
 
 ssize_t SocketFile::Write(const char *buf, size_t count, int *_errno)

@@ -1,13 +1,5 @@
 #include <cstdint>
 #include <cstring>
-#include <lwip/sys.h>
-#include <lwip/pbuf.h>
-#include <lwip/netif.h>
-#include <lwip/tcpip.h>
-#include <lwip/ethip6.h>
-#include <lwip/init.h>
-#include <lwip/etharp.h>
-#include "dhserver.h"
 #include <tusb.h>
 #include <SEGGER_RTT.h>
 #include <osmutex.h>

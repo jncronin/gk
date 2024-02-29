@@ -6,6 +6,7 @@
 #include <string>
 
 #include "osmutex.h"
+#include "_netinet_in.h"
 
 #define GK_NET_SOCKET_BUFSIZE       4096
 
@@ -251,5 +252,27 @@ int net_bind_tcpsocket(TCPSocket *sck);
 
 char *net_allocate_sbuf();
 void net_deallocate_sbuf(char *buf);
+
+/* socket interface for kernel threads */
+int     accept(int, struct sockaddr *, socklen_t *);
+int     bind(int, const struct sockaddr *, socklen_t);
+int     connect(int, const struct sockaddr *, socklen_t);
+int     getpeername(int, struct sockaddr *, socklen_t *);
+int     getsockname(int, struct sockaddr *, socklen_t *);
+int     getsockopt(int, int, int, void *, socklen_t *);
+int     listen(int, int);
+ssize_t recv(int, void *, size_t, int);
+ssize_t recvfrom(int, void *, size_t, int,
+        struct sockaddr *, socklen_t *);
+ssize_t recvmsg(int, struct msghdr *, int);
+ssize_t send(int, const void *, size_t, int);
+ssize_t sendmsg(int, const struct msghdr *, int);
+ssize_t sendto(int, const void *, size_t, int, const struct sockaddr *,
+        socklen_t);
+int     setsockopt(int, int, int, const void *, socklen_t);
+int     shutdown(int, int);
+int     sockatmark(int);
+int     socket(int, int, int);
+int     socketpair(int, int, int, int [2]);
 
 #endif

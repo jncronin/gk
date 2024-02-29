@@ -5,8 +5,19 @@
 #include <ext4.h>
 #include <string>
 
+enum FileType
+{
+    FT_Unknown = 0,
+    FT_SeggerRTT,
+    FT_Lwext,
+    FT_Socket
+};
+
 class File
 {
+    protected:
+        FileType type;
+
     public:
         virtual ssize_t Write(const char *buf, size_t count, int *_errno) = 0;
         virtual ssize_t Read(char *buf, size_t count, int *_errno) = 0;
@@ -20,6 +31,8 @@ class File
         virtual int Bind(void *addr, unsigned int addrlen, int *_errno);
         virtual int Listen(int backlog, int *_errno);
         virtual int Accept(void *addr, unsigned int *addrlen, int *_errno);
+
+        FileType GetType() const;    // support type checking without rtti
 
         virtual ~File() = default;
 };
@@ -63,6 +76,7 @@ class LwextFile : public File
 // TODO: pipe
 
 // socket
+class Socket;       // defined in osnet
 class SocketFile : public File
 {
     public:
@@ -78,10 +92,9 @@ class SocketFile : public File
 
         int Close(int *_errno);
 
-        SocketFile(int _lwip_fildes, bool _is_non_block = false);
+        SocketFile(Socket *sck);
 
-        int lwip_fildes;
-        bool is_non_block;
+        Socket *sck;
 };
 
 #endif

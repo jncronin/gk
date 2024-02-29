@@ -16,7 +16,6 @@
 #include "ext4_thread.h"
 #include <cstring>
 #include "usb.h"
-#include "lwip/tcpip.h"
 #include "osnet.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;

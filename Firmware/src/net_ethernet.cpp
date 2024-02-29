@@ -45,7 +45,7 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
             .iface = iface };
         switch (ethertype)
         {
-            case 0x0800:
+            case IPPROTO_IP:
                 return net_handle_ip4_packet(epkt);
 
             case 0x0806:
