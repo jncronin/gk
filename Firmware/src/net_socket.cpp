@@ -205,7 +205,7 @@ static inline int deferred_return(int ret, int _errno)
     {
         // deferred return
         auto t = GetCurrentThreadForCore();
-        while(!t->ss.Wait());
+        while(!t->ss.Wait(SimpleSignal::Set, 0));
         if(t->ss_p.ival1 == -1)
         {
             errno = t->ss_p.ival2;

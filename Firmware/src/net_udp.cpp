@@ -2,6 +2,9 @@
 #include <unordered_map>
 #include "thread.h"
 #include "osqueue.h"
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
 
 SRAM4_DATA static std::unordered_map<sockaddr_in, UDPSocket *> bound_udp_sockets;
 SRAM4_DATA static Spinlock s_udp;
@@ -11,7 +14,7 @@ int net_handle_udp_packet(const IP4Packet &pkt)
     // todo: checksum
     auto src_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[0]);
     auto dest_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[2]);
-    auto len = *reinterpret_cast<const uint16_t *>(&pkt.contents[4]) - 8;
+    auto len = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[4])) - 8;
     auto data = reinterpret_cast<const char *>(&pkt.contents[8]);
 
     // do we match a bound socket?
@@ -27,9 +30,22 @@ int net_handle_udp_packet(const IP4Packet &pkt)
         auto fval = bound_udp_sockets.find(saddr);
         if(fval == bound_udp_sockets.end())
         {
-            return NET_NOTUS;
+            // try with matching IPADDR_ANY
+            saddr.sin_addr.s_addr = 0UL;
+            fval = bound_udp_sockets.find(saddr);
+            if(fval == bound_udp_sockets.end())
+            {
+                return NET_NOTUS;
+            }
+            else
+            {
+                sck = fval->second;
+            }
         }
-        sck = fval->second;
+        else
+        {
+            sck = fval->second;
+        }
         if(!sck)
         {
             return NET_NOTUS;
@@ -111,6 +127,10 @@ int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16
         recv_wptr = old_rwptr;
         return NET_NOMEM;
     }
+    {
+        CriticalGuard cg2(s_rtt);
+        SEGGER_RTT_printf(0, "udp: incoming packet, store %d bytes to %x\n", (int)n, old_rwptr);
+    }
 
     // now see if we need to give the dgram to a thread
     net_msg msg;
@@ -174,6 +194,10 @@ bool UDPSocket::RecvFromInt(const net_msg &m)
 void UDPSocket::RecvFromInt(const net_msg &m, dgram_desc &dd)
 {
     auto len = std::min(m.msg_data.udprecv.n, dd.len);
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "udp: read() request, load %d bytes from %x\n", (int)len, recv_rptr);
+    }
     recv_rptr = memcpy_split_src(m.msg_data.udprecv.buf, recvbuf, len, dd.start, GK_NET_SOCKET_BUFSIZE);
     if(m.msg_data.udprecv.src_addr && m.msg_data.udprecv.addrlen)
     {
