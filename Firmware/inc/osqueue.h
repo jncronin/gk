@@ -7,6 +7,7 @@
 #include "thread.h"
 #include <queue>
 #include <cstring>
+#include <clocks.h>
 
 template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
 
@@ -103,10 +104,13 @@ class BaseQueue
             }
         }
 
-        bool Pop(void *v)
+        bool Pop(void *v, uint64_t timeout = 0)
         {
             if(!v)
                 return false;
+
+            if(timeout)
+                timeout += clock_cur_ms();
             
             while(true)
             {
@@ -127,6 +131,8 @@ class BaseQueue
                         if(!already_waiting)
                             waiting_threads.push_back(t);
                         t->is_blocking = true;
+                        if(timeout)
+                            t->block_until = timeout;
                         Yield();
                     }
                     else
@@ -137,6 +143,10 @@ class BaseQueue
                     }
                 }
                 __DMB();
+                if(timeout && clock_cur_ms() >= timeout)
+                {
+                    return false;
+                }
             }
         }
 
