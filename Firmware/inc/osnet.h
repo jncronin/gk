@@ -58,6 +58,7 @@ class IP4Addr
 
     public:
         IP4Addr(uint32_t val);
+        IP4Addr(const char *v);
         IP4Addr() = default;
 
         std::string ToString() const;
@@ -111,6 +112,7 @@ struct net_msg
         InjectPacket,
         SendPacket,
         UDPRecvDgram,
+        SetIPAddress
     };
 
     net_msg_type msg_type;
@@ -133,6 +135,7 @@ struct net_msg
             Thread *t;
             UDPSocket *sck;
         } udprecv;
+        IP4Address ipaddr;
     } msg_data;
 };
 
@@ -280,6 +283,8 @@ int net_bind_tcpsocket(TCPSocket *sck);
 char *net_allocate_sbuf();
 void net_deallocate_sbuf(char *buf);
 
+int net_set_ip_address(const IP4Address &ip);
+
 /* comparison/hash functions for sockaddr_in */
 namespace std
 {
@@ -333,5 +338,6 @@ int net_queue_msg(const net_msg &m);
 int net_ret_to_errno(int ret);
 
 void net_udp_handle_recvfrom(const net_msg &m);
+void net_ip_handle_set_ip_address(const net_msg &m);
 
 #endif

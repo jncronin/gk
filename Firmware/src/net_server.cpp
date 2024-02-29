@@ -30,6 +30,10 @@ static void net_thread(void *_params)
                 case net_msg::net_msg_type::UDPRecvDgram:
                     net_udp_handle_recvfrom(m);
                     break;
+
+                case net_msg::net_msg_type::SetIPAddress:
+                    net_ip_handle_set_ip_address(m);
+                    break;
             }
         }
         handle_timeouts();
