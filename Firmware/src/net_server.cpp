@@ -26,6 +26,10 @@ static void net_thread(void *_params)
                 case net_msg::net_msg_type::SendPacket:
                     handle_send_packet(m);
                     break;
+
+                case net_msg::net_msg_type::UDPRecvDgram:
+                    net_udp_handle_recvfrom(m);
+                    break;
             }
         }
         handle_timeouts();
@@ -35,6 +39,24 @@ static void net_thread(void *_params)
 int net_queue_msg(const net_msg &m)
 {
     return msgs.Push(m) ? NET_OK : NET_NOMEM;
+}
+
+int net_ret_to_errno(int ret)
+{
+    switch(ret)
+    {
+        case NET_OK:
+            return EOK;
+        case NET_NOMEM:
+            return ENOMEM;
+        case NET_NOTSUPP:
+            return ENOTSUP;
+        case NET_TRYAGAIN:
+        case NET_NOTUS:
+            return EOK;
+        default:
+            return EINVAL;
+    }
 }
 
 void init_net()

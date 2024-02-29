@@ -6,6 +6,7 @@
 #include <string>
 
 #include "osmutex.h"
+#include "osringbuffer.h"
 #include "_netinet_in.h"
 
 #define GK_NET_SOCKET_BUFSIZE       4096
@@ -19,6 +20,16 @@ inline uint16_t ntohs(uint16_t v)
 }
 
 inline uint32_t ntohl(uint32_t v)
+{
+    return __builtin_bswap32(v);
+}
+
+inline uint16_t htons(uint16_t v)
+{
+    return __builtin_bswap16(v);
+}
+
+inline uint32_t htonl(uint32_t v)
 {
     return __builtin_bswap32(v);
 }
@@ -91,6 +102,7 @@ class IP4Address
         IP4Address() = default;
 };
 
+class UDPSocket;
 // messages to be processed by net server
 struct net_msg
 {
@@ -98,6 +110,7 @@ struct net_msg
     {
         InjectPacket,
         SendPacket,
+        UDPRecvDgram,
     };
 
     net_msg_type msg_type;
@@ -110,6 +123,16 @@ struct net_msg
             size_t n;
             NetInterface *iface;
         } packet;
+        struct udpdgram_t
+        {
+            char *buf;
+            size_t n;
+            int flags;
+            sockaddr_in *src_addr;
+            socklen_t *addrlen;
+            Thread *t;
+            UDPSocket *sck;
+        } udprecv;
     } msg_data;
 };
 
@@ -123,8 +146,6 @@ struct net_msg
 #define PBUF_SIZE       1542
 
 void init_net();
-
-int net_queue_msg(const net_msg &m);
 
 int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface);
 char *net_allocate_pbuf();
@@ -188,6 +209,10 @@ class Socket
         virtual int SendData(const char *d, size_t n, const void *addr, size_t addrlen) = 0;
         virtual int RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss) = 0;
 
+        virtual int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
+        virtual int RecvFromAsync(void *buf, size_t len, int flags,
+            struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
+
         bool thread_is_blocking_for_recv = false;
         SimpleSignal *blocking_thread_signal = nullptr;
 
@@ -213,34 +238,36 @@ class TCPSocket : public IP4Socket
         tcp_socket_state_t state;
 };
 
+class net_msg;
 class UDPSocket : public IP4Socket
 {
+    protected:
+        struct dgram_desc
+        {
+            size_t start, len;
+            sockaddr_in from;
+        };
+        RingBuffer<dgram_desc, 64> dgram_queue;
+        RingBuffer<net_msg, 8> udp_waiting_queue;
+
     public:
         int HandlePacket(const char *pkt, size_t n);
         int SendData(const char *d, size_t n, const void *addr, size_t addrlen);
         int RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss);
 
+        int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
+        int RecvFromAsync(void *buf, size_t len, int flags,
+            struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
+        bool RecvFromInt(const net_msg &m);
+        void RecvFromInt(const net_msg &m, dgram_desc &dd);
+
+        int HandlePacket(const char *ptr, size_t n, uint32_t from_addr, uint16_t from_port);
+        
         size_t operator()(const UDPSocket &s) const noexcept;
         bool operator==(const UDPSocket &other) const noexcept;
-};
 
-namespace std
-{
-    template<> struct hash<UDPSocket>
-    {
-        size_t operator()(const UDPSocket &s) const noexcept
-        {
-            return std::hash<uint32_t>{}(s.bound_addr.get()) ^ std::hash<uint16_t>{}(s.port);
-        }
-    };
-    template<> struct hash<TCPSocket>
-    {
-        size_t operator()(const TCPSocket &s) const noexcept
-        {
-            return std::hash<uint32_t>{}(s.bound_addr.get()) ^ std::hash<uint16_t>{}(s.port);
-        }
-    };
-}
+        friend void int_udp_handle_recvfrom(const net_msg &m, UDPSocket::dgram_desc &dd);
+};
 
 class RawSocket : public Socket
 {
@@ -253,17 +280,40 @@ int net_bind_tcpsocket(TCPSocket *sck);
 char *net_allocate_sbuf();
 void net_deallocate_sbuf(char *buf);
 
+/* comparison/hash functions for sockaddr_in */
+namespace std
+{
+    template<> struct hash<sockaddr_in>
+    {
+        size_t operator()(const sockaddr_in &s) const noexcept
+        {
+            return std::hash<uint32_t>{}(s.sin_addr.s_addr) ^ std::hash<uint16_t>{}(s.sin_port);
+        }
+    };
+    template<> struct equal_to<sockaddr_in>
+    {
+        bool operator()(const sockaddr_in &lhs, const sockaddr_in &rhs) const noexcept
+        {
+            if(lhs.sin_addr.s_addr != rhs.sin_addr.s_addr)
+                return false;
+            if(lhs.sin_port != rhs.sin_port)
+                return false;
+            return true;
+        }
+    };
+}
+
 /* socket interface for kernel threads */
 int     accept(int, struct sockaddr *, socklen_t *);
-int     bind(int, const struct sockaddr *, socklen_t);
+int     bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int     connect(int, const struct sockaddr *, socklen_t);
 int     getpeername(int, struct sockaddr *, socklen_t *);
 int     getsockname(int, struct sockaddr *, socklen_t *);
 int     getsockopt(int, int, int, void *, socklen_t *);
 int     listen(int, int);
-ssize_t recv(int, void *, size_t, int);
-ssize_t recvfrom(int, void *, size_t, int,
-        struct sockaddr *, socklen_t *);
+ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+        struct sockaddr *src_addr, socklen_t *addrlen);
 ssize_t recvmsg(int, struct msghdr *, int);
 ssize_t send(int, const void *, size_t, int);
 ssize_t sendmsg(int, const struct msghdr *, int);
@@ -272,7 +322,16 @@ ssize_t sendto(int, const void *, size_t, int, const struct sockaddr *,
 int     setsockopt(int, int, int, const void *, socklen_t);
 int     shutdown(int, int);
 int     sockatmark(int);
-int     socket(int, int, int);
+int     socket(int domain, int type, int protocol);
 int     socketpair(int, int, int, int [2]);
+
+
+/* kernel threads which handle some services */
+void net_dhcpd_thread(void *p);
+
+int net_queue_msg(const net_msg &m);
+int net_ret_to_errno(int ret);
+
+void net_udp_handle_recvfrom(const net_msg &m);
 
 #endif

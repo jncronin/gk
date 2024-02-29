@@ -66,6 +66,8 @@ int main()
     s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
     s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
 
+    s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, nullptr, true, 5, kernel_proc));
+
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;

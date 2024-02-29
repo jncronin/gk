@@ -15,6 +15,19 @@ Socket::~Socket()
         net_deallocate_sbuf(sendbuf);
 }
 
+int Socket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
+{
+    *_errno = ENOTSUP;
+    return -1;
+}
+
+int Socket::RecvFromAsync(void *buf, size_t len, int flags,
+    struct sockaddr *src_addr, socklen_t *addrlen, int *_errno)
+{
+    *_errno = ENOTSUP;
+    return -1;
+}
+
 int syscall_socket(int domain, int type, int protocol, int *_errno)
 {
     // sanity check arguments
@@ -133,6 +146,15 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
     }
 }
 
+int socket(int domain, int type, int protocol)
+{
+    int _errno = EOK;
+    auto ret = syscall_socket(domain, type, protocol, &_errno);
+    if(_errno)
+        errno = _errno;
+    return ret;
+}
+
 Socket *fildes_to_sck(int fildes)
 {
     auto t = GetCurrentThreadForCore();
@@ -153,4 +175,82 @@ Socket *fildes_to_sck(int fildes)
         }
         return reinterpret_cast<SocketFile *>(p.open_files[fildes])->sck;
     }
+}
+
+int syscall_bind(int sockfd, const sockaddr *addr, socklen_t addrlen, int *_errno)
+{
+    auto sck = fildes_to_sck(sockfd);
+    if(!sck)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    if(!addr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    return sck->BindAsync(addr, addrlen, _errno);
+}
+
+static inline int deferred_return(int ret, int _errno)
+{
+    if(ret == -1)
+    {
+        errno = _errno;
+        return ret;
+    }
+    if(ret == -2)
+    {
+        // deferred return
+        auto t = GetCurrentThreadForCore();
+        while(!t->ss.Wait());
+        if(t->ss_p.ival1 == -1)
+        {
+            errno = t->ss_p.ival2;
+            return -1;
+        }
+        else
+        {
+            return t->ss_p.ival1;
+        }
+    }
+    return ret;
+}
+
+template<typename Func, class... Args> int deferred_call(Func f, Args... a)
+{
+    int _errno = EOK;
+    int ret = f(a..., &_errno);
+    return deferred_return(ret, _errno);
+}
+
+int bind(int sockfd, const sockaddr *addr, socklen_t addrlen)
+{
+    return deferred_call(syscall_bind, sockfd, addr, addrlen);
+}
+
+int syscall_recvfrom(int sockfd, void *buf, size_t len, int flags,
+    struct sockaddr *src_addr, socklen_t *addrlen, int *_errno)
+{
+    auto sck = fildes_to_sck(sockfd);
+    if(!sck)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    if(!buf)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    return sck->RecvFromAsync(buf, len, flags, src_addr, addrlen, _errno);
+}
+
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+    struct sockaddr *src_addr, socklen_t *addrlen)
+{
+    return deferred_call(syscall_recvfrom, sockfd, buf, len, flags, src_addr, addrlen);
 }
