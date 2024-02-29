@@ -5,6 +5,10 @@
 #include <memory>
 #include <string>
 
+#include "osmutex.h"
+
+#define GK_NET_SOCKET_BUFSIZE       4096
+
 #define NET_DATA __attribute__((section(".lwip_data")))
 #define SRAM4_DATA __attribute__((section(".sram4")))
 
@@ -156,5 +160,96 @@ class IP4Packet
 int net_handle_tcp_packet(const IP4Packet &pkt);
 int net_handle_udp_packet(const IP4Packet &pkt);
 int net_handle_icmp_packet(const IP4Packet &pkt);
+
+
+/* Socket interface */
+class Socket
+{
+    public:
+        char *recvbuf = nullptr;
+        char *sendbuf = nullptr;
+
+        size_t recv_wptr = 0;
+        size_t recv_rptr = 0;
+        size_t send_wptr = 0;
+        size_t send_rptr = 0;
+
+        const size_t buflen = GK_NET_SOCKET_BUFSIZE;
+
+        Spinlock sl;
+
+        int sockfd;
+
+        bool is_bound = false;
+        bool is_nonblocking = false;
+
+        virtual int HandlePacket(const char *pkt, size_t n) = 0;
+        virtual int SendData(const char *d, size_t n, const void *addr, size_t addrlen) = 0;
+        virtual int RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss) = 0;
+
+        bool thread_is_blocking_for_recv = false;
+        SimpleSignal *blocking_thread_signal = nullptr;
+
+        Socket();
+        ~Socket();
+};
+
+class IP4Socket : public Socket
+{
+    public:
+        IP4Addr bound_addr;
+        uint16_t port;
+};
+
+class TCPSocket : public IP4Socket
+{
+    public:
+        enum tcp_socket_state_t
+        {
+            Listening, 
+        };
+
+        tcp_socket_state_t state;
+};
+
+class UDPSocket : public IP4Socket
+{
+    public:
+        int HandlePacket(const char *pkt, size_t n);
+        int SendData(const char *d, size_t n, const void *addr, size_t addrlen);
+        int RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss);
+
+        size_t operator()(const UDPSocket &s) const noexcept;
+        bool operator==(const UDPSocket &other) const noexcept;
+};
+
+namespace std
+{
+    template<> struct hash<UDPSocket>
+    {
+        size_t operator()(const UDPSocket &s) const noexcept
+        {
+            return std::hash<uint32_t>{}(s.bound_addr.get()) ^ std::hash<uint16_t>{}(s.port);
+        }
+    };
+    template<> struct hash<TCPSocket>
+    {
+        size_t operator()(const TCPSocket &s) const noexcept
+        {
+            return std::hash<uint32_t>{}(s.bound_addr.get()) ^ std::hash<uint16_t>{}(s.port);
+        }
+    };
+}
+
+class RawSocket : public Socket
+{
+
+};
+
+int net_bind_udpsocket(UDPSocket *sck);
+int net_bind_tcpsocket(TCPSocket *sck);
+
+char *net_allocate_sbuf();
+void net_deallocate_sbuf(char *buf);
 
 #endif
