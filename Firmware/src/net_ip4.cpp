@@ -15,12 +15,12 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     auto buf = epkt.contents;
 
     auto protocol = buf[9];
-    auto version = buf[0] & 0xf;
+    auto version = buf[0] >> 4;
     auto src = IP4Addr(&buf[12]);
     auto dest = IP4Addr(&buf[16]);
 
     auto total_len = ntohs(*reinterpret_cast<const uint16_t *>(&buf[2]));
-    auto ihl = buf[0] >> 4;
+    auto ihl = buf[0] & 0xf;
     auto header_len = static_cast<uint16_t>(ihl * 4);
     auto blen = static_cast<uint16_t>(total_len - header_len);
 
@@ -31,7 +31,11 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     }
 
     bool is_us = false;
-    if(ipcache.find(dest) != ipcache.end())
+    if(dest.get() == 0xffffffff)
+    {
+        is_us = true;
+    }
+    else if(ipcache.find(dest) != ipcache.end())
     {
         is_us = true;
     }
@@ -111,6 +115,11 @@ std::string IP4Addr::ToString() const
 }
 
 IP4Addr::operator uint32_t() const
+{
+    return v;
+}
+
+uint32_t IP4Addr::get() const
 {
     return v;
 }
