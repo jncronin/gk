@@ -122,11 +122,6 @@ int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16
     dd.start = recv_wptr;
     recv_wptr = memcpy_split_dest(recvbuf, pkt, n, recv_wptr, GK_NET_SOCKET_BUFSIZE);
 
-    if(!dgram_queue.Write(dd))
-    {
-        recv_wptr = old_rwptr;
-        return NET_NOMEM;
-    }
     {
         CriticalGuard cg2(s_rtt);
         SEGGER_RTT_printf(0, "udp: incoming packet, store %d bytes to %x\n", (int)n, old_rwptr);
@@ -137,6 +132,11 @@ int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16
     if(udp_waiting_queue.Read(&msg))
     {
         RecvFromInt(msg, dd);
+    }
+    else if(!dgram_queue.Write(dd)) // store to pending queue
+    {
+        recv_wptr = old_rwptr;
+        return NET_NOMEM;
     }
 
     return NET_OK;
@@ -196,7 +196,7 @@ void UDPSocket::RecvFromInt(const net_msg &m, dgram_desc &dd)
     auto len = std::min(m.msg_data.udprecv.n, dd.len);
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "udp: read() request, load %d bytes from %x\n", (int)len, recv_rptr);
+        SEGGER_RTT_printf(0, "udp: read() request, load %d bytes from %x\n", (int)len, dd.start);
     }
     recv_rptr = memcpy_split_src(m.msg_data.udprecv.buf, recvbuf, len, dd.start, GK_NET_SOCKET_BUFSIZE);
     if(m.msg_data.udprecv.src_addr && m.msg_data.udprecv.addrlen)
