@@ -6,6 +6,7 @@
 
 extern Spinlock s_rtt;
 
+Spinlock s_ips;
 static std::vector<IP4Address> ourips;
 static std::map<IP4Addr, IP4Address> ipcache;
 
@@ -15,8 +16,8 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
 
     auto protocol = buf[9];
     auto version = buf[0] & 0xf;
-    auto src = *reinterpret_cast<const uint32_t *>(&buf[12]);
-    auto dest = *reinterpret_cast<const uint32_t *>(&buf[16]);
+    auto src = IP4Addr(&buf[12]);
+    auto dest = IP4Addr(&buf[16]);
 
     auto total_len = ntohs(*reinterpret_cast<const uint16_t *>(&buf[2]));
     auto ihl = buf[0] >> 4;
@@ -25,8 +26,8 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "net: ip: version: %u, protocol: %u, src: %u, dest: %u\n",
-            version, protocol, src, dest);
+        SEGGER_RTT_printf(0, "net: ip: version: %u, protocol: %u, src: %s, dest: %s\n",
+            version, protocol, src.ToString().c_str(), dest.ToString().c_str());
     }
 
     bool is_us = false;
@@ -91,6 +92,24 @@ bool IP4Addr::Compare(IP4Addr a, IP4Addr b, IP4Addr mask)
     return (a.v & mask.v) == (b.v & mask.v);
 }
 
+IP4Addr::IP4Addr(const char *_v)
+{
+    v = *reinterpret_cast<const uint32_t *>(_v);
+}
+
+void IP4Addr::ToString(char *buf) const
+{
+    sprintf(buf, "%" PRIu32 ".%" PRIu32 ".%" PRIu32 ".%" PRIu32, 
+        v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >> 24) & 0xff);
+}
+
+std::string IP4Addr::ToString() const
+{
+    char buf[16];
+    ToString(buf);
+    return std::string(buf);
+}
+
 IP4Addr::operator uint32_t() const
 {
     return v;
@@ -99,4 +118,18 @@ IP4Addr::operator uint32_t() const
 IP4Addr IP4Address::Broadcast() const
 {
     return addr | (~nm);
+}
+
+int net_set_ip_address(const IP4Address &addr)
+{
+    net_msg m;
+    m.msg_type = net_msg::net_msg_type::SetIPAddress;
+    m.msg_data.ipaddr = addr;
+    return net_queue_msg(m);
+}
+
+void net_ip_handle_set_ip_address(const net_msg &m)
+{
+    CriticalGuard cg(s_ips);
+    ourips.push_back(m.msg_data.ipaddr);
 }

@@ -39,6 +39,14 @@ void tud_network_init_cb(void)
     our_addr[5] = ~our_addr[5];
     rndis_if.our_hwaddr = HwAddr(our_addr);
     rndis_if.is_up = true;
+
+    IP4Address rndis_ip;
+    rndis_ip.addr = IP4Addr(0x0107a8c0);
+    rndis_ip.gw = IP4Addr(0UL);
+    rndis_ip.iface = &rndis_if;
+    rndis_ip.nm = IP4Addr(0x00ffffff);
+
+    net_set_ip_address(rndis_ip);
 }
 
 const HwAddr &TUSBNetInterface::GetHwAddr() const
