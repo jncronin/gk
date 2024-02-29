@@ -15,7 +15,7 @@ static void net_thread(void *_params)
     while(true)
     {
         net_msg m;
-        if(msgs.Pop(&m))
+        if(msgs.Pop(&m, 100))
         {        
             switch(m.msg_type)
             {

@@ -9,7 +9,7 @@
 int syscall_listen(int sockfd, int backlog, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
-    auto p = t->p;
+    auto &p = t->p;
     if(sockfd < 0 || sockfd >= GK_MAX_OPEN_FILES || p.open_files[sockfd] == nullptr)
     {
         *_errno = EBADF;
@@ -21,7 +21,7 @@ int syscall_listen(int sockfd, int backlog, int *_errno)
 int syscall_accept(int sockfd, void *addr, unsigned int *addrlen, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
-    auto p = t->p;
+    auto &p = t->p;
     if(sockfd < 0 || sockfd >= GK_MAX_OPEN_FILES || p.open_files[sockfd] == nullptr)
     {
         *_errno = EBADF;

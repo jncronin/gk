@@ -45,15 +45,15 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
         {
             if(type == SOCK_RAW)
             {
-                domain = IPPROTO_RAW;
+                protocol = IPPROTO_RAW;
             }
             else if(type == SOCK_DGRAM)
             {
-                domain = IPPROTO_UDP;
+                protocol = IPPROTO_UDP;
             }
             else if(type == SOCK_STREAM)
             {
-                domain = IPPROTO_TCP;
+                protocol = IPPROTO_TCP;
             }
         }
     }
@@ -127,7 +127,7 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
 
     // get available sockfd
     auto t = GetCurrentThreadForCore();
-    auto p = t->p;
+    auto &p = t->p;
     {
         CriticalGuard cg(p.sl);
 
@@ -158,7 +158,7 @@ int socket(int domain, int type, int protocol)
 Socket *fildes_to_sck(int fildes)
 {
     auto t = GetCurrentThreadForCore();
-    auto p = t->p;
+    auto &p = t->p;
     {
         CriticalGuard cg(p.sl);
         if(fildes < 0 || fildes >= GK_MAX_OPEN_FILES)
