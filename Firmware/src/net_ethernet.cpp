@@ -23,11 +23,13 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
 
     // TODO check CRC
 
+#if DEBUG_ETHERNET
     {
         CriticalGuard c(s_rtt);
         SEGGER_RTT_printf(0, "net: ethernet recv: %s to %s, ethertype: %u\n",
             src.ToString().c_str(), dest.ToString().c_str(), ethertype);
     }
+#endif
 
     // sent to us?
     bool to_us = false;

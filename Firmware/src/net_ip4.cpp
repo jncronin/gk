@@ -16,6 +16,10 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
 
     auto protocol = buf[9];
     auto version = buf[0] >> 4;
+    if(version != 4)
+    {
+        return NET_NOTSUPP;
+    }
     auto src = IP4Addr(&buf[12]);
     auto dest = IP4Addr(&buf[16]);
 
@@ -24,11 +28,13 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     auto header_len = static_cast<uint16_t>(ihl * 4);
     auto blen = static_cast<uint16_t>(total_len - header_len);
 
+#if DEBUG_IP4
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "net: ip: version: %u, protocol: %u, src: %s, dest: %s\n",
             version, protocol, src.ToString().c_str(), dest.ToString().c_str());
     }
+#endif
 
     bool is_us = false;
     if(dest.get() == 0xffffffff)
