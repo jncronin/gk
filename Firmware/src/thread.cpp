@@ -11,6 +11,19 @@ extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
 
+static void thread_cleanup()
+{
+    auto t = GetCurrentThreadForCore();
+    {
+        CriticalGuard cg(t->sl);
+        t->for_deletion = true;
+    }
+    while(true)
+    {
+        Yield();
+    }
+}
+
 Thread *Thread::Create(std::string name,
             threadstart_t func,
             void *p,
@@ -64,7 +77,7 @@ Thread *Thread::Create(std::string name,
     auto stack = reinterpret_cast<uint32_t *>(t->stack.address);
     stack[--top_stack] = 1UL << 24; // THUMB mode
     stack[--top_stack] = reinterpret_cast<uint32_t>(func) | 1UL;
-    stack[--top_stack] = 0UL;
+    stack[--top_stack] = reinterpret_cast<uint32_t>(thread_cleanup) | 1UL;
     stack[--top_stack] = 0UL;
     stack[--top_stack] = 0UL;
     stack[--top_stack] = 0UL;
