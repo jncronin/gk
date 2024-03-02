@@ -52,7 +52,8 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
     {
         CriticalGuard cg(s_arp);
         // regardless of whether we made the request, cache what we receive
-        arp_cache[ip_sender] = hw_sender;
+        if(ip_sender != 0UL && ip_sender != 0xffffffffUL)
+            arp_cache[ip_sender] = hw_sender;
         
         // if this is a reply, and we have the request, deal with any pending send packets
         if(oper == 2 && hw_target == pkt.iface->GetHwAddr())
@@ -91,7 +92,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             memcpy(&data[18], hw_sender.get(), 6);
             *reinterpret_cast<uint32_t *>(&data[24]) = ip_sender;
 
-            pkt.iface->SendEthernetPacket(data, 28, HwAddr::multicast, 0x0806);
+            pkt.iface->SendEthernetPacket(data, 28, hw_sender, 0x0806);
         }
     }
     
