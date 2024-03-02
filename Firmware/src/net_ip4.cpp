@@ -148,3 +148,16 @@ void net_ip_handle_set_ip_address(const net_msg &m)
     CriticalGuard cg(s_ips);
     ourips.push_back(m.msg_data.ipaddr);
 }
+
+size_t net_ip_get_addresses(IP4Address *out, size_t nout)
+{
+    size_t ret = 0;
+    for(const auto &ip : ourips)
+    {
+        if(ret >= nout)
+            return ret;
+        
+        out[ret++] = ip;
+    }
+    return ret;
+}

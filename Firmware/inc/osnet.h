@@ -340,4 +340,6 @@ int net_ret_to_errno(int ret);
 void net_udp_handle_recvfrom(const net_msg &m);
 void net_ip_handle_set_ip_address(const net_msg &m);
 
+size_t net_ip_get_addresses(IP4Address *out, size_t naddrs);
+
 #endif
