@@ -175,6 +175,40 @@ int UDPSocket::RecvFromAsync(void *buf, size_t len, int flags,
     return -2;
 }
 
+int UDPSocket::SendToAsync(const void *buf, size_t len, int flags,
+    const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno)
+{
+    if(!dest_addr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(addrlen < sizeof(sockaddr_in))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    net_msg msg;
+    msg.msg_type = net_msg::net_msg_type::UDPSendDgram;
+    msg.msg_data.udpsend.buf = (char *)buf;
+    msg.msg_data.udpsend.n = len;
+    msg.msg_data.udpsend.flags = flags;
+    msg.msg_data.udpsend.dest_addr = (sockaddr_in *)dest_addr;
+    msg.msg_data.udpsend.addrlen = addrlen;
+    msg.msg_data.udpsend.t = GetCurrentThreadForCore();
+    msg.msg_data.udpsend.sck = this;
+
+    auto qret = net_queue_msg(msg);
+    if(qret != NET_OK)
+    {
+        *_errno = net_ret_to_errno(qret);
+        return -1;
+    }
+
+    return -2;
+}
+
 bool UDPSocket::RecvFromInt(const net_msg &m)
 {
     // If we can immediately return a dgram then do so
@@ -189,6 +223,54 @@ bool UDPSocket::RecvFromInt(const net_msg &m)
     {
         return udp_waiting_queue.Write(m);
     }
+}
+
+bool UDPSocket::SendToInt(const net_msg &m)
+{
+    // store to output buffer
+    CriticalGuard cg(sl);
+
+    auto avail_space = (send_rptr > send_wptr) ? (send_rptr - send_wptr) : (GK_NET_SOCKET_BUFSIZE - (send_wptr - send_rptr));
+    if(avail_space < m.msg_data.udpsend.n)
+    {
+        // deferred return
+        m.msg_data.udpsend.t->ss_p.ival1 = -1;
+        m.msg_data.udpsend.t->ss_p.ival2 = ENOMEM;
+        m.msg_data.udpsend.t->ss.Signal();
+        return false;
+    }
+
+    auto old_wptr = send_wptr;
+    send_wptr = memcpy_split_dest(sendbuf, m.msg_data.udpsend.buf,
+        m.msg_data.udpsend.n, send_wptr, GK_NET_SOCKET_BUFSIZE);
+
+    dgram_send_desc dd;
+    dd.to = *m.msg_data.udpsend.dest_addr;
+    dd.start = old_wptr;
+    dd.len = m.msg_data.udpsend.n;
+    dd.t = m.msg_data.udpsend.t;
+
+    if(!dgram_send_queue.Write(dd))
+    {
+        send_wptr = old_wptr;
+        // deferred return
+        m.msg_data.udpsend.t->ss_p.ival1 = -1;
+        m.msg_data.udpsend.t->ss_p.ival2 = ENOMEM;
+        m.msg_data.udpsend.t->ss.Signal();
+        return false;
+    }
+
+    // tell the stack we have data to send
+    net_msg msg;
+    msg.msg_type = net_msg::net_msg_type::SendSocketData;
+    msg.msg_data.socketdata.sck = this;
+    if(!net_queue_msg(msg))
+    {
+        // this should hopefully never happen because we have just popped a message to get here
+        return false;
+    }
+
+    return true;        
 }
 
 void UDPSocket::RecvFromInt(const net_msg &m, dgram_desc &dd)
@@ -209,7 +291,92 @@ void UDPSocket::RecvFromInt(const net_msg &m, dgram_desc &dd)
     m.msg_data.udprecv.t->ss.Signal();
 }
 
+int UDPSocket::SendPendingData()
+{
+    // build packets for each dgram
+    CriticalGuard cg(sl);
+    while(true)
+    {
+        dgram_send_desc dd;
+        if(dgram_send_queue.Read(&dd))
+        {
+            IP4Route route;
+            int ret = NET_OK;
+            auto route_ret = net_ip_get_route_for_address(IP4Addr(dd.to.sin_addr.s_addr), &route);
+
+            if(route_ret != NET_OK)
+            {
+                ret = route_ret;
+            }
+            else
+            {
+                // we have a valid dgram, try and build a packet
+                auto hdr_size = 8 /* UDP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
+                auto pkt_size = hdr_size + dd.len + route.addr.iface->GetFooterSize();
+
+                if(pkt_size > PBUF_SIZE)
+                {
+                    ret = NET_MSGSIZE;
+                }
+                else
+                {
+                    // allocate a pbuf
+                    auto pbuf = net_allocate_pbuf();
+                    if(!pbuf)
+                    {
+                        ret = NET_NOMEM;
+                    }
+                    else
+                    {
+                        // copy data to pbuf
+                        memcpy_split_src(&pbuf[hdr_size], sendbuf, dd.len, dd.start, GK_NET_SOCKET_BUFSIZE);
+                        net_udp_decorate_packet(&pbuf[hdr_size], dd.len, &dd.to, this);
+                    }
+                }
+            }
+
+            if(ret == NET_OK)
+            {
+                // deferred success
+                dd.t->ss_p.ival1 = dd.len;
+                dd.t->ss.Signal();
+            }
+            else
+            {
+                // still need to deallocate data from the socket stream
+                send_wptr = (send_wptr + dd.len) % GK_NET_SOCKET_BUFSIZE;
+
+                // deferred result failed
+                dd.t->ss_p.ival1 = -1;
+                dd.t->ss_p.ival2 = net_ret_to_errno(ret);
+                dd.t->ss.Signal();
+            }
+        }
+        else
+        {
+            return NET_OK;
+        }
+    }
+}
+
 void net_udp_handle_recvfrom(const net_msg &m)
 {
     m.msg_data.udprecv.sck->RecvFromInt(m);
+}
+
+void net_udp_handle_sendto(const net_msg &m)
+{
+    m.msg_data.udpsend.sck->SendToInt(m);
+}
+
+bool net_udp_decorate_packet(char *data, size_t datalen, const sockaddr_in *dest, UDPSocket *src)
+{
+    auto hdr = data - 8;
+    *reinterpret_cast<uint16_t *>(&hdr[0]) = src->port;
+    *reinterpret_cast<uint16_t *>(&hdr[2]) = dest->sin_port;
+    *reinterpret_cast<uint16_t *>(&hdr[4]) = htons(8 + datalen);
+    *reinterpret_cast<uint16_t *>(&hdr[6]) = 0;     // checksum optional for udp in ip4
+
+    return net_ip_decorate_packet(hdr, datalen + 8, IP4Addr(dest->sin_addr.s_addr), src->bound_addr,
+        IPPROTO_UDP);
 }

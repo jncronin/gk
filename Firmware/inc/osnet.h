@@ -49,6 +49,7 @@ class HwAddr
         static const HwAddr multicast;
 
         bool operator==(const HwAddr &other);
+        const char *get() const;
 };
 
 class IP4Addr
@@ -77,7 +78,10 @@ class NetInterface
     public:
         virtual const HwAddr &GetHwAddr() const = 0;
         virtual bool GetLinkActive() const = 0;
-        virtual int SendEthernetPacket(const char *buf, size_t n) = 0;
+        virtual int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype) = 0;
+
+        virtual int GetHeaderSize() const;
+        virtual int GetFooterSize() const;
 };
 
 class TUSBNetInterface : public NetInterface
@@ -89,7 +93,10 @@ class TUSBNetInterface : public NetInterface
     public:
         const HwAddr &GetHwAddr() const;
         bool GetLinkActive() const;
-        int SendEthernetPacket(const char *buf, size_t n);
+        int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype);
+
+        int GetHeaderSize() const;
+        int GetFooterSize() const;
 
         friend void tud_network_init_cb(void);
 };
@@ -103,6 +110,14 @@ class IP4Address
         IP4Address() = default;
 };
 
+class IP4Route
+{
+    public:
+        IP4Address addr;
+        int metric;
+};
+
+class Socket;
 class UDPSocket;
 // messages to be processed by net server
 struct net_msg
@@ -111,8 +126,11 @@ struct net_msg
     {
         InjectPacket,
         SendPacket,
+        SendSocketData,
         UDPRecvDgram,
-        SetIPAddress
+        UDPSendDgram,
+        SetIPAddress,
+        ArpRequestAndSend
     };
 
     net_msg_type msg_type;
@@ -121,11 +139,24 @@ struct net_msg
     {
         struct packet_t
         {
-            const char *buf;
+            char *buf;
             size_t n;
             NetInterface *iface;
+            uint16_t ethertype;
+            HwAddr dest;
         } packet;
-        struct udpdgram_t
+        struct arp_request_t
+        {
+            char *buf;
+            size_t n;
+            NetInterface *iface;
+            IP4Addr addr;
+        } arp_request;
+        struct socketdata_t
+        {
+            Socket *sck;
+        } socketdata;
+        struct udprecvdgram_t
         {
             char *buf;
             size_t n;
@@ -135,6 +166,16 @@ struct net_msg
             Thread *t;
             UDPSocket *sck;
         } udprecv;
+        struct udpsenddgram_t
+        {
+            const char *buf;
+            size_t n;
+            int flags;
+            sockaddr_in *dest_addr;
+            socklen_t addrlen;
+            Thread *t;
+            UDPSocket *sck;
+        } udpsend;
         IP4Address ipaddr;
     } msg_data;
 };
@@ -145,6 +186,9 @@ struct net_msg
 #define NET_NOTSUPP     -2
 #define NET_TRYAGAIN    -3
 #define NET_NOMEM       -4
+#define NET_MSGSIZE     -5
+#define NET_DEFER       -6
+#define NET_NOROUTE     -7
 
 #define PBUF_SIZE       1542
 
@@ -215,6 +259,9 @@ class Socket
         virtual int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         virtual int RecvFromAsync(void *buf, size_t len, int flags,
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
+        virtual int SendToAsync(const void *buf, size_t len, int flags,
+            const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno);
+        virtual int SendPendingData();
 
         bool thread_is_blocking_for_recv = false;
         SimpleSignal *blocking_thread_signal = nullptr;
@@ -250,7 +297,14 @@ class UDPSocket : public IP4Socket
             size_t start, len;
             sockaddr_in from;
         };
+        struct dgram_send_desc
+        {
+            size_t start, len;
+            sockaddr_in to;
+            Thread *t;
+        };
         RingBuffer<dgram_desc, 64> dgram_queue;
+        RingBuffer<dgram_send_desc, 64> dgram_send_queue;
         RingBuffer<net_msg, 8> udp_waiting_queue;
 
     public:
@@ -264,7 +318,13 @@ class UDPSocket : public IP4Socket
         bool RecvFromInt(const net_msg &m);
         void RecvFromInt(const net_msg &m, dgram_desc &dd);
 
+        int SendToAsync(const void *buf, size_t len, int flags,
+            const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno);
+        bool SendToInt(const net_msg &m);
+
         int HandlePacket(const char *ptr, size_t n, uint32_t from_addr, uint16_t from_port);
+
+        int SendPendingData();
         
         size_t operator()(const UDPSocket &s) const noexcept;
         bool operator==(const UDPSocket &other) const noexcept;
@@ -338,8 +398,19 @@ int net_queue_msg(const net_msg &m);
 int net_ret_to_errno(int ret);
 
 void net_udp_handle_recvfrom(const net_msg &m);
+void net_udp_handle_sendto(const net_msg &m);
 void net_ip_handle_set_ip_address(const net_msg &m);
 
 size_t net_ip_get_addresses(IP4Address *out, size_t naddrs);
+IP4Addr net_ip_get_address(const NetInterface *iface);
+int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route);
+int net_ip_add_route(const IP4Route &route);
+
+bool net_udp_decorate_packet(char *data, size_t datalen, const sockaddr_in *dest, UDPSocket *src);
+bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, const IP4Addr &src, uint8_t protocol);
+int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Addr &dest, const IP4Address &route);
+int net_ip_get_hardware_address(const IP4Addr &dest, HwAddr *ret);
+uint32_t net_ethernet_calc_crc(const char *data, size_t n);
+void net_arp_handle_request_and_send(const net_msg &m);
 
 #endif

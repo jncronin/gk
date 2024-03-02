@@ -28,6 +28,18 @@ int Socket::RecvFromAsync(void *buf, size_t len, int flags,
     return -1;
 }
 
+int Socket::SendToAsync(const void *buf, size_t len, int flags,
+    const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno)
+{
+    *_errno = ENOTSUP;
+    return -1;
+}
+
+int Socket::SendPendingData()
+{
+    return NET_NOTSUPP;
+}
+
 int syscall_socket(int domain, int type, int protocol, int *_errno)
 {
     // sanity check arguments
@@ -253,4 +265,28 @@ ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
     struct sockaddr *src_addr, socklen_t *addrlen)
 {
     return deferred_call(syscall_recvfrom, sockfd, buf, len, flags, src_addr, addrlen);
+}
+
+int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
+    const sockaddr *dest_addr, socklen_t addrlen, int *_errno)
+{
+    auto sck = fildes_to_sck(sockfd);
+    if(!sck)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    if(!buf)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    return sck->SendToAsync(buf, len, flags, dest_addr, addrlen, _errno);
+}
+
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+    const sockaddr *dest_addr, socklen_t addrlen)
+{
+    return deferred_call(syscall_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
 }

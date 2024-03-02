@@ -66,9 +66,37 @@ int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     // add packet to a queue for service by the net thread
     net_msg m;
     m.msg_type = net_msg::net_msg_type::InjectPacket;
-    m.msg_data.packet.buf = buf;
+    m.msg_data.packet.buf = const_cast<char *>(buf);
     m.msg_data.packet.n = n;
     m.msg_data.packet.iface = iface;
 
     return net_queue_msg(m);
+}
+
+#define CRC_POLY    0xEDB88320
+
+uint32_t net_ethernet_calc_crc(const char *buf, size_t len)
+{
+    auto data = reinterpret_cast<const uint8_t *>(buf);
+
+    unsigned int i, j;
+    uint32_t crc;
+
+    if (!data)
+        return 0;
+
+    if (len < 1)
+        return 0;
+
+    crc = 0xFFFFFFFF;
+
+    for (j = 0; j < len; j++) {
+        crc ^= data[j];
+
+        for (i = 0; i < 8; i++) {
+             crc = (crc & 1) ? ((crc >> 1) ^ CRC_POLY) : (crc >> 1);
+        }
+    }
+
+    return (crc ^ 0xFFFFFFFF);
 }
