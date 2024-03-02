@@ -51,7 +51,7 @@ void tud_network_init_cb(void)
     def_route.addr.addr = IP4Addr(0x0007a8c0);
     def_route.addr.gw = IP4Addr(0UL);
     def_route.addr.iface = &rndis_if;
-    def_route.addr.nm = IP4Addr(0xffffffff);
+    def_route.addr.nm = IP4Addr(0x00ffffff);
     net_ip_add_route(def_route);
 
     IP4Route bcast_route;

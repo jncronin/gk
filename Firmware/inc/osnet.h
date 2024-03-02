@@ -412,5 +412,6 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Ad
 int net_ip_get_hardware_address(const IP4Addr &dest, HwAddr *ret);
 uint32_t net_ethernet_calc_crc(const char *data, size_t n);
 void net_arp_handle_request_and_send(const net_msg &m);
+uint16_t net_ip_calc_checksum(const char *data, size_t n);
 
 #endif
