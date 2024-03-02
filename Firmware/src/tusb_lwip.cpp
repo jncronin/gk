@@ -101,7 +101,11 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         *reinterpret_cast<uint16_t *>(&buf[12]) = htons(ethertype);
 
         // compute crc
-        if(n < 64) n = 64;  // min frame length
+        if(n < 64)
+        {
+            memset(&buf[14 + n], 0, 64 - n);
+            n = 64;  // min frame length
+        }
         auto crc = net_ethernet_calc_crc(buf, n + 14);
         *reinterpret_cast<uint32_t *>(&buf[n + 14]) = htonl(crc);
         {
