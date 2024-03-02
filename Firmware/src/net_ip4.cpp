@@ -208,18 +208,7 @@ bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, con
     *reinterpret_cast<uint32_t *>(&hdr[12]) = src_val;
     *reinterpret_cast<uint32_t *>(&hdr[16]) = dest;
 
-    // calculate checksum - 1s complement of 1s complement sum of 16-bit values
-    uint32_t csum = 0;
-    for(int i = 0; i < 10; i++)
-    {
-        csum += (uint32_t)*reinterpret_cast<uint16_t *>(&hdr[i * 2]);
-    }
-    // add carry bits
-    csum = (((csum >> 16) & 0xf) + csum) & 0xffff;
-    // 1s complement
-    csum = ~csum;
-
-    *reinterpret_cast<uint16_t *>(&hdr[10]) = (uint16_t)csum;
+    *reinterpret_cast<uint16_t *>(&hdr[10]) = net_ip_calc_checksum(hdr, 20);
 
     net_ip_get_hardware_address_and_send(hdr, datalen + 20, dest, route.addr);
 
@@ -302,4 +291,18 @@ int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route)
     // parse routing table, resolving gateways as we go
     CriticalGuard cg(s_routes);
     return net_ip_get_route_for_address_int(addr, route);
+}
+
+uint16_t net_ip_calc_checksum(const char *data, size_t n)
+{
+    uint32_t csum = 0;
+    for(unsigned int i = 0; i < n/2; i++)
+    {
+        csum += static_cast<uint32_t>(*reinterpret_cast<const uint16_t *>(&data[i * 2]));
+    }
+    // add carry bits
+    csum = (((csum >> 16) & 0xf) + csum) & 0xffff;
+    // 1s complement
+    csum = ~csum;
+    return static_cast<uint16_t>(csum & 0xffff);
 }
