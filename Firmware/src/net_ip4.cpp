@@ -2,13 +2,17 @@
 #include <osmutex.h>
 #include <map>
 #include <vector>
+#include <limits>
 #include "SEGGER_RTT.h"
 
 extern Spinlock s_rtt;
 
-Spinlock s_ips;
-static std::vector<IP4Address> ourips;
-static std::map<IP4Addr, IP4Address> ipcache;
+SRAM4_DATA static Spinlock s_ips;
+SRAM4_DATA static std::vector<IP4Address> ourips;
+SRAM4_DATA static std::map<IP4Addr, IP4Address> ipcache;
+
+SRAM4_DATA static Spinlock s_routes;
+SRAM4_DATA static std::vector<IP4Route> routes;
 
 int net_handle_ip4_packet(const EthernetPacket &epkt)
 {
@@ -151,6 +155,7 @@ void net_ip_handle_set_ip_address(const net_msg &m)
 
 size_t net_ip_get_addresses(IP4Address *out, size_t nout)
 {
+    CriticalGuard cg(s_ips);
     size_t ret = 0;
     for(const auto &ip : ourips)
     {
@@ -160,4 +165,141 @@ size_t net_ip_get_addresses(IP4Address *out, size_t nout)
         out[ret++] = ip;
     }
     return ret;
+}
+
+IP4Addr net_ip_get_address(const NetInterface *iface)
+{
+    CriticalGuard cg(s_ips);
+    for(const auto &ip : ourips)
+    {
+        if(ip.iface == iface)
+        {
+            return ip.addr;
+        }
+    }
+    return IP4Addr(0UL);
+}
+
+bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, const IP4Addr &src, uint8_t protocol)
+{
+    // get route for dest
+    IP4Route route;
+    if(net_ip_get_route_for_address(dest, &route) != NET_OK)
+    {
+        return false;
+    }
+
+    // if src is broadcast then rewrite with the one from route
+    auto src_val = src;
+    if(src == 0UL)
+    {
+        src_val = route.addr.addr;
+    }
+
+    auto hdr = data - 20;
+    hdr[0] = (4UL << 4) | 5UL;
+    hdr[1] = 0;
+    *reinterpret_cast<uint16_t *>(&hdr[2]) = htons(datalen + 20);
+    *reinterpret_cast<uint16_t *>(&hdr[4]) = 0;     // ID
+    *reinterpret_cast<uint16_t *>(&hdr[6]) = 0;     // fragments
+    hdr[8] = 64UL;
+    hdr[9] = protocol;
+    *reinterpret_cast<uint16_t *>(&hdr[10]) = 0;    // checksum
+    *reinterpret_cast<uint32_t *>(&hdr[12]) = src_val;
+    *reinterpret_cast<uint32_t *>(&hdr[16]) = dest;
+
+    // calculate checksum - 1s complement of 1s complement sum of 16-bit values
+    uint32_t csum = 0;
+    for(int i = 0; i < 10; i++)
+    {
+        csum += (uint32_t)*reinterpret_cast<uint16_t *>(&hdr[i * 2]);
+    }
+    // add carry bits
+    csum = (((csum >> 16) & 0xf) + csum) & 0xffff;
+    // 1s complement
+    csum = ~csum;
+
+    *reinterpret_cast<uint16_t *>(&hdr[10]) = (uint16_t)csum;
+
+    net_ip_get_hardware_address_and_send(hdr, datalen + 20, dest, route.addr);
+
+    return true;
+}
+
+int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Addr &dest, const IP4Address &route)
+{
+    // do we need to use a gateway?
+    IP4Addr actdest = (route.addr == route.gw) ? dest : route.gw;
+
+    HwAddr hwaddr;
+    if(net_ip_get_hardware_address(actdest, &hwaddr) == NET_OK)
+    {
+        // decorate and send direct
+        route.iface->SendEthernetPacket(data, datalen, hwaddr, IPPROTO_IP);
+        return NET_OK;
+    }
+    else
+    {
+        // send arp request with promise to send
+        net_msg msg;
+        msg.msg_type = net_msg::net_msg_type::ArpRequestAndSend;
+        msg.msg_data.arp_request.addr = actdest;
+        msg.msg_data.arp_request.buf = data;
+        msg.msg_data.arp_request.n = datalen;
+        msg.msg_data.arp_request.iface = route.iface;
+
+        net_queue_msg(msg);
+
+        return NET_DEFER;
+    }
+}
+
+int net_ip_add_route(const IP4Route &route)
+{
+    CriticalGuard cg(s_routes);
+    routes.push_back(route);
+    return NET_OK;
+}
+
+static int net_ip_get_route_for_address_int(const IP4Addr &addr, IP4Route *route)
+{
+    const IP4Route *best_route = nullptr;
+    int cur_metric = std::numeric_limits<int>::max();
+
+    for(const auto &r : routes)
+    {
+        if(IP4Addr::Compare(addr, r.addr.addr, r.addr.nm) && r.metric < cur_metric)
+        {
+            cur_metric = r.metric;
+            best_route = &r;
+        }
+    }
+
+    if(!best_route)
+    {
+        return NET_NOROUTE;
+    }
+
+    if(best_route->addr.gw == 0UL)
+    {
+        // found a direct route.  Set the target as the gateway in ret
+        route->metric = cur_metric;
+        route->addr.iface = best_route->addr.iface;
+        route->addr.addr = net_ip_get_address(route->addr.iface);
+        route->addr.gw = addr;
+        route->addr.nm = best_route->addr.nm;
+        return NET_OK;
+    }
+    else
+    {
+        // find the route to the gateway
+        return net_ip_get_route_for_address_int(best_route->addr.gw, route);
+    }
+}
+
+int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route)
+{
+    // parse routing table, resolving gateways as we go
+    CriticalGuard cg(s_routes);
+    return net_ip_get_route_for_address_int(addr, route);
 }

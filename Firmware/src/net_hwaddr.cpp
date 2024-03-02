@@ -16,6 +16,11 @@ std::string HwAddr::ToString() const
     return std::string(buf);
 }
 
+const char *HwAddr::get() const
+{
+    return b;
+}
+
 void HwAddr::ToString(char *buf) const
 {
     sprintf(buf, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -30,4 +35,14 @@ bool HwAddr::operator==(const HwAddr &other)
             return false;
     }
     return true;
+}
+
+int NetInterface::GetFooterSize() const
+{
+    return 0;
+}
+
+int NetInterface::GetHeaderSize() const
+{
+    return 0;
 }

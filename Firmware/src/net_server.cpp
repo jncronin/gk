@@ -31,8 +31,20 @@ static void net_thread(void *_params)
                     net_udp_handle_recvfrom(m);
                     break;
 
+                case net_msg::net_msg_type::UDPSendDgram:
+                    net_udp_handle_sendto(m);
+                    break;
+
                 case net_msg::net_msg_type::SetIPAddress:
                     net_ip_handle_set_ip_address(m);
+                    break;
+
+                case net_msg::net_msg_type::SendSocketData:
+                    m.msg_data.socketdata.sck->SendPendingData();
+                    break;
+
+                case net_msg::net_msg_type::ArpRequestAndSend:
+                    net_arp_handle_request_and_send(m);
                     break;
             }
         }
@@ -57,7 +69,10 @@ int net_ret_to_errno(int ret)
             return ENOTSUP;
         case NET_TRYAGAIN:
         case NET_NOTUS:
+        case NET_DEFER:
             return EOK;
+        case NET_MSGSIZE:
+            return EMSGSIZE;
         default:
             return EINVAL;
     }
@@ -83,12 +98,17 @@ static void handle_inject_packet(const net_msg &m)
     net_deallocate_pbuf((char *)m.msg_data.packet.buf);
 }
 
-static void handle_send_packet(const net_msg &)
+static void handle_send_packet(const net_msg &m)
 {
-
+    m.msg_data.packet.iface->SendEthernetPacket(m.msg_data.packet.buf,
+        m.msg_data.packet.n,
+        m.msg_data.packet.dest,
+        m.msg_data.packet.ethertype);
 }
+
+void net_arp_handle_timeouts();
 
 static void handle_timeouts()
 {
-
+    net_arp_handle_timeouts();
 }

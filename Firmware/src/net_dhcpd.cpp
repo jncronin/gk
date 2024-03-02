@@ -25,7 +25,7 @@ extern Spinlock s_rtt;
 #define OFFSET_FILE         108
 #define OFFSET_OPTIONS      236
 
-#define DHCP_MAGIC_NB       0x63825263
+#define DHCP_MAGIC_NB       0x63825363
 
 /* DHCP server particularly suited for provisioning devices connected via the USB RNDIS port
 
@@ -45,6 +45,8 @@ static void build_response(const char *inreq, char *resp, IP4Addr *dest, const s
     *reinterpret_cast<uint32_t *>(&resp[OFFSET_XID]) = *reinterpret_cast<const uint32_t *>(&inreq[OFFSET_XID]);
     *reinterpret_cast<uint32_t *>(&resp[OFFSET_CIADDR]) = *reinterpret_cast<const uint32_t *>(&inreq[OFFSET_CIADDR]);
     *reinterpret_cast<uint32_t *>(&resp[OFFSET_GIADDR]) = *reinterpret_cast<const uint32_t *>(&inreq[OFFSET_GIADDR]);
+
+    memcpy(&resp[OFFSET_CHADDR], &inreq[OFFSET_CHADDR], 6);
 
     strcpy(&resp[OFFSET_SNAME], "gk");
 
@@ -103,7 +105,7 @@ static bool add_requested_option(int req_id, int *out_offset, char *resp, int ma
     {
         case 1:
             // subnet mask
-            return add_option(1, 4, 0xffffff00UL, out_offset, resp, max_offset);
+            return add_option(1, 4, 0x00ffffffUL, out_offset, resp, max_offset);
 
         case 3:
             // router
@@ -176,11 +178,13 @@ static void send_response(int sockfd, const char *buf, size_t len, const IP4Addr
 
 static void handle_dhcpdiscover(int sockfd, const char *buf, const std::map<int, int> &options, const sockaddr_in *caddr)
 {
-    CriticalGuard cg(s_rtt);
-    SEGGER_RTT_printf(0, "dhcpd: DHCPDISCOVER received, options:\n");
-    for(const auto &opt : options)
     {
-        SEGGER_RTT_printf(0, "  %d\n", opt.first);
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "dhcpd: DHCPDISCOVER received, options:\n");
+        for(const auto &opt : options)
+        {
+            SEGGER_RTT_printf(0, "  %d\n", opt.first);
+        }
     }
 
     // build response packet
@@ -190,8 +194,11 @@ static void handle_dhcpdiscover(int sockfd, const char *buf, const std::map<int,
 
     int offset = OFFSET_OPTIONS + 4;
 
-    // add DHCPACK response
-    add_option(53, 1, DHCPACK, &offset, resp, sizeof(resp));
+    // add DHCPOFFER response
+    add_option(53, 1, DHCPOFFER, &offset, resp, sizeof(resp));
+
+    // MUST include lease time
+    add_option(51, 4, htonl(600), &offset, resp, sizeof(resp));
 
     // SHOULD include message
     char msg[] = "OK";
@@ -235,13 +242,82 @@ static void handle_dhcpdiscover(int sockfd, const char *buf, const std::map<int,
     }
 }
 
+static void handle_dhcprequest(int sockfd, const char *buf, const std::map<int, int> &options, const sockaddr_in *caddr)
+{
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "dhcpd: DHCPREQUEST received, options:\n");
+        for(const auto &opt : options)
+        {
+            SEGGER_RTT_printf(0, "  %d\n", opt.first);
+        }
+    }
+
+    // build response packet
+    char resp[512];
+    IP4Addr resp_dest;
+    build_response(buf, resp, &resp_dest, caddr);
+
+    int offset = OFFSET_OPTIONS + 4;
+
+    // add DHCPACK response
+    add_option(53, 1, DHCPACK, &offset, resp, sizeof(resp));
+
+    // MUST include lease time
+    add_option(51, 4, htonl(600), &offset, resp, sizeof(resp));
+
+    // SHOULD include message
+    char msg[] = "OK";
+    add_option(56, strlen(msg) + 1, msg, &offset, resp, sizeof(resp));
+
+    // MUST include server identifier
+    // We need to get our IP address on the subnet that received this message
+    IP4Address ipaddrs[8];
+    IP4Addr from(caddr->sin_addr.s_addr);
+    IP4Addr servaddr(0UL);
+    auto nipaddrs = net_ip_get_addresses(ipaddrs, 8);
+    for(unsigned int i = 0; i < nipaddrs; i++)
+    {
+        if(IP4Addr::Compare(from, ipaddrs[i].addr, ipaddrs[i].nm))
+        {
+            servaddr = ipaddrs[i].addr;
+            break;
+        }
+    }
+    if(servaddr == 0UL && nipaddrs > 0)
+    {
+        servaddr = ipaddrs[0].addr;
+    }
+    add_option(54, 4, servaddr, &offset, resp, sizeof(resp));
+
+    // add requested data
+    if(auto req_offset = options.find(55); req_offset != options.end())
+    {
+        add_requested_options(buf, req_offset->second, &offset, resp, sizeof(resp));
+    }
+
+    // offer the client an IP
+    *reinterpret_cast<uint32_t *>(&resp[OFFSET_YIADDR]) = 0x0207a8c0;
+
+    // pad
+    bool valid = add_option(255, -1, 0UL, &offset, resp, sizeof(resp));
+    if(valid)
+    {
+        // send packet
+        send_response(sockfd, resp, offset, resp_dest);
+    }
+}
+
+
 static void handle_dhcpinform(int sockfd, const char *buf, const std::map<int, int> &options, const sockaddr_in *caddr)
 {
-    CriticalGuard cg(s_rtt);
-    SEGGER_RTT_printf(0, "dhcpd: DHCPINFORM received, options:\n");
-    for(const auto &opt : options)
     {
-        SEGGER_RTT_printf(0, "  %d\n", opt.first);
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "dhcpd: DHCPINFORM received, options:\n");
+        for(const auto &opt : options)
+        {
+            SEGGER_RTT_printf(0, "  %d\n", opt.first);
+        }
     }
 
     // build response packet
@@ -408,6 +484,10 @@ void net_dhcpd_thread(void *p)
 
                     case DHCPINFORM:
                         handle_dhcpinform(lsck, buf, opts, &caddr);
+                        break;
+
+                    case DHCPREQUEST:
+                        handle_dhcprequest(lsck, buf, opts, &caddr);
                         break;
                 }
             }
