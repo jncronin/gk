@@ -100,11 +100,6 @@ int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
     }
 }
 
-int UDPSocket::HandlePacket(const char *pkt, size_t n)
-{
-    return -1;
-}
-
 int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16_t src_port)
 {
     CriticalGuard cg(sl);
@@ -140,16 +135,6 @@ int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16
     }
 
     return NET_OK;
-}
-
-int UDPSocket::SendData(const char *d, size_t n, const void *addr, size_t addrlen)
-{
-    return -1;
-}
-
-int UDPSocket::RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss)
-{
-    return -1;
 }
 
 int UDPSocket::RecvFromAsync(void *buf, size_t len, int flags,
