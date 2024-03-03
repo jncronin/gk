@@ -19,6 +19,6 @@ int syscall_close(int file, int *_errno);
 int syscall_socket(int domain, int type, int protocol, int *_errno);
 int syscall_bind(int sockfd, const sockaddr *addr, socklen_t addrlen, int *_errno);
 int syscall_listen(int sockfd, int backlog, int *_errno);
-int syscall_accept(int sockfd, void *addr, unsigned int *addrlen, int *_errno);
+int syscall_accept(int sockfd, sockaddr *addr, socklen_t *addrlen, int *_errno);
 
 #endif

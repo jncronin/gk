@@ -30,6 +30,8 @@ void bluescreen_thread(void *p);
 void b_thread(void *p);
 void x_thread(void *p);
 
+void net_telnet_thread(void *p);
+
 __attribute__((section(".sram4")))Scheduler s;
 __attribute__((section(".sram4")))Process kernel_proc;
 
@@ -67,7 +69,7 @@ int main()
     s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
 
     s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, nullptr, true, 5, kernel_proc));
-
+    s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;

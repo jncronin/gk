@@ -226,7 +226,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_accept:
             {
                 auto p = reinterpret_cast<__syscall_accept_params *>(r2);
-                int ret = syscall_accept(p->sockfd, p->addr, (unsigned int *)p->addrlen, reinterpret_cast<int *>(r3));
+                int ret = syscall_accept(p->sockfd, p->addr, p->addrlen, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
