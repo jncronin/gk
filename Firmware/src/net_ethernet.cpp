@@ -44,7 +44,7 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     {
         EthernetPacket epkt { .src = src, .dest = dest, .ethertype = ethertype,
             .contents = &buf[ptr], .n = n - ptr - 4,
-            .iface = iface };
+            .iface = iface, .link_layer_data = buf, .link_layer_n = n };
         switch (ethertype)
         {
             case IPPROTO_IP:

@@ -208,6 +208,9 @@ class EthernetPacket
         size_t n;
 
         NetInterface *iface;
+
+        const char *link_layer_data;
+        size_t link_layer_n;
 };
 
 int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface);
@@ -282,10 +285,29 @@ class TCPSocket : public IP4Socket
     public:
         enum tcp_socket_state_t
         {
-            Listening, 
+            Listen,
+            SynSent,
+            SynReceived,
+            Established,
+            FinWait1,
+            FinWait2,
+            CloseWait,
+            Closing,
+            LastAck,
+            TimeWait,
+            Closed
         };
 
-        tcp_socket_state_t state;
+        tcp_socket_state_t state = Closed;
+
+        int HandlePacket(const char *pkt, size_t n,
+            IP4Addr src, uint16_t src_port,
+            IP4Addr ddest, uint16_t dest_port,
+            uint32_t seq_id, uint32_t ack_id,
+            unsigned int flags,
+            const char *opts, size_t optlen);
+
+        int GetWindowSize() const;
 };
 
 class net_msg;
@@ -346,6 +368,10 @@ void net_deallocate_sbuf(char *buf);
 int net_set_ip_address(const IP4Address &ip);
 
 /* comparison/hash functions for sockaddr_in */
+struct sockaddr_pair
+{
+    sockaddr_in src, dest;
+};
 namespace std
 {
     template<> struct hash<sockaddr_in>
@@ -362,6 +388,30 @@ namespace std
             if(lhs.sin_addr.s_addr != rhs.sin_addr.s_addr)
                 return false;
             if(lhs.sin_port != rhs.sin_port)
+                return false;
+            return true;
+        }
+    };
+
+    template<> struct hash<sockaddr_pair>
+    {
+        size_t operator()(const sockaddr_pair &s) const noexcept
+        {
+            return std::hash<sockaddr_in>{}(s.src) ^
+                std::hash<sockaddr_in>{}(s.dest);
+        }
+    };
+    template<> struct equal_to<sockaddr_pair>
+    {
+        bool operator()(const sockaddr_pair &lhs, const sockaddr_pair &rhs) const noexcept
+        {
+            if(lhs.src.sin_addr.s_addr != rhs.src.sin_addr.s_addr)
+                return false;
+            if(lhs.src.sin_port != rhs.src.sin_port)
+                return false;
+            if(lhs.dest.sin_addr.s_addr != rhs.src.sin_addr.s_addr)
+                return false;
+            if(lhs.dest.sin_port != rhs.dest.sin_port)
                 return false;
             return true;
         }
@@ -412,6 +462,17 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Ad
 int net_ip_get_hardware_address(const IP4Addr &dest, HwAddr *ret);
 uint32_t net_ethernet_calc_crc(const char *data, size_t n);
 void net_arp_handle_request_and_send(const net_msg &m);
+
+uint32_t net_ip_calc_partial_checksum(const char *data, size_t n, uint32_t csum = 0);
+uint16_t net_ip_complete_checksum(uint32_t partial_csum);
 uint16_t net_ip_calc_checksum(const char *data, size_t n);
+
+bool net_tcp_decorate_packet(char *data, size_t datalen,
+    const IP4Addr &dest, uint16_t dest_port,
+    const IP4Addr &src, uint16_t src_port,
+    uint32_t seq_id, uint32_t ack_id,
+    unsigned int flags,
+    const char *opts, size_t optlen,
+    TCPSocket *sck);
 
 #endif

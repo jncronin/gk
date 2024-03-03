@@ -293,16 +293,27 @@ int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route)
     return net_ip_get_route_for_address_int(addr, route);
 }
 
-uint16_t net_ip_calc_checksum(const char *data, size_t n)
+uint32_t net_ip_calc_partial_checksum(const char *data, size_t n, uint32_t csum)
 {
-    uint32_t csum = 0;
     for(unsigned int i = 0; i < n/2; i++)
     {
         csum += static_cast<uint32_t>(*reinterpret_cast<const uint16_t *>(&data[i * 2]));
     }
+    return csum;
+}
+
+uint16_t net_ip_complete_checksum(uint32_t csum)
+{
     // add carry bits
     csum = (((csum >> 16) & 0xf) + csum) & 0xffff;
     // 1s complement
     csum = ~csum;
     return static_cast<uint16_t>(csum & 0xffff);
+}
+
+uint16_t net_ip_calc_checksum(const char *data, size_t n)
+{
+    return net_ip_complete_checksum(
+        net_ip_calc_partial_checksum(data, n)
+    );
 }
