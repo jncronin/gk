@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <memory>
 #include <string>
+#include <queue>
 
 #include "osmutex.h"
 #include "osringbuffer.h"
@@ -235,7 +236,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt);
 
 
 /* Socket interface */
-class Socket
+class SocketBuffer
 {
     public:
         char *recvbuf = nullptr;
@@ -246,8 +247,23 @@ class Socket
         size_t send_wptr = 0;
         size_t send_rptr = 0;
 
-        const size_t buflen = GK_NET_SOCKET_BUFSIZE;
+        constexpr static const size_t buflen = GK_NET_SOCKET_BUFSIZE;
 
+        bool Alloc();
+
+        SocketBuffer(const SocketBuffer &other) = delete;
+        SocketBuffer() = default;
+        ~SocketBuffer();
+        SocketBuffer(SocketBuffer &&other);
+        SocketBuffer &operator=(SocketBuffer &&other);
+
+        size_t AvailableRecvSpace() const;
+        size_t AvailableSendSpace() const;
+};
+
+class Socket
+{
+    public:
         Spinlock sl;
 
         int sockfd;
@@ -266,9 +282,6 @@ class Socket
 
         bool thread_is_blocking_for_recv = false;
         SimpleSignal *blocking_thread_signal = nullptr;
-
-        Socket();
-        ~Socket();
 };
 
 class IP4Socket : public Socket
@@ -280,9 +293,25 @@ class IP4Socket : public Socket
 
 class TCPSocket : public IP4Socket
 {
+    protected:
+        SocketBuffer sb;
+        struct pending_accept_req
+        {
+            SocketBuffer sb;
+            sockaddr_in from;
+        };
+        RingBuffer<pending_accept_req, 64> pending_accept_queue;
+        Thread *accept_t = nullptr;
+
+        int backlog_max;
+
+        int PairConnectAccept(pending_accept_req &&req,
+            Thread *t, int *_errno);
+
     public:
         enum tcp_socket_state_t
         {
+            Unbound,
             Listen,
             SynSent,
             SynReceived,
@@ -296,7 +325,9 @@ class TCPSocket : public IP4Socket
             Closed
         };
 
-        tcp_socket_state_t state = Closed;
+
+
+        tcp_socket_state_t state = Unbound;
 
         uint32_t peer_seq = 0UL;
         uint32_t my_seq = 0UL;
@@ -309,6 +340,10 @@ class TCPSocket : public IP4Socket
             const char *opts, size_t optlen);
 
         int GetWindowSize() const;
+
+        int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
+        int ListenAsync(int backlog, int *_errno);
+        int AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno);
 };
 
 class net_msg;
@@ -329,6 +364,8 @@ class UDPSocket : public IP4Socket
         RingBuffer<dgram_desc, 64> dgram_queue;
         RingBuffer<dgram_send_desc, 64> dgram_send_queue;
         RingBuffer<net_msg, 8> udp_waiting_queue;
+
+        SocketBuffer sb;
 
     public:
         int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);

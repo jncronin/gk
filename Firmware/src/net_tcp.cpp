@@ -1,6 +1,7 @@
 #include "osnet.h"
 #include <unordered_map>
 #include "SEGGER_RTT.h"
+#include "thread.h"
 
 extern Spinlock s_rtt;
 
@@ -13,6 +14,7 @@ extern Spinlock s_rtt;
 #define FLAG_ECE    0x40
 #define FLAG_CWR    0x80
 
+SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> bound_tcp_sockets;
 SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> listening_sockets;
 SRAM4_DATA static std::unordered_map<sockaddr_pair, TCPSocket *> connected_sockets;
 SRAM4_DATA static Spinlock s_tcp;
@@ -144,6 +146,8 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
     if(route_ret != NET_OK)
         return route_ret;
 
+    CriticalGuard cg(sl);
+
     switch(state)
     {
         case Closed:
@@ -180,6 +184,31 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
             {
                 peer_seq = seq_id;
                 state = Established;
+
+                // create a buffer
+                pending_accept_req par;
+                par.from.sin_family = AF_INET;
+                par.from.sin_addr.s_addr = src;
+                par.from.sin_port = src_port;
+                if(!par.sb.Alloc())
+                {
+                    return NET_NOMEM;
+                }
+
+                // can we pair with a waiting thread?
+                if(accept_t)
+                {
+                    return PairConnectAccept(std::move(par), accept_t, (int *)&accept_t->ss_p.ival2);
+                }
+                else
+                {
+                    // add to accept queue
+                    if(!pending_accept_queue.Write(std::move(par)))
+                    {
+                        return NET_NOMEM;
+                    }
+                    return NET_OK;
+                }
             }
             break;
 
@@ -192,6 +221,99 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 int TCPSocket::GetWindowSize() const
 {
     return 0;
+}
+
+int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
+{
+    if(addrlen != sizeof(sockaddr_in))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto saddr = *reinterpret_cast<const sockaddr_in *>(addr);
+    port = saddr.sin_port;
+
+    if(saddr.sin_family != AF_INET)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    {
+        CriticalGuard cg(s_tcp);
+
+        // first check the IPADDR_ANY address is not bound for this port
+        if(saddr.sin_addr.s_addr)
+        {
+            sockaddr_in any_addr = saddr;
+            any_addr.sin_addr.s_addr = 0;
+            if(bound_tcp_sockets.find(any_addr) != bound_tcp_sockets.end())
+            {
+                *_errno = EADDRINUSE;
+                return -1;
+            }
+        }
+        if(bound_tcp_sockets.find(saddr) != bound_tcp_sockets.end())
+        {
+            // already bound
+            // TODO: handle REUSEADDR/REUSEPORT
+            *_errno = EADDRINUSE;
+            return -1;
+        }
+
+        state = Closed;
+        bound_tcp_sockets[saddr] = this;
+
+        return 0;
+    }
+}
+
+int TCPSocket::ListenAsync(int backlog, int *_errno)
+{
+    CriticalGuard cg(sl);
+
+    if(state != Closed)
+    {
+        // TODO: try binding an ephemereal port first
+        *_errno = EADDRINUSE;
+        return -1;
+    }
+
+    state = Listen;
+    return NET_OK;
+}
+
+int TCPSocket::AcceptAsync(sockaddr *sockaddr, socklen_t *addrlen, int *_errno)
+{
+    if(addrlen && *addrlen < sizeof(sockaddr_in))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(state != Listen)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    {
+        CriticalGuard cg(sl);
+
+        // try and get a pending connection
+        pending_accept_req par;
+        if(pending_accept_queue.Read(&par))
+        {
+            return PairConnectAccept(std::move(par), GetCurrentThreadForCore(), _errno);
+        }
+        else
+        {
+            // no pending accepts, block
+            accept_t = GetCurrentThreadForCore();
+            return -2;
+        }
+    }
 }
 
 bool net_tcp_decorate_packet(char *data, size_t datalen,

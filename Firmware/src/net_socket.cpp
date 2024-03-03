@@ -1,20 +1,6 @@
 #include "osnet.h"
 #include "syscalls_int.h"
 
-Socket::Socket()
-{
-    recvbuf = net_allocate_sbuf();
-    sendbuf = net_allocate_sbuf();
-}
-
-Socket::~Socket()
-{
-    if(recvbuf)
-        net_deallocate_sbuf(recvbuf);
-    if(sendbuf)
-        net_deallocate_sbuf(sendbuf);
-}
-
 int Socket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
 {
     *_errno = ENOTSUP;
