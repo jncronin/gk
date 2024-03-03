@@ -255,10 +255,6 @@ class Socket
         bool is_bound = false;
         bool is_nonblocking = false;
 
-        virtual int HandlePacket(const char *pkt, size_t n) = 0;
-        virtual int SendData(const char *d, size_t n, const void *addr, size_t addrlen) = 0;
-        virtual int RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss) = 0;
-
         virtual int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         virtual int RecvFromAsync(void *buf, size_t len, int flags,
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
@@ -335,10 +331,6 @@ class UDPSocket : public IP4Socket
         RingBuffer<net_msg, 8> udp_waiting_queue;
 
     public:
-        int HandlePacket(const char *pkt, size_t n);
-        int SendData(const char *d, size_t n, const void *addr, size_t addrlen);
-        int RecvData(char *d, size_t n, void *addr, size_t addrlen, SimpleSignal &ss);
-
         int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         int RecvFromAsync(void *buf, size_t len, int flags,
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);

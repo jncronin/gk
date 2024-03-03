@@ -93,7 +93,7 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
                     switch(type)
                     {
                         case SOCK_STREAM:
-                            // TODO: sck = new TCPSocket();
+                            sck = new TCPSocket();
                             break;
 
                         default:
