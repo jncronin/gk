@@ -134,11 +134,58 @@ static void net_tcp_send_reset(const IP4Addr &dest, uint16_t port,
 
 int TCPSocket::HandlePacket(const char *pkt, size_t n,
             IP4Addr src, uint16_t src_port,
-            IP4Addr ddest, uint16_t dest_port,
+            IP4Addr dest, uint16_t dest_port,
             uint32_t seq_id, uint32_t ack_id,
             unsigned int flags,
             const char *opts, size_t optlen)
 {
+    IP4Route route;
+    auto route_ret = net_ip_get_route_for_address(dest, &route);
+    if(route_ret != NET_OK)
+        return route_ret;
+
+    switch(state)
+    {
+        case Closed:
+            // shouldn't get here because we shouldn't be in a queue
+            break;
+
+        case Listen:
+            // is this a syn packet?
+            if(flags & FLAG_SYN)
+            {
+                // we can establish a connection
+                peer_seq = seq_id;
+                my_seq = rand();
+
+                auto pbuf = net_allocate_pbuf();
+                if(!pbuf)
+                {
+                    return NET_NOMEM;
+                }
+
+                // TODO: add options here
+                auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
+                net_tcp_decorate_packet(&pbuf[hdr_size], 0, src, src_port,
+                    dest, dest_port, my_seq, peer_seq + 1,
+                    FLAG_ACK | FLAG_SYN, nullptr, 0, this);
+                my_seq++;
+                state = SynReceived;
+            }
+            break;
+
+        case SynReceived:
+            // is this an ACK packet?
+            if(flags & FLAG_ACK)
+            {
+                peer_seq = seq_id;
+                state = Established;
+            }
+            break;
+
+        default:
+            break;
+    }
     return NET_NOTSUPP;
 }
 

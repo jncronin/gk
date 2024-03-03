@@ -40,6 +40,18 @@ int Socket::SendPendingData()
     return NET_NOTSUPP;
 }
 
+int Socket::ListenAsync(int backlog, int *_errno)
+{
+    *_errno = EOPNOTSUPP;
+    return -1;
+}
+
+int Socket::AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno)
+{
+    *_errno = EOPNOTSUPP;
+    return -1;
+}
+
 int syscall_socket(int domain, int type, int protocol, int *_errno)
 {
     // sanity check arguments
@@ -289,4 +301,38 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
     const sockaddr *dest_addr, socklen_t addrlen)
 {
     return deferred_call(syscall_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
+}
+
+int syscall_listen(int sockfd, int backlog, int *_errno)
+{
+    auto sck = fildes_to_sck(sockfd);
+    if(!sck)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    
+    return sck->ListenAsync(backlog, _errno);
+}
+
+int listen(int sockfd, int backlog)
+{
+    return deferred_call(syscall_listen, sockfd, backlog);
+}
+
+int syscall_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int *_errno)
+{
+    auto sck = fildes_to_sck(sockfd);
+    if(!sck)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    
+    return sck->AcceptAsync(addr, addrlen, _errno);
+}
+
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
+{
+    return deferred_call(syscall_accept, sockfd, addr, addrlen);
 }

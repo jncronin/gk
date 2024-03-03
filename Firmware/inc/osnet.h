@@ -265,6 +265,8 @@ class Socket
         virtual int SendToAsync(const void *buf, size_t len, int flags,
             const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno);
         virtual int SendPendingData();
+        virtual int ListenAsync(int backlog, int *_errno);
+        virtual int AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno);
 
         bool thread_is_blocking_for_recv = false;
         SimpleSignal *blocking_thread_signal = nullptr;
@@ -299,6 +301,9 @@ class TCPSocket : public IP4Socket
         };
 
         tcp_socket_state_t state = Closed;
+
+        uint32_t peer_seq = 0UL;
+        uint32_t my_seq = 0UL;
 
         int HandlePacket(const char *pkt, size_t n,
             IP4Addr src, uint16_t src_port,
