@@ -63,6 +63,12 @@ int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
         return -1;
     }
 
+    if(!sb.Alloc())
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
     auto saddr = *reinterpret_cast<const sockaddr_in *>(addr);
     port = saddr.sin_port;
 
@@ -103,19 +109,20 @@ int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
 int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16_t src_port)
 {
     CriticalGuard cg(sl);
-    auto avail_space = (recv_rptr > recv_wptr) ? (recv_rptr - recv_wptr) : (GK_NET_SOCKET_BUFSIZE - (recv_wptr - recv_rptr));
+    auto avail_space = sb.AvailableRecvSpace();
+    //auto avail_space = (recv_rptr > recv_wptr) ? (recv_rptr - recv_wptr) : (GK_NET_SOCKET_BUFSIZE - (recv_wptr - recv_rptr));
     if(avail_space < n)
         return NET_NOMEM;
 
-    auto old_rwptr = recv_wptr;
+    auto old_rwptr = sb.recv_wptr;
     
     dgram_desc dd;
     dd.from.sin_family = AF_INET;
     dd.from.sin_addr.s_addr = src_addr;
     dd.from.sin_port = src_port;
     dd.len = n;
-    dd.start = recv_wptr;
-    recv_wptr = memcpy_split_dest(recvbuf, pkt, n, recv_wptr, GK_NET_SOCKET_BUFSIZE);
+    dd.start = sb.recv_wptr;
+    sb.recv_wptr = memcpy_split_dest(sb.recvbuf, pkt, n, sb.recv_wptr, SocketBuffer::buflen);
 
     {
         CriticalGuard cg2(s_rtt);
@@ -130,7 +137,7 @@ int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16
     }
     else if(!dgram_queue.Write(dd)) // store to pending queue
     {
-        recv_wptr = old_rwptr;
+        sb.recv_wptr = old_rwptr;
         return NET_NOMEM;
     }
 
@@ -215,7 +222,7 @@ bool UDPSocket::SendToInt(const net_msg &m)
     // store to output buffer
     CriticalGuard cg(sl);
 
-    auto avail_space = (send_rptr > send_wptr) ? (send_rptr - send_wptr) : (GK_NET_SOCKET_BUFSIZE - (send_wptr - send_rptr));
+    auto avail_space = sb.AvailableSendSpace();
     if(avail_space < m.msg_data.udpsend.n)
     {
         // deferred return
@@ -225,9 +232,9 @@ bool UDPSocket::SendToInt(const net_msg &m)
         return false;
     }
 
-    auto old_wptr = send_wptr;
-    send_wptr = memcpy_split_dest(sendbuf, m.msg_data.udpsend.buf,
-        m.msg_data.udpsend.n, send_wptr, GK_NET_SOCKET_BUFSIZE);
+    auto old_wptr = sb.send_wptr;
+    sb.send_wptr = memcpy_split_dest(sb.sendbuf, m.msg_data.udpsend.buf,
+        m.msg_data.udpsend.n, sb.send_wptr, GK_NET_SOCKET_BUFSIZE);
 
     dgram_send_desc dd;
     dd.to = *m.msg_data.udpsend.dest_addr;
@@ -237,7 +244,7 @@ bool UDPSocket::SendToInt(const net_msg &m)
 
     if(!dgram_send_queue.Write(dd))
     {
-        send_wptr = old_wptr;
+        sb.send_wptr = old_wptr;
         // deferred return
         m.msg_data.udpsend.t->ss_p.ival1 = -1;
         m.msg_data.udpsend.t->ss_p.ival2 = ENOMEM;
@@ -265,7 +272,7 @@ void UDPSocket::RecvFromInt(const net_msg &m, dgram_desc &dd)
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "udp: read() request, load %d bytes from %x\n", (int)len, dd.start);
     }
-    recv_rptr = memcpy_split_src(m.msg_data.udprecv.buf, recvbuf, len, dd.start, GK_NET_SOCKET_BUFSIZE);
+    sb.recv_rptr = memcpy_split_src(m.msg_data.udprecv.buf, sb.recvbuf, len, dd.start, SocketBuffer::buflen);
     if(m.msg_data.udprecv.src_addr && m.msg_data.udprecv.addrlen)
     {
         auto addrlen = std::min(*m.msg_data.udprecv.addrlen, (socklen_t)sizeof(sockaddr_in));
@@ -314,7 +321,7 @@ int UDPSocket::SendPendingData()
                     else
                     {
                         // copy data to pbuf
-                        memcpy_split_src(&pbuf[hdr_size], sendbuf, dd.len, dd.start, GK_NET_SOCKET_BUFSIZE);
+                        memcpy_split_src(&pbuf[hdr_size], sb.sendbuf, dd.len, dd.start, SocketBuffer::buflen);
                         net_udp_decorate_packet(&pbuf[hdr_size], dd.len, &dd.to, this);
                     }
                 }
@@ -329,7 +336,7 @@ int UDPSocket::SendPendingData()
             else
             {
                 // still need to deallocate data from the socket stream
-                send_wptr = (send_wptr + dd.len) % GK_NET_SOCKET_BUFSIZE;
+                sb.send_wptr = (sb.send_wptr + dd.len) % SocketBuffer::buflen;
 
                 // deferred result failed
                 dd.t->ss_p.ival1 = -1;
