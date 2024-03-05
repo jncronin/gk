@@ -51,5 +51,23 @@ void net_telnet_thread(void *p)
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "telnetd: accept succeeded %d\n", ret);
         }
+
+        while(true)
+        {
+            char buf[32];
+            auto br = recv(ret, buf, 31, 0);
+            if(br > 0)
+            {
+                buf[br] = 0;
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "telnetd: received %d bytes: %s\n", br, buf);
+            }
+            else if(br < 0)
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "telnetd: recv failed %d\n", errno);
+                break;
+            }
+        }
     }
 }

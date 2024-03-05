@@ -12,7 +12,8 @@
 
 #define GK_NET_SOCKET_BUFSIZE       4096
 
-#define NET_DATA __attribute__((section(".lwip_data")))
+#define NET_DATA __attribute__((section(".net_data")))
+#define NET_BSS __attribute__((section(".net_bss")))
 #define SRAM4_DATA __attribute__((section(".sram4")))
 
 inline uint16_t ntohs(uint16_t v)
@@ -259,6 +260,7 @@ class SocketBuffer
 
         size_t AvailableRecvSpace() const;
         size_t AvailableSendSpace() const;
+        size_t RecvBytesAvailable() const;
 };
 
 class Socket
@@ -299,14 +301,27 @@ class TCPSocket : public IP4Socket
         {
             SocketBuffer sb;
             sockaddr_in from;
+            uint32_t my_seq_start, peer_seq_start;
+            uint32_t n_data_sent, n_data_received;
         };
         RingBuffer<pending_accept_req, 64> pending_accept_queue;
         Thread *accept_t = nullptr;
 
+        struct read_waiting_thread
+        {
+            Thread *t;
+            void *buf;
+            size_t n;
+            sockaddr *srcaddr;
+            socklen_t *addrlen;
+        };
+        RingBuffer<read_waiting_thread, 8> read_waiting_threads;
+
+
         int backlog_max;
 
         int PairConnectAccept(pending_accept_req &&req,
-            Thread *t, int *_errno);
+            Thread *t, int *_errno, bool is_async);
 
     public:
         enum tcp_socket_state_t
@@ -329,8 +344,16 @@ class TCPSocket : public IP4Socket
 
         tcp_socket_state_t state = Unbound;
 
-        uint32_t peer_seq = 0UL;
-        uint32_t my_seq = 0UL;
+        uint32_t peer_seq_start = 0UL;
+        uint32_t my_seq_start = 0UL;
+
+        uint32_t n_data_received = 0UL;
+        uint32_t n_data_sent = 0UL;
+
+        uint64_t last_data_timestamp = 0ULL;
+
+        IP4Addr peer_addr;
+        uint16_t peer_port;
 
         int HandlePacket(const char *pkt, size_t n,
             IP4Addr src, uint16_t src_port,
@@ -344,6 +367,8 @@ class TCPSocket : public IP4Socket
         int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         int ListenAsync(int backlog, int *_errno);
         int AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno);
+        int RecvFromAsync(void *buf, size_t len, int flags,
+            struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
 };
 
 class net_msg;
@@ -358,7 +383,8 @@ class UDPSocket : public IP4Socket
         struct dgram_send_desc
         {
             size_t start, len;
-            sockaddr_in to;
+            IP4Addr src, dest;
+            uint16_t src_port, dest_port;
             Thread *t;
         };
         RingBuffer<dgram_desc, 64> dgram_queue;
@@ -405,6 +431,15 @@ int net_set_ip_address(const IP4Address &ip);
 struct sockaddr_pair
 {
     sockaddr_in src, dest;
+
+    struct sockaddr_pair dest_any() const
+    {
+        sockaddr_pair ret;
+        ret.src = src;
+        ret.dest = dest;
+        ret.dest.sin_addr.s_addr = 0UL;
+        return ret;
+    }
 };
 namespace std
 {
@@ -443,7 +478,7 @@ namespace std
                 return false;
             if(lhs.src.sin_port != rhs.src.sin_port)
                 return false;
-            if(lhs.dest.sin_addr.s_addr != rhs.src.sin_addr.s_addr)
+            if(lhs.dest.sin_addr.s_addr != rhs.dest.sin_addr.s_addr)
                 return false;
             if(lhs.dest.sin_port != rhs.dest.sin_port)
                 return false;
@@ -490,7 +525,9 @@ IP4Addr net_ip_get_address(const NetInterface *iface);
 int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route);
 int net_ip_add_route(const IP4Route &route);
 
-bool net_udp_decorate_packet(char *data, size_t datalen, const sockaddr_in *dest, UDPSocket *src);
+bool net_udp_decorate_packet(char *data, size_t datalen,
+    const IP4Addr &dest, uint16_t dest_port,
+    const IP4Addr &src, uint16_t src_port);
 bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, const IP4Addr &src, uint8_t protocol);
 int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Addr &dest, const IP4Address &route);
 int net_ip_get_hardware_address(const IP4Addr &dest, HwAddr *ret);
@@ -507,6 +544,6 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     uint32_t seq_id, uint32_t ack_id,
     unsigned int flags,
     const char *opts, size_t optlen,
-    TCPSocket *sck);
+    uint16_t wndsize);
 
 #endif

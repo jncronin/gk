@@ -127,6 +127,37 @@ LoopCopySram4Init:
   adds r4, r0, r3
   cmp r4, r1
   bcc CopySram4Init
+
+/* Load .net_data section */
+  ldr r0, =_slwip_data
+  ldr r1, =_elwip_init_data
+  ldr r2, =_slwip_flash
+  movs r3, #0
+  b LoopCopyNetDataInit
+
+CopyNetDataInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyNetDataInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyNetDataInit
+
+/* Load .net_bss section */
+  ldr r0, =_slwip_bss_data
+  ldr r1, =_elwip_data
+  movs r2, #0
+  b LoopFillZeroNetBss
+
+FillZeroNetBss:
+  str r2, [r0]
+  adds r0, r0, #4
+
+LoopFillZeroNetBss:
+  cmp r0, r1
+  bcc FillZeroNetBss
   
 /* Zero fill the bss segment. */
   ldr r2, =_sbss

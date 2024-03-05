@@ -16,6 +16,7 @@ __attribute__((section(".sram4"))) BuddyAllocator<512*1024, 65536*1024, 0xc00000
 // axisram
 extern int _edata;
 extern int _ebss;
+extern int _elwip_data;
 
 // dtcm
 extern int _edtcm_bss;
@@ -77,6 +78,8 @@ void init_memblk()
         eaxisram = (uintptr_t)&_edata;
     if((uintptr_t)&_ebss > eaxisram)
         eaxisram = (uintptr_t)&_ebss;
+    if((uintptr_t)&_elwip_data > eaxisram)
+        eaxisram = (uintptr_t)&_elwip_data;
 
     if((uintptr_t)&_edtcm_bss > edtcm)
         edtcm = (uintptr_t)&_edtcm_bss;

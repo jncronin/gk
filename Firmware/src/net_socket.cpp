@@ -265,6 +265,11 @@ ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
     return deferred_call(syscall_recvfrom, sockfd, buf, len, flags, src_addr, addrlen);
 }
 
+ssize_t recv(int sockfd, void *buf, size_t len, int flags)
+{
+    return recvfrom(sockfd, buf, len, flags, nullptr, nullptr);
+}
+
 int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
     const sockaddr *dest_addr, socklen_t addrlen, int *_errno)
 {
