@@ -5,6 +5,11 @@
 osal_queue_t osal_queue_create(osal_queue_def_t *qd)
 {
     auto ret = new Queue(qd->depth, qd->item_sz);
+    while(!ret)
+    {
+        __asm__ volatile ("bkpt\n");
+        ret = new Queue(qd->depth, qd->item_sz);
+    }
     return ret;
 }
 
