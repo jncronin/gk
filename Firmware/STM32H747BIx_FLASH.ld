@@ -158,7 +158,7 @@ SECTIONS
     *libblockdev.a:*(.bss*)
     _eext4_data = .;
 
-    . = ALIGN(1K);
+    /*. = ALIGN(1K);
     _slwip_data = .;
     *(.lwip_data)
     *(.lwip_data*)
@@ -168,7 +168,7 @@ SECTIONS
     *liblwipcore.a:*(.data*)
     *liblwipcore.a:*(.bss)
     *liblwipcore.a:*(.bss*)
-    _elwip_data = .;
+    _elwip_data = .;*/
 
 
     . = ALIGN(1K);
@@ -177,6 +177,25 @@ SECTIONS
 
     _edata = .;        /* define a global symbol at data end */
   } >AXISRAM AT> FLASH1
+
+  .net_data ALIGN(0x40000):
+  {
+    . = ALIGN(1K);
+    _slwip_data = .;
+    *(.net_data)
+    *(.net_data*)
+    _elwip_init_data = .;
+  } >AXISRAM AT> FLASH1
+  
+  .net_bss (NOLOAD):
+  {
+    _slwip_bss_data = .;
+    *(.net_bss)
+    *(.net_bss*)
+    _elwip_data = .;
+  } >AXISRAM
+
+  _slwip_flash = LOADADDR(.net_data);
 
   . = ALIGN(4);
   .dtcm_bss (NOLOAD) :

@@ -2,6 +2,8 @@
 #include <unordered_map>
 #include "SEGGER_RTT.h"
 #include "thread.h"
+#include "clocks.h"
+#include "syscalls_int.h"
 
 extern Spinlock s_rtt;
 
@@ -19,8 +21,17 @@ SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> listening_sockets
 SRAM4_DATA static std::unordered_map<sockaddr_pair, TCPSocket *> connected_sockets;
 SRAM4_DATA static Spinlock s_tcp;
 
-static void net_tcp_send_reset(const IP4Addr &dest, uint16_t port,
-    const IP4Addr &src, uint16_t src_port);
+NET_DATA static char tcp_opts[] = {
+    0x02, 0x04, 0x05, 0xb4,     // MSS = 1460
+    0x01 /* align */, 0x03, 0x03, 0x00,           // Window scale = 0
+    0x01, 0x01, 0x01, 0x00      // 3x align, end of list
+};
+
+static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
+    uint32_t seq_id, uint32_t ack_id,
+    const IP4Addr &src, uint16_t src_port,
+    unsigned int flags,
+    uint16_t wnd_size);
 
 int net_handle_tcp_packet(const IP4Packet &pkt)
 {
@@ -60,55 +71,47 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
 
     {
         CriticalGuard cg(s_tcp);
-        // handle syn requests - incoming ones are looking for a
-        //  socket in the listening state
-        if(flags & FLAG_SYN)
+        // if not a syn, this must be aimed at a socket in the connected state
+        if(!(flags & FLAG_SYN))
         {
-            auto fval = listening_sockets.find(sp.dest);
-            if(fval == listening_sockets.end())
-            {
-                // try with matching IPADDR_ANY
-                sp.dest.sin_addr.s_addr = 0UL;
-                fval = listening_sockets.find(sp.dest);
-                if(fval == listening_sockets.end())
-                {
-                    net_tcp_send_reset(IP4Addr(pkt.src), src_port, IP4Addr(pkt.dest), dest_port);
-                    return NET_NOTUS;
-                }
-                else
-                {
-                    sck = fval->second;
-                }
-            }
-            else
-            {
-                sck = fval->second;
-            }
-        }
-        else
-        {
-            // not syn, therefore look for connected socket
             auto fval = connected_sockets.find(sp);
             if(fval == connected_sockets.end())
             {
-                // try with matching IPADDR_ANY
-                sp.dest.sin_addr.s_addr = 0UL;
-                fval = connected_sockets.find(sp);
-                if(fval == connected_sockets.end())
-                {
-                    // silently drop
-                    return NET_NOTUS;
-                }
-                else
-                {
-                    sck = fval->second;
-                }
+                // try with ipaddr_any
+                fval = connected_sockets.find(sp.dest_any());
             }
-            else
+            if(fval != connected_sockets.end())
             {
                 sck = fval->second;
             }
         }
+        if(!sck)
+        {
+            // either we are a syn packet or we haven't found a connected socket
+            //  this can apply to either syn in listening state or ack in synreceived state
+            auto fval = listening_sockets.find(sp.dest);
+            if(fval == listening_sockets.end())
+            {
+                // try ipaddr_any
+                fval = listening_sockets.find(sp.dest_any().dest);
+            }
+            if(fval != listening_sockets.end())
+            {
+                sck = fval->second;
+            }
+            else if(flags & FLAG_SYN)
+            {
+                // actively refuse
+                net_tcp_send_empty_msg(pkt.src, src_port, 0, seq_id + 1 + len,
+                    pkt.dest, dest_port, FLAG_RST | FLAG_ACK, 0);
+                return NET_OK;
+            }
+        }
+    }
+
+    if(!sck)
+    {
+        return NET_NOTUS;
     }
 
     return sck->HandlePacket(data, len, IP4Addr(pkt.src), src_port,
@@ -116,8 +119,11 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
         opts, optlen);
 }
 
-static void net_tcp_send_reset(const IP4Addr &dest, uint16_t port,
-    const IP4Addr &src, uint16_t src_port)
+static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
+    uint32_t seq_id, uint32_t ack_id,
+    const IP4Addr &src, uint16_t src_port,
+    unsigned int flags,
+    uint16_t wnd_size)
 {
     IP4Route route;
     auto route_ret = net_ip_get_route_for_address(dest, &route);
@@ -131,7 +137,7 @@ static void net_tcp_send_reset(const IP4Addr &dest, uint16_t port,
     auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
 
     net_tcp_decorate_packet(&pbuf[hdr_size], 0, dest, port, src, src_port,
-        0, 0, FLAG_RST, nullptr, 0, nullptr);    
+        seq_id, ack_id, flags, nullptr, 0, wnd_size);    
 }
 
 int TCPSocket::HandlePacket(const char *pkt, size_t n,
@@ -148,6 +154,12 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
     CriticalGuard cg(sl);
 
+    {
+        CriticalGuard cg2(s_rtt);
+        SEGGER_RTT_printf(0, "net: tcpsocket: packet: state %d, flags %x, len %u\n", 
+            (int)state, flags, n);
+    }
+
     switch(state)
     {
         case Closed:
@@ -159,8 +171,8 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
             if(flags & FLAG_SYN)
             {
                 // we can establish a connection
-                peer_seq = seq_id;
-                my_seq = rand();
+                peer_seq_start = seq_id;
+                my_seq_start = rand();
 
                 auto pbuf = net_allocate_pbuf();
                 if(!pbuf)
@@ -168,12 +180,16 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                     return NET_NOMEM;
                 }
 
-                // TODO: add options here
+                n_data_received = 1;
+
                 auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
                 net_tcp_decorate_packet(&pbuf[hdr_size], 0, src, src_port,
-                    dest, dest_port, my_seq, peer_seq + 1,
-                    FLAG_ACK | FLAG_SYN, nullptr, 0, this);
-                my_seq++;
+                    dest, dest_port, my_seq_start, peer_seq_start + n_data_received,
+                    FLAG_ACK | FLAG_SYN, tcp_opts, sizeof(tcp_opts), SocketBuffer::buflen);
+                
+                n_data_sent = 1;
+
+                last_data_timestamp = clock_cur_ms();
                 state = SynReceived;
             }
             break;
@@ -182,34 +198,99 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
             // is this an ACK packet?
             if(flags & FLAG_ACK)
             {
-                peer_seq = seq_id;
-                state = Established;
+                // we would expect seq_id to equal peer_seq + n_data_received
+                if((seq_id == peer_seq_start + n_data_received) &&
+                    (ack_id == my_seq_start + n_data_sent))
+                {
+                    // create a buffer
+                    pending_accept_req par;
+                    par.from.sin_family = AF_INET;
+                    par.from.sin_addr.s_addr = src;
+                    par.from.sin_port = src_port;
+                    par.my_seq_start = my_seq_start;
+                    par.peer_seq_start = peer_seq_start;
+                    par.n_data_received = n_data_received;
+                    par.n_data_sent = n_data_sent;
 
-                // create a buffer
-                pending_accept_req par;
-                par.from.sin_family = AF_INET;
-                par.from.sin_addr.s_addr = src;
-                par.from.sin_port = src_port;
-                if(!par.sb.Alloc())
-                {
-                    return NET_NOMEM;
-                }
+                    // Return us to listening state - accept() call will receive new TCPSocket fildes,
+                    //  we can silently handle a second connection awaiting another accept() call
+                    state = Listen;
 
-                // can we pair with a waiting thread?
-                if(accept_t)
-                {
-                    return PairConnectAccept(std::move(par), accept_t, (int *)&accept_t->ss_p.ival2);
-                }
-                else
-                {
-                    // add to accept queue
-                    if(!pending_accept_queue.Write(std::move(par)))
+                    if(!par.sb.Alloc())
                     {
                         return NET_NOMEM;
                     }
+
+                    // can we pair with a waiting thread?
+                    if(accept_t)
+                    {
+                        auto caccept_t = accept_t;
+                        accept_t = nullptr;
+                        return PairConnectAccept(std::move(par), caccept_t, (int *)&accept_t->ss_p.ival2, true);
+                    }
+                    else
+                    {
+                        // add to accept queue
+                        if(!pending_accept_queue.Write(std::move(par)))
+                        {
+                            return NET_NOMEM;
+                        }
+                        return NET_OK;
+                    }
+                }
+            }
+            break;
+
+        case Established:
+            if(n && n <= sb.AvailableRecvSpace())
+            {
+                // packet with data
+
+                // For now, silently drop out-of-order packets.  Eventually, store their packets somewhere
+                //  and realign later
+                // handle wraparound
+                auto seq_discrepancy = static_cast<int32_t>((peer_seq_start + n_data_received) - seq_id);
+                if(seq_discrepancy >= 0)
+                {
+                    if(seq_discrepancy == 0)
+                    {
+                        sb.recv_wptr = memcpy_split_dest(sb.recvbuf, pkt, n, sb.recv_wptr, SocketBuffer::buflen);
+
+                        n_data_received += n;
+
+                        // can we immediately service the receiving thread(s)?
+                        while(sb.RecvBytesAvailable())
+                        {
+                            read_waiting_thread rwt;
+                            if(read_waiting_threads.Read(&rwt))
+                            {
+                                auto to_recv = std::min(rwt.n, sb.RecvBytesAvailable());
+                                sb.recv_rptr = memcpy_split_src(rwt.buf, sb.recvbuf, to_recv, sb.recv_rptr, SocketBuffer::buflen);
+
+                                if(rwt.srcaddr && rwt.addrlen && *rwt.addrlen >= sizeof(sockaddr_in))
+                                {
+                                    auto addr = reinterpret_cast<sockaddr_in *>(rwt.srcaddr);
+                                    addr->sin_family = AF_INET;
+                                    addr->sin_addr.s_addr = peer_addr;
+                                    addr->sin_port = peer_port;
+                                    *rwt.addrlen = sizeof(sockaddr_in);
+                                }
+
+                                rwt.t->ss_p.ival1 = to_recv;
+                                rwt.t->ss.Signal();
+                            }
+                        }
+                    }
+
+                    // send ack
+                    net_tcp_send_empty_msg(src, src_port, my_seq_start + n_data_sent,
+                        peer_seq_start + n_data_received, dest, dest_port, FLAG_ACK,
+                        GetWindowSize());
                     return NET_OK;
                 }
             }
+            // TODO: ACK packets
+            // TODO: FIN packets
             break;
 
         default:
@@ -220,7 +301,9 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
 int TCPSocket::GetWindowSize() const
 {
-    return 0;
+    if(state == Listen)
+        return SocketBuffer::buflen;    // will be empty on accept
+    return sb.AvailableRecvSpace();
 }
 
 int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
@@ -264,6 +347,7 @@ int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
 
         state = Closed;
         bound_tcp_sockets[saddr] = this;
+        bound_addr = saddr.sin_addr.s_addr;
 
         return 0;
     }
@@ -271,17 +355,172 @@ int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
 
 int TCPSocket::ListenAsync(int backlog, int *_errno)
 {
-    CriticalGuard cg(sl);
+    sockaddr_in saddr;
 
-    if(state != Closed)
     {
-        // TODO: try binding an ephemereal port first
-        *_errno = EADDRINUSE;
+        CriticalGuard cg(sl);
+
+        if(state != Closed)
+        {
+            // TODO: try binding an ephemereal port first
+            *_errno = EADDRINUSE;
+            return -1;
+        }
+
+        state = Listen;
+        saddr.sin_family = AF_INET;
+        saddr.sin_addr.s_addr = bound_addr;
+        saddr.sin_port = port;
+    }
+    
+    {
+        CriticalGuard cg(s_tcp);
+        listening_sockets[saddr] = this;
+    }
+
+    return NET_OK;
+}
+
+int TCPSocket::PairConnectAccept(pending_accept_req &&req,
+            Thread *t, int *_errno, bool is_async)
+{
+    // This can be called either from the tcpip thread or the application thread
+    // We have the spinlock in either case
+    int __errno;
+    int ret;
+    TCPSocket *nsck;
+    SocketFile *sfile;
+    auto &p = t->p;
+    sockaddr_pair sp;
+    int fildes;
+
+    // Create new socket
+    nsck = new TCPSocket();
+    if(!nsck)
+    {
+        __errno = ENOMEM;
+        ret = -1;
+        goto handle_fail;
+    }
+
+    nsck->my_seq_start = req.my_seq_start;
+    nsck->peer_seq_start = req.peer_seq_start;
+    nsck->n_data_received = req.n_data_received;
+    nsck->n_data_sent = req.n_data_sent;
+    nsck->sb = std::move(req.sb);
+    nsck->bound_addr = bound_addr;
+    nsck->port = port;
+    nsck->state = Established;
+    nsck->peer_addr = req.from.sin_addr.s_addr;
+    nsck->peer_port = req.from.sin_port;
+
+    // Register with fildes
+    {
+        CriticalGuard cg(p.sl);
+
+        fildes = get_free_fildes(p);
+        if(fildes == -1)
+        {
+            __errno = EMFILE;
+            ret = -1;
+            goto handle_fail;
+        }
+
+        nsck->sockfd = fildes;
+        sfile = new SocketFile(nsck);
+        if(!sfile)
+        {
+            __errno = ENOMEM;
+            ret = -1;
+            goto handle_fail;
+        }
+        p.open_files[fildes] = sfile;
+    }
+
+    // Register as a connected socket
+    sp.dest.sin_family = AF_INET;
+    sp.dest.sin_addr.s_addr = bound_addr;
+    sp.dest.sin_port = port;
+    sp.src = req.from;
+    {
+        CriticalGuard cg(s_tcp);
+        connected_sockets[sp] = nsck;
+    }
+
+    // return success
+
+    if(is_async)
+    {
+        t->ss_p.ival1 = fildes;
+        t->ss.Signal();
+        return NET_OK;
+    }
+    else
+    {
+        return fildes;
+    }
+
+handle_fail:
+    if(is_async)
+    {
+        t->ss_p.ival1 = ret;
+        t->ss_p.ival2 = __errno;
+        t->ss.Signal();
+        return NET_OK;
+    }
+    else
+    {
+        *_errno = __errno;
+        return ret;
+    }
+}
+
+int TCPSocket::RecvFromAsync(void *buf, size_t len, int flags,
+            struct sockaddr *src_addr, socklen_t *addrlen, int *_errno)
+{
+    CriticalGuard cg(sl);
+    if(state != Established)
+    {
+        *_errno = ENOTCONN;
         return -1;
     }
 
-    state = Listen;
-    return NET_OK;
+    if(sb.AvailableRecvSpace() != SocketBuffer::buflen)
+    {
+        auto to_recv = std::min(len, SocketBuffer::buflen - sb.AvailableRecvSpace());
+        sb.recv_rptr = memcpy_split_src(buf, sb.recvbuf, to_recv, sb.recv_rptr, SocketBuffer::buflen);
+
+        if(src_addr && addrlen && *addrlen >= sizeof(sockaddr_in))
+        {
+            auto addr = reinterpret_cast<sockaddr_in *>(src_addr);
+            addr->sin_family = AF_INET;
+            addr->sin_addr.s_addr = peer_addr;
+            addr->sin_port = peer_port;
+            *addrlen = sizeof(sockaddr_in);
+        }
+
+        return to_recv;
+    }
+    else
+    {
+        // blocking request
+        read_waiting_thread rwt;
+        rwt.t = GetCurrentThreadForCore();
+        rwt.buf = buf;
+        rwt.n = len;
+        rwt.srcaddr = src_addr;
+        rwt.addrlen = addrlen;
+
+        if(!read_waiting_threads.Write(rwt))
+        {
+            *_errno = ENOMEM;
+            return -1;
+        }
+        else
+        {
+            return -2;
+        }
+    }
 }
 
 int TCPSocket::AcceptAsync(sockaddr *sockaddr, socklen_t *addrlen, int *_errno)
@@ -305,7 +544,7 @@ int TCPSocket::AcceptAsync(sockaddr *sockaddr, socklen_t *addrlen, int *_errno)
         pending_accept_req par;
         if(pending_accept_queue.Read(&par))
         {
-            return PairConnectAccept(std::move(par), GetCurrentThreadForCore(), _errno);
+            return PairConnectAccept(std::move(par), GetCurrentThreadForCore(), _errno, false);
         }
         else
         {
@@ -322,7 +561,7 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     uint32_t seq_id, uint32_t ack_id,
     unsigned int flags,
     const char *opts, size_t optlen,
-    TCPSocket *sck)
+    uint16_t wnd_size)
 {
     auto actoptlen = ((optlen + 3) / 4) * 4;
     auto hdr = data - 20 - actoptlen;
@@ -335,7 +574,6 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     hdr[12] = static_cast<uint8_t>((data_offset << 4) & 0xffU);
     hdr[13] = flags;
 
-    auto wnd_size = sck ? sck->GetWindowSize() : 0;
     *reinterpret_cast<uint16_t *>(&hdr[14]) = htons(wnd_size);
 
     *reinterpret_cast<uint16_t *>(&hdr[16]) = 0;    // checksum

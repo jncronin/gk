@@ -2,11 +2,9 @@
 #include <osmutex.h>
 #include <stdlib.h>
 
-#define LWIP_DATA __attribute__((section(".lwip_data")))
-
 constexpr const unsigned int npbufs = 32;
 
-LWIP_DATA static char pbufs[npbufs * PBUF_SIZE];
+NET_BSS static char pbufs[npbufs * PBUF_SIZE];
 
 struct pbuf_data
 {
@@ -14,8 +12,8 @@ struct pbuf_data
     bool is_allocated = false;
 };
 
-LWIP_DATA static pbuf_data pd[npbufs];
-unsigned int next_pbuf = 0;
+NET_BSS static pbuf_data pd[npbufs];
+SRAM4_DATA unsigned int next_pbuf = 0;
 
 __attribute__((section(".sram4"))) Spinlock s_pbuf;
 

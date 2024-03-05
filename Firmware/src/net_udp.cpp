@@ -101,6 +101,7 @@ int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
         }
 
         bound_udp_sockets[saddr] = this;
+        bound_addr = saddr.sin_addr.s_addr;
 
         return 0;
     }
@@ -237,7 +238,10 @@ bool UDPSocket::SendToInt(const net_msg &m)
         m.msg_data.udpsend.n, sb.send_wptr, GK_NET_SOCKET_BUFSIZE);
 
     dgram_send_desc dd;
-    dd.to = *m.msg_data.udpsend.dest_addr;
+    dd.dest = m.msg_data.udpsend.dest_addr->sin_addr.s_addr;
+    dd.dest_port = m.msg_data.udpsend.dest_addr->sin_port;
+    dd.src_port = port;
+    dd.src = bound_addr;
     dd.start = old_wptr;
     dd.len = m.msg_data.udpsend.n;
     dd.t = m.msg_data.udpsend.t;
@@ -294,7 +298,7 @@ int UDPSocket::SendPendingData()
         {
             IP4Route route;
             int ret = NET_OK;
-            auto route_ret = net_ip_get_route_for_address(IP4Addr(dd.to.sin_addr.s_addr), &route);
+            auto route_ret = net_ip_get_route_for_address(dd.dest, &route);
 
             if(route_ret != NET_OK)
             {
@@ -322,7 +326,8 @@ int UDPSocket::SendPendingData()
                     {
                         // copy data to pbuf
                         memcpy_split_src(&pbuf[hdr_size], sb.sendbuf, dd.len, dd.start, SocketBuffer::buflen);
-                        net_udp_decorate_packet(&pbuf[hdr_size], dd.len, &dd.to, this);
+                        net_udp_decorate_packet(&pbuf[hdr_size], dd.len, dd.dest, dd.dest_port,
+                            dd.src, dd.src_port);
                     }
                 }
             }
@@ -361,14 +366,15 @@ void net_udp_handle_sendto(const net_msg &m)
     m.msg_data.udpsend.sck->SendToInt(m);
 }
 
-bool net_udp_decorate_packet(char *data, size_t datalen, const sockaddr_in *dest, UDPSocket *src)
+bool net_udp_decorate_packet(char *data, size_t datalen, 
+    const IP4Addr &dest, uint16_t dest_port,
+    const IP4Addr &src, uint16_t src_port)
 {
     auto hdr = data - 8;
-    *reinterpret_cast<uint16_t *>(&hdr[0]) = src->port;
-    *reinterpret_cast<uint16_t *>(&hdr[2]) = dest->sin_port;
+    *reinterpret_cast<uint16_t *>(&hdr[0]) = src_port;
+    *reinterpret_cast<uint16_t *>(&hdr[2]) = dest_port;
     *reinterpret_cast<uint16_t *>(&hdr[4]) = htons(8 + datalen);
     *reinterpret_cast<uint16_t *>(&hdr[6]) = 0;     // checksum optional for udp in ip4
 
-    return net_ip_decorate_packet(hdr, datalen + 8, IP4Addr(dest->sin_addr.s_addr), src->bound_addr,
-        IPPROTO_UDP);
+    return net_ip_decorate_packet(hdr, datalen + 8, dest, src, IPPROTO_UDP);
 }

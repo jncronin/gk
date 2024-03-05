@@ -8,10 +8,9 @@
 
 extern Spinlock s_rtt;
 
-#define LWIP_DATA __attribute__((section(".lwip_data")))
-LWIP_DATA uint8_t tud_network_mac_address[6] = {0x02,0x02,0x84,0x6A,0x96,0x00};
+NET_DATA uint8_t tud_network_mac_address[6] = {0x02,0x02,0x84,0x6A,0x96,0x00};
 
-LWIP_DATA TUSBNetInterface rndis_if;
+NET_BSS TUSBNetInterface rndis_if;
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
 {
@@ -101,13 +100,13 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         *reinterpret_cast<uint16_t *>(&buf[12]) = htons(ethertype);
 
         // compute crc
-        if(n < 64)
+        if(n < (64 - 18))
         {
-            memset(&buf[14 + n], 0, 64 - n);
-            n = 64;  // min frame length
+            memset(&buf[14 + n], 0, (64 - 18) - n);
+            n = 64 - 18;  // min frame length
         }
         auto crc = net_ethernet_calc_crc(buf, n + 14);
-        *reinterpret_cast<uint32_t *>(&buf[n + 14]) = htonl(crc);
+        *reinterpret_cast<uint32_t *>(&buf[n + 14]) = crc;
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "send packet:\n");

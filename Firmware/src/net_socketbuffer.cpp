@@ -50,10 +50,18 @@ SocketBuffer::SocketBuffer(SocketBuffer &&other)
 
 size_t SocketBuffer::AvailableRecvSpace() const
 {
+    if(!recvbuf) return 0;
     return (recv_rptr > recv_wptr) ? (recv_rptr - recv_wptr) : (buflen - (recv_wptr - recv_rptr));
+}
+
+size_t SocketBuffer::RecvBytesAvailable() const
+{
+    if(!recvbuf) return 0;
+    return buflen - AvailableRecvSpace();
 }
 
 size_t SocketBuffer::AvailableSendSpace() const
 {
+    if(!sendbuf) return 0;
     return (send_rptr > send_wptr) ? (send_rptr - send_wptr) : (buflen - (send_wptr - send_rptr));
 }
