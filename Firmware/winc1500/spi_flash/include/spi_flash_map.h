@@ -4,29 +4,36 @@
  *
  * \brief WINC1500 SPI Flash.
  *
- * Copyright (c) 2016-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2016-2017 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
  * \page License
  *
- * Subject to your compliance with these terms, you may use Microchip
- * software and any derivatives exclusively with Microchip products.
- * It is your responsibility to comply with third party license terms applicable
- * to your use of third party software (including open source software) that
- * may accompany Microchip software.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE,
- * INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY,
- * AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE
- * LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL
- * LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND WHATSOEVER RELATED TO THE
- * SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS BEEN ADVISED OF THE
- * POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT
- * ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY
- * RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
- * THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. The name of Atmel may not be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
+ * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
  *
@@ -46,9 +53,8 @@
 #define FLASH_MAP_VER_1		(1)
 #define FLASH_MAP_VER_2		(2)
 #define FLASH_MAP_VER_3		(3)
-#define FLASH_MAP_VER_4     (4)
 
-#define FLASH_MAP_VERSION   FLASH_MAP_VER_4
+#define FLASH_MAP_VERSION	FLASH_MAP_VER_3
 
 //#define DOWNLOAD_ROLLBACK
 //#define OTA_GEN
@@ -98,10 +104,8 @@
  * |	 36	K			|	  4	K	|	Connection Parameters	|	Parameters for success connection to AP		|
  * |	 40	K			|	236 K 	|	Main Firmware/program	|	Main Firmware to run WiFi Chip				|
  * |	276	K			|	236 K	|	OTA Firmware		    |	OTA firmware								|
- * |    512 K           |   512 K   |   Host File Storage       |    WINC1510 (8Mb of Flash) only               |
- * |------------------------------------------------------------------------------------------------------------|
- * |                     Total flash size is 512 K for WINC1500 and 1024 K for WINC1510                         |
- * |____________________________________________________________________________________________________________|
+ * |    512 K                                                       Total flash size							|
+ * |____________________|___________|___________________________|_______________________________________________|
  *
  *
  * *Keys for Comments with each MACRO:
@@ -224,30 +228,18 @@
  * App(Cortus App 4M): App. which runs over firmware
  *
  */
-#ifdef CORTUS_APP
 #define M2M_APP_4M_MEM_FLASH_SZ					(FLASH_SECTOR_SZ * 16)
 #define M2M_APP_4M_MEM_FLASH_OFFSET				(FLASH_4M_TOTAL_SZ - M2M_APP_4M_MEM_FLASH_SZ)
 #define M2M_APP_8M_MEM_FLASH_OFFSET				(M2M_OTA_IMAGE2_OFFSET + OTA_IMAGE_SIZE)
 #define M2M_APP_8M_MEM_FLASH_SZ					(FLASH_SECTOR_SZ * 32)
 #define M2M_APP_OTA_MEM_FLASH_OFFSET			(M2M_APP_8M_MEM_FLASH_OFFSET + M2M_APP_8M_MEM_FLASH_SZ)
-#define M2M_HFD_8M_MEM_FLASH_OFFSET             (M2M_APP_8M_MEM_FLASH_OFFSET + M2M_APP_8M_MEM_FLASH_SZ)
-#else
-#define M2M_HFD_8M_MEM_FLASH_OFFSET             (M2M_OTA_IMAGE2_OFFSET + OTA_IMAGE_SIZE)
-#endif
+
 /* Check if total size of content
  *  don't exceed total size of memory allowed
  **/
 #if (M2M_COMMON_DATA_SEC  +  (OTA_IMAGE_SIZE *2)> FLASH_4M_TOTAL_SZ)
-#error "Exceeds 4M Flash Size"
+#error "Excced 4M Flash Size"
 #endif /* (FLASH_CONTENT_SZ > FLASH_TOTAL_SZ) */
-
-/**
- * Magic value to differentiate between old HTTP flash section format and newer formats.
- * The lowest byte is ignored when checking the value as it contains the
- * version number (it should always be 00 here, image_builder will set this value in flash).
- **/
-#define HTTP_FLASH_SECTION_MAGIC	0xB00B1500
-#define HTTP_FLASH_SECTION_VERSION	2
 
 
 #endif /* __SPI_FLASH_MAP_H__ */

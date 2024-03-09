@@ -4,29 +4,36 @@
  *
  * \brief WINC ATE Test Driver Interface.
  *
- * Copyright (c) 2016-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2016-2017 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
  * \page License
  *
- * Subject to your compliance with these terms, you may use Microchip
- * software and any derivatives exclusively with Microchip products.
- * It is your responsibility to comply with third party license terms applicable
- * to your use of third party software (including open source software) that
- * may accompany Microchip software.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE,
- * INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY,
- * AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE
- * LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL
- * LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND WHATSOEVER RELATED TO THE
- * SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS BEEN ADVISED OF THE
- * POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT
- * ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY
- * RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
- * THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. The name of Atmel may not be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
+ * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
  *
@@ -42,7 +49,6 @@ INCLUDES
 *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*/
 #include "common/include/nm_common.h"
 #include "driver/include/m2m_types.h"
-
 
 /** \defgroup m2m_ate ATE
 */
@@ -64,7 +70,7 @@ Maximum number of all rates (b,g and n)
 /*!< Minimum number of length for each frame
  */ 
 #define M2M_ATE_SUCCESS					(M2M_SUCCESS)
-/*!< No Error and operation completed successfully.
+/*!< No Error and operation has been completed successfully.
 */
 #define M2M_ATE_ERR_VALIDATE			(M2M_ERR_FAIL)	
 /*!< Error in parameters passed to functions.
@@ -180,7 +186,7 @@ typedef enum {
  */
 typedef enum {
 	M2M_ATE_TX_DPD_DYNAMIC	= 0x00,
-	/*!< Dynamic mode indicates that DPD values will be set dynamically from a lookup table pre-set with the DPD coefficients.
+	/*!< Dynamic mode indicates that DPD values will be set dynamically from a lookup table pre-set with the DPD coefficents.
 	*/
 	M2M_ATE_TX_DPD_BYPASS	= 0x01,
 	/*!< Bypass mode indicates that the DPD control will be bypassed.
@@ -241,10 +247,10 @@ typedef enum {
  */
 typedef enum {
 	M2M_ATE_TX_MODE_NORM	= 0x00,
-	/*!< When the TX source is set to PHY,normal mode indicates that continuous transmission is disabled.
+	/*!< When the TX source is set to PHY,normal mode indicates that continous transmission is disabled. 
 	*/
 	M2M_ATE_TX_MODE_CW		= 0x01,
-	/*!< When the TX source is set to PHY, continuous mode indicates that transmission sequences occur back to back in a continuous wave from the PHY layer.
+	/*!< When the TX source is set to PHY, continous mode indicates that transmission sequences occur back to back in a continous wave from the PHY layer.
 	*/
 }tenuM2mAteTxMode;
 
@@ -328,7 +334,7 @@ typedef struct {
 
 /*!
  *@struct	tstrM2mAteRxStatus
- *@brief	Used to save receive test case configuration
+ *@brief	Used to save recieve test case configuration  
  *@see    tenuM2mAteRxPwrMode
  */
 typedef struct {
@@ -401,7 +407,7 @@ typedef struct {
 	/*!< Set to 0 to use the XO offset provided in xo_offset_x1000. Set to 1 to use XO offset programmed on WINC efuse. 
 	*/
 	uint8    self_mac_addr[6];
-	/*!< Set to the self mac address required to be overridden.
+	/*!< Set to the self mac address required to be overriden. 
 	*/
 	uint8    peer_mac_addr[6];
 	/*!< Set to the source mac address expected to filter frames from. 

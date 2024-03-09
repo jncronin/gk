@@ -4,29 +4,36 @@
  *
  * \brief BSD compatible socket interface.
  *
- * Copyright (c) 2016-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2016-2017 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
  * \page License
  *
- * Subject to your compliance with these terms, you may use Microchip
- * software and any derivatives exclusively with Microchip products.
- * It is your responsibility to comply with third party license terms applicable
- * to your use of third party software (including open source software) that
- * may accompany Microchip software.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE,
- * INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY,
- * AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE
- * LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL
- * LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND WHATSOEVER RELATED TO THE
- * SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS BEEN ADVISED OF THE
- * POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT
- * ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY
- * RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
- * THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. The name of Atmel may not be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
+ * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
  *
@@ -35,6 +42,7 @@
 /*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
 INCLUDES
 *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*/
+#include <stdint.h>
 
 #include "bsp/include/nm_bsp.h"
 #include "socket/include/socket.h"
@@ -134,6 +142,7 @@ Version
 Date
 		17 July 2012
 *********************************************************************/
+#ifndef ARDUINO
 NMI_API void Socket_ReadSocketData(SOCKET sock, tstrSocketRecvMsg *pstrRecv,uint8 u8SocketMsg,
 								  uint32 u32StartAddress,uint16 u16ReadCount)
 {
@@ -143,7 +152,6 @@ NMI_API void Socket_ReadSocketData(SOCKET sock, tstrSocketRecvMsg *pstrRecv,uint
 		uint16	u16Read;
 		sint16	s16Diff;
 		uint8	u8SetRxDone;
-
 		pstrRecv->u16RemainingSize = u16ReadCount;
 		do
 		{
@@ -172,9 +180,13 @@ NMI_API void Socket_ReadSocketData(SOCKET sock, tstrSocketRecvMsg *pstrRecv,uint
 				{
 					M2M_DBG("Application Closed Socket While Rx Is not Complete\n");
 					if(hif_receive(0, NULL, 0, 1) == M2M_SUCCESS)
+					{
 						M2M_DBG("hif_receive Success\n");
+					}
 					else
+					{
 						M2M_DBG("hif_receive Fail\n");
+					}
 					break;
 				}
 			}
@@ -186,6 +198,7 @@ NMI_API void Socket_ReadSocketData(SOCKET sock, tstrSocketRecvMsg *pstrRecv,uint
 		}while(u16ReadCount != 0);
 	}
 }
+#endif
 /*********************************************************************
 Function
 		m2m_ip_cb
@@ -206,6 +219,9 @@ Version
 Date
 		17 July 2012
 *********************************************************************/
+#ifdef ARDUINO
+extern uint8 hif_receive_blocked;
+#endif
 static void m2m_ip_cb(uint8 u8OpCode, uint16 u16BufferSize,uint32 u32Address)
 {	
 	if((u8OpCode == SOCKET_CMD_BIND) || (u8OpCode == SOCKET_CMD_SSL_BIND))
@@ -320,25 +336,46 @@ static void m2m_ip_cb(uint8 u8OpCode, uint16 u16BufferSize,uint32 u32Address)
 
 			if(u16SessionID == gastrSockets[sock].u16SessionID)
 			{
+#ifdef ARDUINO
+				if((s16RecvStatus > 0) && (s16RecvStatus < (sint32)u16BufferSize))
+#else
 				if((s16RecvStatus > 0) && (s16RecvStatus < u16BufferSize))
+#endif
 				{
 					/* Skip incoming bytes until reaching the Start of Application Data. 
 					*/
 					u32Address += u16DataOffset;
+#ifdef ARDUINO
+					// Avoid calling Socket_ReadSocketData because it pulls all the socket data
+					// from the WINC1500 at once.
+					//
+					// Call the callback with the recv address and recv data info. Later,
+					// the data will be pulled from the address using hif_receive.
+					hif_receive_blocked = 1;
 
+					strRecvMsg.s16BufferSize = s16RecvStatus;
+					strRecvMsg.pu8Buffer = u32Address;
+					strRecvMsg.u16RemainingSize = 0;
+					if(gpfAppSocketCb) {
+						gpfAppSocketCb(sock,u8CallbackMsgID, &strRecvMsg);
+					}
+#else
 					/* Read the Application data and deliver it to the application callback in
 					the given application buffer. If the buffer is smaller than the received data,
 					the data is passed to the application in chunks according to its buffer size.
 					*/
 					u16ReadSize = (uint16)s16RecvStatus;
 					Socket_ReadSocketData(sock, &strRecvMsg, u8CallbackMsgID, u32Address, u16ReadSize);
+#endif
 				}
 				else
 				{
-					/* Don't tidy up here. Application must call close().
-					*/
 					strRecvMsg.s16BufferSize	= s16RecvStatus;
+#ifdef ARDUINO
+					strRecvMsg.pu8Buffer		= 0;
+#else
 					strRecvMsg.pu8Buffer		= NULL;
+#endif
 					if(gpfAppSocketCb)
 						gpfAppSocketCb(sock,u8CallbackMsgID, &strRecvMsg);
 				}
@@ -351,7 +388,15 @@ static void m2m_ip_cb(uint8 u8OpCode, uint16 u16BufferSize,uint32 u32Address)
 					if(hif_receive(0, NULL, 0, 1) == M2M_SUCCESS)
 						M2M_DBG("hif_receive Success\n");
 					else
+#ifdef ARDUINO
+					{
+#endif
+					{
 						M2M_DBG("hif_receive Fail\n");
+					}
+#ifdef ARDUINO
+					}
+#endif
 				}
 			}
 		}
@@ -392,7 +437,7 @@ static void m2m_ip_cb(uint8 u8OpCode, uint16 u16BufferSize,uint32 u32Address)
 		tstrPingReply	strPingReply;
 		if(hif_receive(u32Address, (uint8*)&strPingReply, sizeof(tstrPingReply), 1) == M2M_SUCCESS)
 		{
-			gfpPingCb = (void (*)(uint32 , uint32 , uint8))strPingReply.u32CmdPrivate;
+			gfpPingCb = (void (*)(uint32 , uint32 , uint8))(uintptr_t)strPingReply.u32CmdPrivate;
 			if(gfpPingCb != NULL)
 			{
 				gfpPingCb(strPingReply.u32IPAddr, strPingReply.u32RTT, strPingReply.u8ErrorCode);
@@ -466,7 +511,7 @@ Return
 Author
 		Ahmed Ezzat
 
-Version
+Versio
 		1.0
 
 Date
@@ -669,6 +714,11 @@ Date
 *********************************************************************/
 sint8 accept(SOCKET sock, struct sockaddr *addr, uint8 *addrlen)
 {
+#ifdef ARDUINO
+	// Silence "unused" warning
+	(void)addr;
+	(void)addrlen;
+#endif
 	sint8	s8Ret = SOCK_ERR_INVALID_ARG;
 	
 	if(sock >= 0 && (gastrSockets[sock].bIsUsed == 1) )
@@ -739,6 +789,9 @@ Date
 *********************************************************************/
 sint16 send(SOCKET sock, void *pvSendBuffer, uint16 u16SendLength, uint16 flags)
 {
+#ifdef ARDUINO
+	(void)flags; // Silence "unused" warning
+#endif
 	sint16	s16Ret = SOCK_ERR_INVALID_ARG;
 	
 	if((sock >= 0) && (pvSendBuffer != NULL) && (u16SendLength <= SOCKET_BUFFER_MAX_LENGTH) && (gastrSockets[sock].bIsUsed == 1))
@@ -762,6 +815,14 @@ sint16 send(SOCKET sock, void *pvSendBuffer, uint16 u16SendLength, uint16 flags)
 		{
 			u8Cmd			= SOCKET_CMD_SSL_SEND;
 			u16DataOffset	= gastrSockets[sock].u16DataOffset;
+#ifdef ARDUINO
+			extern uint32 nmdrv_firm_ver;
+
+			if (nmdrv_firm_ver < M2M_MAKE_VERSION(19, 4, 0)) {
+				// firmware 19.3.0 and older only works with this specific offset
+				u16DataOffset	= SSL_TX_PACKET_OFFSET;
+			}
+#endif
 		}
 
 		s16Ret =  SOCKET_REQUEST(u8Cmd|M2M_REQ_DATA_PKT, (uint8*)&strSend, sizeof(tstrSendCmd), pvSendBuffer, u16SendLength, u16DataOffset);
@@ -791,6 +852,11 @@ Date
 *********************************************************************/
 sint16 sendto(SOCKET sock, void *pvSendBuffer, uint16 u16SendLength, uint16 flags, struct sockaddr *pstrDestAddr, uint8 u8AddrLen)
 {
+#ifdef ARDUINO
+	// Silence "unused" warning
+	(void)flags;
+	(void)u8AddrLen;
+#endif
 	sint16	s16Ret = SOCK_ERR_INVALID_ARG;
 	
 	if((sock >= 0) && (pvSendBuffer != NULL) && (u16SendLength <= SOCKET_BUFFER_MAX_LENGTH) && (gastrSockets[sock].bIsUsed == 1))
@@ -847,8 +913,11 @@ Date
 sint16 recv(SOCKET sock, void *pvRecvBuf, uint16 u16BufLen, uint32 u32Timeoutmsec)
 {
 	sint16	s16Ret = SOCK_ERR_INVALID_ARG;
-	
+#ifdef ARDUINO
+	if((sock >= 0) && /*(pvRecvBuf != NULL) && (u16BufLen != 0) &&*/ (gastrSockets[sock].bIsUsed == 1))
+#else
 	if((sock >= 0) && (pvRecvBuf != NULL) && (u16BufLen != 0) && (gastrSockets[sock].bIsUsed == 1))
+#endif
 	{
 		s16Ret = SOCK_ERR_NO_ERROR;
 		gastrSockets[sock].pu8UserBuffer 		= (uint8*)pvRecvBuf;
@@ -911,6 +980,9 @@ sint8 close(SOCKET sock)
 		strclose.sock = sock; 
 		strclose.u16SessionID		= gastrSockets[sock].u16SessionID;
 		
+		gastrSockets[sock].bIsUsed = 0;
+		gastrSockets[sock].u16SessionID =0;
+		
 		if(gastrSockets[sock].u8SSLFlags & SSL_FLAGS_ACTIVE)
 		{
 			u8Cmd = SOCKET_CMD_SSL_CLOSE;
@@ -946,7 +1018,11 @@ Date
 sint16 recvfrom(SOCKET sock, void *pvRecvBuf, uint16 u16BufLen, uint32 u32Timeoutmsec)
 {
 	sint16	s16Ret = SOCK_ERR_NO_ERROR;
+#ifdef ARDUINO
+	if((sock >= 0) && /*(pvRecvBuf != NULL) && (u16BufLen != 0) &&*/ (gastrSockets[sock].bIsUsed == 1))
+#else
 	if((sock >= 0) && (pvRecvBuf != NULL) && (u16BufLen != 0) && (gastrSockets[sock].bIsUsed == 1))
+#endif
 	{
 		if(gastrSockets[sock].bIsUsed)
 		{
@@ -1237,6 +1313,14 @@ Date
 *********************************************************************/
 sint8 getsockopt(SOCKET sock, uint8 u8Level, uint8 u8OptName, const void *pvOptValue, uint8* pu8OptLen)
 {
+#ifdef ARDUINO
+	// Silence "unused" warning
+	(void)sock;
+	(void)u8Level;
+	(void)u8OptName;
+	(void)pvOptValue;
+	(void)pu8OptLen;
+#endif
 	/* TBD */
 	return M2M_SUCCESS;
 }
@@ -1268,7 +1352,11 @@ sint8 m2m_ping_req(uint32 u32DstIP, uint8 u8TTL, tpfPingCb fpPingCb)
 
 		strPingCmd.u16PingCount		= 1;
 		strPingCmd.u32DestIPAddr	= u32DstIP;
-		strPingCmd.u32CmdPrivate	= (uint32)fpPingCb;
+#ifdef ARDUINO
+		strPingCmd.u32CmdPrivate	= (uint32)(uintptr_t)(fpPingCb);
+#else
+		strPingCmd.u32CmdPrivate	= (uint32)(fpPingCb);
+#endif
 		strPingCmd.u8TTL			= u8TTL;
 
 		s8Ret = SOCKET_REQUEST(SOCKET_CMD_PING, (uint8*)&strPingCmd, sizeof(tstrPingCmd), NULL, 0, 0);
@@ -1298,27 +1386,4 @@ sint8 sslEnableCertExpirationCheck(tenuSslCertExpSettings enuValidationSetting)
 	tstrSslCertExpSettings	strSettings;
 	strSettings.u32CertExpValidationOpt = (uint32)enuValidationSetting;
 	return SOCKET_REQUEST(SOCKET_CMD_SSL_EXP_CHECK, (uint8*)&strSettings, sizeof(tstrSslCertExpSettings), NULL, 0, 0);
-}
-
-/*********************************************************************
-Function
-		IsSocketReady
-
-Description 
-
-Return
-		None.
-
-Author
-
-
-Version
-		1.0
-
-Date
-		24 Apr 2018
-*********************************************************************/
-uint8 IsSocketReady(void)
-{
-    return gbSocketInit;
 }

@@ -4,29 +4,36 @@
  *
  * \brief This module contains NMC1000 UART protocol bus APIs implementation.
  *
- * Copyright (c) 2016-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2016 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
  * \page License
  *
- * Subject to your compliance with these terms, you may use Microchip
- * software and any derivatives exclusively with Microchip products.
- * It is your responsibility to comply with third party license terms applicable
- * to your use of third party software (including open source software) that
- * may accompany Microchip software.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE,
- * INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY,
- * AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE
- * LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL
- * LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND WHATSOEVER RELATED TO THE
- * SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS BEEN ADVISED OF THE
- * POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT
- * ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY
- * RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
- * THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. The name of Atmel may not be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
+ * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
  *
@@ -63,12 +70,11 @@ sint8 nm_uart_sync_cmd(void)
 	sint8 s8Ret = -1;
 	uint8 b [HDR_SZ+1];
 	uint8 rsz;
-	uint8 retries = 1;
+	uint8 onchip = 0;
 
 	/*read reg*/
-	while (retries--)
-	{
 	b[0] = 0x12;
+
 	rsz = 1;
 	strUart.pu8Buf = b;
 	strUart.u16Sz = 1;
@@ -76,43 +82,32 @@ sint8 nm_uart_sync_cmd(void)
 	if(M2M_SUCCESS == nm_bus_ioctl(NM_BUS_IOCTL_W, &strUart))
 	{
 		strUart.u16Sz = rsz;
-			b[0] = 0;
-
-			// Pull all chars from buffer, we only care about the last
-			while (M2M_SUCCESS == nm_bus_ioctl(NM_BUS_IOCTL_R, &strUart))
-	{
-				strUart.u16Sz = rsz;
+		if(M2M_SUCCESS != nm_bus_ioctl(NM_BUS_IOCTL_R, &strUart))
+		{
+			s8Ret = M2M_ERR_BUS_FAIL;
+		}
 	}
-
+	else
+	{
+		M2M_ERR("failed to send cfg bytes\n");
+		s8Ret = M2M_ERR_BUS_FAIL;
+	}
 	if (b[0] == 0x5a)
 	{
-				s8Ret = 1; // found on-chip (no bridge)
+		s8Ret = 0;
+		onchip = 1;
 		M2M_INFO("Built-in WINC1500 UART Found\n");
 	}
 	else if(b[0] == 0x5b)
 	{
-				s8Ret = 0; // found off-chip (std serial bridge)
+		s8Ret = 0;
+		onchip = 0;
 		M2M_INFO("WINC1500 Serial Bridge Found\n");
 	}
-			else if (b[0] == 0x5c)
-			{
-				s8Ret = 0; // found of-chip (at cmd app serial bridge)
-				M2M_INFO("WINC1500 Serial Bridge Found + AT CMD app Found\n");
-			}
-			else
-			{
-				continue;
-			}
-
-			break;
-		}
-		else
-		{
-			M2M_ERR("failed to send cfg bytes\n");
-			s8Ret = M2M_ERR_BUS_FAIL;
-		}
-	}
-
+	/*TODO: this should be the way we read the register since the cortus is little endian*/
+	/**pu32RetVal = b[0] | ((uint32)b[1] << 8) | ((uint32)b[2] << 16) | ((uint32)b[3] << 24);*/
+	if(s8Ret == M2M_SUCCESS)
+		s8Ret = (sint8)onchip;
 	return s8Ret;
 }
  sint8 nm_uart_read_reg_with_ret(uint32 u32Addr, uint32* pu32RetVal)
@@ -180,6 +175,9 @@ sint8 nm_uart_sync_cmd(void)
 		M2M_ERR("failed to send cfg bytes\n");
 		s8Ret = M2M_ERR_BUS_FAIL;
 	}
+	/*TODO: this should be the way we read the register since the cortus is little endian*/
+	/**pu32RetVal = b[0] | ((uint32)b[1] << 8) | ((uint32)b[2] << 16) | ((uint32)b[3] << 24);*/
+
 	*pu32RetVal = ((uint32)b[0] << 24) | ((uint32)b[1] << 16) | ((uint32)b[2] << 8) | b[3];
 
 	return s8Ret;

@@ -9,6 +9,7 @@
 #include "osnet.h"
 #include "pins.h"
 #include "clocks.h"
+#include "conf_winc.h"
 
 #include "SEGGER_RTT.h"
 
@@ -110,21 +111,9 @@ void wifi_connect()
     const char SSID[] = WIFI_SSID;
     const char password[] = WIFI_PASSWD;
 
-
-    tstrNetworkId netid;
-    tstrAuthPsk auth;
-
-    netid.enuChannel = M2M_WIFI_CH_ALL;
-    netid.pu8Bssid = nullptr;
-    netid.pu8Ssid = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(SSID));
-    netid.u8SsidLen = strlen(SSID);
-
-    auth.pu8Psk = nullptr;
-    auth.pu8Passphrase = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(password));
-    auth.u8PassphraseLen = strlen(password);
-
-    auto ret = m2m_wifi_connect_psk(WIFI_CRED_DONTSAVE,
-        &netid, &auth);
+    auto ret = m2m_wifi_connect(const_cast<char *>(SSID), strlen(SSID),
+        M2M_WIFI_SEC_WPA_PSK,
+        const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(password)), M2M_WIFI_CH_ALL);
 
     if(ret != M2M_SUCCESS)
     {
@@ -202,7 +191,7 @@ extern "C" void EXTI1_IRQHandler(void)
     ITM_SendChar('W');
     ITM_SendChar('I');
 #endif
-    rtt_printf_wrapper("WIFI IRQ\n");
+    //rtt_printf_wrapper("WIFI IRQ\n");
     if(wifi_irq_function)
         wifi_irq_function();
 
@@ -426,6 +415,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
             auto ctrlbuf = reinterpret_cast<tstrM2mIpCtrlBuf *>(pvCtrlBuf);
             net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg),
                 ctrlbuf->u16DataSize, &wifi_if);
+            
             m2m_wifi_set_receive_buffer(net_allocate_pbuf(PBUF_SIZE),
                 PBUF_SIZE);
         }
@@ -486,14 +476,14 @@ void wifi_task(void *p)
     {
         if(wifi_irq.Wait(clock_cur_ms() + 200ULL))
         {
-            rtt_printf_wrapper("wifi: event\n");
+            //rtt_printf_wrapper("wifi: event\n");
             static WincNetInterface::state old_state = WincNetInterface::WIFI_UNINIT;
             WincNetInterface::state ws = wifi_if.connected;
 
             if(ws != old_state)
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "WIFI state: %i\n", wifi_if.connected);
+                SEGGER_RTT_printf(0, "WIFI state: %d\n", wifi_if.connected);
                 old_state = ws;
             }
             if(ws == WincNetInterface::WIFI_UNINIT)
@@ -529,7 +519,7 @@ void wifi_task(void *p)
         }
         else
         {
-            rtt_printf_wrapper("wifi: timeout\n");
+            //rtt_printf_wrapper("wifi: timeout\n");
             // timeout
             winc_mutex.lock();
             wifi_poll();
