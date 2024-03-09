@@ -201,7 +201,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                 auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
                 net_tcp_decorate_packet(&pbuf[hdr_size], 0, src, src_port,
                     dest, dest_port, my_seq_start, peer_seq_start + n_data_received,
-                    FLAG_ACK | FLAG_SYN, tcp_opts, sizeof(tcp_opts), SocketBuffer::buflen, true);
+                    FLAG_ACK | FLAG_SYN, tcp_opts, sizeof(tcp_opts), get_wnd_size(), true);
                 
                 n_data_sent = 1;
 
@@ -277,7 +277,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                         {
                             n_data_received += n;
 
-                            handle_waiting_reads();
+                            HandleWaitingReads();
                             ret = NET_KEEPPACKET;
                         }
                     }
@@ -505,7 +505,10 @@ int TCPSocket::RecvFromAsync(void *buf, size_t len, int flags,
     }
     else
     {
-        handle_waiting_reads();
+        net_msg msg;
+        msg.msg_type = net_msg::net_msg_type::HandleWaitingReads;
+        msg.msg_data.ipsck = this;
+        net_queue_msg(msg);
         return -2;
     }
 }

@@ -27,10 +27,6 @@ static void net_thread(void *_params)
                     handle_send_packet(m);
                     break;
 
-                case net_msg::net_msg_type::UDPRecvDgram:
-                    net_udp_handle_recvfrom(m);
-                    break;
-
                 case net_msg::net_msg_type::UDPSendDgram:
                     net_udp_handle_sendto(m);
                     break;
@@ -49,6 +45,10 @@ static void net_thread(void *_params)
 
                 case net_msg::net_msg_type::ArpRequestAndSend:
                     net_arp_handle_request_and_send(m);
+                    break;
+
+                case net_msg::net_msg_type::HandleWaitingReads:
+                    m.msg_data.ipsck->HandleWaitingReads();
                     break;
             }
         }
