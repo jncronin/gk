@@ -271,10 +271,13 @@ static int net_ip_get_route_for_address_int(const IP4Addr &addr, IP4Route *route
 
     for(const auto &r : routes)
     {
-        if(IP4Addr::Compare(addr, r.addr.addr, r.addr.nm) && r.metric < cur_metric)
+        if(r.addr.iface->GetLinkActive())
         {
-            cur_metric = r.metric;
-            best_route = &r;
+            if(IP4Addr::Compare(addr, r.addr.addr, r.addr.nm) && r.metric < cur_metric)
+            {
+                cur_metric = r.metric;
+                best_route = &r;
+            }
         }
     }
 

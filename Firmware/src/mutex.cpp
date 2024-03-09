@@ -1,6 +1,7 @@
 #include "osmutex.h"
 #include "thread.h"
 #include "scheduler.h"
+#include "clocks.h"
 
 extern Scheduler s;
 
@@ -60,7 +61,7 @@ void Spinlock::unlock()
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 {}
 
-uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop)
+uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -74,17 +75,27 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop)
     }
     waiting_thread = t;
     t->is_blocking = true;
+    if(tout != UINT64_MAX)
+        t->block_until = tout;
     Yield();
+    if(signal_value)
+    {
+        auto ret = signal_value;
+        do_op(op, vop);
+        return ret;
+    }
     return signal_value;    
 }
 
-uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop)
+uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, uint64_t tout)
 {
     while(true)
     {
-        auto sv = WaitOnce(op, vop);
+        auto sv = WaitOnce(op, vop, tout);
         if(sv)
             return sv;
+        else if(clock_cur_ms() >= tout)
+            return 0;
     }
 }
 
@@ -165,14 +176,14 @@ void BinarySemaphore::Signal()
     ss.Signal();
 }
 
-bool BinarySemaphore::Wait()
+bool BinarySemaphore::Wait(uint64_t tout)
 {
-    return ss.Wait(SimpleSignal::Set, 0) != 0;
+    return ss.Wait(SimpleSignal::Set, 0, tout) != 0;
 }
 
-bool BinarySemaphore::WaitOnce()
+bool BinarySemaphore::WaitOnce(uint64_t tout)
 {
-    return ss.WaitOnce(SimpleSignal::Set, 0) != 0;
+    return ss.WaitOnce(SimpleSignal::Set, 0, tout) != 0;
 }
 
 void CountingSemaphore::Signal()
@@ -180,15 +191,14 @@ void CountingSemaphore::Signal()
     ss.Signal(SimpleSignal::Add, 1);
 }
 
-
-bool CountingSemaphore::Wait()
+bool CountingSemaphore::Wait(uint64_t tout)
 {
-    return ss.Wait(SimpleSignal::Sub, 1) != 0;
+    return ss.Wait(SimpleSignal::Sub, 1, tout) != 0;
 }
 
-bool CountingSemaphore::WaitOnce()
+bool CountingSemaphore::WaitOnce(uint64_t tout)
 {
-    return ss.WaitOnce(SimpleSignal::Sub, 1) != 0;
+    return ss.WaitOnce(SimpleSignal::Sub, 1, tout) != 0;
 }
 
 void Condition::Signal()

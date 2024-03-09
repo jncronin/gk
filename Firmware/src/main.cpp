@@ -17,6 +17,7 @@
 #include <cstring>
 #include "usb.h"
 #include "osnet.h"
+#include "wifi.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -47,6 +48,7 @@ int main()
     init_sd();
     init_ext4();
     init_net();
+    init_wifi();
 
     btnled_setcolor(0x020202UL);
 
@@ -70,6 +72,8 @@ int main()
 
     s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, nullptr, true, 5, kernel_proc));
     s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
+
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
