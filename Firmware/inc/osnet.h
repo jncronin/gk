@@ -358,10 +358,8 @@ class IP4Socket : public Socket
 class TCPSocket : public IP4Socket
 {
     protected:
-        SocketBuffer sb;
         struct pending_accept_req
         {
-            SocketBuffer sb;
             sockaddr_in from;
             uint32_t my_seq_start, peer_seq_start;
             uint32_t n_data_sent, n_data_received;
@@ -386,7 +384,7 @@ class TCPSocket : public IP4Socket
 
         int backlog_max;
 
-        int PairConnectAccept(pending_accept_req &&req,
+        int PairConnectAccept(const pending_accept_req &req,
             Thread *t, int *_errno, bool is_async);
 
         int TrySend(const buffer_send_desc &rts);
