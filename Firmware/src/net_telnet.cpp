@@ -59,8 +59,13 @@ void net_telnet_thread(void *p)
             if(br > 0)
             {
                 buf[br] = 0;
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "telnetd: received %d bytes: %s\n", br, buf);
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "telnetd: received %d bytes: %s\n", br, buf);
+                }
+
+                // echo
+                send(ret, buf, 2, 0);
             }
             else if(br < 0)
             {

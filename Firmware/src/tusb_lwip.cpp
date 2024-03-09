@@ -19,7 +19,7 @@ bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
     if(size > PBUF_SIZE)
         return true;
     
-    auto pbuf = net_allocate_pbuf();
+    auto pbuf = net_allocate_pbuf(size);
     if(!pbuf)
         return false;
     
@@ -84,7 +84,8 @@ int TUSBNetInterface::GetHeaderSize() const
     return 14;
 }
 
-int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype)
+int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
+    bool release_buffer)
 {
     if(!is_up)
     {
@@ -115,7 +116,8 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
             SEGGER_RTT_printf(0, "\nchecksum: %8" PRIx32 "\n", crc);
         }
         tud_network_xmit(const_cast<char *>(buf), n + 18);
-        net_deallocate_pbuf(buf);
+        if(release_buffer)
+            net_deallocate_pbuf(buf);
         return static_cast<int>(n);
     }
     else
@@ -127,6 +129,7 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         msg.msg_data.packet.n = n;
         msg.msg_data.packet.ethertype = ethertype;
         msg.msg_data.packet.dest = dest;
+        msg.msg_data.packet.release_packet = release_buffer;
         net_queue_msg(msg);
         return NET_TRYAGAIN;
     }

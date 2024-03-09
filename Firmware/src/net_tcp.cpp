@@ -1,5 +1,6 @@
 #include "osnet.h"
 #include <unordered_map>
+#include <map>
 #include "SEGGER_RTT.h"
 #include "thread.h"
 #include "clocks.h"
@@ -16,9 +17,20 @@ extern Spinlock s_rtt;
 #define FLAG_ECE    0x40
 #define FLAG_CWR    0x80
 
+struct tcp_sent_packet
+{
+    char *buf;
+    size_t nlen;
+    size_t seq_id;
+    TCPSocket *sck;
+    int ntimeouts;
+    uint64_t ms;
+};
+
 SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> bound_tcp_sockets;
 SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> listening_sockets;
 SRAM4_DATA static std::unordered_map<sockaddr_pair, TCPSocket *> connected_sockets;
+SRAM4_DATA static std::map<size_t, tcp_sent_packet> sent_packets;
 SRAM4_DATA static Spinlock s_tcp;
 
 NET_DATA static char tcp_opts[] = {
@@ -32,6 +44,9 @@ static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
     const IP4Addr &src, uint16_t src_port,
     unsigned int flags,
     uint16_t wnd_size);
+
+static void handle_ack(size_t start, size_t end);
+static uint16_t get_wnd_size();
 
 int net_handle_tcp_packet(const IP4Packet &pkt)
 {
@@ -130,14 +145,14 @@ static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
     if(route_ret != NET_OK)
         return;
     
-    auto pbuf = net_allocate_pbuf();
+    auto pbuf = net_allocate_pbuf(NET_SIZE_TCP);
     if(!pbuf)
         return;
 
     auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
 
     net_tcp_decorate_packet(&pbuf[hdr_size], 0, dest, port, src, src_port,
-        seq_id, ack_id, flags, nullptr, 0, wnd_size);    
+        seq_id, ack_id, flags, nullptr, 0, wnd_size, true, &route);    
 }
 
 int TCPSocket::HandlePacket(const char *pkt, size_t n,
@@ -174,7 +189,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                 peer_seq_start = seq_id;
                 my_seq_start = rand();
 
-                auto pbuf = net_allocate_pbuf();
+                auto pbuf = net_allocate_pbuf(NET_SIZE_TCP);
                 if(!pbuf)
                 {
                     return NET_NOMEM;
@@ -185,7 +200,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                 auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
                 net_tcp_decorate_packet(&pbuf[hdr_size], 0, src, src_port,
                     dest, dest_port, my_seq_start, peer_seq_start + n_data_received,
-                    FLAG_ACK | FLAG_SYN, tcp_opts, sizeof(tcp_opts), SocketBuffer::buflen);
+                    FLAG_ACK | FLAG_SYN, tcp_opts, sizeof(tcp_opts), SocketBuffer::buflen, true);
                 
                 n_data_sent = 1;
 
@@ -286,10 +301,23 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                     net_tcp_send_empty_msg(src, src_port, my_seq_start + n_data_sent,
                         peer_seq_start + n_data_received, dest, dest_port, FLAG_ACK,
                         GetWindowSize());
-                    return NET_OK;
                 }
             }
-            // TODO: ACK packets
+            // ACK packets
+            if(flags & FLAG_ACK)
+            {
+                auto ack_from = peer_seq_start;
+                auto ack_to = ack_id - 1;
+                if(ack_to > ack_from)
+                {
+                    handle_ack(ack_from, ack_to);
+                }
+                else
+                {
+                    handle_ack(ack_from, 0xffffffffU);
+                    handle_ack(0U, ack_to);
+                }
+            }
             // TODO: FIN packets
             break;
 
@@ -523,6 +551,29 @@ int TCPSocket::RecvFromAsync(void *buf, size_t len, int flags,
     }
 }
 
+int TCPSocket::SendToAsync(const void *buf, size_t len, int flags,
+    const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno)
+{
+    net_msg msg;
+    msg.msg_type = net_msg::net_msg_type::TCPSendBuffer;
+    msg.msg_data.tcpsend.buf = (char *)buf;
+    msg.msg_data.tcpsend.n = len;
+    msg.msg_data.tcpsend.flags = flags;
+    msg.msg_data.tcpsend.dest_addr = (sockaddr_in *)dest_addr;
+    msg.msg_data.tcpsend.addrlen = addrlen;
+    msg.msg_data.tcpsend.t = GetCurrentThreadForCore();
+    msg.msg_data.tcpsend.sck = this;
+
+    auto qret = net_queue_msg(msg);
+    if(qret != NET_OK)
+    {
+        *_errno = net_ret_to_errno(qret);
+        return -1;
+    }
+
+    return -2;    
+}
+
 int TCPSocket::AcceptAsync(sockaddr *sockaddr, socklen_t *addrlen, int *_errno)
 {
     if(addrlen && *addrlen < sizeof(sockaddr_in))
@@ -555,13 +606,99 @@ int TCPSocket::AcceptAsync(sockaddr *sockaddr, socklen_t *addrlen, int *_errno)
     }
 }
 
+bool TCPSocket::SendToInt(const net_msg &m)
+{
+    // we handle this on the server thread to ensure we can
+    //  access all the data structures we need
+    
+    CriticalGuard cg(sl);
+
+    // split into packets
+    const auto &msg = m.msg_data.tcpsend;
+    unsigned int n_sent = 0;
+    while(n_sent < msg.n)
+    {
+        unsigned int n_left = msg.n - n_sent;
+        unsigned int n_packet = std::min(n_left, PBUF_SIZE - NET_SIZE_TCP);
+
+        auto pbuf = net_allocate_pbuf(n_packet + NET_SIZE_TCP);
+        if(!pbuf)
+        {
+            // deferred return
+            if(n_sent)
+            {
+                msg.t->ss_p.uval1 = n_sent;
+                msg.t->ss.Signal();
+            }
+            else
+            {
+                msg.t->ss_p.ival1 = -1;
+                msg.t->ss_p.ival2 = ENOMEM;
+                msg.t->ss.Signal();
+            }
+        }
+
+        // copy data to packet
+        auto data = &pbuf[NET_SIZE_TCP_OFFSET];
+        memcpy(data, &msg.buf[n_sent], n_packet);
+
+        auto seq_id = my_seq_start + n_data_sent;
+        auto cur_wnd_size = net_pbuf_nfree();
+        cur_wnd_size = std::max(0U, cur_wnd_size - 4);    // leave us some space
+        cur_wnd_size *= PBUF_SIZE - NET_SIZE_TCP;
+        cur_wnd_size = std::min(cur_wnd_size, 64000U);
+        auto sret = net_tcp_decorate_packet(data, n_packet, peer_addr, peer_port,
+            bound_addr, port, seq_id, peer_seq_start + n_data_received, FLAG_ACK,
+            nullptr, 0,  cur_wnd_size, false, nullptr);
+        if(sret)
+        {
+            // store reference to buffer in timeout list
+            tcp_sent_packet sp;
+            sp.ms = clock_cur_ms();
+            sp.buf = data;
+            sp.nlen = n_packet;
+            sp.sck = this;
+            sp.seq_id = seq_id;
+            sp.ntimeouts = 0;
+            sent_packets[seq_id] = sp;
+
+            n_data_sent += n_packet;
+            n_sent += n_packet;
+        }
+        else
+        {
+            // deferred return
+            if(n_sent)
+            {
+                msg.t->ss_p.uval1 = n_sent;
+                msg.t->ss.Signal();
+            }
+            else
+            {
+                msg.t->ss_p.ival1 = -1;
+                msg.t->ss_p.ival2 = EFAULT;
+                msg.t->ss.Signal();
+            }
+        }
+    }
+
+    return true;
+}
+
+void net_tcp_handle_sendto(const net_msg &m)
+{
+    m.msg_data.tcpsend.sck->SendToInt(m);
+}
+
 bool net_tcp_decorate_packet(char *data, size_t datalen,
     const IP4Addr &dest, uint16_t dest_port,
     const IP4Addr &src, uint16_t src_port,
     uint32_t seq_id, uint32_t ack_id,
     unsigned int flags,
     const char *opts, size_t optlen,
-    uint16_t wnd_size)
+    uint16_t wnd_size,
+    bool release_buffer,
+    const IP4Route *route)
 {
     auto actoptlen = ((optlen + 3) / 4) * 4;
     auto hdr = data - 20 - actoptlen;
@@ -587,19 +724,107 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     }
 
     // calculate checksum based upon TCP header, data and IP pseudo-header
+
+    // if src is ipaddr_any, we need to get route here and calculate
+    IP4Route calcroute;
+    auto _route = route;
+    IP4Addr _src = src;
+    if(src == 0UL)
+    {
+        if(!_route)
+        {
+            // get route for dest
+            if(net_ip_get_route_for_address(dest, &calcroute) != NET_OK)
+            {
+                return false;
+            }
+            _route = &calcroute;
+        }
+        _src = _route->addr.addr;
+    }
     char ipph[12];
-    *(reinterpret_cast<uint32_t *>(&ipph[0])) = src;
+    *(reinterpret_cast<uint32_t *>(&ipph[0])) = _src;
     *(reinterpret_cast<uint32_t *>(&ipph[4])) = dest;
     ipph[8] = 0;
     ipph[9] = IPPROTO_TCP;
     *(reinterpret_cast<uint16_t *>(&ipph[10])) = htons(20 + actoptlen + datalen);
 
     auto csum = net_ip_complete_checksum(
-        net_ip_calc_partial_checksum(ipph, 12,
-            net_ip_calc_partial_checksum(hdr, 20 + actoptlen + datalen))
+        net_ip_calc_partial_checksum(hdr, 20 + actoptlen + datalen,
+            net_ip_calc_partial_checksum(ipph, 12))
     );
     *(reinterpret_cast<uint16_t *>(&hdr[16])) = csum;
 
     return net_ip_decorate_packet(hdr, datalen + 20 + actoptlen,
-        dest, src, IPPROTO_TCP);
+        dest, _src, IPPROTO_TCP, release_buffer, _route);
+}
+
+void handle_ack(size_t start, size_t end)
+{
+    CriticalGuard cg(s_tcp);
+    auto iter = sent_packets.find(start);
+    if(iter == sent_packets.end())
+    {
+        iter = sent_packets.insert({ start, tcp_sent_packet() }).first;
+    }
+
+    while(iter != sent_packets.end())
+    {
+        if(iter->first <= end)
+        {
+            iter = sent_packets.erase(iter);
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+static uint64_t calc_timeout(uint64_t start, int ntout)
+{
+    // exponential backoff starting at 100 ms
+    return start + (100ULL << ntout);
+}
+
+static uint16_t get_wnd_size()
+{
+    auto cur_wnd_size = net_pbuf_nfree();
+    cur_wnd_size = std::max(0U, cur_wnd_size - 4);    // leave us some space
+    cur_wnd_size *= PBUF_SIZE - NET_SIZE_TCP;
+    cur_wnd_size = std::min(cur_wnd_size, 64000U);
+    return cur_wnd_size;
+}
+
+void net_tcp_handle_timeouts()
+{
+    CriticalGuard cg(s_tcp);
+    auto iter = sent_packets.begin();
+    auto now = clock_cur_ms();
+    while(iter != sent_packets.end())
+    {
+        auto &sp = iter->second;
+        
+        auto tout_at = calc_timeout(sp.ms, sp.ntimeouts);
+        if(now > tout_at)
+        {
+            if(sp.ntimeouts < 10)
+            {
+                // resend packet
+                net_tcp_decorate_packet(sp.buf, sp.nlen,
+                    sp.sck->peer_addr, sp.sck->peer_port,
+                    sp.sck->bound_addr, sp.sck->port,
+                    sp.seq_id, sp.sck->peer_seq_start + sp.sck->n_data_received,
+                    FLAG_ACK, nullptr, 0, get_wnd_size(), false);
+                sp.ntimeouts++;
+            }
+            else
+            {
+                // TODO: close socket
+
+            }
+        }
+
+        iter++;
+    }
 }

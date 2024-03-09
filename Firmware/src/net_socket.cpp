@@ -294,6 +294,11 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
     return deferred_call(syscall_sendto, sockfd, buf, len, flags, dest_addr, addrlen);
 }
 
+ssize_t send(int sockfd, const void *buf, size_t len, int flags)
+{
+    return sendto(sockfd, buf, len, flags, nullptr, 0);
+}
+
 int syscall_listen(int sockfd, int backlog, int *_errno)
 {
     auto sck = fildes_to_sck(sockfd);
