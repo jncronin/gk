@@ -317,7 +317,7 @@ int UDPSocket::SendPendingData()
                 else
                 {
                     // allocate a pbuf
-                    auto pbuf = net_allocate_pbuf();
+                    auto pbuf = net_allocate_pbuf(pkt_size);
                     if(!pbuf)
                     {
                         ret = NET_NOMEM;
@@ -325,9 +325,9 @@ int UDPSocket::SendPendingData()
                     else
                     {
                         // copy data to pbuf
-                        memcpy_split_src(&pbuf[hdr_size], sb.sendbuf, dd.len, dd.start, SocketBuffer::buflen);
+                        sb.send_rptr = memcpy_split_src(&pbuf[hdr_size], sb.sendbuf, dd.len, dd.start, SocketBuffer::buflen);
                         net_udp_decorate_packet(&pbuf[hdr_size], dd.len, dd.dest, dd.dest_port,
-                            dd.src, dd.src_port);
+                            dd.src, dd.src_port, true, &route);
                     }
                 }
             }
@@ -368,7 +368,9 @@ void net_udp_handle_sendto(const net_msg &m)
 
 bool net_udp_decorate_packet(char *data, size_t datalen, 
     const IP4Addr &dest, uint16_t dest_port,
-    const IP4Addr &src, uint16_t src_port)
+    const IP4Addr &src, uint16_t src_port,
+    bool release_buffer,
+    const IP4Route *route)
 {
     auto hdr = data - 8;
     *reinterpret_cast<uint16_t *>(&hdr[0]) = src_port;
@@ -376,5 +378,5 @@ bool net_udp_decorate_packet(char *data, size_t datalen,
     *reinterpret_cast<uint16_t *>(&hdr[4]) = htons(8 + datalen);
     *reinterpret_cast<uint16_t *>(&hdr[6]) = 0;     // checksum optional for udp in ip4
 
-    return net_ip_decorate_packet(hdr, datalen + 8, dest, src, IPPROTO_UDP);
+    return net_ip_decorate_packet(hdr, datalen + 8, dest, src, IPPROTO_UDP, release_buffer, route);
 }

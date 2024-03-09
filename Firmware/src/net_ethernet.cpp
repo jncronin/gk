@@ -69,6 +69,7 @@ int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     m.msg_data.packet.buf = const_cast<char *>(buf);
     m.msg_data.packet.n = n;
     m.msg_data.packet.iface = iface;
+    m.msg_data.packet.release_packet = true;
 
     return net_queue_msg(m);
 }

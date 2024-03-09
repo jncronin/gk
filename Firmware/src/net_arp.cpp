@@ -10,6 +10,7 @@ struct arp_request_and_send_data
     size_t n;
     uint64_t send_time;
     NetInterface *iface;
+    bool release_buffer;
 };
 
 SRAM4_DATA std::map<uint32_t, HwAddr> arp_cache;
@@ -63,7 +64,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             {
                 if(iter->ip == ip_sender)
                 {
-                    iter->iface->SendEthernetPacket(iter->buf, iter->n, hw_sender, IPPROTO_IP);
+                    iter->iface->SendEthernetPacket(iter->buf, iter->n, hw_sender, IPPROTO_IP, iter->release_buffer);
                     iter = arp_requests.erase(iter);
                 }
                 else
@@ -75,7 +76,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
         else if(oper == 1 && ip_target == net_ip_get_address(pkt.iface))
         {
             // build reply packet
-            auto pbuf = net_allocate_pbuf();
+            auto pbuf = net_allocate_pbuf(SPBUF_SIZE);
             if(!pbuf)
             {
                 return NET_NOMEM;
@@ -92,7 +93,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             memcpy(&data[18], hw_sender.get(), 6);
             *reinterpret_cast<uint32_t *>(&data[24]) = ip_sender;
 
-            pkt.iface->SendEthernetPacket(data, 28, hw_sender, 0x0806);
+            pkt.iface->SendEthernetPacket(data, 28, hw_sender, 0x0806, true);
         }
     }
     
@@ -126,12 +127,12 @@ void net_arp_handle_request_and_send(const net_msg &m)
     {
         cg.~CriticalGuard();        // release the guard here because sending may take some time
         m.msg_data.arp_request.iface->SendEthernetPacket(m.msg_data.arp_request.buf,
-            m.msg_data.arp_request.n, ret, IPPROTO_IP);
+            m.msg_data.arp_request.n, ret, IPPROTO_IP, m.msg_data.arp_request.release_buffer);
         return;
     }
 
     // build ARP request
-    auto pbuf = net_allocate_pbuf();
+    auto pbuf = net_allocate_pbuf(SPBUF_SIZE);
     if(!pbuf)
     {
         return;
@@ -148,7 +149,7 @@ void net_arp_handle_request_and_send(const net_msg &m)
     memset(&data[18], 0, 6);
     *reinterpret_cast<uint32_t *>(&data[24]) = m.msg_data.arp_request.addr;
 
-    m.msg_data.arp_request.iface->SendEthernetPacket(data, 28, HwAddr::multicast, 0x0806);
+    m.msg_data.arp_request.iface->SendEthernetPacket(data, 28, HwAddr::multicast, 0x0806, true);
 
     // queue that we have made the request
     arp_request_and_send_data arpd;
@@ -157,7 +158,8 @@ void net_arp_handle_request_and_send(const net_msg &m)
     arpd.ip = m.msg_data.arp_request.addr;
     arpd.iface = m.msg_data.arp_request.iface;
     arpd.send_time = clock_cur_ms();
-    arp_requests.push_back(arpd);;
+    arpd.release_buffer = m.msg_data.arp_request.release_buffer;
+    arp_requests.push_back(arpd);
 }
 
 int net_ip_get_hardware_address(const IP4Addr &addr, HwAddr *ret)
@@ -185,6 +187,7 @@ void net_arp_handle_timeouts()
             // delete request + send_data pbuf
             net_deallocate_pbuf(iter->buf);
             iter = arp_requests.erase(iter);
+            // TODO: report to socket that ARP request failed - likely just close connection
         }
         else
         {

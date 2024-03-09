@@ -180,20 +180,29 @@ IP4Addr net_ip_get_address(const NetInterface *iface)
     return IP4Addr(0UL);
 }
 
-bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, const IP4Addr &src, uint8_t protocol)
+bool net_ip_decorate_packet(char *data, size_t datalen,
+    const IP4Addr &dest, const IP4Addr &src,
+    uint8_t protocol,
+    bool release_buffer,
+    const IP4Route *route)
 {
+    IP4Route calcroute;
+    auto _route = route;
     // get route for dest
-    IP4Route route;
-    if(net_ip_get_route_for_address(dest, &route) != NET_OK)
+    if(!route)
     {
-        return false;
+        if(net_ip_get_route_for_address(dest, &calcroute) != NET_OK)
+        {
+            return false;
+        }
+        _route = &calcroute;
     }
 
     // if src is broadcast then rewrite with the one from route
     auto src_val = src;
     if(src == 0UL)
     {
-        src_val = route.addr.addr;
+        src_val = _route->addr.addr;
     }
 
     auto hdr = data - 20;
@@ -210,21 +219,24 @@ bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, con
 
     *reinterpret_cast<uint16_t *>(&hdr[10]) = net_ip_calc_checksum(hdr, 20);
 
-    net_ip_get_hardware_address_and_send(hdr, datalen + 20, dest, route.addr);
+    net_ip_get_hardware_address_and_send(hdr, datalen + 20, dest, release_buffer, _route);
 
     return true;
 }
 
-int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Addr &dest, const IP4Address &route)
+int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
+    const IP4Addr &dest,
+    bool release_buffer,
+    const IP4Route *route)
 {
     // do we need to use a gateway?
-    IP4Addr actdest = (route.addr == route.gw) ? dest : route.gw;
+    IP4Addr actdest = (route->addr.addr == route->addr.gw) ? dest : route->addr.gw;
 
     HwAddr hwaddr;
     if(net_ip_get_hardware_address(actdest, &hwaddr) == NET_OK)
     {
         // decorate and send direct
-        route.iface->SendEthernetPacket(data, datalen, hwaddr, IPPROTO_IP);
+        route->addr.iface->SendEthernetPacket(data, datalen, hwaddr, IPPROTO_IP, release_buffer);
         return NET_OK;
     }
     else
@@ -235,7 +247,8 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Ad
         msg.msg_data.arp_request.addr = actdest;
         msg.msg_data.arp_request.buf = data;
         msg.msg_data.arp_request.n = datalen;
-        msg.msg_data.arp_request.iface = route.iface;
+        msg.msg_data.arp_request.iface = route->addr.iface;
+        msg.msg_data.arp_request.release_buffer = release_buffer;
 
         net_queue_msg(msg);
 
@@ -295,9 +308,16 @@ int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route)
 
 uint32_t net_ip_calc_partial_checksum(const char *data, size_t n, uint32_t csum)
 {
-    for(unsigned int i = 0; i < n/2; i++)
+    auto d = reinterpret_cast<const uint16_t *>(data);
+
+    while(n > 1)
     {
-        csum += static_cast<uint32_t>(*reinterpret_cast<const uint16_t *>(&data[i * 2]));
+        csum += *d++;
+        n -= 2;
+    }
+    if(n)
+    {
+        csum += (*d) & htons(0xff00);
     }
     return csum;
 }
@@ -305,7 +325,10 @@ uint32_t net_ip_calc_partial_checksum(const char *data, size_t n, uint32_t csum)
 uint16_t net_ip_complete_checksum(uint32_t csum)
 {
     // add carry bits
-    csum = (((csum >> 16) & 0xf) + csum) & 0xffff;
+    while(csum >> 16)
+    {
+        csum = (csum & 0xffff) + (csum >> 16);
+    }
     // 1s complement
     csum = ~csum;
     return static_cast<uint16_t>(csum & 0xffff);

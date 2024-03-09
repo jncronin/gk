@@ -34,8 +34,8 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
     else
     {
         // we have a valid dgram, try and build a packet
-        auto hdr_size = 20 /* IP header */ + route.addr.iface->GetHeaderSize();
-        auto pkt_size = hdr_size + 8 /* icmp size */ + route.addr.iface->GetFooterSize();
+        auto hdr_size = NET_SIZE_IP_OFFSET;
+        auto pkt_size = NET_SIZE_IP + 8 /* icmp size */;
 
         if(pkt_size > PBUF_SIZE)
         {
@@ -44,7 +44,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
         else
         {
             // allocate a pbuf
-            auto pbuf = net_allocate_pbuf();
+            auto pbuf = net_allocate_pbuf(pkt_size);
             if(!pbuf)
             {
                 ret = NET_NOMEM;
@@ -64,7 +64,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
                 // 1s complement checksum
                 *reinterpret_cast<uint16_t *>(&psend[2]) = net_ip_calc_checksum(psend, 8);
 
-                net_ip_decorate_packet(psend, 8, pkt.src, pkt.dest, IPPROTO_ICMP);
+                net_ip_decorate_packet(psend, 8, pkt.src, pkt.dest, IPPROTO_ICMP, true);
             }
         }
     }

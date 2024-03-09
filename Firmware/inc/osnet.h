@@ -80,7 +80,8 @@ class NetInterface
     public:
         virtual const HwAddr &GetHwAddr() const = 0;
         virtual bool GetLinkActive() const = 0;
-        virtual int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype) = 0;
+        virtual int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
+            bool release_buffer) = 0;
 
         virtual int GetHeaderSize() const;
         virtual int GetFooterSize() const;
@@ -95,7 +96,8 @@ class TUSBNetInterface : public NetInterface
     public:
         const HwAddr &GetHwAddr() const;
         bool GetLinkActive() const;
-        int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype);
+        int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
+            bool release_buffer);
 
         int GetHeaderSize() const;
         int GetFooterSize() const;
@@ -121,6 +123,7 @@ class IP4Route
 
 class Socket;
 class UDPSocket;
+class TCPSocket;
 // messages to be processed by net server
 struct net_msg
 {
@@ -131,6 +134,7 @@ struct net_msg
         SendSocketData,
         UDPRecvDgram,
         UDPSendDgram,
+        TCPSendBuffer,
         SetIPAddress,
         ArpRequestAndSend
     };
@@ -146,6 +150,7 @@ struct net_msg
             NetInterface *iface;
             uint16_t ethertype;
             HwAddr dest;
+            bool release_packet;
         } packet;
         struct arp_request_t
         {
@@ -153,6 +158,7 @@ struct net_msg
             size_t n;
             NetInterface *iface;
             IP4Addr addr;
+            bool release_buffer;
         } arp_request;
         struct socketdata_t
         {
@@ -178,6 +184,16 @@ struct net_msg
             Thread *t;
             UDPSocket *sck;
         } udpsend;
+        struct tcpsend_t
+        {
+            const char *buf;
+            size_t n;
+            int flags;
+            sockaddr_in *dest_addr;
+            socklen_t addrlen;
+            Thread *t;
+            TCPSocket *sck;
+        } tcpsend;
         IP4Address ipaddr;
     } msg_data;
 };
@@ -192,13 +208,29 @@ struct net_msg
 #define NET_DEFER       -6
 #define NET_NOROUTE     -7
 
-#define PBUF_SIZE       1542
+#define PBUF_SIZE       1542U
+#define SPBUF_SIZE      128U
+
+#define NET_SIZE_ETHERNET_HEADER        14U
+#define NET_SIZE_ETHERNET_FOOTER        4U
+#define NET_SIZE_ETHERNET               (NET_SIZE_ETHERNET_HEADER + NET_SIZE_ETHERNET_FOOTER)
+#define NET_SIZE_IP_HEADER              20U
+#define NET_SIZE_UDP_HEADER             8U
+#define NET_SIZE_TCP_HEADER             20U
+
+#define NET_SIZE_IP                     (NET_SIZE_IP_HEADER + NET_SIZE_ETHERNET)
+#define NET_SIZE_UDP                    (NET_SIZE_UDP_HEADER + NET_SIZE_IP)
+#define NET_SIZE_TCP                    (NET_SIZE_TCP_HEADER + NET_SIZE_IP)
+#define NET_SIZE_IP_OFFSET              (NET_SIZE_ETHERNET_HEADER + NET_SIZE_IP_HEADER)
+#define NET_SIZE_TCP_OFFSET             (NET_SIZE_TCP_HEADER + NET_SIZE_IP_OFFSET)
+#define NET_SIZE_UDP_OFFSET             (NET_SIZE_UDP_HEADER + NET_SIZE_IP_OFFSET)
 
 void init_net();
 
 int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface);
-char *net_allocate_pbuf();
+char *net_allocate_pbuf(size_t n);
 void net_deallocate_pbuf(char *);
+size_t net_pbuf_nfree();
 
 class EthernetPacket
 {
@@ -317,11 +349,27 @@ class TCPSocket : public IP4Socket
         };
         RingBuffer<read_waiting_thread, 8> read_waiting_threads;
 
+        struct buffer_send_desc
+        {
+            IP4Addr dest, src;
+            uint16_t dest_port, src_port;
+            size_t start, len;
+            uint32_t seq_id;
+            uint64_t last_send;
+            int n_sends = 0;
+            Thread *t;
+        };
+        RingBuffer<buffer_send_desc, 64> buffer_send_queue;
+
+        uint32_t pending_sends = 0UL;
+        RingBuffer<buffer_send_desc, 64> pending_send_queue;
 
         int backlog_max;
 
         int PairConnectAccept(pending_accept_req &&req,
             Thread *t, int *_errno, bool is_async);
+
+        int TrySend(const buffer_send_desc &rts);
 
     public:
         enum tcp_socket_state_t
@@ -364,11 +412,15 @@ class TCPSocket : public IP4Socket
 
         int GetWindowSize() const;
 
+        bool SendToInt(const net_msg &m);
+
         int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         int ListenAsync(int backlog, int *_errno);
         int AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno);
         int RecvFromAsync(void *buf, size_t len, int flags,
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
+        int SendToAsync(const void *buf, size_t len, int flags,
+            const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno);
 };
 
 class net_msg;
@@ -499,7 +551,7 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags);
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
         struct sockaddr *src_addr, socklen_t *addrlen);
 ssize_t recvmsg(int, struct msghdr *, int);
-ssize_t send(int, const void *, size_t, int);
+ssize_t send(int sockfd, const void *buf, size_t len, int flags);
 ssize_t sendmsg(int, const struct msghdr *, int);
 ssize_t sendto(int, const void *, size_t, int, const struct sockaddr *,
         socklen_t);
@@ -527,9 +579,18 @@ int net_ip_add_route(const IP4Route &route);
 
 bool net_udp_decorate_packet(char *data, size_t datalen,
     const IP4Addr &dest, uint16_t dest_port,
-    const IP4Addr &src, uint16_t src_port);
-bool net_ip_decorate_packet(char *data, size_t datalen, const IP4Addr &dest, const IP4Addr &src, uint8_t protocol);
-int net_ip_get_hardware_address_and_send(char *data, size_t datalen, const IP4Addr &dest, const IP4Address &route);
+    const IP4Addr &src, uint16_t src_port,
+    bool release_buffer,
+    const IP4Route *route = nullptr);
+bool net_ip_decorate_packet(char *data, size_t datalen,
+    const IP4Addr &dest, const IP4Addr &src,
+    uint8_t protocol,
+    bool release_buffer,
+    const IP4Route *route = nullptr);
+int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
+    const IP4Addr &dest,
+    bool release_buffer,
+    const IP4Route *route = nullptr);
 int net_ip_get_hardware_address(const IP4Addr &dest, HwAddr *ret);
 uint32_t net_ethernet_calc_crc(const char *data, size_t n);
 void net_arp_handle_request_and_send(const net_msg &m);
@@ -544,6 +605,9 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     uint32_t seq_id, uint32_t ack_id,
     unsigned int flags,
     const char *opts, size_t optlen,
-    uint16_t wndsize);
+    uint16_t wndsize,
+    bool release_buffer,
+    const IP4Route *route = nullptr);
+void net_tcp_handle_sendto(const net_msg &m);
 
 #endif
