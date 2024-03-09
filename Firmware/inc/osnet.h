@@ -207,6 +207,7 @@ struct net_msg
 #define NET_MSGSIZE     -5
 #define NET_DEFER       -6
 #define NET_NOROUTE     -7
+#define NET_KEEPPACKET  -8
 
 #define PBUF_SIZE       1542U
 #define SPBUF_SIZE      128U
@@ -295,11 +296,26 @@ class SocketBuffer
         size_t RecvBytesAvailable() const;
 };
 
+struct recv_packet
+{
+    const char *buf;
+    size_t nlen;
+    size_t rptr;
+
+    IP4Addr from;
+    uint16_t from_port;
+};
+
 class Socket
 {
+    protected:
+        virtual void handle_waiting_reads() = 0;
+
     public:
         Spinlock sl;
 
+        RingBuffer<recv_packet, 64> recv_packets;
+        
         int sockfd;
 
         bool is_bound = false;
@@ -320,9 +336,23 @@ class Socket
 
 class IP4Socket : public Socket
 {
+    protected:
+        void handle_waiting_reads();
+
     public:
         IP4Addr bound_addr;
         uint16_t port;
+        bool is_dgram;
+
+        struct read_waiting_thread
+        {
+            Thread *t;
+            void *buf;
+            size_t n;
+            sockaddr *srcaddr;
+            socklen_t *addrlen;
+        };
+        RingBuffer<read_waiting_thread, 8> read_waiting_threads;
 };
 
 class TCPSocket : public IP4Socket
@@ -338,16 +368,6 @@ class TCPSocket : public IP4Socket
         };
         RingBuffer<pending_accept_req, 64> pending_accept_queue;
         Thread *accept_t = nullptr;
-
-        struct read_waiting_thread
-        {
-            Thread *t;
-            void *buf;
-            size_t n;
-            sockaddr *srcaddr;
-            socklen_t *addrlen;
-        };
-        RingBuffer<read_waiting_thread, 8> read_waiting_threads;
 
         struct buffer_send_desc
         {
@@ -409,8 +429,6 @@ class TCPSocket : public IP4Socket
             uint32_t seq_id, uint32_t ack_id,
             unsigned int flags,
             const char *opts, size_t optlen);
-
-        int GetWindowSize() const;
 
         bool SendToInt(const net_msg &m);
 

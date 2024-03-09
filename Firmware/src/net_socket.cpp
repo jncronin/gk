@@ -79,7 +79,12 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
                     switch(type)
                     {
                         case SOCK_STREAM:
-                            sck = new TCPSocket();
+                            {
+                                auto tcpsck = new TCPSocket();
+                                tcpsck->is_dgram = false;
+                                sck = tcpsck;
+                            }
+
                             break;
 
                         default:
@@ -92,7 +97,11 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
                     switch(type)
                     {
                         case SOCK_DGRAM:
-                            sck = new UDPSocket();
+                            {
+                                auto udpsck = new UDPSocket();
+                                udpsck->is_dgram = true;
+                                sck = udpsck;
+                            }
                             break;
 
                         default:

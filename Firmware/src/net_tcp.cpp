@@ -166,6 +166,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
     auto route_ret = net_ip_get_route_for_address(dest, &route);
     if(route_ret != NET_OK)
         return route_ret;
+    int ret = NET_NOTSUPP;
 
     CriticalGuard cg(sl);
 
@@ -257,6 +258,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
             break;
 
         case Established:
+            ret = NET_OK;
             if(n && n <= sb.AvailableRecvSpace())
             {
                 // packet with data
@@ -269,38 +271,26 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                 {
                     if(seq_discrepancy == 0)
                     {
-                        sb.recv_wptr = memcpy_split_dest(sb.recvbuf, pkt, n, sb.recv_wptr, SocketBuffer::buflen);
+                        recv_packet rp;
+                        rp.buf = pkt;
+                        rp.nlen = n;
+                        rp.rptr = 0;
+                        rp.from = peer_addr;
+                        rp.from_port = peer_port;
 
-                        n_data_received += n;
-
-                        // can we immediately service the receiving thread(s)?
-                        while(sb.RecvBytesAvailable())
+                        if(recv_packets.Write(rp))
                         {
-                            read_waiting_thread rwt;
-                            if(read_waiting_threads.Read(&rwt))
-                            {
-                                auto to_recv = std::min(rwt.n, sb.RecvBytesAvailable());
-                                sb.recv_rptr = memcpy_split_src(rwt.buf, sb.recvbuf, to_recv, sb.recv_rptr, SocketBuffer::buflen);
+                            n_data_received += n;
 
-                                if(rwt.srcaddr && rwt.addrlen && *rwt.addrlen >= sizeof(sockaddr_in))
-                                {
-                                    auto addr = reinterpret_cast<sockaddr_in *>(rwt.srcaddr);
-                                    addr->sin_family = AF_INET;
-                                    addr->sin_addr.s_addr = peer_addr;
-                                    addr->sin_port = peer_port;
-                                    *rwt.addrlen = sizeof(sockaddr_in);
-                                }
-
-                                rwt.t->ss_p.ival1 = to_recv;
-                                rwt.t->ss.Signal();
-                            }
+                            handle_waiting_reads();
+                            ret = NET_KEEPPACKET;
                         }
                     }
 
                     // send ack
                     net_tcp_send_empty_msg(src, src_port, my_seq_start + n_data_sent,
                         peer_seq_start + n_data_received, dest, dest_port, FLAG_ACK,
-                        GetWindowSize());
+                        get_wnd_size());
                 }
             }
             // ACK packets
@@ -324,14 +314,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
         default:
             break;
     }
-    return NET_NOTSUPP;
-}
-
-int TCPSocket::GetWindowSize() const
-{
-    if(state == Listen)
-        return SocketBuffer::buflen;    // will be empty on accept
-    return sb.AvailableRecvSpace();
+    return ret;
 }
 
 int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
@@ -513,41 +496,23 @@ int TCPSocket::RecvFromAsync(void *buf, size_t len, int flags,
         return -1;
     }
 
-    if(sb.AvailableRecvSpace() != SocketBuffer::buflen)
+    // blocking request
+    read_waiting_thread rwt;
+    rwt.t = GetCurrentThreadForCore();
+    rwt.buf = buf;
+    rwt.n = len;
+    rwt.srcaddr = src_addr;
+    rwt.addrlen = addrlen;
+
+    if(!read_waiting_threads.Write(rwt))
     {
-        auto to_recv = std::min(len, SocketBuffer::buflen - sb.AvailableRecvSpace());
-        sb.recv_rptr = memcpy_split_src(buf, sb.recvbuf, to_recv, sb.recv_rptr, SocketBuffer::buflen);
-
-        if(src_addr && addrlen && *addrlen >= sizeof(sockaddr_in))
-        {
-            auto addr = reinterpret_cast<sockaddr_in *>(src_addr);
-            addr->sin_family = AF_INET;
-            addr->sin_addr.s_addr = peer_addr;
-            addr->sin_port = peer_port;
-            *addrlen = sizeof(sockaddr_in);
-        }
-
-        return to_recv;
+        *_errno = ENOMEM;
+        return -1;
     }
     else
     {
-        // blocking request
-        read_waiting_thread rwt;
-        rwt.t = GetCurrentThreadForCore();
-        rwt.buf = buf;
-        rwt.n = len;
-        rwt.srcaddr = src_addr;
-        rwt.addrlen = addrlen;
-
-        if(!read_waiting_threads.Write(rwt))
-        {
-            *_errno = ENOMEM;
-            return -1;
-        }
-        else
-        {
-            return -2;
-        }
+        handle_waiting_reads();
+        return -2;
     }
 }
 
@@ -636,6 +601,7 @@ bool TCPSocket::SendToInt(const net_msg &m)
                 msg.t->ss_p.ival2 = ENOMEM;
                 msg.t->ss.Signal();
             }
+            return false;
         }
 
         // copy data to packet
@@ -679,8 +645,13 @@ bool TCPSocket::SendToInt(const net_msg &m)
                 msg.t->ss_p.ival2 = EFAULT;
                 msg.t->ss.Signal();
             }
+            net_deallocate_pbuf(pbuf);
+            return false;
         }
     }
+
+    msg.t->ss_p.uval1 = n_sent;
+    msg.t->ss.Signal();
 
     return true;
 }
@@ -783,8 +754,8 @@ void handle_ack(size_t start, size_t end)
 
 static uint64_t calc_timeout(uint64_t start, int ntout)
 {
-    // exponential backoff starting at 100 ms
-    return start + (100ULL << ntout);
+    // exponential backoff starting at 200 ms
+    return start + (200ULL << ntout);
 }
 
 static uint16_t get_wnd_size()

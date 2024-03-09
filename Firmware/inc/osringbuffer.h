@@ -65,8 +65,24 @@ template<typename T, unsigned int nitems> class RingBuffer<T, nitems, true>
                 {
                     return nread;
                 }
-                d[i] = std::move(b[_rptr]);
+                d[i] = b[_rptr];
                 _rptr = ptr_plus_one(_rptr);
+            }
+            return nread;
+        }
+
+        int Peek(T *d, int n = 1)
+        {
+            int nread = 0;
+            size_t pptr = _rptr;
+            for(int i = 0; i < n; i++, nread++)
+            {
+                if(pptr == _wptr)
+                {
+                    return nread;
+                }
+                d[i] = b[pptr];
+                pptr = ptr_plus_one(pptr);
             }
             return nread;
         }

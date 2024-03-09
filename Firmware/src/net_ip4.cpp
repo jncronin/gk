@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 #include <limits>
+#include "thread.h"
 #include "SEGGER_RTT.h"
 
 extern Spinlock s_rtt;
@@ -339,4 +340,76 @@ uint16_t net_ip_calc_checksum(const char *data, size_t n)
     return net_ip_complete_checksum(
         net_ip_calc_partial_checksum(data, n)
     );
+}
+
+void IP4Socket::handle_waiting_reads()
+{
+    // we should have the spinlock at this point
+
+    // we need to match a packet with an incoming request
+    //  request size can be bigger than a packet, the same or less
+    //  for dgrams, we only receive at most one packet
+
+    read_waiting_thread rwt;
+    while(read_waiting_threads.Peek(&rwt) && !recv_packets.empty())
+    {
+        size_t nread = 0L;
+
+        IP4Addr from;
+        uint16_t from_port;
+
+        recv_packet rp;
+        while(recv_packets.Peek(&rp))
+        {
+            auto pkt_size = rp.nlen - rp.rptr;
+            auto buf_addr = &reinterpret_cast<char *>(rwt.buf)[nread];
+            auto pkt_addr = &rp.buf[rp.rptr];
+            auto buf_size = rwt.n - nread;
+
+            auto to_read = std::min(pkt_size, buf_size);
+
+            memcpy(buf_addr, pkt_addr, to_read);
+
+            from = rp.from;
+            from_port = rp.from_port;
+
+            rp.rptr += to_read;
+            if(rp.rptr >= rp.nlen)
+            {
+                // can remove buf
+                net_deallocate_pbuf(const_cast<char *>(rp.buf));
+                recv_packets.Read(&rp);
+            }
+
+            nread += to_read;
+
+            if(nread >= rwt.n)
+            {
+                break;
+            }
+
+            if(is_dgram)
+                break;  // only one packet, else we may conflate packets from different peers
+        }
+
+        if(nread)
+        {
+            // can return something to the waiting thread
+
+            if(rwt.srcaddr && rwt.addrlen && *rwt.addrlen >= sizeof(sockaddr_in))
+            {
+                auto addr = reinterpret_cast<sockaddr_in *>(rwt.srcaddr);
+                addr->sin_family = AF_INET;
+                addr->sin_addr.s_addr = from;
+                addr->sin_port = from_port;
+                *rwt.addrlen = sizeof(sockaddr_in);
+            }
+
+            rwt.t->ss_p.uval1 = nread;
+            rwt.t->ss.Signal();
+
+            // remove this request
+            read_waiting_threads.Read(&rwt);
+        }
+    }
 }
