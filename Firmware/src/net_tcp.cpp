@@ -232,11 +232,6 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                     //  we can silently handle a second connection awaiting another accept() call
                     state = Listen;
 
-                    if(!par.sb.Alloc())
-                    {
-                        return NET_NOMEM;
-                    }
-
                     // can we pair with a waiting thread?
                     if(accept_t)
                     {
@@ -259,7 +254,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
         case Established:
             ret = NET_OK;
-            if(n && n <= sb.AvailableRecvSpace())
+            if(n)
             {
                 // packet with data
 
@@ -392,7 +387,7 @@ int TCPSocket::ListenAsync(int backlog, int *_errno)
     return NET_OK;
 }
 
-int TCPSocket::PairConnectAccept(pending_accept_req &&req,
+int TCPSocket::PairConnectAccept(const pending_accept_req &req,
             Thread *t, int *_errno, bool is_async)
 {
     // This can be called either from the tcpip thread or the application thread
@@ -418,7 +413,6 @@ int TCPSocket::PairConnectAccept(pending_accept_req &&req,
     nsck->peer_seq_start = req.peer_seq_start;
     nsck->n_data_received = req.n_data_received;
     nsck->n_data_sent = req.n_data_sent;
-    nsck->sb = std::move(req.sb);
     nsck->bound_addr = bound_addr;
     nsck->port = port;
     nsck->state = Established;
