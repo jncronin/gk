@@ -124,6 +124,7 @@ class IP4Route
 class Socket;
 class UDPSocket;
 class TCPSocket;
+class IP4Socket;
 // messages to be processed by net server
 struct net_msg
 {
@@ -132,11 +133,11 @@ struct net_msg
         InjectPacket,
         SendPacket,
         SendSocketData,
-        UDPRecvDgram,
         UDPSendDgram,
         TCPSendBuffer,
         SetIPAddress,
-        ArpRequestAndSend
+        ArpRequestAndSend,
+        HandleWaitingReads,
     };
 
     net_msg_type msg_type;
@@ -195,6 +196,7 @@ struct net_msg
             TCPSocket *sck;
         } tcpsend;
         IP4Address ipaddr;
+        IP4Socket *ipsck;
     } msg_data;
 };
 
@@ -270,32 +272,6 @@ int net_handle_icmp_packet(const IP4Packet &pkt);
 
 
 /* Socket interface */
-class SocketBuffer
-{
-    public:
-        char *recvbuf = nullptr;
-        char *sendbuf = nullptr;
-
-        size_t recv_wptr = 0;
-        size_t recv_rptr = 0;
-        size_t send_wptr = 0;
-        size_t send_rptr = 0;
-
-        constexpr static const size_t buflen = GK_NET_SOCKET_BUFSIZE;
-
-        bool Alloc();
-
-        SocketBuffer(const SocketBuffer &other) = delete;
-        SocketBuffer() = default;
-        ~SocketBuffer();
-        SocketBuffer(SocketBuffer &&other);
-        SocketBuffer &operator=(SocketBuffer &&other);
-
-        size_t AvailableRecvSpace() const;
-        size_t AvailableSendSpace() const;
-        size_t RecvBytesAvailable() const;
-};
-
 struct recv_packet
 {
     const char *buf;
@@ -308,9 +284,6 @@ struct recv_packet
 
 class Socket
 {
-    protected:
-        virtual void handle_waiting_reads() = 0;
-
     public:
         Spinlock sl;
 
@@ -329,6 +302,7 @@ class Socket
         virtual int SendPendingData();
         virtual int ListenAsync(int backlog, int *_errno);
         virtual int AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno);
+        virtual void HandleWaitingReads();
 
         bool thread_is_blocking_for_recv = false;
         SimpleSignal *blocking_thread_signal = nullptr;
@@ -337,7 +311,6 @@ class Socket
 class IP4Socket : public Socket
 {
     protected:
-        void handle_waiting_reads();
 
     public:
         IP4Addr bound_addr;
@@ -353,6 +326,8 @@ class IP4Socket : public Socket
             socklen_t *addrlen;
         };
         RingBuffer<read_waiting_thread, 8> read_waiting_threads;
+
+        void HandleWaitingReads();
 };
 
 class TCPSocket : public IP4Socket
@@ -442,44 +417,19 @@ class TCPSocket : public IP4Socket
 class net_msg;
 class UDPSocket : public IP4Socket
 {
-    protected:
-        struct dgram_desc
-        {
-            size_t start, len;
-            sockaddr_in from;
-        };
-        struct dgram_send_desc
-        {
-            size_t start, len;
-            IP4Addr src, dest;
-            uint16_t src_port, dest_port;
-            Thread *t;
-        };
-        RingBuffer<dgram_desc, 64> dgram_queue;
-        RingBuffer<dgram_send_desc, 64> dgram_send_queue;
-        RingBuffer<net_msg, 8> udp_waiting_queue;
-
-        SocketBuffer sb;
-
     public:
         int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         int RecvFromAsync(void *buf, size_t len, int flags,
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
-        bool RecvFromInt(const net_msg &m);
-        void RecvFromInt(const net_msg &m, dgram_desc &dd);
 
         int SendToAsync(const void *buf, size_t len, int flags,
             const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno);
         bool SendToInt(const net_msg &m);
 
         int HandlePacket(const char *ptr, size_t n, uint32_t from_addr, uint16_t from_port);
-
-        int SendPendingData();
         
         size_t operator()(const UDPSocket &s) const noexcept;
         bool operator==(const UDPSocket &other) const noexcept;
-
-        friend void int_udp_handle_recvfrom(const net_msg &m, UDPSocket::dgram_desc &dd);
 };
 
 class RawSocket : public Socket
@@ -489,9 +439,6 @@ class RawSocket : public Socket
 
 int net_bind_udpsocket(UDPSocket *sck);
 int net_bind_tcpsocket(TCPSocket *sck);
-
-char *net_allocate_sbuf();
-void net_deallocate_sbuf(char *buf);
 
 int net_set_ip_address(const IP4Address &ip);
 

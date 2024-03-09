@@ -178,25 +178,6 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
   } >AXISRAM AT> FLASH1
 
-  .net_data ALIGN(0x40000):
-  {
-    . = ALIGN(1K);
-    _slwip_data = .;
-    *(.net_data)
-    *(.net_data*)
-    _elwip_init_data = .;
-  } >AXISRAM AT> FLASH1
-  
-  .net_bss (NOLOAD):
-  {
-    _slwip_bss_data = .;
-    *(.net_bss)
-    *(.net_bss*)
-    _elwip_data = .;
-  } >AXISRAM
-
-  _slwip_flash = LOADADDR(.net_data);
-
   . = ALIGN(4);
   .dtcm_bss (NOLOAD) :
   {
@@ -251,6 +232,25 @@ SECTIONS
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } >AXISRAM
+
+  .net_data ALIGN(1 << LOG2CEIL(_elwip_data - _slwip_data)):
+  {
+    _slwip_data = .;
+    *(.net_data)
+    *(.net_data*)
+    _elwip_init_data = .;
+  } >AXISRAM AT> FLASH1
+  
+  .net_bss (NOLOAD):
+  {
+    _slwip_bss_data = .;
+    *(.net_bss)
+    *(.net_bss*)
+    _elwip_data = .;
+  } >AXISRAM
+  _slwip_flash = LOADADDR(.net_data);
+
+
 
   /* Initial stack for CM7 */
   .cm7_stack 0x20001000 (NOLOAD)  :

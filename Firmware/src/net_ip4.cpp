@@ -342,7 +342,7 @@ uint16_t net_ip_calc_checksum(const char *data, size_t n)
     );
 }
 
-void IP4Socket::handle_waiting_reads()
+void IP4Socket::HandleWaitingReads()
 {
     // we should have the spinlock at this point
 

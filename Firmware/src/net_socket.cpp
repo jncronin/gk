@@ -38,6 +38,11 @@ int Socket::AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno)
     return -1;
 }
 
+void Socket::HandleWaitingReads()
+{
+    
+}
+
 int syscall_socket(int domain, int type, int protocol, int *_errno)
 {
     // sanity check arguments
