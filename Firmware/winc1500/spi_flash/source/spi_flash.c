@@ -4,29 +4,36 @@
  *
  * \brief WINC1500 SPI Flash.
  *
- * Copyright (c) 2016-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2016-2017 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
  * \page License
  *
- * Subject to your compliance with these terms, you may use Microchip
- * software and any derivatives exclusively with Microchip products.
- * It is your responsibility to comply with third party license terms applicable
- * to your use of third party software (including open source software) that
- * may accompany Microchip software.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE,
- * INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY,
- * AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE
- * LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL
- * LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND WHATSOEVER RELATED TO THE
- * SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS BEEN ADVISED OF THE
- * POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT
- * ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY
- * RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
- * THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. The name of Atmel may not be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
+ * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
  *
@@ -38,6 +45,10 @@
 #include "spi_flash/include/spi_flash.h"
 #define DUMMY_REGISTER	(0x1084)
 
+#ifdef ARDUINO
+#define u32(x) ((uint32)x)
+#endif
+
 #define TIMEOUT (-1) /*MS*/
 
 //#define DISABLE_UNSED_FLASH_FUNCTIONS
@@ -45,8 +56,12 @@
 #define FLASH_BLOCK_SIZE					(32UL * 1024)
 /*!<Block Size in Flash Memory
  */
+#define FLASH_SECTOR_SZ						(4 * 1024UL)
+/*!<Sector Size in Flash Memory
+ */
 #define FLASH_PAGE_SZ						(256)
 /*!<Page Size in Flash Memory */
+
 
 #define HOST_SHARE_MEM_BASE		(0xd0000UL)
 #define CORTUS_SHARE_MEM_BASE	(0x60000000UL)
@@ -227,7 +242,11 @@ static sint8 spi_flash_load_to_cortus_mem(uint32 u32MemAdr, uint32 u32FlashAdr, 
 	cmd[4] = 0xA5;
 
 	ret += nm_write_reg(SPI_FLASH_DATA_CNT, u32Sz);
-	ret += nm_write_reg(SPI_FLASH_BUF1, cmd[0]|(((uint32)cmd[1])<<8)|(((uint32)cmd[2])<<16)|(((uint32)cmd[3])<<24));
+#ifdef ARDUINO
+	ret += nm_write_reg(SPI_FLASH_BUF1, u32(cmd[0])|u32(cmd[1]<<8)|u32(cmd[2]<<16)|u32(cmd[3]<<24));
+#else
+	ret += nm_write_reg(SPI_FLASH_BUF1, cmd[0]|(cmd[1]<<8)|(cmd[2]<<16)|(cmd[3]<<24));
+#endif
 	ret += nm_write_reg(SPI_FLASH_BUF2, cmd[4]);
 	ret += nm_write_reg(SPI_FLASH_BUF_DIR, 0x1f);
 	ret += nm_write_reg(SPI_FLASH_DMA_ADDR, u32MemAdr);
@@ -264,7 +283,11 @@ static sint8 spi_flash_sector_erase(uint32 u32FlashAdr)
 	cmd[3] = (uint8)(u32FlashAdr);
 
 	ret += nm_write_reg(SPI_FLASH_DATA_CNT, 0);
-	ret += nm_write_reg(SPI_FLASH_BUF1, cmd[0]|(((uint32)cmd[1])<<8)|(((uint32)cmd[2])<<16)|(((uint32)cmd[3])<<24));
+#ifdef ARDUINO
+	ret += nm_write_reg(SPI_FLASH_BUF1, u32(cmd[0])|u32(cmd[1]<<8)|u32(cmd[2]<<16)|u32(cmd[3]<<24));
+#else
+	ret += nm_write_reg(SPI_FLASH_BUF1, cmd[0]|(cmd[1]<<8)|(cmd[2]<<16)|(cmd[3]<<24));
+#endif
 	ret += nm_write_reg(SPI_FLASH_BUF_DIR, 0x0f);
 	ret += nm_write_reg(SPI_FLASH_DMA_ADDR, 0);
 	ret += nm_write_reg(SPI_FLASH_CMD_CNT, 4 | (1<<7));
@@ -363,7 +386,11 @@ static sint8 spi_flash_page_program(uint32 u32MemAdr, uint32 u32FlashAdr, uint32
 	cmd[3] = (uint8)(u32FlashAdr);
 
 	ret += nm_write_reg(SPI_FLASH_DATA_CNT, 0);
-	ret += nm_write_reg(SPI_FLASH_BUF1, cmd[0]|(((uint32)cmd[1])<<8)|(((uint32)cmd[2])<<16)|(((uint32)cmd[3])<<24));
+#ifdef ARDUINO
+	ret += nm_write_reg(SPI_FLASH_BUF1, u32(cmd[0])|u32(cmd[1]<<8)|u32(cmd[2]<<16)|u32(cmd[3]<<24));
+#else
+	ret += nm_write_reg(SPI_FLASH_BUF1, cmd[0]|(cmd[1]<<8)|(cmd[2]<<16)|(cmd[3]<<24));
+#endif
 	ret += nm_write_reg(SPI_FLASH_BUF_DIR, 0x0f);
 	ret += nm_write_reg(SPI_FLASH_DMA_ADDR, u32MemAdr);
 	ret += nm_write_reg(SPI_FLASH_CMD_CNT, 4 | (1<<7) | ((u32Sz & 0xfffff) << 8));
@@ -591,7 +618,7 @@ ERR:
 
 /**
 *	@fn			spi_flash_write
-*	@brief		Program SPI flash
+*	@brief		Proram SPI flash
 *	@param[IN]	pu8Buf
 *					Pointer to data buffer
 *	@param[IN]	u32Offset
@@ -720,9 +747,9 @@ ERR:
 uint32 spi_flash_get_size(void)
 {
 	uint32 u32FlashId = 0, u32FlashPwr = 0;
-	static uint32 gu32InternalFlashSize= 0;
+	static uint32 gu32InernalFlashSize= 0;
 	
-	if(!gu32InternalFlashSize)
+	if(!gu32InernalFlashSize)
 	{
 		u32FlashId = spi_flash_rdid();//spi_flash_probe();
 		if(u32FlashId != 0xffffffff)
@@ -730,14 +757,14 @@ uint32 spi_flash_get_size(void)
 			/*flash size is the third byte from the FLASH RDID*/
 			u32FlashPwr = ((u32FlashId>>16)&0xff) - 0x11; /*2MBIT is the min*/
 			/*That number power 2 to get the flash size*/
-			gu32InternalFlashSize = 1<<u32FlashPwr;
-			M2M_INFO("Flash Size %lu Mb\n",gu32InternalFlashSize);
+			gu32InernalFlashSize = 1<<u32FlashPwr;
+			M2M_INFO("Flash Size %lu Mb\n",gu32InernalFlashSize);
 		}
 		else
 		{
-			M2M_ERR("Can't detect Flash size\n");
+			M2M_ERR("Cann't Detect Flash size\n");
 		}
 	}
 
-	return gu32InternalFlashSize;
+	return gu32InernalFlashSize;
 }

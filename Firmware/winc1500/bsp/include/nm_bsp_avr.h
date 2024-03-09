@@ -2,9 +2,9 @@
  *
  * \file
  *
- * \brief BSD compatible socket interface internal types.
+ * \brief This module contains NMC1500 BSP APIs definitions.
  *
- * Copyright (c) 2016-2017 Atmel Corporation. All rights reserved.
+ * Copyright (c) 2015 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -38,34 +38,17 @@
  * \asf_license_stop
  *
  */
-#ifndef __SOCKET_INTERNAL_H__
-#define __SOCKET_INTERNAL_H__
 
+#ifndef _NM_BSP_AVR_H_
+#define _NM_BSP_AVR_H_
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+#pragma once
 
-/*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
-INCLUDES
-*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*/
+#define NM_DEBUG			0
+#define NM_BSP_PRINTF
 
-#include "socket/include/socket.h"
-#include "socket/include/m2m_socket_host_if.h"
+#define CONF_WINC_USE_SPI	1
 
+#define NM_EDGE_INTERRUPT	1
 
-/*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
-FUNCTION PROTOTYPES
-*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*/
-
-NMI_API void Socket_ReadSocketData(SOCKET sock, tstrSocketRecvMsg *pstrRecv,uint8 u8SocketMsg,
-								uint32 u32StartAddress,uint16 u16ReadCount);
-#ifdef ARDUINO
-NMI_API void Socket_ReadSocketData_Small(void);
-#endif
-
-#ifdef  __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* __SOCKET_H__ */
+#endif /* _NM_BSP_AVR_H_ */

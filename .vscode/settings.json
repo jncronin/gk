@@ -54,7 +54,8 @@
         "stop_token": "cpp",
         "streambuf": "cpp",
         "thread": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "m2m_wifi.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": false,
 }

@@ -2,37 +2,42 @@
  *
  * \file
  *
- * \brief This module contains M2M Wi-Fi SSL APIs implementation.
+ * \brief This module contains M2M Wi-Fi APIs implementation.
  *
- * Copyright (c) 2017-2018 Microchip Technology Inc. and its subsidiaries.
+ * Copyright (c) 2017 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
  * \page License
  *
- * Subject to your compliance with these terms, you may use Microchip
- * software and any derivatives exclusively with Microchip products.
- * It is your responsibility to comply with third party license terms applicable
- * to your use of third party software (including open source software) that
- * may accompany Microchip software.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * THIS SOFTWARE IS SUPPLIED BY MICROCHIP "AS IS". NO WARRANTIES,
- * WHETHER EXPRESS, IMPLIED OR STATUTORY, APPLY TO THIS SOFTWARE,
- * INCLUDING ANY IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY,
- * AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT WILL MICROCHIP BE
- * LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL OR CONSEQUENTIAL
- * LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND WHATSOEVER RELATED TO THE
- * SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS BEEN ADVISED OF THE
- * POSSIBILITY OR THE DAMAGES ARE FORESEEABLE.  TO THE FULLEST EXTENT
- * ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN ANY WAY
- * RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
- * THAT YOU HAVE PAID DIRECTLY TO MICROCHIP FOR THIS SOFTWARE.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. The name of Atmel may not be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
+ * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
  *
  */
-
-
 
 /*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
 INCLUDES
@@ -51,7 +56,6 @@ DATA TYPES
 *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*/
 static tpfAppSSLCb gpfAppSSLCb = NULL;
 static uint32 gu32HIFAddr = 0;
-static tenuTlsFlashStatus genuStatus = TLS_FLASH_ERR_UNKNOWN;
 
 /*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*
 FUNCTION PROTOTYPES
@@ -69,6 +73,9 @@ FUNCTION PROTOTYPES
 */
 static void m2m_ssl_cb(uint8 u8OpCode, uint16 u16DataSize, uint32 u32Addr)
 {
+#ifdef ARDUINO
+	(void)u16DataSize; // Silence "unused" warning
+#endif
 	sint8 s8tmp = M2M_SUCCESS;
 	switch(u8OpCode)
 	{
@@ -95,56 +102,6 @@ static void m2m_ssl_cb(uint8 u8OpCode, uint16 u16DataSize, uint32 u32Addr)
 				if (gpfAppSSLCb)
 					gpfAppSSLCb(M2M_SSL_RESP_SET_CS_LIST, &strCsList);
 			}
-		}
-		break;
-		case M2M_SSL_RESP_WRITE_OWN_CERTS:
-		{
-			tstrTlsSrvChunkHdr strTlsSrvChunkRsp;
-			uint8 bCallApp = 1;
-
-			s8tmp = hif_receive(u32Addr, (uint8*)&strTlsSrvChunkRsp, sizeof(tstrTlsSrvChunkHdr), 0);
-			if(s8tmp == M2M_SUCCESS)
-			{
-				uint16 offset = strTlsSrvChunkRsp.u16Offset32;
-				uint16 chunk_size = strTlsSrvChunkRsp.u16Size32;
-				uint16 total_size = strTlsSrvChunkRsp.u16TotalSize32;
-				tenuTlsFlashStatus status = (tenuTlsFlashStatus)(strTlsSrvChunkRsp.u16Sig);
-				
-				/* If first chunk, reset status. */
-				if (offset == 0)
-					genuStatus = TLS_FLASH_OK_NO_CHANGE;
-				/* Only send status to app when processing last chunk. */
-				if (offset + chunk_size != total_size)
-					bCallApp = 0;
-
-				switch (status)
-				{
-					case TLS_FLASH_OK:
-						// Good flash write. Update status if no errors yet.
-						if (genuStatus == TLS_FLASH_OK_NO_CHANGE)
-							genuStatus = status;
-					break;
-					case TLS_FLASH_OK_NO_CHANGE:
-						// No change, don't update status.
-					break;
-					case TLS_FLASH_ERR_CORRUPT:
-						// Corrupt. Always update status.
-						genuStatus = status;
-					break;
-					case TLS_FLASH_ERR_NO_CHANGE:
-						// Failed flash write. Update status if no more serious error.
-						if ((genuStatus != TLS_FLASH_ERR_CORRUPT) && (genuStatus != TLS_FLASH_ERR_UNKNOWN))
-							genuStatus = status;
-					break;
-					default:
-						// Don't expect any other case. Ensure we don't mask a previous corrupt error.
-						if (genuStatus != TLS_FLASH_ERR_CORRUPT)
-							genuStatus = TLS_FLASH_ERR_UNKNOWN;
-					break;
-				}
-			}
-			if (bCallApp && gpfAppSSLCb)
-				gpfAppSSLCb(M2M_SSL_RESP_WRITE_OWN_CERTS, &genuStatus);
 		}
 		break;
 	}
@@ -187,60 +144,8 @@ NMI_API sint8 m2m_ssl_handshake_rsp(tstrEccReqInfo* strECCResp, uint8* pu8RspDat
 NMI_API sint8 m2m_ssl_send_certs_to_winc(uint8* pu8Buffer, uint32 u32BufferSz)
 {
 	sint8 s8Ret = M2M_SUCCESS;
-	#define TXLIMIT  (256 * 6)
 
-	if(u32BufferSz <= TXLIMIT)
-	{
-		// set chunk header for one chunk
-		tstrTlsSrvChunkHdr *pchkhdr = (tstrTlsSrvChunkHdr *)pu8Buffer;
-		pchkhdr->u16Sig = TLS_CERTS_CHUNKED_SIG_VALUE;
-		pchkhdr->u16TotalSize32 = (u32BufferSz + 3) >> 2;
-		pchkhdr->u16Offset32 = 0;
-		pchkhdr->u16Size32 = (u32BufferSz + 3) >> 2;
-		s8Ret = hif_send(M2M_REQ_GROUP_SSL, (M2M_SSL_REQ_WRITE_OWN_CERTS | M2M_REQ_DATA_PKT), NULL, 0, pu8Buffer, u32BufferSz, 0);
-		M2M_INFO("Transferred %lu bytes of cert data NON-CHUNKED\n", u32BufferSz);
-	}
-	else
-	{
-		// chunk it
-		// We are sneaking in a header - tstrTlsSrvChunkHdr
-		#define CHUNKHDRSZ (sizeof(tstrTlsSrvChunkHdr))
-		#define CHUNKSZ    (TXLIMIT - 256) // divisible by 4
-		uint8 saveblob[CHUNKHDRSZ];
-		uint32 ofs = 0;
-		uint32 thischunksz = 0;
-		
-		// first is special - over writing our header
-		m2m_memcpy(saveblob, &pu8Buffer[ofs], CHUNKHDRSZ);
-		thischunksz = min((uint32)CHUNKSZ,u32BufferSz-ofs); // no need to round up to quad words this time
-
-		tstrTlsSrvChunkHdr* pchkhdr = (tstrTlsSrvChunkHdr*)&pu8Buffer[ofs];
-		pchkhdr->u16Sig = TLS_CERTS_CHUNKED_SIG_VALUE;
-		pchkhdr->u16TotalSize32 = ((u32BufferSz + 3) >> 2);
-		pchkhdr->u16Offset32 = ((ofs + 3) >> 2);
-		pchkhdr->u16Size32 = ((thischunksz + 3) >> 2);
-		s8Ret = hif_send(M2M_REQ_GROUP_SSL, (M2M_SSL_REQ_WRITE_OWN_CERTS | M2M_REQ_DATA_PKT), NULL, 0, &pu8Buffer[ofs], thischunksz, 0);
-		M2M_INFO("Transferred %lu bytes of cert data CHUNKED to offset %lu total %lu\n", thischunksz, ofs, u32BufferSz);
-		m2m_memcpy(&pu8Buffer[ofs], saveblob, CHUNKHDRSZ);
-		ofs += thischunksz;
-
-		while (ofs < u32BufferSz)
-		{
-			// Subsequent chunks write header before and send a little more
-			m2m_memcpy(saveblob, &pu8Buffer[ofs-CHUNKHDRSZ], CHUNKHDRSZ);
-			thischunksz = min((uint32)CHUNKSZ,u32BufferSz-ofs);
-			thischunksz = (thischunksz + 3) & 0xFFFFFFFC; // needs to round up to quad word length
-			pchkhdr = (tstrTlsSrvChunkHdr*)&pu8Buffer[ofs - CHUNKHDRSZ];
-			pchkhdr->u16Sig = TLS_CERTS_CHUNKED_SIG_VALUE;
-			pchkhdr->u16TotalSize32 = ((u32BufferSz + 3) >> 2);
-			pchkhdr->u16Offset32 = ((ofs + 3) >> 2);
-			pchkhdr->u16Size32 = ((thischunksz + 3) >> 2);
-			s8Ret = hif_send(M2M_REQ_GROUP_SSL, (M2M_SSL_REQ_WRITE_OWN_CERTS | M2M_REQ_DATA_PKT), NULL, 0, &pu8Buffer[ofs - CHUNKHDRSZ], thischunksz + CHUNKHDRSZ, 0);
-			M2M_INFO("Transferred %lu bytes of cert data CHUNKED to offset %lu total %lu\n", thischunksz, ofs, u32BufferSz);
-			m2m_memcpy(&pu8Buffer[ofs - CHUNKHDRSZ], saveblob, CHUNKHDRSZ);
-			ofs += thischunksz;
-		}
-	}
+	s8Ret = hif_send(M2M_REQ_GROUP_SSL, (M2M_SSL_IND_CERTS_ECC | M2M_REQ_DATA_PKT), NULL, 0, pu8Buffer, u32BufferSz, 0);
 
 	return s8Ret;
 }
@@ -394,7 +299,6 @@ NMI_API sint8 m2m_ssl_init(tpfAppSSLCb pfAppSSLCb)
 
 	gpfAppSSLCb = pfAppSSLCb;
 	gu32HIFAddr = 0;
-	genuStatus = TLS_FLASH_ERR_UNKNOWN;
 
 	s8Ret = hif_register_cb(M2M_REQ_GROUP_SSL,m2m_ssl_cb);
 	if (s8Ret != M2M_SUCCESS)
