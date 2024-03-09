@@ -50,8 +50,8 @@ class SimpleSignal
 
     public:
         enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
-        uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0);
-        uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0);
+        uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
+        uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
         void Signal(SignalOperation op = Set, uint32_t val = 0x1);
         void Reset();
         SimpleSignal(uint32_t val = 0);
@@ -66,8 +66,8 @@ class BinarySemaphore
         SimpleSignal ss;
 
     public:
-        bool Wait();
-        bool WaitOnce();
+        bool Wait(uint64_t tout = UINT64_MAX);
+        bool WaitOnce(uint64_t tout = UINT64_MAX);
         void Signal();
 };
 
@@ -77,8 +77,8 @@ class CountingSemaphore
         SimpleSignal ss;
 
     public:
-        bool Wait();
-        bool WaitOnce();
+        bool Wait(uint64_t tout = UINT64_MAX);
+        bool WaitOnce(uint64_t tout = UINT64_MAX);
         void Signal();
 };
 

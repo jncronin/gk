@@ -14,24 +14,6 @@ include(cmake/utils.cmake)
 add_subdirectory(lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
-set(LWIP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lwip")
-include("${LWIP_DIR}/src/Filelists.cmake")
-
-target_compile_definitions(lwipcore
-    PRIVATE
-        STM32H747xx
-        CORE_CM7
-)
-target_include_directories(lwipcore
-    PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/inc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
-        "${CMAKE_CURRENT_SOURCE_DIR}/lwip/src/include"
-)
-
-
 project(gk C CXX ASM)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
@@ -39,6 +21,10 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gk-test.obj
+    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/common/source/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/driver/source/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/socket/source/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/spi_flash/source/*.c
 )
 
 file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
@@ -80,6 +66,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -138,7 +125,6 @@ target_link_libraries(${PROJECT_NAME}
         -lm
         lwext4
         tusb
-        #lwipcore
 )
 
 target_link_options(${PROJECT_NAME}
