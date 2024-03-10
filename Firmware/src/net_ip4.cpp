@@ -33,6 +33,14 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     auto header_len = static_cast<uint16_t>(ihl * 4);
     auto blen = static_cast<uint16_t>(total_len - header_len);
 
+    // checksum
+    auto csum_calc = net_ip_complete_checksum(net_ip_calc_checksum(buf, header_len));
+    if(csum_calc != 0xffff)
+    {
+        // silently drop
+        return NET_OK;
+    }
+
 #if DEBUG_IP4
     {
         CriticalGuard cg(s_rtt);
@@ -68,6 +76,14 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
                 break;
             }
         }
+    }
+    if(!is_us &&
+        protocol == IPPROTO_UDP &&
+        epkt.dest != HwAddr::multicast &&
+        *reinterpret_cast<const uint16_t *>(&buf[header_len + 2]) == htons(68))
+    {
+        // special case 68/udp (dhcpc) directed at our hwaddr
+        is_us = true;
     }
     
     if(!is_us)
@@ -199,7 +215,7 @@ bool net_ip_decorate_packet(char *data, size_t datalen,
         _route = &calcroute;
     }
 
-    // if src is broadcast then rewrite with the one from route
+    // if src is ipaddr any then rewrite with the one from route
     auto src_val = src;
     if(src == 0UL)
     {

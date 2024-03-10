@@ -50,7 +50,8 @@ class HwAddr
 
         static const HwAddr multicast;
 
-        bool operator==(const HwAddr &other);
+        bool operator==(const HwAddr &other) const;
+        bool operator!=(const HwAddr &other) const;
         const char *get() const;
 };
 
@@ -266,9 +267,21 @@ class IP4Packet
         const EthernetPacket &epacket;
 };
 
+class UDPPacket
+{
+    public:
+        uint16_t src_port, dest_port;
+
+        const char *contents;
+        size_t n;
+
+        const IP4Packet &ippacket;
+};
+
 int net_handle_tcp_packet(const IP4Packet &pkt);
 int net_handle_udp_packet(const IP4Packet &pkt);
 int net_handle_icmp_packet(const IP4Packet &pkt);
+int net_handle_dhcpc_packet(const UDPPacket &pkt);
 
 
 /* Socket interface */
@@ -313,6 +326,8 @@ class IP4Socket : public Socket
     protected:
 
     public:
+        IP4Socket(bool _is_dgram) : is_dgram(_is_dgram) {}
+        
         IP4Addr bound_addr;
         uint16_t port;
         bool is_dgram;
@@ -365,6 +380,8 @@ class TCPSocket : public IP4Socket
         int TrySend(const buffer_send_desc &rts);
 
     public:
+        TCPSocket() : IP4Socket(false) {}
+
         enum tcp_socket_state_t
         {
             Unbound,
@@ -418,6 +435,8 @@ class net_msg;
 class UDPSocket : public IP4Socket
 {
     public:
+        UDPSocket() : IP4Socket(true) {}
+
         int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         int RecvFromAsync(void *buf, size_t len, int flags,
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
@@ -572,5 +591,7 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     bool release_buffer,
     const IP4Route *route = nullptr);
 void net_tcp_handle_sendto(const net_msg &m);
+
+int net_dhcpc_begin_for_iface(NetInterface *iface);
 
 #endif

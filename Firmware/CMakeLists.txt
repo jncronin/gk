@@ -46,6 +46,7 @@ target_compile_definitions(tusb
     PRIVATE
         STM32H747xx
         CORE_CM7
+        ETH_MODE
 )
 
 target_sources(tusb

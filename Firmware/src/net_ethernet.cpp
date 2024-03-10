@@ -5,11 +5,28 @@
 
 extern Spinlock s_rtt;
 
+#ifdef DEBUG_WIFI
+extern NetInterface wifi_if;
+#endif
+
 int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
 {
     // for now, just examine the sorts of packets we receive
     HwAddr dest(buf);
     HwAddr src(&buf[6]);
+
+#ifdef DEBUG_WIFI
+    if(iface == &wifi_if)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "wifi: recv packet: \n");
+        for(unsigned int i = 0; i < n; i++)
+        {
+            SEGGER_RTT_printf(0, "%02X ", buf[i]);
+        }
+        SEGGER_RTT_printf(0, "\n");
+    }
+#endif
 
     bool is_vlan_tagged = (buf[14] == 0x81 && buf[15] == 0x00);
 
