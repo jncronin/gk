@@ -38,6 +38,9 @@ __attribute__((section(".sram4")))Process kernel_proc;
 
 extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 
+SRAM4_DATA static volatile uint32_t m4_wakeup = 0;
+#define M4_MAGIC 0xa1b2c3d4
+
 int main()
 {
     system_init_cm7();
@@ -74,6 +77,9 @@ int main()
     s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
     s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
 
+    // Nudge M4 to wakeup
+    __asm__ volatile ("sev \n" ::: "memory");
+
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
@@ -84,14 +90,33 @@ int main()
     return 0;
 }
 
+extern "C" void CM7_SEV_IRQHandler()
+{
+    m4_wakeup = M4_MAGIC;
+}
+
 extern "C" int main_cm4()
 {
     system_init_cm4();
-    
-    // TODO: wait upon startup - should signal from idle_cm7
-    while(true)
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "kernel: M4 awaiting scheduler setup\n");
+    }
+
+    EXTI->C2IMR3 |= EXTI_IMR3_IM80;
+    NVIC_EnableIRQ(CM7_SEV_IRQn);
+    __enable_irq();
+
+    // wait upon startup - should signal from idle_cm7
+    while(m4_wakeup != M4_MAGIC)
     {
         __WFI();
+    }
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "kernel: starting M4\n");
     }
 
     // Prepare systick

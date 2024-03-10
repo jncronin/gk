@@ -5,6 +5,8 @@
 
 #define DEBUG_SCHEDULER 0
 
+extern Spinlock s_rtt;
+
 extern Process kernel_proc;
 __attribute__((section(".sram4"))) Thread dt(kernel_proc);
 
@@ -19,12 +21,15 @@ Scheduler::Scheduler()
     dt.name = "dummy";
     dt.base_priority = 0;
 
-    SEGGER_RTT_printf(0, "&dt: %x\n", (uint32_t)(uintptr_t)&dt);
-    SEGGER_RTT_printf(0, "&dt.tss: %x\n", (uint32_t)(uintptr_t)&dt.tss);
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "&dt: %x\n", (uint32_t)(uintptr_t)&dt);
+        SEGGER_RTT_printf(0, "&dt.tss: %x\n", (uint32_t)(uintptr_t)&dt.tss);
+    }
 
     for(int i = 0; i < ncores; i++)
     {
-        CriticalGuard(current_thread[i].m);
+        CriticalGuard cg(current_thread[i].m);
         current_thread[i].v = &dt;
         scheduler_running[i] = false;
     }
