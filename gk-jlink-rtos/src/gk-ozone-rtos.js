@@ -7,6 +7,8 @@ function init()
     Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn");
     Threads.setColor("Status", "ready", "executing", "blocked");
     saddr = Debug.evaluate("&s");
+
+    TargetInterface.message("s at " + saddr);
 }
 
 function task_get_name(t)
@@ -115,23 +117,40 @@ function getregs(t)
 
     aRegs[13] = addr;
 
+    for(var i = 0; i < 17; i++)
+    {
+        if(aRegs[i] == undefined)
+        {
+            aRegs[i] = 0;
+        }
+    }
+
     return aRegs;
 }
 
 function update()
 {
     Threads.clear();
+    //TargetInterface.message("s at " + saddr);
+
 
     for(var i = 0; i < 10; i++)
     {
         var vec = Debug.evaluate("&((Scheduler *)" + saddr + ")->tlist[" + i + "].v.v");
+
+        //TargetInterface.message("vec at " + vec);
+
         var vstart = TargetInterface.peekWord(vec);
         var vend = TargetInterface.peekWord(vec + 4);
+
+        //TargetInterface.message("vecs: " + vstart + " to " + vend);
 
         var vcur = vstart;
         while(vcur < vend)
         {
             var t = TargetInterface.peekWord(vcur);
+
+            TargetInterface.message("t at " + t);
             
             var namestr = task_get_name(t);
 
@@ -144,6 +163,14 @@ function update()
             {
                 t_status = "blocking";
             }
+
+            //TargetInterface.message("id: " + (t - 0x38000000).toString(16));
+            //TargetInterface.message("name: " + namestr);
+            //TargetInterface.message("i: " + i);
+            //TargetInterface.message("sp: " + getregs(t)[13].toString(16));
+            //TargetInterface.message("pc: " + getregs(t)[15].toString(16));
+            //TargetInterface.message("status: " + t_status);
+            //TargetInterface.message("blocking: " + blocking_on(t));
 
             Threads.add((t - 0x38000000).toString(16), namestr, i,
                 getregs(t)[15].toString(16), t_status,
