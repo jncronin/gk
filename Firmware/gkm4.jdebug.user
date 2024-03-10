@@ -1,14 +1,15 @@
 
 
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/startup_stm32h747xx.s:229, State=BP_STATE_ON
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp:107, State=BP_STATE_DISABLED
-OpenDocument="system.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/system.cpp", Line=57
+OpenDocument="gkm4.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware/gkm4.jdebug", Line=8
 OpenDocument="cmsis_gcc.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/cmsis_Core/Include/cmsis_gcc.h", Line=188
-OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp", Line=97
+OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp", Line=323
 OpenDocument="core_cm7.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/cmsis_Core/Include/core_cm7.h", Line=1882
 OpenDocument="mutex.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/mutex.cpp", Line=7
 OpenDocument="net_icmp.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/net_icmp.cpp", Line=18
-OpenDocument="gkm4.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware/gkm4.jdebug", Line=0
-OpenDocument="startup_stm32h747xx.s", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/startup_stm32h747xx.s", Line=182
+OpenDocument="startup_stm32h747xx.s", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/startup_stm32h747xx.s", Line=219
+OpenDocument="system.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/system.cpp", Line=52
 OpenDocument="net_ip4.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/net_ip4.cpp", Line=288
 OpenDocument="wifi_if.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/wifi_if.cpp", Line=401
 OpenDocument="m2m_hif.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/winc1500/driver/source/m2m_hif.c", Line=68
@@ -53,23 +54,23 @@ OpenDocument="syscalls.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/s
 OpenDocument="ext4_super.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/include/ext4_super.h", Line=85
 OpenDocument="gk.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware/gk.jdebug", Line=15
 OpenToolbar="Debug", Floating=0, x=0, y=0
-OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=5, w=1469, h=179, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=6, w=1469, h=297, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
-OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=1, w=1469, h=178, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=5, w=1469, h=177, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Registers 1", DockArea=RIGHT, x=0, y=6, w=1469, h=177, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, FilteredItems=[], RefreshRate=1
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=1, w=1469, h=143, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Break & Tracepoints", DockArea=BOTTOM, x=0, y=0, w=371, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=254
-OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=1307, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x2FFFFFE0
-OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1469, h=154, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1469, h=178, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1469, h=140, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=1307, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x200021D0
+OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1469, h=143, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1469, h=115, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1469, h=115, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=371, h=1316, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Terminal", DockArea=BOTTOM, x=2, y=0, w=779, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=740, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="gkos", DockArea=RIGHT, x=0, y=0, w=1469, h=184, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing="Task List"
+OpenWindow="gkos", DockArea=RIGHT, x=0, y=0, w=1469, h=440, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing="Task List"
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
 TableHeader="Global Data", SortCol="Name", SortOrder="DESCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[123;118;157;101;109;27;800]
 TableHeader="Vector Catches", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;500]
-TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;109;990;127]
-TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;446]
+TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;109;990;478]
+TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;302]
 TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[3111;131;100;110;773;510]
 TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Frame";"Source";"Return Address";"Stack Used";"PC"], ColWidths=[273;196;168;387;280;165]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
