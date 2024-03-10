@@ -6,6 +6,17 @@
 #include "scheduler.h"
 extern Scheduler s;
 
+/* These are inlined by default, so include them in a method to ensure they link */
+extern "C" void cclean()
+{
+    SCB_CleanDCache();
+}
+
+extern "C" void cinv()
+{
+    SCB_InvalidateDCache();
+}
+
 extern "C" void PendSV_Handler() __attribute__((naked));
 
 extern "C" void PendSV_Handler()
@@ -38,11 +49,37 @@ extern "C" void PendSV_Handler()
         /* Now, R0 = cur_t, R1 = next_t, R2 = coreID, R3 = cpsr */
 
         /* If the threads are the same just exit */
-        "tst r0, r1                     \n"
-        "bne    .L0                     \n"
+        "cmp r0, r1                     \n"
+        "bne    .L0%=                   \n"
         "msr primask, r3                \n"
         "pop {pc}                       \n"
-        ".L0:                           \n"
+        ".L0%=:                         \n"
+
+        /* Do we need to clean/invalidate cache? Yes if we are core 0 and
+            thread can be scheduled on either */
+        "cbnz r2, .L3%=                 \n"     // skip if not core 0
+
+        "push {r0-r3}                   \n"
+        "ldr r0, [r0, #180]             \n"     // cur_t->affinity
+        "and r0, r0, #3                 \n"     // mask
+        "cmp r0, #3                     \n"
+//        "bne .L1%=                      \n"
+        "it eq                          \n"
+        "bleq cclean                    \n"     // clean if descheduled task is affinity either
+        ".L1%=:                         \n"
+        "pop {r0-r3}                    \n"
+
+        "push {r0-r3}                   \n"
+        "ldr r0, [r1, #180]             \n"     // next_t->affinity
+        "and r0, r0, #3                 \n"     // mask
+        "cmp r0, #3                     \n"
+//        "bne .L2%=                      \n"
+        "it eq                          \n"
+        "bleq cinv                      \n"     // invalidate if new task is affinity either
+        ".L2%=:                         \n"
+        "pop {r0-r3}                    \n"
+
+        ".L3%=:                         \n"
 
         /* Schedule current thread */
         "push {r0-r3}                   \n"

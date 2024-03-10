@@ -23,10 +23,10 @@ class Thread
 
     public:
         thread_saved_state tss;     /* always first member */
+        CPUAffinity affinity;       /* always second member */
 
         bool is_privileged;
         SRAM4String name;
-        CPUAffinity affinity;
 
         int base_priority;
 
