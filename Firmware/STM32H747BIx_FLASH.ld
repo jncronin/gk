@@ -233,7 +233,9 @@ SECTIONS
     __bss_end__ = _ebss;
   } >AXISRAM
 
-  .net_data ALIGN(1 << LOG2CEIL(_elwip_data - _slwip_data)):
+  .net_data ALIGN(1
+  
+   << LOG2CEIL(_elwip_data - _slwip_data)):
   {
     _slwip_data = .;
     *(.net_data)
@@ -262,6 +264,21 @@ SECTIONS
 
   /* Initial stack for CM4 */
   . = ALIGN(4);
+  
+  /* reserve space for vtor table */
+  .sram_vtors 0x30000000 (NOLOAD) :
+  {
+    _scm4_vtors = .;
+    . = . + 4K;
+  } >SRAM
+
+  .cm4_stack 0x30001000 (NOLOAD) :
+  {
+    _scm4_stack = .;
+    . = . + 4K;
+    _ecm4_stack = .;
+  } >SRAM
+
   .sram_bss (NOLOAD) :
   {
     /* This is used by the startup in order to initialize the .bss secion */
@@ -272,14 +289,6 @@ SECTIONS
 
     . = ALIGN(4);
     _esram_bss = .;         /* define a global symbol at bss end */
-  } >SRAM
-  
-
-  .cm4_stack 0x30001000 (NOLOAD) :
-  {
-    _scm4_stack = .;
-    . = . + 4K;
-    _ecm4_stack = .;
   } >SRAM
 
   . = ALIGN(4);
