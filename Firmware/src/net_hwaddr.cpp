@@ -27,7 +27,7 @@ void HwAddr::ToString(char *buf) const
         b[0], b[1], b[2], b[3], b[4], b[5]);
 }
 
-bool HwAddr::operator==(const HwAddr &other)
+bool HwAddr::operator==(const HwAddr &other) const
 {
     for(int i = 0; i < 6; i++)
     {
@@ -35,6 +35,11 @@ bool HwAddr::operator==(const HwAddr &other)
             return false;
     }
     return true;
+}
+
+bool HwAddr::operator!=(const HwAddr &other) const
+{
+    return !(*this == other);
 }
 
 int NetInterface::GetFooterSize() const

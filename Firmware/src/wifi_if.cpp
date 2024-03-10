@@ -411,13 +411,50 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
     {
         case M2M_WIFI_RESP_ETHERNET_RX_PACKET:
         {
-            rtt_printf_wrapper("wifi: rx packet\n");
+            static unsigned int pkt_offset = 0;
+
             auto ctrlbuf = reinterpret_cast<tstrM2mIpCtrlBuf *>(pvCtrlBuf);
-            net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg),
-                ctrlbuf->u16DataSize, &wifi_if);
-            
-            m2m_wifi_set_receive_buffer(net_allocate_pbuf(PBUF_SIZE),
-                PBUF_SIZE);
+#ifdef DEBUG_WIFI
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "wifi: rx packet %d/%d @ %x\n",
+                    ctrlbuf->u16DataSize, ctrlbuf->u16RemainigDataSize,
+                    pvMsg);
+                for(unsigned int i = 0; i < ctrlbuf->u16DataSize; i++)
+                {
+                    SEGGER_RTT_printf(0, "%02X ", reinterpret_cast<char *>(pvMsg)[i]);
+                }
+                SEGGER_RTT_printf(0, "\n");
+            }
+#endif
+
+            if(ctrlbuf->u16RemainigDataSize == 0)
+            {
+                net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg) - pkt_offset,
+                    ctrlbuf->u16DataSize + pkt_offset, &wifi_if);
+                
+                auto newbuf = net_allocate_pbuf(PBUF_SIZE);
+                if(!newbuf)
+                {
+                    /* Drop priority to let net thread run, then increase again
+                        TODO: have scheduler honour new priority */
+                    GetCurrentThreadForCore()->base_priority--;
+                    while(!newbuf)
+                    {
+                        Yield();
+                        newbuf = net_allocate_pbuf(PBUF_SIZE);
+                    }
+                    GetCurrentThreadForCore()->base_priority++;
+                }
+                m2m_wifi_set_receive_buffer(newbuf, PBUF_SIZE);
+                pkt_offset = 0;
+            }
+            else
+            {
+                pkt_offset += ctrlbuf->u16DataSize;
+                m2m_wifi_set_receive_buffer(reinterpret_cast<char *>(pvMsg) + ctrlbuf->u16DataSize,
+                    PBUF_SIZE - pkt_offset);
+            }
         }
         break;
 
@@ -474,7 +511,7 @@ void wifi_task(void *p)
 
     while(true)
     {
-        if(wifi_irq.Wait(clock_cur_ms() + 200ULL))
+        wifi_irq.Wait(clock_cur_ms() + 200ULL);
         {
             //rtt_printf_wrapper("wifi: event\n");
             static WincNetInterface::state old_state = WincNetInterface::WIFI_UNINIT;
@@ -493,7 +530,7 @@ void wifi_task(void *p)
                 wip.pfAppWifiCb = wifi_handler;
                 wip.strEthInitParam.pfAppWifiCb = wifi_handler;
                 wip.strEthInitParam.pfAppEthCb = eth_handler;
-                wip.strEthInitParam.u8EthernetEnable = 1;
+                wip.strEthInitParam.u8EthernetEnable = M2M_WIFI_MODE_ETHERNET;
                 wip.strEthInitParam.au8ethRcvBuf = reinterpret_cast<uint8 *>(net_allocate_pbuf(PBUF_SIZE));
                 wip.strEthInitParam.u16ethRcvBufSize = sizeof(PBUF_SIZE);
         
@@ -502,9 +539,10 @@ void wifi_task(void *p)
                     wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
 
                     uint8 hwaddr[6];
-                    if(m2m_wifi_get_mac_address(hwaddr))
+                    if(m2m_wifi_get_mac_address(hwaddr) == M2M_SUCCESS)
                     {
                         wifi_if.hwaddr = HwAddr(reinterpret_cast<char *>(hwaddr));
+                        rtt_printf_wrapper("wifi: hwaddr: %s\n", wifi_if.GetHwAddr().ToString().c_str());
                     }
                 }
             }
@@ -512,15 +550,18 @@ void wifi_task(void *p)
             {
                 wifi_connect();
             }
+            if(ws == WincNetInterface::WIFI_AWAIT_IP)
+            {
+                if(net_ip_get_address(&wifi_if) == 0UL)
+                {
+                    net_dhcpc_begin_for_iface(&wifi_if);
+                }
+                else
+                {
+                    wifi_if.connected = WincNetInterface::WIFI_CONNECTED;
+                }
+            }
 
-            winc_mutex.lock();
-            wifi_poll();
-            winc_mutex.unlock();
-        }
-        else
-        {
-            //rtt_printf_wrapper("wifi: timeout\n");
-            // timeout
             winc_mutex.lock();
             wifi_poll();
             winc_mutex.unlock();
@@ -536,7 +577,29 @@ const HwAddr &WincNetInterface::GetHwAddr() const
 int WincNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
     bool release_buffer)
 {
-    auto ret = m2m_wifi_send_ethernet_pkt(reinterpret_cast<uint8 *>(buf), n);
+    // decorate packet
+    buf -= 14;
+    memcpy(&buf[0], dest.get(), 6);
+    memcpy(&buf[6], hwaddr.get(), 6);
+    *reinterpret_cast<uint16_t *>(&buf[12]) = htons(ethertype);
+
+    // compute crc
+    if(n < (64 - 18))
+    {
+        memset(&buf[14 + n], 0, (64 - 18) - n);
+        n = 64 - 18;  // min frame length
+    }
+    auto crc = net_ethernet_calc_crc(buf, n + 14);
+    *reinterpret_cast<uint32_t *>(&buf[n + 14]) = crc;
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "send wifi packet:\n");
+        for(unsigned int i = 0; i < n + 14; i++)
+            SEGGER_RTT_printf(0, "%02X ", buf[i]);
+        SEGGER_RTT_printf(0, "\nchecksum: %8" PRIx32 "\n", crc);
+    }
+
+    auto ret = m2m_wifi_send_ethernet_pkt(reinterpret_cast<uint8 *>(buf), n + 18);
     if(release_buffer)
     {
         net_deallocate_pbuf(buf);

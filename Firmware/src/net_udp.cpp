@@ -14,8 +14,17 @@ int net_handle_udp_packet(const IP4Packet &pkt)
     // todo: checksum
     auto src_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[0]);
     auto dest_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[2]);
-    auto len = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[4])) - 8;
+    auto len = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[4])) - NET_SIZE_UDP_HEADER;
     auto data = reinterpret_cast<const char *>(&pkt.contents[8]);
+
+    // special case dhcpc connections
+    if(dest_port == htons(68))
+    {
+        UDPPacket upkt { .src_port = src_port, .dest_port = dest_port,
+            .contents = &pkt.contents[NET_SIZE_UDP_HEADER], .n = len,
+            .ippacket = pkt };
+        return net_handle_dhcpc_packet(upkt);
+    }
 
     // do we match a bound socket?
     sockaddr_in saddr;
