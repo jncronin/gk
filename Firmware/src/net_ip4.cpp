@@ -6,6 +6,8 @@
 #include "thread.h"
 #include "SEGGER_RTT.h"
 
+//#define DEBUG_IP4 1
+
 extern Spinlock s_rtt;
 
 SRAM4_DATA static Spinlock s_ips;
@@ -44,6 +46,9 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     if(csum_calc != 0xffff)
     {
         // silently drop
+#if DEBUG_IP4
+        __asm__ volatile ("bkpt \n" ::: "memory");
+#endif
         return NET_OK;
     }
 

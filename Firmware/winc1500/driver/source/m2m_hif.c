@@ -82,7 +82,7 @@ typedef struct {
 	tpfHifCallBack pfSslCb;
 }tstrHifContext;
 
-volatile tstrHifContext gstrHifCxt;
+__attribute__((section(".sram4"))) volatile tstrHifContext gstrHifCxt;
 #ifdef ARDUINO
 volatile uint8 hif_receive_blocked = 0;
 #endif
@@ -603,7 +603,7 @@ static sint8 hif_isr(void)
 #ifdef ARDUINO
 			// ignore false interrupts, since they cause infinite loops in hif_handle_isr
 #else
-			ret = M2M_ERR_FAIL;
+			//ret = M2M_ERR_FAIL;
 #endif
 			goto ERR1;
 #else

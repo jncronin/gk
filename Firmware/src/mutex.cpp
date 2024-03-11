@@ -43,13 +43,13 @@ void Spinlock::lock()
         {
             // spin in non-locking mode until unset
             while(_lock_val) __DMB();
+        }
+        else
+        {
 #if DEBUG_SPINLOCK
             locking_core = GetCoreID();
             locked_by = GetCurrentThreadForCore(locking_core);
 #endif
-        }
-        else
-        {
             __DMB();
             return;
         }

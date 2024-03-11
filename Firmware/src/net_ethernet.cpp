@@ -5,6 +5,9 @@
 
 extern Spinlock s_rtt;
 
+//#define DEBUG_WIFI  1
+//#define DEBUG_ETHERNET 1
+
 #ifdef DEBUG_WIFI
 extern NetInterface wifi_if;
 #endif
@@ -25,6 +28,11 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
             SEGGER_RTT_printf(0, "%02X ", buf[i]);
         }
         SEGGER_RTT_printf(0, "\n");
+
+        /*if(n >= 300)
+        {
+            __asm__ volatile ("bkpt \n" ::: "memory");
+        }*/
     }
 #endif
 

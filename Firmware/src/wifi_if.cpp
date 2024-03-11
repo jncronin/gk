@@ -599,7 +599,10 @@ int WincNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         SEGGER_RTT_printf(0, "\nchecksum: %8" PRIx32 "\n", crc);
     }
 
+    winc_mutex.lock();
     auto ret = m2m_wifi_send_ethernet_pkt(reinterpret_cast<uint8 *>(buf), n + 18);
+    winc_mutex.unlock();
+    
     if(release_buffer)
     {
         net_deallocate_pbuf(buf);

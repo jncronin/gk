@@ -158,6 +158,16 @@ SECTIONS
     *libblockdev.a:*(.bss*)
     _eext4_data = .;
 
+    . = ALIGN(1 << LOG2CEIL(_ewinc_data - _swinc_data));
+    _swinc_data = .;
+    *(.winc_data)
+    *(.winc_data*)
+    *libwinc.a:*(.data)
+    *libwinc.a:*(.data*)
+    *libwinc.a:*(.bss)
+    *libwinc.a:*(.bss*)
+    _ewinc_data = .;
+
     /*. = ALIGN(1K);
     _slwip_data = .;
     *(.lwip_data)
@@ -233,9 +243,7 @@ SECTIONS
     __bss_end__ = _ebss;
   } >AXISRAM
 
-  .net_data ALIGN(1
-  
-   << LOG2CEIL(_elwip_data - _slwip_data)):
+  .net_data ALIGN(1 << LOG2CEIL(_elwip_data - _slwip_data)):
   {
     _slwip_data = .;
     *(.net_data)
