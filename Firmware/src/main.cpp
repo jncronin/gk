@@ -147,8 +147,19 @@ void bluescreen_thread(void *p)
         ((volatile uint32_t *)0xc0000000)[i] = 0xff0000ff;
     }
     __syscall_FlipFrameBuffer();*/
+    uint64_t last_update = 0ULL;
     while(true)
     {
+        if(clock_cur_ms() > (last_update + 250ULL))
+        {
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "Hello from %s\n",
+                    GetCoreID() ? "M4" : "M7");
+            }
+            last_update = clock_cur_ms();
+
+        }
         //CriticalGuard cg(s_rtt);
         //SEGGER_RTT_PutChar(0, 'A');
     }
