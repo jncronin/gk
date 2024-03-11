@@ -101,6 +101,10 @@ extern "C" int main_cm4()
 {
     system_init_cm4();
 
+    // ensure we can reach HSEM
+    RCC->AHB4ENR |= RCC_AHB4ENR_HSEMEN;
+    (void)RCC->AHB4ENR;
+
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "kernel: M4 awaiting scheduler setup\n");
