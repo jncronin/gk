@@ -22,8 +22,11 @@ class Thread
     public:
 
     public:
-        thread_saved_state tss;     /* always first member */
-        CPUAffinity affinity;       /* always second member */
+        thread_saved_state tss;         /* always first member */
+        CPUAffinity affinity;           /* always second member, offset 180 */
+        int running_on_core = 0;        /* offset 184 */
+        int chosen_for_core = 0;        /* offset 188 */
+        int deschedule_from_core = 0;   /* offset 192 */
 
         bool is_privileged;
         SRAM4String name;
@@ -39,8 +42,6 @@ class Thread
         uint64_t block_until = 0;
 
         Spinlock sl;
-        int running_on_core = 0;
-        int chosen_for_core = 0;
 
         Process &p;
 

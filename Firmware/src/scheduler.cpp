@@ -71,6 +71,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         cur_t = current_thread[ncore].v;
         cur_prio = cur_t->is_blocking ? 0 :
             current_thread[ncore].v->base_priority;
+        cur_t->deschedule_from_core = ncore + 1;
     }
 
     for(int i = npriorities-1; i >= cur_prio; i--)
@@ -94,7 +95,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
             cval = get_blocker(cval);
             {
                 CriticalGuard cg2(cval->sl);
-                if(cval->running_on_core || cval->chosen_for_core)
+                if(cval->running_on_core || cval->chosen_for_core || cval->deschedule_from_core)
                     continue;
                 
                 if(cval->is_blocking == false &&
@@ -143,6 +144,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 #if DEBUG_SCHEDULER
         report_chosen(cur_t, current_thread[ncore].v);
 #endif
+        current_thread[ncore].v->deschedule_from_core = 0;
         return current_thread[ncore].v;
     }
 }
