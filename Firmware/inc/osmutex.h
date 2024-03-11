@@ -5,11 +5,18 @@
 #include <util.h>
 #include <region_allocator.h>
 
+#define DEBUG_SPINLOCK      1
+
+
 class Thread;
 class Spinlock
 {
     protected:
         volatile uint32_t _lock_val = 0;
+#if DEBUG_SPINLOCK
+        volatile Thread *locked_by = nullptr;
+        int locking_core = 0;
+#endif
 
     public:
         void lock();

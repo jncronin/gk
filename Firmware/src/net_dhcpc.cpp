@@ -161,8 +161,8 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
     auto iter = reqs.find(iface);
     if(iter != reqs.end())
     {
-        auto curreq = iter->second;
-        if(clock_cur_ms() < curreq.made_at + 1000)
+        auto &curreq = iter->second;
+        if(clock_cur_ms() < curreq.made_at + 5000)
         {
             // no need to try again
             return NET_OK;
@@ -170,11 +170,20 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
         else
         {
             // timeout, try again
-            return send_discover(iter->second);
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "dhcpc: timeout in state %d, restarting\n",
+                    curreq.state);
+            }
+            return send_discover(curreq);
         }
     }
     else
     {
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "dhcpc: new request\n");
+        }
         // store that we've made a request
         dhcpc_request dr;
         dr.iface = iface;
@@ -307,7 +316,9 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpc: yiaddr: %s\n", yiaddr.ToString().c_str());
+        SEGGER_RTT_printf(0, "dhcpc: msg_type: %d, state: %d, yiaddr: %s\n",
+            (int)msg_type, (int)dr.state,
+            yiaddr.ToString().c_str());
     }
 
     switch(dr.state)
@@ -383,6 +394,8 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
                         net_ip_add_route(def_route);
                     }
                 }
+
+                return NET_OK;
             }
             break;
 
@@ -390,6 +403,12 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
             // nothing
             break;
 
+    }
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "dhcpc: msg %d in state %d\n",
+            (int)msg_type, (int)dr.state);
     }
     return NET_NOTSUPP;
 }

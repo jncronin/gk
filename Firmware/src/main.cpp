@@ -53,6 +53,8 @@ int main()
     init_net();
     init_wifi();
 
+    usb_init_chip_id();     // can only read UID_BASE et al from M7
+
     btnled_setcolor(0x020202UL);
 
     elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start);

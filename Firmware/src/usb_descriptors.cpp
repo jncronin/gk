@@ -103,6 +103,14 @@ static void u32_to_hex(char *dest, uint32_t v)
   u8_to_hex(&dest[6], v & 0xff);
 }
 
+void usb_init_chip_id()
+{
+  u32_to_hex(&chip_id_str[0], *(volatile uint32_t *)UID_BASE);
+  u32_to_hex(&chip_id_str[8], *(volatile uint32_t *)(UID_BASE + 4));
+  u32_to_hex(&chip_id_str[16], *(volatile uint32_t *)(UID_BASE + 8));
+  chip_id_str[24] = 0;
+}
+
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
   (void) langid;
@@ -124,16 +132,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     if(index == 3)
     {
-        auto old_mpu7 = GetCurrentThreadForCore()->tss.mpuss[6];
-        SetMPUForCurrentThread(MPUGenerate(UID_BASE, 32, 7, false, RO, NoAccess, DEV_S));
-        // use 96-bit chip ID instead
-        u32_to_hex(&chip_id_str[0], *(volatile uint32_t *)UID_BASE);
-        u32_to_hex(&chip_id_str[8], *(volatile uint32_t *)(UID_BASE + 4));
-        u32_to_hex(&chip_id_str[16], *(volatile uint32_t *)(UID_BASE + 8));
-        chip_id_str[24] = 0;
-
-        str = chip_id_str;
-        SetMPUForCurrentThread(old_mpu7);
+      str = chip_id_str;
     }
 
     // Cap at max char
