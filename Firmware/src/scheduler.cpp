@@ -16,7 +16,11 @@ Scheduler::Scheduler()
     
     for(int i = 0; i < npriorities; i++)
     {
-        tlist[i] = LockedIndexedThreadVector();
+        new (&tlist[i]) LockedIndexedThreadVector();
+    }
+    for(int i = 0; i < ncores; i++)
+    {
+        new (&current_thread[i]) LockedThread();
     }
     dt.name = "dummy";
     dt.base_priority = 0;
