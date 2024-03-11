@@ -98,6 +98,7 @@ extern "C" void PendSV_Handler()
         /* Perform task switch proper */
 
         /* First, save unsaved registers to tss */
+        "push { r0 }                \n"     // save curt for later
         "mrs r12, psp               \n"     // get psp
         "stmia r0!, { r12 }         \n"     // save psp to tss
         "add r0, r0, #4             \n"     // skip saving control
@@ -106,6 +107,14 @@ extern "C" void PendSV_Handler()
         "tst lr, #0x10              \n"     // FPU lazy store?
         "it eq                      \n"
         "vstmiaeq r0!, {s16-s31}    \n"
+
+        /* Now, unmark the thread as selected for descheduling, so it
+            can potentially be selected by the other core */
+        "pop { r0 }                 \n"
+        "push { r1 }                \n"
+        "eor r1, r1                 \n"
+        "str r1, [r0, #192]         \n"
+        "pop { r1 }                 \n"
 
         /* Set up new task MPU, can discard R0 now */
         "add r0, r1, #108           \n"     // R0 = &cm7_mpu0
