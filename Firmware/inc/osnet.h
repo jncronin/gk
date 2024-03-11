@@ -581,6 +581,8 @@ uint32_t net_ip_calc_partial_checksum(const char *data, size_t n, uint32_t csum 
 uint16_t net_ip_complete_checksum(uint32_t partial_csum);
 uint16_t net_ip_calc_checksum(const char *data, size_t n);
 
+int net_arp_add_host(const IP4Addr &ip, const HwAddr &hw);
+
 bool net_tcp_decorate_packet(char *data, size_t datalen,
     const IP4Addr &dest, uint16_t dest_port,
     const IP4Addr &src, uint16_t src_port,

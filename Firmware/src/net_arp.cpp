@@ -20,6 +20,13 @@ SRAM4_DATA static Spinlock s_arp;
 
 extern Spinlock s_rtt;
 
+int net_arp_add_host(const IP4Addr &ip, const HwAddr &hw)
+{
+    CriticalGuard cg(s_arp);
+    arp_cache[ip] = hw;
+    return NET_OK;
+}
+
 int net_handle_arp_packet(const EthernetPacket &pkt)
 {
     // handle incoming packet of type arp request or reply
