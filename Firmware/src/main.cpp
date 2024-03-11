@@ -19,6 +19,8 @@
 #include "osnet.h"
 #include "wifi.h"
 
+#define GK_DUAL_CORE 1
+
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
 
