@@ -28,6 +28,12 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     auto src = IP4Addr(&buf[12]);
     auto dest = IP4Addr(&buf[16]);
 
+    if(src != 0xffffffffUL && epkt.src != HwAddr::multicast)
+    {
+        // save to ARP
+        net_arp_add_host(src, epkt.src);
+    }
+
     auto total_len = ntohs(*reinterpret_cast<const uint16_t *>(&buf[2]));
     auto ihl = buf[0] & 0xf;
     auto header_len = static_cast<uint16_t>(ihl * 4);
@@ -80,9 +86,9 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     if(!is_us &&
         protocol == IPPROTO_UDP &&
         epkt.dest != HwAddr::multicast &&
-        *reinterpret_cast<const uint16_t *>(&buf[header_len + 2]) == htons(68))
+        net_ip_get_address(epkt.iface) == 0UL)
     {
-        // special case 68/udp (dhcpc) directed at our hwaddr
+        // special case unicast udp until we get an ip address (RFC 2131 p10)
         is_us = true;
     }
     

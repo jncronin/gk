@@ -152,7 +152,7 @@ static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
     dr.made_at = clock_cur_ms();
     dr.state = dhcpc_request::RequestSent;
 
-    return net_udp_decorate_packet(data, datalen, 0xffffffffUL, htons(67),
+    return net_udp_decorate_packet(data, datalen, siaddr, htons(67),
         0x00000000UL, dr.sck->port, true, &route);
 }
 
