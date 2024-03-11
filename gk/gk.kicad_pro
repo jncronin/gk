@@ -540,8 +540,8 @@
     "net_colors": null,
     "netclass_assignments": {
       "GND": "PWR",
-      "Net-(#FLG03-pwr)": "PWR",
       "Net-(D1-A)": "PWR",
+      "Net-(D1-K)": "PWR",
       "USB_VBUS": "PWR"
     },
     "netclass_patterns": [
