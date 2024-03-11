@@ -43,6 +43,10 @@ void Spinlock::lock()
         {
             // spin in non-locking mode until unset
             while(_lock_val) __DMB();
+#if DEBUG_SPINLOCK
+            locking_core = GetCoreID();
+            locked_by = GetCurrentThreadForCore(locking_core);
+#endif
         }
         else
         {
@@ -54,6 +58,10 @@ void Spinlock::lock()
 
 void Spinlock::unlock()
 {
+#if DEBUG_SPINLOCK
+    locked_by = nullptr;
+    locking_core = 0;
+#endif
     set(&_lock_val, 0UL);
     __DMB();
 }

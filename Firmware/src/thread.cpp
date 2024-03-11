@@ -120,8 +120,8 @@ Thread *GetCurrentThreadForCore(int coreid)
     }
 
     {
-        CriticalGuard cg(s.current_thread[coreid].m);
-        return s.current_thread[coreid].v;
+        //CriticalGuard cg(s.current_thread[coreid].m);
+        return s.current_thread[coreid].v;  // <- should be atomic
     }
 }
 
