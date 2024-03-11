@@ -18,6 +18,10 @@ function task_get_name(t)
     var nameaddr2 = Debug.evaluate("*(uint32_t *)" + nameaddr);
 
     var namebytes = TargetInterface.peekBytes(nameaddr2, namelen);
+    if(namebytes == undefined)
+    {
+        return "undefined";
+    }
     namestr = "";
     for(var j = 0; j < namelen; j++)
     {
