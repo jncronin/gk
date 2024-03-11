@@ -133,6 +133,15 @@ function update()
     Threads.clear();
     //TargetInterface.message("s at " + saddr);
 
+    var ncores = 2;
+    var curt = new Array(2);
+    for(var i = 0; i < ncores; i++)
+    {
+        var curtaddr = Debug.evaluate("&((Scheduler *)" + saddr + ")->current_thread[" + i + "]");
+        curt[i] = TargetInterface.peekWord(curtaddr);
+        //TargetInterface.message("curt[" + i + "] = " + curt[i]);
+    }
+
 
     for(var i = 0; i < 10; i++)
     {
@@ -150,16 +159,21 @@ function update()
         {
             var t = TargetInterface.peekWord(vcur);
 
-            TargetInterface.message("t at " + t);
+            //TargetInterface.message("t at " + t);
             
             var namestr = task_get_name(t);
 
             var t_status = "waiting";
-            if(Debug.evaluate("((Thread *)" + t + ")->running_on_core"))
+            var is_executing = false;
+            for(var j = 0; j < ncores; j++)
             {
-                t_status = "executing";
+                if(t == curt[j])
+                {
+                    t_status = "exec core " + j;
+                    is_executing = true;
+                }
             }
-            else if(Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
+            if(!is_executing && Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
             {
                 t_status = "blocking";
             }
