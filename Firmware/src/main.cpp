@@ -73,14 +73,16 @@ int main()
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5, kernel_proc));
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
     s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
-    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
+    //s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
 
     s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, nullptr, true, 5, kernel_proc));
     s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
     s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
 
     // Nudge M4 to wakeup
+#ifdef GK_DUAL_CORE
     __asm__ volatile ("sev \n" ::: "memory");
+#endif
 
     // Prepare systick
     SysTick->CTRL = 0;

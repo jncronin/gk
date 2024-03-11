@@ -79,6 +79,9 @@ static int send_discover(dhcpc_request &dr)
     memset(pbuf, 0, PBUF_SIZE);
     auto data = &pbuf[NET_SIZE_UDP_OFFSET];
 
+    dr.xid = dr.xid + 1UL;
+    dr.began_at = clock_cur_ms();
+
     // build route to force use of broadcast
     //  on this interface
     IP4Route route;
@@ -92,6 +95,8 @@ static int send_discover(dhcpc_request &dr)
     data[1] = 1;
     data[2] = 6;
     data[3] = 0;
+
+    //*reinterpret_cast<uint16_t *>(&data[OFFSET_FLAGS]) = htons(0x8000);    // set broadcast to see response on wireshark
 
     *reinterpret_cast<uint32_t *>(&data[OFFSET_XID]) = dr.xid;
     *reinterpret_cast<uint16_t *>(&data[OFFSET_SECS]) = htons((clock_cur_ms() - dr.began_at) / 1000ULL);
@@ -137,6 +142,8 @@ static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
     data[2] = 6;
     data[3] = 0;
 
+    //*reinterpret_cast<uint16_t *>(&data[OFFSET_FLAGS]) = htons(0x8000);    // set broadcast to see response on wireshark
+
     *reinterpret_cast<uint32_t *>(&data[OFFSET_XID]) = dr.xid;
     *reinterpret_cast<uint16_t *>(&data[OFFSET_SECS]) = htons((clock_cur_ms() - dr.began_at) / 1000ULL);
     *reinterpret_cast<uint16_t *>(&data[OFFSET_FLAGS]) = 0;
@@ -147,12 +154,12 @@ static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
     datalen += 4;
 
     // extra requests
-    add_extra_requests(data, &datalen, DHCPREQUEST, &yiaddr);
+    add_extra_requests(data, &datalen, DHCPREQUEST, &yiaddr, servid);
 
     dr.made_at = clock_cur_ms();
     dr.state = dhcpc_request::RequestSent;
 
-    return net_udp_decorate_packet(data, datalen, siaddr, htons(67),
+    return net_udp_decorate_packet(data, datalen, 0xffffffffUL, htons(67),
         0x00000000UL, dr.sck->port, true, &route);
 }
 
@@ -190,7 +197,6 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
         dr.sck = new UDPSocket();
         dr.sck->port = htons(68);
         dr.xid = rand();
-        dr.began_at = clock_cur_ms();
         return send_discover(reqs.insert_or_assign(iface, dr).first->second);
     }
 }
@@ -262,7 +268,10 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
     
     auto xid = *reinterpret_cast<const uint32_t *>(&pkt.contents[OFFSET_XID]);
     if(xid != dr.xid)
-        return NET_NOTSUPP;
+        return NET_NOTUS;
+
+    if(memcmp(&pkt.contents[OFFSET_CHADDR], dr.iface->GetHwAddr().get(), 6) != 0)
+        return NET_NOTUS;
 
     auto yiaddr = IP4Addr(&pkt.contents[OFFSET_YIADDR]);
 
