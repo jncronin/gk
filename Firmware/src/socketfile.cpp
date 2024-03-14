@@ -28,8 +28,19 @@ int SocketFile::Bind(void *addr, unsigned int addrlen, int *_errno)
 
 int SocketFile::Close(int *_errno)
 {
-    *_errno = ENOTSUP;
-    return -1;
+    // call Close on socket, actual deletion of socket happens later after fin-finack-ack sequence
+    return sck->CloseAsync(_errno);
+}
+
+int SocketFile::Close2(int *_errno)
+{
+    // delete underlying socket structure
+    if(sck)
+    {
+        delete sck;
+        sck = nullptr;
+    }
+    return 0;
 }
 
 int SocketFile::Listen(int backlog, int *_errno)

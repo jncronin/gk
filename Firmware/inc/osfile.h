@@ -27,6 +27,7 @@ class File
 
         virtual int Isatty(int *_errno);
         virtual int Close(int *_errno);
+        virtual int Close2(int *_errno);
 
         virtual int Bind(void *addr, unsigned int addrlen, int *_errno);
         virtual int Listen(int backlog, int *_errno);
@@ -91,6 +92,7 @@ class SocketFile : public File
         virtual int Accept(void *addr, unsigned int *addrlen, int *_errno);
 
         int Close(int *_errno);
+        int Close2(int *_errno);
 
         SocketFile(Socket *sck);
 

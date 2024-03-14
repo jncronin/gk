@@ -1,5 +1,6 @@
 #include "osnet.h"
 #include "SEGGER_RTT.h"
+#include "unistd.h"
 
 extern Spinlock s_rtt;
 
@@ -71,6 +72,14 @@ void net_telnet_thread(void *p)
             {
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "telnetd: recv failed %d\n", errno);
+                break;
+            }
+            else
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "telnetd: socket closed by peer\n");
+                // graceful close
+                close(ret);
                 break;
             }
         }

@@ -17,20 +17,9 @@ extern Spinlock s_rtt;
 #define FLAG_ECE    0x40
 #define FLAG_CWR    0x80
 
-struct tcp_sent_packet
-{
-    char *buf;
-    size_t nlen;
-    size_t seq_id;
-    TCPSocket *sck;
-    int ntimeouts;
-    uint64_t ms;
-};
-
 SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> bound_tcp_sockets;
 SRAM4_DATA static std::unordered_map<sockaddr_in, TCPSocket *> listening_sockets;
 SRAM4_DATA static std::unordered_map<sockaddr_pair, TCPSocket *> connected_sockets;
-SRAM4_DATA static std::map<size_t, tcp_sent_packet> sent_packets;
 SRAM4_DATA static Spinlock s_tcp;
 
 NET_DATA static char tcp_opts[] = {
@@ -45,7 +34,6 @@ static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
     unsigned int flags,
     uint16_t wnd_size);
 
-static void handle_ack(size_t start, size_t end);
 static uint16_t get_wnd_size();
 
 int net_handle_tcp_packet(const IP4Packet &pkt)
@@ -153,6 +141,59 @@ static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
 
     net_tcp_decorate_packet(&pbuf[hdr_size], 0, dest, port, src, src_port,
         seq_id, ack_id, flags, nullptr, 0, wnd_size, true, &route);    
+}
+
+int TCPSocket::handle_rst()
+{
+    // rst means the peer wont send us data or receive data, therefore we can
+    // delete all outgoing packets if necessary
+    for(auto &sp : sent_packets)
+    {
+        net_deallocate_pbuf(sp.second.buf);
+    }
+    sent_packets.clear();
+    return handle_closed(false);
+}
+
+int TCPSocket::handle_closed(bool orderly)
+{
+    // this is called on RST or successful FIN FIN close
+
+    // we mark the socket as closed, and wakeup any pending read() with a socket close message
+    read_waiting_thread rwt;
+    while(read_waiting_threads.Read(&rwt))
+    {
+        if(orderly)
+        {
+            rwt.t->ss_p.ival1 = 0;
+        }
+        else
+        {
+            rwt.t->ss_p.ival1 = -1;
+            rwt.t->ss_p.ival2 = ECONNRESET;
+        }
+        rwt.t->ss.Signal();
+    }
+    state = tcp_socket_state_t::Closed;
+
+    // remove the socket from the connected queue, if necessary
+    {
+        CriticalGuard cg(s_tcp);
+        auto iter = connected_sockets.begin();
+        while(iter != connected_sockets.end())
+        {
+            if(iter->second == this)
+            {
+                iter = connected_sockets.erase(iter);
+            }
+            else
+            {
+                iter++;
+            }
+        }
+    }
+
+    return NET_OK;
 }
 
 int TCPSocket::HandlePacket(const char *pkt, size_t n,
@@ -303,12 +344,139 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                     handle_ack(0U, ack_to);
                 }
             }
-            // TODO: FIN packets
+            if(flags & FLAG_RST)
+            {
+                // peer has given up, close socket
+                handle_rst();
+            }
+            if(flags & FLAG_FIN)
+            {
+                // peer requests close - send combined FIN/ACK
+                n_data_received++;
+                net_tcp_send_empty_msg(src, src_port, my_seq_start + n_data_sent,
+                        peer_seq_start + n_data_received, dest, dest_port, FLAG_FIN | FLAG_ACK,
+                        0UL);
+                state = tcp_socket_state_t::LastAck;
+                n_data_sent++;
+                ms_fin_sent = clock_cur_ms();
+            }
+            break;
+
+        case LastAck:
+            // expect an ack
+            if(flags & FLAG_ACK)
+            {
+                // graceful close
+                handle_closed(true);
+            }
+            break;
+
+        case FinWait1:
+            // expect ACK or FIN + ACK
+            if((flags & FLAG_ACK) && (flags & FLAG_FIN))
+            {
+                net_tcp_send_empty_msg(src, src_port,
+                    my_seq_start + n_data_sent,
+                    peer_seq_start + n_data_received,
+                    dest, dest_port, FLAG_ACK, 0);
+                ms_fin_sent = clock_cur_ms();
+                
+                // immediate close
+                handle_closed(true);
+                if(close_t)
+                {
+                    close_t->ss_p.ival1 = 0;
+                    close_t->ss.Signal();
+                    close_t = nullptr;
+                }
+            }
+            else if(flags & FLAG_ACK)
+            {
+                // expect further FIN
+                state = tcp_socket_state_t::FinWait2;
+            }
+            break;
+
+        case FinWait2:
+            // expect FIN
+            if(flags & FLAG_FIN)
+            {
+                net_tcp_send_empty_msg(src, src_port,
+                    my_seq_start + n_data_sent,
+                    peer_seq_start + n_data_received,
+                    dest, dest_port, FLAG_ACK, 0);
+                ms_fin_sent = clock_cur_ms();
+                
+                // immediate close
+                handle_closed(true);
+                if(close_t)
+                {
+                    close_t->ss_p.ival1 = 0;
+                    close_t->ss.Signal();
+                    close_t = nullptr;
+                }
+            }
             break;
 
         default:
             break;
     }
+    return ret;
+}
+
+int TCPSocket::CloseAsync(int *_errno)
+{
+    CriticalGuard cg(sl);
+    int ret = 0;
+    if(state == tcp_socket_state_t::Established)
+    {
+        // need to send fin, and await fin/ack
+        net_tcp_send_empty_msg(peer_addr, peer_port,
+            my_seq_start + n_data_sent,
+            peer_seq_start + n_data_received,
+            bound_addr, port, FLAG_FIN, 0);
+        state = tcp_socket_state_t::FinWait1;
+        ms_fin_sent = clock_cur_ms();
+        close_t = GetCurrentThreadForCore();
+        ret = -2;
+    }
+
+    if(state == tcp_socket_state_t::Listen)
+    {
+        // remove from listen pool
+        CriticalGuard cg2(s_tcp);
+        auto iter = listening_sockets.begin();
+        while(iter != listening_sockets.end())
+        {
+            if(iter->second == this)
+            {
+                iter = listening_sockets.erase(iter);
+            }
+            else
+            {
+                iter++;
+            }
+        }
+    }
+
+    if(state != tcp_socket_state_t::Unbound)
+    {
+        // remove from bound pool
+        CriticalGuard cg2(s_tcp);
+        auto iter = bound_tcp_sockets.begin();
+        while(iter != bound_tcp_sockets.end())
+        {
+            if(iter->second == this)
+            {
+                iter = bound_tcp_sockets.erase(iter);
+            }
+            else
+            {
+                iter++;
+            }
+        }
+    }
+
     return ret;
 }
 
@@ -727,9 +895,8 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
         dest, _src, IPPROTO_TCP, release_buffer, _route);
 }
 
-void handle_ack(size_t start, size_t end)
+void TCPSocket::handle_ack(size_t start, size_t end)
 {
-    CriticalGuard cg(s_tcp);
     auto iter = sent_packets.find(start);
     if(iter == sent_packets.end())
     {
@@ -740,6 +907,7 @@ void handle_ack(size_t start, size_t end)
     {
         if(iter->first <= end)
         {
+            net_deallocate_pbuf(iter->second.buf);
             iter = sent_packets.erase(iter);
         }
         else
@@ -767,32 +935,43 @@ static uint16_t get_wnd_size()
 void net_tcp_handle_timeouts()
 {
     CriticalGuard cg(s_tcp);
-    auto iter = sent_packets.begin();
-    auto now = clock_cur_ms();
-    while(iter != sent_packets.end())
+
+    for(auto &cs : connected_sockets)
     {
-        auto &sp = iter->second;
+        auto sck = cs.second;
+
+        CriticalGuard cg2(sck->sl);
         
-        auto tout_at = calc_timeout(sp.ms, sp.ntimeouts);
-        if(now > tout_at)
+        auto iter = sck->sent_packets.begin();
+        auto now = clock_cur_ms();
+        while(iter != sck->sent_packets.end())
         {
-            if(sp.ntimeouts < 10)
+            auto &sp = iter->second;
+            
+            auto tout_at = calc_timeout(sp.ms, sp.ntimeouts);
+            if(now > tout_at)
             {
-                // resend packet
-                net_tcp_decorate_packet(sp.buf, sp.nlen,
-                    sp.sck->peer_addr, sp.sck->peer_port,
-                    sp.sck->bound_addr, sp.sck->port,
-                    sp.seq_id, sp.sck->peer_seq_start + sp.sck->n_data_received,
-                    FLAG_ACK, nullptr, 0, get_wnd_size(), false);
-                sp.ntimeouts++;
+                if(sp.ntimeouts < 10)
+                {
+                    // resend packet
+                    net_tcp_decorate_packet(sp.buf, sp.nlen,
+                        sp.sck->peer_addr, sp.sck->peer_port,
+                        sp.sck->bound_addr, sp.sck->port,
+                        sp.seq_id, sp.sck->peer_seq_start + sp.sck->n_data_received,
+                        FLAG_ACK, nullptr, 0, get_wnd_size(), false);
+                    sp.ntimeouts++;
+                }
+                else
+                {
+                    // fail and close socket
+                    net_deallocate_pbuf(sp.buf);
+                    sck->handle_closed(false);
+                    iter = sck->sent_packets.erase(iter);
+                    continue;
+                }
             }
-            else
-            {
-                // TODO: close socket
 
-            }
+            iter++;
         }
-
-        iter++;
     }
 }

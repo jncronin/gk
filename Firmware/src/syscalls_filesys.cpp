@@ -135,7 +135,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
 }
 
-int syscall_close(int file, int *_errno)
+int syscall_close1(int file, int *_errno)
 {
     auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard(p.sl);
@@ -145,12 +145,22 @@ int syscall_close(int file, int *_errno)
         return -1;
     }
 
-    auto ret = p.open_files[file]->Close(_errno);
-    if(ret == 0 || ret == -2)
+    return p.open_files[file]->Close(_errno);
+}
+
+int syscall_close2(int file, int *_errno)
+{
+    auto &p = GetCurrentThreadForCore()->p;
+    CriticalGuard(p.sl);
+    if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
     {
-        delete p.open_files[file];
-        p.open_files[file] = nullptr;
+        *_errno = EBADF;
+        return -1;
     }
+
+    int ret = p.open_files[file]->Close2(_errno);
+    delete p.open_files[file];
+    p.open_files[file] = nullptr;
 
     return ret;
 }

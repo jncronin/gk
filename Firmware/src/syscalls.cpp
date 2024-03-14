@@ -150,10 +150,18 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
-        case __syscall_close:
+        case __syscall_close1:
             {
                 auto f = reinterpret_cast<int>(r2);
-                int ret = syscall_close(f, reinterpret_cast<int *>(r3));
+                int ret = syscall_close1(f, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_close2:
+            {
+                auto f = reinterpret_cast<int>(r2);
+                int ret = syscall_close2(f, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
