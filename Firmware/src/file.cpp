@@ -12,6 +12,12 @@ int File::Close(int *_errno)
     return 0;
 }
 
+int File::Close2(int *_errno)
+{
+    (void)_errno;
+    return 0;
+}
+
 int File::Bind(void *addr, unsigned int addrlen, int *_errno)
 {
     *_errno = EBADF;

@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <queue>
+#include <map>
 
 #include "osmutex.h"
 #include "osringbuffer.h"
@@ -316,10 +317,13 @@ class Socket
         virtual int SendPendingData();
         virtual int ListenAsync(int backlog, int *_errno);
         virtual int AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno);
+        virtual int CloseAsync(int *_errno);
         virtual void HandleWaitingReads();
 
         bool thread_is_blocking_for_recv = false;
         SimpleSignal *blocking_thread_signal = nullptr;
+
+        virtual ~Socket() = default;
 };
 
 class IP4Socket : public Socket
@@ -349,6 +353,18 @@ class IP4Socket : public Socket
 class TCPSocket : public IP4Socket
 {
     protected:
+        struct tcp_sent_packet
+        {
+            char *buf;
+            size_t nlen;
+            size_t seq_id;
+            TCPSocket *sck;
+            int ntimeouts;
+            uint64_t ms;
+        };
+
+        uint64_t ms_fin_sent = 0ULL;
+
         struct pending_accept_req
         {
             sockaddr_in from;
@@ -357,28 +373,20 @@ class TCPSocket : public IP4Socket
         };
         RingBuffer<pending_accept_req, 64> pending_accept_queue;
         Thread *accept_t = nullptr;
-
-        struct buffer_send_desc
-        {
-            IP4Addr dest, src;
-            uint16_t dest_port, src_port;
-            size_t start, len;
-            uint32_t seq_id;
-            uint64_t last_send;
-            int n_sends = 0;
-            Thread *t;
-        };
-        RingBuffer<buffer_send_desc, 64> buffer_send_queue;
-
-        uint32_t pending_sends = 0UL;
-        RingBuffer<buffer_send_desc, 64> pending_send_queue;
+        Thread *close_t = nullptr;
 
         int backlog_max;
 
         int PairConnectAccept(const pending_accept_req &req,
             Thread *t, int *_errno, bool is_async);
 
-        int TrySend(const buffer_send_desc &rts);
+        int handle_rst();
+        int handle_closed(bool orderly);
+        void handle_ack(size_t start, size_t end);
+
+        std::map<size_t, tcp_sent_packet> sent_packets;
+
+        friend void net_tcp_handle_timeouts();
 
     public:
         TCPSocket() : IP4Socket(false) {}
@@ -430,6 +438,7 @@ class TCPSocket : public IP4Socket
             struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
         int SendToAsync(const void *buf, size_t len, int flags,
             const struct sockaddr *dest_addr, socklen_t addrlen, int *_errno);
+        int CloseAsync(int *_errno);
 };
 
 class net_msg;

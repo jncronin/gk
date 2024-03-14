@@ -38,6 +38,11 @@ int Socket::AcceptAsync(sockaddr *addr, socklen_t *addrlen, int *_errno)
     return -1;
 }
 
+int Socket::CloseAsync(int *_errno)
+{
+    return 0;
+}
+
 void Socket::HandleWaitingReads()
 {
     
@@ -345,4 +350,14 @@ int syscall_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int *_
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
     return deferred_call(syscall_accept, sockfd, addr, addrlen);
+}
+
+#include "syscalls_int.h"
+int close(int fd)
+{
+    // call twice, to allow graceful shutdown of socket if possible
+    auto retpt1 = deferred_call(syscall_close1, fd);
+    if(retpt1 != 0)
+        return retpt1;
+    return deferred_call(syscall_close2, fd);
 }
