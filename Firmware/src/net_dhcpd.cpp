@@ -351,7 +351,11 @@ static void handle_dhcpinform(int sockfd, const char *buf, const std::map<int, i
 
 void net_dhcpd_thread(void *p)
 {
-    (void)p;
+    in_addr_t my_addr = 0;
+    if(p)
+    {
+        my_addr = reinterpret_cast<in_addr_t>(p);
+    }
 
     int lsck = socket(AF_INET, SOCK_DGRAM, 0);
     if(lsck < 0)
@@ -363,7 +367,7 @@ void net_dhcpd_thread(void *p)
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = 0;
+    saddr.sin_addr.s_addr = my_addr;
     saddr.sin_port = htons(67);
 
     int ret = bind(lsck, reinterpret_cast<sockaddr *>(&saddr), sizeof(saddr));

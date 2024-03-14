@@ -64,10 +64,14 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     if(dest.get() == 0xffffffff)
     {
         is_us = true;
+        dest = net_ip_get_address(epkt.iface);
+        if(dest.get() == 0UL)
+            dest = 0xffffffffUL;
     }
-    else if(ipcache.find(dest) != ipcache.end())
+    else if(auto iter = ipcache.find(dest); iter != ipcache.end())
     {
         is_us = true;
+        dest = iter->second.addr;
     }
     else
     {
@@ -77,6 +81,7 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
             {
                 ipcache[dest] = t;
                 is_us = true;
+                dest = t.addr;
                 break;
             }
             else if(t.Broadcast() == dest)
@@ -84,6 +89,7 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
                 // is broadcast to us
                 ipcache[dest] = t;
                 is_us = true;
+                dest = t.addr;
                 break;
             }
         }
@@ -118,6 +124,24 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
 }
 
 IP4Addr::IP4Addr(uint32_t val) : v(val) {}
+
+IP4Addr::IP4Addr(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+{
+#if BYTE_ORDER == BIG_ENDIAN
+/** Set an IP address given by the four byte-parts */
+    v = (((a) & 0xff) << 24) |
+                        (((b) & 0xff) << 16) |
+                        (((c) & 0xff) << 8)  |
+                        ((d) & 0xff);
+#else
+/** Set an IP address given by the four byte-parts.
+    Little-endian version that prevents the use of htonl. */
+    v = (((d) & 0xff) << 24) |
+                        (((c) & 0xff) << 16) |
+                        (((b) & 0xff) << 8)  |
+                        ((a) & 0xff);
+#endif
+}
 
 bool IP4Addr::operator==(const uint32_t &other) const
 {
@@ -181,7 +205,7 @@ void net_ip_handle_set_ip_address(const net_msg &m)
     ourips.push_back(m.msg_data.ipaddr);
 }
 
-size_t net_ip_get_addresses(IP4Address *out, size_t nout)
+size_t net_ip_get_addresses(IP4Address *out, size_t nout, const NetInterface *iface)
 {
     CriticalGuard cg(s_ips);
     size_t ret = 0;
@@ -189,8 +213,9 @@ size_t net_ip_get_addresses(IP4Address *out, size_t nout)
     {
         if(ret >= nout)
             return ret;
-        
-        out[ret++] = ip;
+
+        if(!iface || iface == ip.iface)
+            out[ret++] = ip;
     }
     return ret;
 }
