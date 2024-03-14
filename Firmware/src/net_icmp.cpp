@@ -3,8 +3,53 @@
 
 extern Spinlock s_rtt;
 
+static int net_handle_icmp_echo_request(const IP4Packet &pkt, const IP4Route *route)
+{
+    // build reply packet, including any data sent in the request
+    auto hdr_size = NET_SIZE_IP_OFFSET;
+    auto pkt_size = NET_SIZE_IP + pkt.n;
+
+    if(pkt_size > PBUF_SIZE)
+    {
+        return NET_MSGSIZE;
+    }
+    else
+    {
+        // allocate a pbuf
+        auto pbuf = net_allocate_pbuf(pkt_size);
+        if(!pbuf)
+        {
+            return NET_NOMEM;
+        }
+        else
+        {
+            // copy data to pbuf
+            auto psend = &pbuf[hdr_size];
+            psend[0] = 0;   // reply
+            psend[1] = 0;   // code
+            *reinterpret_cast<uint16_t *>(&psend[2]) = 0;   // checksum
+            *reinterpret_cast<uint16_t *>(&psend[4]) =
+                *reinterpret_cast<const uint16_t *>(&pkt.contents[4]);  // id
+            *reinterpret_cast<uint16_t *>(&psend[6]) =
+                *reinterpret_cast<const uint16_t *>(&pkt.contents[6]);  // seq_id
+
+            memcpy(&psend[8], &pkt.contents[8], pkt.n - 8);
+
+            // 1s complement checksum
+            *reinterpret_cast<uint16_t *>(&psend[2]) = net_ip_calc_checksum(psend, pkt.n);
+
+            return net_ip_decorate_packet(psend, pkt.n, pkt.src, pkt.dest, IPPROTO_ICMP, true, route);
+        }
+    }
+}
+
 int net_handle_icmp_packet(const IP4Packet &pkt)
 {
+    if(pkt.n < 8)
+    {
+        return NET_NOTSUPP;
+    }
+
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "net: received ICMP %s -> %s, type %d code %d checksum %d id %d seq %d\n",
@@ -24,50 +69,19 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
     }
 
     IP4Route route;
-    int ret = NET_OK;
     auto route_ret = net_ip_get_route_for_address(pkt.src, &route);
+
+    auto type = pkt.contents[0];
 
     if(route_ret != NET_OK)
     {
-        ret = route_ret;
+        return route_ret;
     }
-    else
+    else if(type == 8)
     {
-        // we have a valid dgram, try and build a packet
-        auto hdr_size = NET_SIZE_IP_OFFSET;
-        auto pkt_size = NET_SIZE_IP + 8 /* icmp size */;
-
-        if(pkt_size > PBUF_SIZE)
-        {
-            ret = NET_MSGSIZE;
-        }
-        else
-        {
-            // allocate a pbuf
-            auto pbuf = net_allocate_pbuf(pkt_size);
-            if(!pbuf)
-            {
-                ret = NET_NOMEM;
-            }
-            else
-            {
-                // copy data to pbuf
-                auto psend = &pbuf[hdr_size];
-                psend[0] = 0;   // reply
-                psend[1] = 0;   // code
-                *reinterpret_cast<uint16_t *>(&psend[2]) = 0;   // checksum
-                *reinterpret_cast<uint16_t *>(&psend[4]) =
-                    *reinterpret_cast<const uint16_t *>(&pkt.contents[4]);  // id
-                *reinterpret_cast<uint16_t *>(&psend[6]) =
-                    *reinterpret_cast<const uint16_t *>(&pkt.contents[6]);  // seq_id
-
-                // 1s complement checksum
-                *reinterpret_cast<uint16_t *>(&psend[2]) = net_ip_calc_checksum(psend, 8);
-
-                net_ip_decorate_packet(psend, 8, pkt.src, pkt.dest, IPPROTO_ICMP, true);
-            }
-        }
+        // send echo reply
+        return net_handle_icmp_echo_request(pkt, &route);
     }
 
-    return ret;
+    return NET_NOTSUPP;
 }
