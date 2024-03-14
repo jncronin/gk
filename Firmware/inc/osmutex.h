@@ -15,11 +15,16 @@ class Spinlock
         volatile uint32_t _lock_val = 0;
 #if DEBUG_SPINLOCK
         volatile Thread *locked_by = nullptr;
-        int locking_core = 0;
+        volatile int locking_core = 0;
+        volatile uint32_t locking_pc;
 #endif
 
     public:
+#if DEBUG_SPINLOCK
+        void lock(uint32_t _locking_pc);
+#else
         void lock();
+#endif
         void unlock();
         Spinlock();
 };

@@ -18,7 +18,13 @@ UninterruptibleGuard::~UninterruptibleGuard()
 CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
 {
     cpsr = DisableInterrupts();
+#if DEBUG_SPINLOCK
+    uint32_t lr;
+    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
+    _s.lock(lr);
+#else
     _s.lock();
+#endif
 }
 
 CriticalGuard::~CriticalGuard()
@@ -33,7 +39,11 @@ Spinlock::Spinlock()
     (void)RCC->AHB3ENR;
 }
 
-void Spinlock::lock()
+void Spinlock::lock(
+#if DEBUG_SPINLOCK
+    uint32_t _locking_pc
+#endif
+)
 {
     while(true)
     {
@@ -49,6 +59,7 @@ void Spinlock::lock()
 #if DEBUG_SPINLOCK
             locking_core = GetCoreID();
             locked_by = GetCurrentThreadForCore(locking_core);
+            locking_pc = _locking_pc;
 #endif
             __DMB();
             return;
