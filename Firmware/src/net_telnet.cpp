@@ -66,7 +66,7 @@ void net_telnet_thread(void *p)
                 }
 
                 // echo
-                send(ret, buf, 2, 0);
+                send(ret, buf, br, 0);
             }
             else if(br < 0)
             {
