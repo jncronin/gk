@@ -63,6 +63,7 @@ class IP4Addr
     public:
         IP4Addr(uint32_t val);
         IP4Addr(const char *v);
+        IP4Addr(uint32_t a, uint32_t b, uint32_t c, uint32_t d);
         IP4Addr() = default;
 
         std::string ToString() const;
@@ -554,7 +555,7 @@ void net_udp_handle_recvfrom(const net_msg &m);
 void net_udp_handle_sendto(const net_msg &m);
 void net_ip_handle_set_ip_address(const net_msg &m);
 
-size_t net_ip_get_addresses(IP4Address *out, size_t naddrs);
+size_t net_ip_get_addresses(IP4Address *out, size_t naddrs, const NetInterface *iface = nullptr);
 IP4Addr net_ip_get_address(const NetInterface *iface);
 int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route);
 int net_ip_add_route(const IP4Route &route);
