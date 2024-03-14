@@ -21,7 +21,7 @@ CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
 #if DEBUG_SPINLOCK
     uint32_t lr;
     __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
-    _s.lock(lr);
+    _s.lock(lr & ~1UL);
 #else
     _s.lock();
 #endif
