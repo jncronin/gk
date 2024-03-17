@@ -12,6 +12,7 @@
 #include "osqueue.h"
 #include "SEGGER_RTT.h"
 #include "ext4_thread.h"
+#include "cache.h"
 
 #include <sys/stat.h>
 
@@ -458,7 +459,7 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
         return EOK;
 
     auto sdr = sd_perform_transfer(blk_id, blk_cnt, buf, true);
-    SCB_InvalidateDCache_by_Addr(buf, blk_cnt * 512);
+    InvalidateM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
     if(sdr)
     {
         return EIO;

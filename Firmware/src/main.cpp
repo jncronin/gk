@@ -52,6 +52,10 @@ const bool use_test_threads = false;
 
 int main()
 {
+    EXTI->C2IMR3 |= EXTI_IMR3_IM79;
+    NVIC_EnableIRQ(CM4_SEV_IRQn);
+    __enable_irq();
+
     system_init_cm7();
     init_memblk();
     init_sdram();
