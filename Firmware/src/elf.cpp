@@ -10,7 +10,7 @@
 
 extern Scheduler s;
 
-void elf_load_memory(const void *e)
+int elf_load_memory(const void *e, const std::string &pname)
 {
     // pointer
     auto p = reinterpret_cast<const char *>(e);
@@ -23,35 +23,35 @@ void elf_load_memory(const void *e)
         ehdr->e_ident[3] != 'F')
     {
         SEGGER_RTT_printf(0, "invalid magic\n");
-        return;
+        return -1;
     }
 
 	// Confirm its a 32 bit file
 	if(ehdr->e_ident[EI_CLASS] != ELFCLASS32)
 	{
         SEGGER_RTT_printf(0, "invalid elf class\n");
-        return;
+        return -1;
 	}
 
 	// Confirm its a little-endian file
 	if(ehdr->e_ident[EI_DATA] != ELFDATA2LSB)
 	{
         SEGGER_RTT_printf(0, "not lsb\n");
-        return;
+        return -1;
 	}
 
 	// Confirm its an executable file
 	if(ehdr->e_type != ET_EXEC)
 	{
         SEGGER_RTT_printf(0, "not exec\n");
-        return;
+        return -1;
 	}
 
 	// Confirm its for the ARM architecture
 	if(ehdr->e_machine != EM_ARM)
 	{
         SEGGER_RTT_printf(0, "not arm\n");
-        return;
+        return -1;
 	}
 
     // Iterate through program headers to determine the absolute size required to load
@@ -81,7 +81,7 @@ void elf_load_memory(const void *e)
     if(!memblk.valid)
     {
         SEGGER_RTT_printf(0, "failed to allocate memory\n");
-        return;
+        return -1;
     }
     SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
 
@@ -221,7 +221,7 @@ void elf_load_memory(const void *e)
 
                 default:
                     SEGGER_RTT_printf(0, "unknown rel type %d\n", r_type);
-                    return;
+                    return -1;
             }
         }
     }
@@ -236,11 +236,11 @@ void elf_load_memory(const void *e)
     {
         __BKPT();
         while(true);
-        return;
+        return -1;
     }
 
     auto proc = new(ploc) Process();
-    proc->name = "elffile";
+    proc->name = pname;
     proc->brk = 0;
     proc->code_data = memblk;
     proc->heap = memblk_allocate(8192, MemRegionType::AXISRAM);
@@ -264,4 +264,6 @@ void elf_load_memory(const void *e)
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));
 
     SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
+
+    return 0;
 }

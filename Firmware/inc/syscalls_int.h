@@ -24,5 +24,6 @@ int syscall_accept(int sockfd, sockaddr *addr, socklen_t *addrlen, int *_errno);
 
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno);
+int syscall_proccreate(const char *fname, const proccreate_t *proc_info, int *_errno);
 
 #endif

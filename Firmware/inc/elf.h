@@ -1,7 +1,9 @@
 #ifndef ELF_H
 #define ELF_H
 
-void elf_load_memory(const void *elf);
+#include <string>
+
+int elf_load_memory(const void *elf, const std::string &procname);
 
 /* Copyright (C) 2013 by John Cronin <jncronin@tysos.org>
  *

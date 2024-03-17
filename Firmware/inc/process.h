@@ -8,8 +8,7 @@ class Thread;
 #include <string>
 #include "osmutex.h"
 #include "osfile.h"
-
-#define GK_MAX_OPEN_FILES      16
+#include "_gk_proccreate.h"
 
 class Process
 {
