@@ -11,12 +11,13 @@ extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
 
-static void thread_cleanup()
+static void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
 {
     auto t = GetCurrentThreadForCore();
     {
         CriticalGuard cg(t->sl);
         t->for_deletion = true;
+        t->retval = tretval;
     }
     while(true)
     {
