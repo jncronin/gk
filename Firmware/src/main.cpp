@@ -27,13 +27,13 @@ extern Condition scr_vsync;
 void system_init_cm7();
 void system_init_cm4();
 
-static void idle_thread(void *p);
+static void *idle_thread(void *p);
 
-void bluescreen_thread(void *p);
-void b_thread(void *p);
-void x_thread(void *p);
+void *bluescreen_thread(void *p);
+void *b_thread(void *p);
+void *x_thread(void *p);
 
-void net_telnet_thread(void *p);
+void *net_telnet_thread(void *p);
 
 __attribute__((section(".sram4")))Scheduler s;
 __attribute__((section(".sram4")))Process kernel_proc;
@@ -140,7 +140,7 @@ extern "C" int main_cm4()
     return 0;
 }
 
-void idle_thread(void *p)
+void *idle_thread(void *p)
 {
     (void)p;
     while(true)
@@ -149,7 +149,7 @@ void idle_thread(void *p)
     }
 }
 
-void bluescreen_thread(void *p)
+void *bluescreen_thread(void *p)
 {
     (void)p;
     /*__syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
@@ -182,7 +182,7 @@ static uint32_t rrand()
     return RNG->DR;
 }
 
-void b_thread(void *p)
+void *b_thread(void *p)
 {
     (void)p;
 
@@ -350,7 +350,7 @@ void b_thread(void *p)
     }
 }
 
-void x_thread(void *p)
+void *x_thread(void *p)
 {
     while(true)
     {

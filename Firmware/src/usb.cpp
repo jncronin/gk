@@ -80,7 +80,7 @@ extern "C" void OTG_HS_IRQHandler()
     //SetMPUForCurrentThread(old_mpu6);
 }
 
-void usb_task(void *pvParams)
+void *usb_task(void *pvParams)
 {
     (void)pvParams;
 

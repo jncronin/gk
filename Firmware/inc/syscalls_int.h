@@ -22,4 +22,7 @@ int syscall_bind(int sockfd, const sockaddr *addr, socklen_t addrlen, int *_errn
 int syscall_listen(int sockfd, int backlog, int *_errno);
 int syscall_accept(int sockfd, sockaddr *addr, socklen_t *addrlen, int *_errno);
 
+int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+    void *(*start_func)(void *), void *arg, int *_errno);
+
 #endif

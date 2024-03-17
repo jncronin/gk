@@ -227,7 +227,7 @@ void elf_load_memory(const void *e)
     }
 
     // get start address
-    auto start = (void (*)(void *))(base_ptr + ehdr->e_entry);
+    auto start = (void *(*)(void *))(base_ptr + ehdr->e_entry);
 
     // Create process and the first thread
     SRAM4RegionAllocator<Process> alloc;

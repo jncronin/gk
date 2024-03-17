@@ -38,7 +38,7 @@ class WincNetInterface : public NetInterface
         enum state { WIFI_UNINIT = 0, WIFI_DISCONNECTED, WIFI_CONNECTING, WIFI_AWAIT_IP, WIFI_CONNECTED };
         state         connected = WIFI_UNINIT;
 
-        friend void wifi_task(void *);
+        friend void *wifi_task(void *);
 };
 
 NET_BSS WincNetInterface wifi_if;
@@ -505,7 +505,7 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
     (void)p_eventData;
 }
 
-void wifi_task(void *p)
+void *wifi_task(void *p)
 {
     (void)p;
 

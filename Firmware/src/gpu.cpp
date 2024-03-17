@@ -9,7 +9,7 @@ __attribute__((section (".sram4"))) static FixedQueue<gpu_message, 8> gpu_msg_li
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
 
-void gpu_thread(void *p)
+void *gpu_thread(void *p)
 {
     (void)p;
 

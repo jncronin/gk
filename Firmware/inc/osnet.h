@@ -555,7 +555,7 @@ int     socketpair(int, int, int, int [2]);
 
 
 /* kernel threads which handle some services */
-void net_dhcpd_thread(void *p);
+void *net_dhcpd_thread(void *p);
 
 int net_queue_msg(const net_msg &m);
 int net_ret_to_errno(int ret);

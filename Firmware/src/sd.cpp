@@ -65,7 +65,7 @@ enum StatusFlags { CCRCFAIL = 1, DCRCFAIL = 2, CTIMEOUT = 4, DTIMEOUT = 8,
     DPSMACT = 0x1000, CPSMACT = 0x2000, TXFIFOHE = 0x4000, RXFIFOHF = 0x8000,
     TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000 };
 
-static void sd_thread(void *param);
+static void *sd_thread(void *param);
 
 static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, uint32_t *resp = nullptr, 
     bool with_data = false,
@@ -683,7 +683,7 @@ void sd_reset()
 }
 
 // sd thread function
-void sd_thread(void *param)
+void *sd_thread(void *param)
 {
     (void)param;
 

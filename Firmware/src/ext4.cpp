@@ -378,7 +378,7 @@ void handle_close_message(ext4_message &msg)
     }
 }
 
-void ext4_thread(void *_p)
+void *ext4_thread(void *_p)
 {
     (void)_p;
 
