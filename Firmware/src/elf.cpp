@@ -226,6 +226,17 @@ int elf_load_memory(const void *e, const std::string &pname)
         }
     }
 
+    // Invalidate I-Cache for the appropriate region(s)
+    for(unsigned int i = 0; i < ehdr->e_phnum; i++)
+    {
+        auto phdr = reinterpret_cast<const Elf32_Phdr *>(phdrs + i * ehdr->e_phentsize);
+
+        if(phdr->p_flags & PF_X)
+        {
+            SCB_InvalidateICache_by_Addr((void *)(base_ptr + phdr->p_vaddr), phdr->p_memsz);
+        }
+    }
+
     // get start address
     auto start = (void *(*)(void *))(base_ptr + ehdr->e_entry);
 
