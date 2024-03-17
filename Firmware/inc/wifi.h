@@ -2,6 +2,6 @@
 #define WIFI_H
 
 void init_wifi();
-void wifi_task(void *);
+void *wifi_task(void *);
 
 #endif

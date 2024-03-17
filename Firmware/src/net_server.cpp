@@ -8,7 +8,7 @@ static void handle_inject_packet(const net_msg &m);
 static void handle_send_packet(const net_msg &m);
 static void handle_timeouts();
 
-static void net_thread(void *_params)
+static void *net_thread(void *_params)
 {
     (void)_params;
 

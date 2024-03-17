@@ -349,7 +349,7 @@ static void handle_dhcpinform(int sockfd, const char *buf, const std::map<int, i
     }
 }
 
-void net_dhcpd_thread(void *p)
+void *net_dhcpd_thread(void *p)
 {
     in_addr_t my_addr = 0;
     if(p)
@@ -362,7 +362,7 @@ void net_dhcpd_thread(void *p)
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "dhcpd: socket failed %d\n", errno);
-        return;
+        return nullptr;
     }
 
     struct sockaddr_in saddr;
@@ -375,7 +375,7 @@ void net_dhcpd_thread(void *p)
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "dhcpd: bind failed %d\n", errno);
-        return;
+        return nullptr;
     }
 
     while(true)
@@ -389,7 +389,7 @@ void net_dhcpd_thread(void *p)
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "dhcpd: recvfrom failed %d\n", errno);
-            return;
+            return nullptr;
         }
         else
         {

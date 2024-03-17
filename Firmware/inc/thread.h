@@ -51,7 +51,7 @@ class Thread
 
         Thread(Process &owning_process);
 
-        typedef void (*threadstart_t)(void *p);
+        typedef void *(*threadstart_t)(void *p);
         static Thread *Create(std::string name,
             threadstart_t func,
             void *p,

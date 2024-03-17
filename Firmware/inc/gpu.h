@@ -63,6 +63,6 @@ constexpr gpu_message GPUMessageBlitRectangle(void *src, int x, int y, int width
     return g;
 }
 
-void gpu_thread(void *p);
+void *gpu_thread(void *p);
 
 #endif
