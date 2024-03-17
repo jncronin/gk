@@ -136,7 +136,7 @@ static bool prepare_ext4()
         return false;
     }
 
-    r = ext4_mount("sd", "/", false);
+    r = ext4_mount("sd", "/", true);
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
@@ -472,6 +472,8 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
 int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     uint32_t blk_cnt)
 {
+    return EIO;
+
     (void)bdev;
     if(!blk_cnt)
         return EOK;

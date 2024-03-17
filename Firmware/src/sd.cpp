@@ -8,7 +8,7 @@
 #include "SEGGER_RTT.h"
 #include "scheduler.h"
 
-#define DEBUG_SD    1
+//#define DEBUG_SD    1
 
 extern Spinlock s_rtt;
 extern Scheduler s;
@@ -138,8 +138,10 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         if(rt == resp_type::None)
         {
             while(!(SDMMC1->STA & CMDSENT));      // TODO: WFI
+#ifdef DEBUG_SD
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "sd_issue_command: sent %lu no response expected\n", command);
+#endif
             SDMMC1->ICR = CMDSENT;
             return 0;
         }
@@ -156,8 +158,10 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                     break;
                 }
 
+#ifdef DEBUG_SD
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "sd_issue_command: sent %lu invalid crc response\n", command);
+#endif
                 SDMMC1->ICR = CCRCFAIL;
                 return CCRCFAIL;
             }
@@ -183,12 +187,12 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
             continue;
         }
 
-    #ifdef DEBUG_SD
+#ifdef DEBUG_SD
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "sd_issue_command: sent %lu received reponse", command);
         }
-    #endif
+#endif
 
         if(resp)
         {
@@ -729,6 +733,10 @@ void *sd_thread(void *param)
             else if((mem_start >= 0x60000000U) && (mem_end < 0xd4000000U))
             {
                 is_valid = true;
+            }
+            if(mem_start & 0x3U)
+            {
+                is_valid = false;
             }
 
             if(!is_valid)
