@@ -126,7 +126,7 @@ static bool prepare_ext4()
     int mbr_entry = get_mbr_entry();
     if(mbr_entry < 0)
         return false;
-    
+
     // now check for valid fs
     int r = ext4_device_register(&sd_part, "sd");
     if(r != EOK)
@@ -156,8 +156,13 @@ static bool prepare_ext4()
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: journal_start failed %d\n", r);
-        return false;
     }
+
+    // ensure we have the appropriate basic directory structure
+    ext4_dir_mk("/bin");
+    ext4_dir_mk("/lib");
+    ext4_dir_mk("/etc");
+    ext4_dir_mk("/opt");
 
     {
         CriticalGuard cg(s_rtt);

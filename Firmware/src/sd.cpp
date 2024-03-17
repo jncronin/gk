@@ -706,17 +706,53 @@ void *sd_thread(void *param)
                 {
                     *sdr.res_out = -2;
                 }
+                if(sdr.completion_event)
+                {
+                    sdr.completion_event->Signal();
+                }
+                continue;
+            }
+
+            /* SDMMC1 can only access FlashA, FlashB, AXISRAM, QUADSPI and FMC */
+            uint32_t mem_start = (uint32_t)(uintptr_t)sdr.mem_address;
+            uint32_t mem_len = sdr.block_count * 512U;
+            uint32_t mem_end = mem_start + mem_len;
+            bool is_valid = false;
+            if((mem_start >= 0x08000000U) && (mem_end < 0x08200000U))
+            {
+                is_valid = true;
+            }
+            else if((mem_start >= 0x24000000U) && (mem_end < 0x24080000U))
+            {
+                is_valid = true;
+            }
+            else if((mem_start >= 0x60000000U) && (mem_end < 0xd4000000U))
+            {
+                is_valid = true;
+            }
+
+            if(!is_valid)
+            {
+                __asm__ volatile ("bkpt \n" ::: "memory");
+                if(sdr.res_out)
+                {
+                    *sdr.res_out = -3;
+                }
+                if(sdr.completion_event)
+                {
+                    sdr.completion_event->Signal();
+                }
                 continue;
             }
 
             SDMMC1->DCTRL = 0;
-            SDMMC1->DLEN = sdr.block_count * 512;
+            SDMMC1->DLEN = mem_len;
             SDMMC1->DCTRL = 
                 (sdr.is_read ? SDMMC_DCTRL_DTDIR : 0UL) |
                 (9UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
             SDMMC1->CMD = 0;
             SDMMC1->CMD = SDMMC_CMD_CMDTRANS;
-            SDMMC1->IDMABASE0 = (uint32_t)(uintptr_t)sdr.mem_address;
+            SDMMC1->IDMABASE0 = mem_start;
             SDMMC1->IDMACTRL = SDMMC_IDMA_IDMAEN;
 
             int cmd_id = 0;
