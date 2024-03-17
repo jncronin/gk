@@ -21,6 +21,10 @@ int syscall_socket(int domain, int type, int protocol, int *_errno);
 int syscall_bind(int sockfd, const sockaddr *addr, socklen_t addrlen, int *_errno);
 int syscall_listen(int sockfd, int backlog, int *_errno);
 int syscall_accept(int sockfd, sockaddr *addr, socklen_t *addrlen, int *_errno);
+int syscall_recvfrom(int sockfd, void *buf, size_t len, int flags,
+    struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
+int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
+    const sockaddr *dest_addr, socklen_t addrlen, int *_errno);
 
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno);

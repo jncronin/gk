@@ -239,6 +239,24 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_sendto:
+            {
+                auto p = reinterpret_cast<__syscall_sendto_params *>(r2);
+                int ret = syscall_sendto(p->sockfd, p->buf, p->len, p->flags, p->dest_addr, p->addrlen,
+                    reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_recvfrom:
+            {
+                auto p = reinterpret_cast<__syscall_recvfrom_params *>(r2);
+                int ret = syscall_recvfrom(p->sockfd, p->buf, p->len, p->flags, p->src_addr, p->addrlen,
+                    reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         case __syscall_pthread_create:
             {
                 auto p = reinterpret_cast<__syscall_pthread_create_params *>(r2);
