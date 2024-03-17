@@ -782,7 +782,7 @@ void *sd_thread(void *param)
             }
 
             sdt_ready.Reset();
-            auto ret = sd_issue_command(cmd_id, resp_type::R1, sdr.block_start * (is_hc ? 1 : 512), nullptr, true);
+            auto ret = sd_issue_command(cmd_id, resp_type::R1, sdr.block_start * (is_hc ? 1U : 512U), nullptr, true);
 
             if(ret != 0)
             {
@@ -874,7 +874,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     if(cret != 0)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x\n",
+        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x, retrying\n",
             is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret);
     }
 

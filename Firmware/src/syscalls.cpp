@@ -248,6 +248,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_proccreate:
+            {
+                auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
+                int ret = syscall_proccreate(p->fname, p->proc_info, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);

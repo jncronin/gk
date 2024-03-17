@@ -18,6 +18,7 @@
 #include "usb.h"
 #include "osnet.h"
 #include "wifi.h"
+#include "syscalls_int.h"
 
 #define GK_DUAL_CORE 0
 
@@ -35,6 +36,8 @@ void *x_thread(void *p);
 
 void *net_telnet_thread(void *p);
 
+static void *init_thread(void *p);
+
 __attribute__((section(".sram4")))Scheduler s;
 __attribute__((section(".sram4")))Process kernel_proc;
 
@@ -43,7 +46,7 @@ extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 SRAM4_DATA static volatile uint32_t m4_wakeup = 0;
 #define M4_MAGIC 0xa1b2c3d4
 
-const bool use_net = false;
+const bool use_net = true;
 const bool use_usb = false;
 const bool use_test_threads = false;
 
@@ -67,7 +70,7 @@ int main()
 
     btnled_setcolor(0x020202UL);
 
-    elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start);
+    elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start, "gktest");
 
     kernel_proc.name = "kernel";
 
@@ -99,6 +102,8 @@ int main()
         s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
         s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
     }
+
+    s.Schedule(Thread::Create("init", init_thread, nullptr, true, 5, kernel_proc));
 
     // Nudge M4 to wakeup
 #if GK_DUAL_CORE
@@ -377,6 +382,18 @@ void *x_thread(void *p)
     }
 }
 
+/* Init thread - loads services from sdcard */
+void *init_thread(void *p)
+{
+    if(use_net)
+    {
+        proccreate_t pt;
+        syscall_proccreate("/bin/tftpd", &pt, &errno);
+    }
+
+    return nullptr;
+}
+
 
 /* The following just to get it to compile */
 extern "C" void *malloc(size_t nbytes)
@@ -396,10 +413,10 @@ extern "C" void *calloc(size_t nmemb, size_t size)
     return calloc_region(nmemb, size, REG_ID_SRAM4);
 }
 
+extern "C" void *sbrksram4(int n);
 extern "C" void * _sbrk(int n)
 {
-    // shouldn't get here
-    while(true);
+    return sbrksram4(n);
 }
 
 __attribute__((section(".sram4"))) volatile uint32_t cfsr, hfsr, ret_addr, mmfar;

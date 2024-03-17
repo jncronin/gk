@@ -144,6 +144,7 @@ static bool prepare_ext4()
         return false;
     }
 
+#if USE_JOURNAL
     r = ext4_recover("/");
     if(r != EOK)
     {
@@ -157,6 +158,7 @@ static bool prepare_ext4()
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: journal_start failed %d\n", r);
     }
+#endif
 
     // ensure we have the appropriate basic directory structure
     ext4_dir_mk("/bin");
