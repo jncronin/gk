@@ -18,6 +18,7 @@ static void thread_cleanup(void *tretval)   // both return value and first param
         CriticalGuard cg(t->sl);
         t->for_deletion = true;
         t->retval = tretval;
+        memblk_deallocate(t->stack);
     }
     while(true)
     {
