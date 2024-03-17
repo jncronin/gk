@@ -8,6 +8,8 @@
 #include "scheduler.h"
 #include "region_allocator.h"
 
+#include "cache.h"
+
 extern Scheduler s;
 
 int elf_load_memory(const void *e, const std::string &pname)
@@ -233,7 +235,11 @@ int elf_load_memory(const void *e, const std::string &pname)
 
         if(phdr->p_flags & PF_X)
         {
-            SCB_InvalidateICache_by_Addr((void *)(base_ptr + phdr->p_vaddr), phdr->p_memsz);
+            InvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Instruction);
+        }
+        if(phdr->p_flags & (PF_R | PF_W))
+        {
+            InvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Data);
         }
     }
 

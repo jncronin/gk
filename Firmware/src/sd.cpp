@@ -7,6 +7,7 @@
 #include "osmutex.h"
 #include "SEGGER_RTT.h"
 #include "scheduler.h"
+#include "cache.h"
 
 //#define DEBUG_SD    1
 
@@ -854,7 +855,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
     if(!is_read)
     {
-        SCB_CleanDCache_by_Addr((uint32_t *)mem_address, block_count * 512);
+        CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
     }
 
     auto send_ret = sd_perform_transfer_async(req);
@@ -870,7 +871,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
     if(is_read)
     {
-        SCB_InvalidateDCache_by_Addr((uint32_t *)mem_address, block_count * 512);
+        InvalidateM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
     }
 
     int cret = *ret;
