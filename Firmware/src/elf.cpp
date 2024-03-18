@@ -239,7 +239,7 @@ int elf_load_memory(const void *e, const std::string &pname)
         }
         if(phdr->p_flags & (PF_R | PF_W))
         {
-            InvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Data);
+            CleanInvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Data);
         }
     }
 
