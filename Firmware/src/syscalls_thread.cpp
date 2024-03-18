@@ -50,7 +50,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     }
 
     auto curt = GetCurrentThreadForCore();
-    auto p = curt->p;
+    auto &p = curt->p;
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
         curt->base_priority, p, CPUAffinity::Either, stack, curt->tss.mpuss[5], curt->tss.mpuss[6]);
