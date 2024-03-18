@@ -275,7 +275,7 @@ int elf_load_memory(const void *e, const std::string &pname)
     proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
     proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
-    s.Schedule(Thread::Create("elffile", start, nullptr, true, 8, *proc,
+    s.Schedule(Thread::Create(pname + "_0", start, nullptr, true, 8, *proc,
         CPUAffinity::Either, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));

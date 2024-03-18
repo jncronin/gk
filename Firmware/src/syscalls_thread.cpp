@@ -61,7 +61,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         return -1;
     }
 
-    auto id = 0x38000000U - (uint32_t)(uintptr_t)t;
+    auto id = (uint32_t)(uintptr_t)t - 0x38000000U;
     char tname[32];
     snprintf(tname, 31, "%s_%4X", p.name.c_str(), (unsigned int)id);
     tname[31] = 0;
