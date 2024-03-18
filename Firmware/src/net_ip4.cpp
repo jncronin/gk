@@ -454,6 +454,7 @@ void IP4Socket::HandleWaitingReads()
             if(rwt.srcaddr && rwt.addrlen && *rwt.addrlen >= sizeof(sockaddr_in))
             {
                 auto addr = reinterpret_cast<sockaddr_in *>(rwt.srcaddr);
+                memset(addr, 0, sizeof(sockaddr_in));
                 addr->sin_family = AF_INET;
                 addr->sin_addr.s_addr = from;
                 addr->sin_port = from_port;
