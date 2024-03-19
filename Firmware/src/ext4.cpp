@@ -479,7 +479,7 @@ int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     if(!blk_cnt)
         return EOK;
 
-    SCB_CleanDCache_by_Addr((uint32_t *)buf, blk_cnt * 512);
+    CleanM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
     auto sdr = sd_perform_transfer(blk_id, blk_cnt, (void *)buf, false);
     if(sdr)
     {
