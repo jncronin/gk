@@ -24,6 +24,10 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     {
         return -1;
     }
+    if(!tud_msc_test_unit_ready_cb(lun))
+    {
+        return -1;
+    }
     return sd_perform_transfer(lba, bufsize / 512, buffer, true);
 }
 
@@ -44,6 +48,10 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
 int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize)
 {
     if(!buffer || offset || bufsize % 512)
+    {
+        return -1;
+    }
+    if(!tud_msc_test_unit_ready_cb(lun))
     {
         return -1;
     }

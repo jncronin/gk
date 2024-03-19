@@ -58,6 +58,7 @@ extern "C" void PendSV_Handler()
         /* Do we need to clean/invalidate cache? Yes if we are core 0 and
             thread can be scheduled on either */
 #if GK_DUAL_CORE
+#if GK_USE_CACHE
         "cbnz r2, .L3%=                 \n"     // skip if not core 0
 
         "push {r0-r3}                   \n"
@@ -81,6 +82,7 @@ extern "C" void PendSV_Handler()
         "pop {r0-r3}                    \n"
 
         ".L3%=:                         \n"
+#endif
 #endif
 
         /* Schedule current thread */

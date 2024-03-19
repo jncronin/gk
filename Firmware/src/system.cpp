@@ -1,8 +1,7 @@
 #include <stm32h7xx.h>
 #include "SEGGER_RTT.h"
 #include "thread.h"
-
-#define USE_CACHE 1
+#include "gk_conf.h"
 
 // there are up to 150 maskable interrupts on the NVIC, plus 16 interrupt lines, plus 1 word for stack pointer */
 const int nvtors = 150 + 16 + 1;
@@ -58,7 +57,7 @@ void system_init_cm7()
     init_clocks();
 
     // Enable caches
-#if USE_CACHE
+#if GK_USE_CACHE
     SCB_InvalidateDCache();
     SCB_InvalidateICache();
     SCB_EnableICache();
