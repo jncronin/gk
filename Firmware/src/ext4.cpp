@@ -16,6 +16,9 @@
 
 #include <sys/stat.h>
 
+#define USE_JOURNAL 1
+#define READONLY    1
+
 extern Spinlock s_rtt;
 
 extern Scheduler s;
@@ -137,7 +140,13 @@ static bool prepare_ext4()
         return false;
     }
 
-    r = ext4_mount("sd", "/", true);
+#if READONLY
+    const bool readonly = true;
+#else
+    const bool readonly = false;
+#endif
+
+    r = ext4_mount("sd", "/", readonly);
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
@@ -145,7 +154,8 @@ static bool prepare_ext4()
         return false;
     }
 
-#if USE_JOURNAL
+#if !READONLY
+#if USE_JOURNAL 
     r = ext4_recover("/");
     if(r != EOK)
     {
@@ -166,6 +176,7 @@ static bool prepare_ext4()
     ext4_dir_mk("/lib");
     ext4_dir_mk("/etc");
     ext4_dir_mk("/opt");
+#endif
 
     {
         CriticalGuard cg(s_rtt);
