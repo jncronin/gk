@@ -8,6 +8,7 @@
 #include <queue>
 #include <cstring>
 #include <clocks.h>
+#include <unordered_set>
 
 template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
 
@@ -24,7 +25,7 @@ class BaseQueue
         Spinlock sl;
         int _wptr = 0;
         int _rptr = 0;
-        SRAM4Vector<Thread *> waiting_threads;
+        std::unordered_set<Thread *> waiting_threads;
 
         constexpr inline int ptr_plus_one(int p)
         {
@@ -119,17 +120,7 @@ class BaseQueue
                     if(empty())
                     {
                         auto t = GetCurrentThreadForCore();
-                        bool already_waiting = false;
-                        for(const auto it : waiting_threads)
-                        {
-                            if(it == t)
-                            {
-                                already_waiting = true;
-                                break;
-                            }
-                        }
-                        if(!already_waiting)
-                            waiting_threads.push_back(t);
+                        waiting_threads.insert(t);
                         t->is_blocking = true;
                         if(timeout)
                             t->block_until = timeout;
