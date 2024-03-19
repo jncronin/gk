@@ -19,6 +19,7 @@ SRAM4_DATA static volatile bool m4_await_m7_completion;
 
 void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
+#if GK_USE_CACHE
     if(GetCoreID() == 0)
     {
         switch(ctype)
@@ -58,10 +59,12 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
                 break;
         }
     }
+#endif
 }
 
 void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
+#if GK_USE_CACHE
     if(GetCoreID() == 0)
     {
         switch(ctype)
@@ -106,10 +109,21 @@ void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
                 break;
         }
     }
+#endif
 }
 
-void CleanInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
+void CleanOrInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
+    // Called after write to cached memory.  If M7 wrote then clean cache, if M4 wrote then invalidate cache
+    if(GetCoreID() == 0)
+        CleanM7Cache(base, length, ctype);
+    else
+        InvalidateM7Cache(base, length, ctype);
+}
+
+void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
+{
+#if GK_USE_CACHE
     if(GetCoreID() == 0)
     {
         switch(ctype)
@@ -161,11 +175,13 @@ void CleanInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
                 break;
         }
     }
+#endif
 }
 
 extern "C" void CM4_SEV_IRQHandler()
 {
     // This is a signal from M4 that we need to do something to the cache
+#if GK_USE_CACHE
     cache_req cr;
     while(data_cache_inv_req.Read(&cr))
     {
@@ -179,5 +195,6 @@ extern "C" void CM4_SEV_IRQHandler()
     {
         SCB_CleanDCache_by_Addr((uint32_t *)cr.base_addr, cr.len);
     }
+#endif
     m4_await_m7_completion = true;
 }

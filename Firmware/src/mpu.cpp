@@ -24,7 +24,6 @@ bool SetMPUForCurrentThread(mpu_saved_state const &mpu_reg)
         MPU->CTRL = ctrl;
         __DSB();
         __ISB();
-        SCB_CleanInvalidateDCache();        // This seems necessary to write sram4 contents - unsure why as not cacheable
         return true;
     }
 }

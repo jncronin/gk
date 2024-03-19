@@ -2,6 +2,7 @@
 #include "syscalls.h"
 #include "SEGGER_RTT.h"
 #include "clocks.h"
+#include "gk_conf.h"
 
 #define DEBUG_SCHEDULER 0
 
@@ -163,7 +164,10 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
-    SCB_CleanInvalidateDCache();
+#if GK_USE_CACHE
+    if(GetCoreID() == 0)
+        SCB_CleanInvalidateDCache();
+#endif
     __enable_irq();
 
     // #switch to first thread by triggering SVC which then triggers pendsv
@@ -180,13 +184,21 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
 
 Thread *Scheduler::get_blocker(Thread *t)
 {
+    int iter = 0;
+
     while(true)
     {
-        CriticalGuard cg(t->sl);
-        unblock_delayer(t);
-        if(t->blocking_on == nullptr)
-            return t;
-        t = t->blocking_on;
+        {
+            CriticalGuard cg(t->sl);
+            unblock_delayer(t);
+            if(t->blocking_on == nullptr)
+                return t;
+            t = t->blocking_on;
+        }
+        if(iter++ > 256)
+        {
+            __asm__ volatile ("bkpt \n" ::: "memory");
+        }
     }
 }
 

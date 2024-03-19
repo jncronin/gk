@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "scheduler.h"
+#include "cache.h"
 
 extern Scheduler s;
 extern Thread dt;
@@ -102,9 +103,8 @@ Thread *Thread::Create(std::string name,
     t->tss.mpuss[5] = extra_permissions;
     t->tss.mpuss[6] = extra_permissions2;
 
-    SCB_CleanDCache_by_Addr((uint32_t *)t, sizeof(Thread));
-    SCB_CleanDCache_by_Addr((uint32_t *)t->stack.address, t->stack.length);
-
+    CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
+    CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);
     {
         CriticalGuard cg(owning_process.sl);
         owning_process.threads.push_back(t);
