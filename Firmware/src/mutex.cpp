@@ -175,7 +175,6 @@ void Condition::Wait()
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
-    bool already_waiting = false;
     waiting_threads.insert(t);
     t->is_blocking = true;
     Yield();
