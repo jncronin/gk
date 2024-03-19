@@ -4,6 +4,7 @@
 #include <memory>
 #include <util.h>
 #include <region_allocator.h>
+#include <unordered_set>
 
 #define DEBUG_SPINLOCK      1
 
@@ -34,7 +35,7 @@ class Mutex
     protected:
         Thread *owner = nullptr;
         Spinlock sl;
-        SRAM4Vector<Thread *> waiting_threads;
+        std::unordered_set<Thread *> waiting_threads;
 
     public:
         void lock();
@@ -45,7 +46,7 @@ class Mutex
 class Condition
 {
     protected:
-        SRAM4Vector<Thread *> waiting_threads;
+        std::unordered_set<Thread *> waiting_threads;
         Spinlock sl;
 
     public:

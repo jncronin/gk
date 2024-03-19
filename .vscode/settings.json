@@ -55,7 +55,21 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "m2m_wifi.h": "c"
+        "m2m_wifi.h": "c",
+        "cstring": "cpp",
+        "list": "cpp",
+        "map": "cpp",
+        "unordered_set": "cpp",
+        "optional": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "queue": "cpp",
+        "xhash": "cpp",
+        "xmemory": "cpp",
+        "xstring": "cpp",
+        "xtr1common": "cpp",
+        "xtree": "cpp",
+        "xutility": "cpp"
     },
     "cortex-debug.variableUseNaturalFormat": false,
 }
