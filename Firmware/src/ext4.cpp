@@ -125,7 +125,9 @@ static int get_mbr_entry()
     return r;
 }
 
-static bool prepare_ext4()
+static int do_mount();
+
+static int prepare_ext4()
 {
     int mbr_entry = get_mbr_entry();
     if(mbr_entry < 0)
@@ -137,21 +139,26 @@ static bool prepare_ext4()
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: register failed %d\n", r);
-        return false;
+        return r;
     }
 
+    return do_mount();
+}
+
+static int do_mount()
+{
 #if READONLY
     const bool readonly = true;
 #else
     const bool readonly = false;
 #endif
 
-    r = ext4_mount("sd", "/", readonly);
+    int r = ext4_mount("sd", "/", readonly);
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: mount failed %d\n", r);
-        return false;
+        return r;
     }
 
 #if !READONLY
@@ -181,7 +188,7 @@ static bool prepare_ext4()
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: mounted /\n");
-        return true;
+        return 0;
     }
 }
 
@@ -434,6 +441,34 @@ void *ext4_thread(void *_p)
 
             case ext4_message::msg_type::Close:
                 handle_close_message(msg);
+                break;
+
+            case ext4_message::msg_type::Unmount:
+                {
+                    auto ret = ext4_umount("/");
+                    if(msg.ss_p)
+                    {
+                        msg.ss_p->ival1 = ret;
+                    }
+                    if(msg.ss)
+                    {
+                        msg.ss->Signal();
+                    }
+                }
+                break;
+
+            case ext4_message::msg_type::Mount:
+                {
+                    auto ret = do_mount();
+                    if(msg.ss_p)
+                    {
+                        msg.ss_p->ival1 = ret;
+                    }
+                    if(msg.ss)
+                    {
+                        msg.ss->Signal();
+                    }
+                }
                 break;
         }
     }
