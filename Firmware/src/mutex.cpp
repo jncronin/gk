@@ -72,6 +72,7 @@ void Spinlock::unlock()
 #if DEBUG_SPINLOCK
     locked_by = nullptr;
     locking_core = 0;
+    locking_pc = 0;
 #endif
     set(&_lock_val, 0UL);
     __DMB();
