@@ -446,6 +446,8 @@ void *ext4_thread(void *_p)
             case ext4_message::msg_type::Unmount:
                 {
                     auto ret = ext4_umount("/");
+                    if(ret == ENODEV)   // handle case it wasn't mounted anyway
+                        ret = EOK;
                     if(msg.ss_p)
                     {
                         msg.ss_p->ival1 = ret;
