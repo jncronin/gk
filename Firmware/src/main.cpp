@@ -19,8 +19,7 @@
 #include "osnet.h"
 #include "wifi.h"
 #include "syscalls_int.h"
-
-#define GK_DUAL_CORE 0
+#include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
@@ -46,10 +45,6 @@ extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 SRAM4_DATA static volatile uint32_t m4_wakeup = 0;
 #define M4_MAGIC 0xa1b2c3d4
 
-const bool use_net = true;
-const bool use_usb = false;
-const bool use_test_threads = false;
-
 int main()
 {
     EXTI->C2IMR3 |= EXTI_IMR3_IM79;
@@ -64,11 +59,10 @@ int main()
     init_sd();
     init_ext4();
 
-    if(use_net)
-    {
-        init_net();
-        init_wifi();
-    }
+#if GK_ENABLE_NETWORK
+    init_net();
+    init_wifi();
+#endif
 
     usb_init_chip_id();     // can only read UID_BASE et al from M7
 
@@ -83,29 +77,27 @@ int main()
     s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, 0, kernel_proc, CPUAffinity::M4Only,
         memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
 
-    if(use_test_threads)
-    {
-        s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5, kernel_proc));
-        s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, kernel_proc, CPUAffinity::Either, InvalidMemregion(),
-            MPUGenerate(0xc0000000, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
-            WT_NS)));
-        s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5, kernel_proc));
-        s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
-        }
+#if GK_ENABLE_TEST_THREADS
+    s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, kernel_proc, CPUAffinity::Either, InvalidMemregion(),
+        MPUGenerate(0xc0000000, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
+        WT_NS)));
+    s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5, kernel_proc));
+    s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
+#endif
+
     s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
 
-    if(use_usb)
-    {
-        s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
-    }
+#if GK_ENABLE_USB
+    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
+#endif
 
-    if(use_net)
-    {
-        uint32_t myip = IP4Addr(192, 168, 7, 1).get();
-        s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, 5, kernel_proc));
-        s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
-        s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
-    }
+#if GK_ENABLE_NET
+    uint32_t myip = IP4Addr(192, 168, 7, 1).get();
+    s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
+#endif
 
     s.Schedule(Thread::Create("init", init_thread, nullptr, true, 5, kernel_proc));
 
@@ -389,11 +381,10 @@ void *x_thread(void *p)
 /* Init thread - loads services from sdcard */
 void *init_thread(void *p)
 {
-    if(use_net)
-    {
-        proccreate_t pt;
-        syscall_proccreate("/bin/tftpd", &pt, &errno);
-    }
+#if GK_ENABLE_NET
+    proccreate_t pt;
+    syscall_proccreate("/bin/tftpd", &pt, &errno);
+#endif
 
     return nullptr;
 }

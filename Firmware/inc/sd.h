@@ -20,6 +20,10 @@ int sd_write_blocks(uint32_t block_addr, uint32_t block_count, const void *ptr);
 int sd_write_blocks_async(uint32_t block_addr, uint32_t block_count, const void *ptr);
 int sd_write_block_poll(uint32_t block_addr, const void *ptr);
 
+enum sd_mode_t { LwExt4, MSC };
+int sd_set_mode(sd_mode_t mode);
+sd_mode_t sd_get_mode();
+
 bool sd_get_ready();
 void sd_reset();
 uint64_t sd_get_size();
