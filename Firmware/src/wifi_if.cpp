@@ -532,6 +532,11 @@ void *wifi_task(void *p)
                 wip.strEthInitParam.pfAppEthCb = eth_handler;
                 wip.strEthInitParam.u8EthernetEnable = M2M_WIFI_MODE_ETHERNET;
                 wip.strEthInitParam.au8ethRcvBuf = reinterpret_cast<uint8 *>(net_allocate_pbuf(PBUF_SIZE));
+                if(!wip.strEthInitParam.au8ethRcvBuf)
+                {
+                    Yield();
+                    continue;
+                }
                 wip.strEthInitParam.u16ethRcvBufSize = sizeof(PBUF_SIZE);
         
                 if(m2m_wifi_init(&wip) == M2M_SUCCESS)
