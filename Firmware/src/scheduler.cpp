@@ -73,7 +73,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     {
         CriticalGuard cg(current_thread[ncore].m);
         cur_t = current_thread[ncore].v;
-        cur_prio = cur_t->is_blocking ? 0 :
+        cur_prio = (cur_t->is_blocking || cur_t->for_deletion || 
+            (cur_t->running_on_core && (cur_t->running_on_core != ((int)ncore + 1))) ||
+            cur_t->deschedule_from_core || cur_t->chosen_for_core) ? 0 :
             current_thread[ncore].v->base_priority;
         cur_t->deschedule_from_core = ncore + 1;
     }
@@ -99,8 +101,11 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
             cval = get_blocker(cval);
             {
                 CriticalGuard cg2(cval->sl);
-                if(cval->running_on_core || cval->chosen_for_core || cval->deschedule_from_core)
+                if(cval->running_on_core || cval->chosen_for_core || cval->deschedule_from_core ||
+                    cval->for_deletion)
+                {
                     continue;
+                }
                 
                 if(cval->is_blocking == false &&
                     (cval->affinity == CPUAffinity::Either ||
@@ -125,8 +130,11 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
             cval = get_blocker(cval);
             {
                 CriticalGuard cg2(cval->sl);
-                if(cval->running_on_core || cval->chosen_for_core)
+                if(cval->running_on_core || cval->chosen_for_core || cval->deschedule_from_core ||
+                    cval->for_deletion)
+                {
                     continue;
+                }
                 
                 if(cval->is_blocking == false &&
                     (cval->affinity == PreferOther))
