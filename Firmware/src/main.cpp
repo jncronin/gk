@@ -386,6 +386,8 @@ void *init_thread(void *p)
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
 
+    sd_set_mode(sd_mode_t::MSC);
+
     return nullptr;
 }
 

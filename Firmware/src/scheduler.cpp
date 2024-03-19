@@ -162,20 +162,28 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     }
 }
 
+extern char _ecm4_stack;
+extern char _ecm7_stack;
+
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
 #if GK_USE_CACHE
     if(GetCoreID() == 0)
         SCB_CleanInvalidateDCache();
 #endif
+    // Get MSP top (so it doesn't look like we're always running in ResetHandler forever)
+    uint32_t msp_top = GetCoreID() == 0 ? (uint32_t)(uintptr_t)&_ecm7_stack :
+        (uint32_t)(uintptr_t)&_ecm4_stack;
+    
     __enable_irq();
 
     // #switch to first thread by triggering SVC which then triggers pendsv
     register unsigned int sno asm("r0") = syscall_no::StartFirstThread;
     __asm volatile
     (
+        "msr msp, %1            \n"
         "svc #0                 \n"
-        :: "r"(sno)
+        :: "r"(sno), "r"(msp_top)
     );
 
     // shouldn't get here

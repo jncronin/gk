@@ -28,7 +28,11 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     {
         return -1;
     }
-    return sd_perform_transfer(lba, bufsize / 512, buffer, true);
+    int ret = sd_perform_transfer(lba, bufsize / 512, buffer, true);
+    if(ret == 0)
+        return bufsize;
+    else
+        return ret;
 }
 
 // Invoked when received SCSI WRITE10 command
@@ -55,7 +59,11 @@ int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t*
     {
         return -1;
     }
-    return sd_perform_transfer(lba, bufsize / 512, buffer, false);
+    int ret = sd_perform_transfer(lba, bufsize / 512, buffer, false);
+    if(ret == 0)
+        return bufsize;
+    else
+        return ret;
 }
 
 
