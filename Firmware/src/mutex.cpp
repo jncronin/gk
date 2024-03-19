@@ -176,16 +176,7 @@ void Condition::Wait()
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     bool already_waiting = false;
-    for(const auto it : waiting_threads)
-    {
-        if(it == t)
-        {
-            already_waiting = true;
-            break;
-        }
-    }
-    if(!already_waiting)
-        waiting_threads.push_back(t);
+    waiting_threads.insert(t);
     t->is_blocking = true;
     Yield();
 }
@@ -257,7 +248,7 @@ bool Mutex::try_lock()
     {
         t->is_blocking = true;
         t->blocking_on = owner;
-        waiting_threads.push_back(t);
+        waiting_threads.insert(t);
         Yield();
         return false;
     }
