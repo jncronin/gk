@@ -5,6 +5,7 @@
 #include <osmutex.h>
 
 #include "osnet.h"
+#include "gk_conf.h"
 
 extern Spinlock s_rtt;
 
@@ -14,6 +15,7 @@ NET_BSS TUSBNetInterface rndis_if;
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
 {
+#if GK_ENABLE_NET
     if(size == 0)
         return true;
     if(size > PBUF_SIZE)
@@ -28,6 +30,9 @@ bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
     tud_network_recv_renew();
 
     return true;
+#else
+    return false;
+#endif
 }
 
 void tud_network_init_cb(void)
@@ -92,6 +97,7 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         return -1;
     }
 
+#if GK_ENABLE_NET
     if(tud_network_can_xmit(n))
     {
         // decorate packet
@@ -133,6 +139,9 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         net_queue_msg(msg);
         return NET_TRYAGAIN;
     }
+#else
+    return NET_NOTSUPP;
+#endif
 }
 
 uint16_t tud_network_xmit_cb(uint8_t *dst, void *ref, uint16_t arg)

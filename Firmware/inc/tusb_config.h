@@ -1,6 +1,8 @@
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_
 
+#include "gk_conf.h"
+
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -49,11 +51,11 @@
 
 #define CFG_TUD_HID             0
 #define CFG_TUD_CDC             1
-#define CFG_TUD_MSC             0
+#define CFG_TUD_MSC             GK_ENABLE_USB_MASS_STORAGE
 #define CFG_TUD_MIDI            0
 #define CFG_TUD_VENDOR          0
 #define CFG_TUD_AUDIO           0
-#define CFG_TUD_ECM_RNDIS       1
+#define CFG_TUD_ECM_RNDIS       GK_ENABLE_NETWORK
 
 #define CFG_TUD_CDC_RX_BUFSIZE  512
 #define CFG_TUD_CDC_TX_BUFSIZE  512

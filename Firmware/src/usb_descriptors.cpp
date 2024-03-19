@@ -2,9 +2,10 @@
 #include "stm32h7xx.h"
 #include "mpuregions.h"
 #include "thread.h"
+#include "gk_conf.h"
 
 #define USB_VID     0xdeed
-#define USB_PID     0x474b
+#define USB_PID     (0x474b + (GK_ENABLE_NETWORK) + 2 * (GK_ENABLE_USB_MASS_STORAGE))
 #define USB_BCD     0x0200
 #define DEVICE_BCD  0x0100
 
@@ -38,10 +39,17 @@ uint8_t const * tud_descriptor_device_cb(void)
 // Conf descriptor
 enum
 {
+#if GK_ENABLE_NET
     ITF_NUM_ETH = 0,
     ITH_NUM_ETH_DATA,
     ITF_NUM_CDC,
+#else
+    ITF_NUM_CDC = 0,
+#endif
     ITF_NUM_CDC_DATA,
+#if GK_ENABLE_USB_MASS_STORAGE
+    ITF_NUM_MSC,
+#endif
     ITF_NUM_TOTAL
 };
 
@@ -56,14 +64,22 @@ enum
 #define EPNUM_ETH_OUT     0x05
 #define EPNUM_ETH_IN      0x85
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RNDIS_DESC_LEN)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + \
+  TUD_RNDIS_DESC_LEN * (GK_ENABLE_NETWORK) + \
+  TUD_MSC_DESC_LEN * (GK_ENABLE_USB_MASS_STORAGE))
 
 TUSB_DATA uint8_t desc_fs_configuration[] =
 {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0, 500),
 
+#if GK_ENABLE_NET
     TUD_RNDIS_DESCRIPTOR(ITF_NUM_ETH, 5, EPNUM_ETH_NOTIF, 8, EPNUM_ETH_OUT, EPNUM_ETH_IN, CFG_TUD_NET_ENDPOINT_SIZE),
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64)
+#endif
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
+
+#if GK_ENABLE_USB_MASS_STORAGE
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 6, EPNUM_MSC_OUT, EPNUM_MSC_IN, CFG_TUD_MSC_EP_BUFSIZE),
+#endif
 };
 
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
@@ -80,7 +96,8 @@ TUSB_DATA char const *string_desc_arr[] =
     "gk",
     "123456",                           // use chip ID here
     "Terminal",
-    "GKNetwork"
+    "GKNetwork",
+    "GKDrive"
 };
 
 // Invoked when received GET STRING DESCRIPTOR request
