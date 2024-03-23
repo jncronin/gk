@@ -245,7 +245,9 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             // get total to read
             uint64_t fsize_to_read = (fsize + 511ULL) & ~511ULL;
 
-            auto mem = memblk_allocate_for_stack(fsize_to_read, CPUAffinity::Either);   // AXISRAM or SDRAM
+            auto mem = memblk_allocate(fsize_to_read, MemRegionType::AXISRAM);
+            if(!mem.valid)
+                mem = memblk_allocate(fsize_to_read, MemRegionType::SDRAM);
             if(!mem.valid)
             {
                 CriticalGuard cg(s_rtt);
