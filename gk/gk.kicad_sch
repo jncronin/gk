@@ -2511,6 +2511,11 @@
     (uuid fff799f4-2646-4fa8-9d0f-09d3846a31b0)
   )
 
+  (text "TODO list:\n\nRemove SD detect pins\nAdd FET to control SD power"
+    (at 5.08 22.86 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 1e49b69e-ca33-41bf-b20b-caffbfa0de39)
+  )
   (text "VDDA Caps" (at 58.42 148.59 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 454ad86a-7297-448c-a040-a8aa9c449a76)
