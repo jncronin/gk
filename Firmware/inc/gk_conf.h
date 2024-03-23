@@ -9,4 +9,6 @@
 #define GK_DUAL_CORE                0
 #define GK_USE_CACHE                0
 
+#define SRAM4_DATA __attribute__((section(".sram4")))
+
 #endif
