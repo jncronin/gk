@@ -34,7 +34,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
             s.scheduler_running[GetCoreID()] = true;
 
+#if GK_USE_CACHE
             SCB_CleanInvalidateDCache();
+#endif
             break;
 
         case GetThreadHandle:

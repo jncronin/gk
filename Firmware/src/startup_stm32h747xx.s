@@ -60,6 +60,19 @@ defined in linker script */
 Reset_Handler:
   ldr   sp, =_ecm7_stack      /* set stack pointer */
 
+  /* Enable memories
+    RCC = 0x58024400
+      AHB3ENR = +0x0d4
+      AHB2ENR = +0x0dc */
+  ldr.w r0, =0x580244d4
+  ldr.w r1, =0xf0001000
+  str r1, [r0]
+
+  ldr.w r0, =0x580244dc
+  ldr.w r1, =0xe0000000
+  str r1, [r0]
+
+
 /* Copy the data segment initializers from flash to SRAM */  
   ldr r0, =_sdata
   ldr r1, =_edata

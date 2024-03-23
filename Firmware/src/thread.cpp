@@ -6,6 +6,7 @@
 
 #include "scheduler.h"
 #include "cache.h"
+#include "gk_conf.h"
 
 extern Scheduler s;
 extern Thread dt;
@@ -143,7 +144,7 @@ int GetCoreID()
 
 void SetNextThreadForCore(Thread *t, int coreid)
 {
-    bool flush_cache = false;
+    [[maybe_unused]] bool flush_cache = false;
 
     if(coreid == -1)
     {
@@ -178,10 +179,12 @@ void SetNextThreadForCore(Thread *t, int coreid)
         s.current_thread[coreid].v = t;
     }
 
-    if(flush_cache)
+#if GK_USE_CACHE
+    if(flush_cache && coreid == 0)
     {
         SCB_CleanInvalidateDCache();
     }
+#endif
 }
 
 /* Called from PendSV */
