@@ -59,7 +59,7 @@ void init_sdram()
     RCC->AHB3ENR |= RCC_AHB3ENR_FMCEN;
     (void)RCC->AHB3ENR;
 
-    FMC_Bank1_R->BTCR[0] = FMC_BCR1_FMCEN;
+    FMC_Bank1_R->BTCR[0] |= FMC_BCR1_FMCEN;
     
     // Set up control register
     FMC_Bank5_6_R->SDCR[0] = (2UL << FMC_SDCRx_NC_Pos) |

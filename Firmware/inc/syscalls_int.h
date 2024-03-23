@@ -30,4 +30,37 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno);
 int syscall_proccreate(const char *fname, const proccreate_t *proc_info, int *_errno);
 
+
+static inline int deferred_return(int ret, int _errno)
+{
+    if(ret == -1)
+    {
+        errno = _errno;
+        return ret;
+    }
+    if(ret == -2)
+    {
+        // deferred return
+        auto t = GetCurrentThreadForCore();
+        while(!t->ss.Wait(SimpleSignal::Set, 0));
+        if(t->ss_p.ival1 == -1)
+        {
+            errno = t->ss_p.ival2;
+            return -1;
+        }
+        else
+        {
+            return t->ss_p.ival1;
+        }
+    }
+    return ret;
+}
+
+template<typename Func, class... Args> int deferred_call(Func f, Args... a)
+{
+    int _errno = EOK;
+    int ret = f(a..., &_errno);
+    return deferred_return(ret, _errno);
+}
+
 #endif

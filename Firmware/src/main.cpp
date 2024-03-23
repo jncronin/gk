@@ -19,6 +19,7 @@
 #include "osnet.h"
 #include "wifi.h"
 #include "syscalls_int.h"
+#include "fs_provision.h"
 #include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -87,10 +88,6 @@ int main()
 #endif
 
     s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
-
-#if GK_ENABLE_USB
-    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
-#endif
 
 #if GK_ENABLE_NET
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
@@ -205,7 +202,13 @@ void *b_thread(void *p)
 {
     (void)p;
 
-    __syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
+    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
+    auto bb = memblk_allocate(0x200000, MemRegionType::SDRAM);
+
+    if(!fb.valid || !bb.valid)
+        return nullptr;
+
+    __syscall_SetFrameBuffer((void *)fb.address, (void *)(fb.address + 0x200000), ARGB8888);
     RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
     (void)RCC->AHB3ENR;
 
@@ -214,7 +217,7 @@ void *b_thread(void *p)
 
     clock_set_cpu(clock_cpu_speed::cpu_384_192);
 
-    uint32_t *backbuffer = (uint32_t *)0xc0400000;
+    uint32_t *backbuffer = (uint32_t *)bb.address;
     int cur_m = 320;
     int cur_y = 0;
     int cur_w = 80;
@@ -381,12 +384,17 @@ void *x_thread(void *p)
 /* Init thread - loads services from sdcard */
 void *init_thread(void *p)
 {
+    // Provision root file system, then allow USB write access to MSC
+    fs_provision();
+#if GK_ENABLE_USB
+    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
+#endif
+
+
 #if GK_ENABLE_NET
     proccreate_t pt;
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
-
-    sd_set_mode(sd_mode_t::MSC);
 
     return nullptr;
 }
