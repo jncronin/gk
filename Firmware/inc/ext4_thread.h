@@ -17,8 +17,6 @@ struct ext4_message
         Write,
         Lseek,
         Fstat,
-        Mount,
-        Unmount
     };
 
     msg_type type;

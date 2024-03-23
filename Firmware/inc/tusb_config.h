@@ -11,7 +11,7 @@
 #define CFG_TUSB_OS               OPT_OS_CUSTOM
 #endif
 
-#define CFG_TUSB_DEBUG  CFG_TUD_LOG_LEVEL
+#define CFG_TUSB_DEBUG  0 /* CFG_TUD_LOG_LEVEL */
 #define CFG_TUSB_MCU  OPT_MCU_STM32H7
 
 // RHPort number used for device can be defined by board.mk, default to port 0

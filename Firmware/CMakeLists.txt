@@ -21,6 +21,9 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
     ${CMAKE_CURRENT_SOURCE_DIR}/src/gk-test.obj
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ff.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffsystem.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffunicode.c
 )
 
 file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
@@ -91,6 +94,7 @@ target_include_directories(${PROJECT_NAME}
         "${LWEXT4_GENERATED_DIR}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
+        "${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source"
 )
 
 target_compile_definitions(${PROJECT_NAME}

@@ -26,7 +26,7 @@ MEMORY
     /* Shared banks */
     SRAM4 (rwx)         : ORIGIN = 0x38000000, LENGTH = 64K
     BACKUPSRAM (rw)     : ORIGIN = 0x38800000, LENGTH = 4K
-    SDRAM (rwx)         : ORIGIN = 0x60000000, LENGTH = 65536K  /* SDRAM is remapped */
+    SDRAM (rwx)         : ORIGIN = 0xc0000000, LENGTH = 65536K
 }
 
 SECTIONS

@@ -43,8 +43,6 @@ __attribute__((section(".sram4"))) volatile uint64_t sd_size = 0;
 
 SDT_DATA static uint32_t cmd6_buf[512/32];
 
-SRAM4_DATA static sd_mode_t sdmode;
-
 extern char _ssdt_data, _esdt_data;
 
 static constexpr pin sd_pins[] =
@@ -1020,67 +1018,6 @@ uint64_t sd_get_size()
 
                 return (c_size + 1) * 512 * 1024;
             }
-    }
-
-    return 0;
-}
-
-sd_mode_t sd_get_mode()
-{
-    return sdmode;
-}
-
-int sd_set_mode(sd_mode_t mode)
-{
-    if(sdmode == sd_mode_t::LwExt4 && mode != sd_mode_t::LwExt4)
-    {
-        // unmount Lwext4
-        WaitSimpleSignal_params ss_p;
-        SimpleSignal ss;
-
-        ext4_message msg;
-        msg.type = ext4_message::Unmount;
-        msg.ss = &ss;
-        msg.ss_p = &ss_p;
-
-        if(!ext4_send_message(msg))
-            return -1;
-        
-        while(!ss.Wait());
-
-        if(msg.ss_p->ival1 != EOK)
-        {
-            return msg.ss_p->ival1;
-        }
-        else
-        {
-            sdmode = mode;
-        }
-    }
-    else if(sdmode != sd_mode_t::LwExt4 && mode == sd_mode_t::LwExt4)
-    {
-        // mount Lwext4
-        WaitSimpleSignal_params ss_p;
-        SimpleSignal ss;
-
-        ext4_message msg;
-        msg.type = ext4_message::Mount;
-        msg.ss = &ss;
-        msg.ss_p = &ss_p;
-
-        if(!ext4_send_message(msg))
-            return -1;
-        
-        while(!ss.Wait());
-
-        if(msg.ss_p->ival1 != EOK)
-        {
-            return msg.ss_p->ival1;
-        }
-        else
-        {
-            sdmode = mode;
-        }
     }
 
     return 0;

@@ -104,7 +104,7 @@ void init_memblk()
     add_memory_region(eaxisram, 0x24080000UL - eaxisram, MemRegionType::AXISRAM);
     add_memory_region(edtcm, 0x20020000 - edtcm, MemRegionType::DTCM);
     add_memory_region(esram, 0x30048000 - esram, MemRegionType::SRAM);
-    add_memory_region(esdram, 0x60000000UL + 64 * 1024 * 1024 - esdram, MemRegionType::SDRAM);
+    add_memory_region(esdram, 0xc0000000UL + 64 * 1024 * 1024 - esdram, MemRegionType::SDRAM);
     //add_memory_region(0x38000000UL, 0x10000);   // SRAM4 - handled separately by malloc interface
 }
 

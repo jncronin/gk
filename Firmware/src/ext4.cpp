@@ -13,11 +13,9 @@
 #include "SEGGER_RTT.h"
 #include "ext4_thread.h"
 #include "cache.h"
+#include "gk_conf.h"
 
 #include <sys/stat.h>
-
-#define USE_JOURNAL 1
-#define READONLY    1
 
 extern Spinlock s_rtt;
 
@@ -147,7 +145,7 @@ static int prepare_ext4()
 
 static int do_mount()
 {
-#if READONLY
+#if GK_EXT_READONLY
     const bool readonly = true;
 #else
     const bool readonly = false;
@@ -161,8 +159,8 @@ static int do_mount()
         return r;
     }
 
-#if !READONLY
-#if USE_JOURNAL 
+#if !GK_EXT_READONLY
+#if GK_EXT_USE_JOURNAL 
     r = ext4_recover("/");
     if(r != EOK)
     {
@@ -442,36 +440,6 @@ void *ext4_thread(void *_p)
             case ext4_message::msg_type::Close:
                 handle_close_message(msg);
                 break;
-
-            case ext4_message::msg_type::Unmount:
-                {
-                    auto ret = ext4_umount("/");
-                    if(ret == ENODEV)   // handle case it wasn't mounted anyway
-                        ret = EOK;
-                    if(msg.ss_p)
-                    {
-                        msg.ss_p->ival1 = ret;
-                    }
-                    if(msg.ss)
-                    {
-                        msg.ss->Signal();
-                    }
-                }
-                break;
-
-            case ext4_message::msg_type::Mount:
-                {
-                    auto ret = do_mount();
-                    if(msg.ss_p)
-                    {
-                        msg.ss_p->ival1 = ret;
-                    }
-                    if(msg.ss)
-                    {
-                        msg.ss->Signal();
-                    }
-                }
-                break;
         }
     }
 }
@@ -521,8 +489,6 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
 int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     uint32_t blk_cnt)
 {
-    return EIO;
-
     (void)bdev;
     if(!blk_cnt)
         return EOK;
