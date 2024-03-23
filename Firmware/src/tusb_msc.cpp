@@ -3,6 +3,7 @@
 #include <tusb.h>
 #include <osnet.h>
 #include "SEGGER_RTT.h"
+#include "fs_provision.h"
 
 extern Spinlock s_rtt;
 
@@ -27,6 +28,21 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     if(!tud_msc_test_unit_ready_cb(lun))
     {
         return -1;
+    }
+    /* Return fake mbr if requesting sector 0, otherwise check the read is valid for partition 0 */
+    if(lba == 0)
+    {
+        auto fm = fake_mbr_get_mbr();
+        if(!fm)
+            return -1;
+        memcpy(buffer, fm, 512);
+        return 512;
+    }
+    if(!fake_mbr_check_extents(lba, bufsize / 512))
+    {
+        // just return zeros - windows tries to load the second sector here
+        memset(buffer, 0, bufsize);
+        return bufsize;
     }
     int ret = sd_perform_transfer(lba, bufsize / 512, buffer, true);
     if(ret == 0)
@@ -56,6 +72,10 @@ int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t*
         return -1;
     }
     if(!tud_msc_test_unit_ready_cb(lun))
+    {
+        return -1;
+    }
+    if(!fake_mbr_check_extents(lba, bufsize / 512))
     {
         return -1;
     }
@@ -109,8 +129,8 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_siz
         }
         else
         {
-            auto size = sd_get_size();
-            *block_count = static_cast<uint32_t>(size / 512);
+            auto size = fake_mbr_get_sector_count();
+            *block_count = static_cast<uint32_t>(size);
         }
     }
 }

@@ -6,20 +6,6 @@
 
 void init_sd();
 
-int sd_async_complete();
-
-int sd_read_block(uint32_t block_addr, void *ptr);
-int sd_read_block_async(uint32_t block_addr, void *ptr);
-int sd_read_blocks(uint32_t block_addr, uint32_t block_count, void *ptr);
-int sd_read_blocks_async(uint32_t block_addr, uint32_t block_count, void *ptr);
-int sd_read_block_poll(uint32_t block_addr, void *ptr);
-
-int sd_write_block(uint32_t block_addr, const void *ptr);
-int sd_write_block_async(uint32_t block_addr, const void *ptr);
-int sd_write_blocks(uint32_t block_addr, uint32_t block_count, const void *ptr);
-int sd_write_blocks_async(uint32_t block_addr, uint32_t block_count, const void *ptr);
-int sd_write_block_poll(uint32_t block_addr, const void *ptr);
-
 enum sd_mode_t { LwExt4, MSC };
 int sd_set_mode(sd_mode_t mode);
 sd_mode_t sd_get_mode();
