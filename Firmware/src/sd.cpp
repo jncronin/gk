@@ -96,7 +96,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 #endif
 
         // For now, error here if there are unhandled CMD flags
-        const auto cmd_flags = CCRCFAIL | CTIMEOUT | CMDREND | CMDSENT | TXUNDERR | RXOVERR;
+        const auto cmd_flags = CCRCFAIL | CTIMEOUT | CMDREND | CMDSENT | TXUNDERR | RXOVERR | SDMMC_STA_BUSYD0END;
 
         if(SDMMC1->STA & cmd_flags)
         {
@@ -139,6 +139,8 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                 break;
         }
 
+        bool with_busy = (rt == resp_type::R1b) || (rt == resp_type::R4b);
+
         SDMMC1->ARG = arg;
 
         uint32_t start_data = with_data ? SDMMC_CMD_CMDTRANS : 0UL;
@@ -161,7 +163,8 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
         bool timeout = false;
 
-        while(!(SDMMC1->STA & CMDREND))
+        uint32_t sta_cmdrend = 0;
+        while(!((sta_cmdrend = SDMMC1->STA) & CMDREND))
         {
             if(SDMMC1->STA & CCRCFAIL)
             {
@@ -198,6 +201,25 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 #endif
             delay_ms(tcnt * 5);
             continue;
+        }
+
+        if(with_busy)
+        {
+            if(sta_cmdrend & SDMMC_STA_BUSYD0)
+            {
+                while(true)
+                {
+                    if(SDMMC1->STA & SDMMC_STA_BUSYD0END)
+                    {
+                        SDMMC1->ICR = SDMMC_ICR_BUSYD0ENDC;
+                        break;
+                    }
+                    if(SDMMC1->STA & SDMMC_STA_DTIMEOUT)
+                    {
+                        return CTIMEOUT;
+                    }
+                }
+            }
         }
 
 #ifdef DEBUG_SD
@@ -804,6 +826,14 @@ void *sd_thread(void *param)
                 }
             }
 
+#if DEBUG_SD
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "sd: pre-command: STA: %x, DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
+                    SDMMC1->STA, SDMMC1->DCTRL, SDMMC1->DCOUNT, SDMMC1->DLEN, SDMMC1->IDMACTRL, SDMMC1->IDMABASE0);
+            }
+#endif
+
             sdt_ready.Reset();
             auto ret = sd_issue_command(cmd_id, resp_type::R1, sdr.block_start * (is_hc ? 1U : 512U), nullptr, true);
 
@@ -823,12 +853,34 @@ void *sd_thread(void *param)
             }
             if(sd_status)
             {
+#if DEBUG_SD
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "sd: post-command FAIL: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
+                        SDMMC1->STA, sd_status, SDMMC1->DCTRL, SDMMC1->DCOUNT, SDMMC1->DLEN, SDMMC1->IDMACTRL, SDMMC1->IDMABASE0);
+                }
+#endif
                 sd_ready = false;
             }
+#if DEBUG_SD
+            else
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "sd: post-command SUCCESS: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
+                    SDMMC1->STA, sd_status, SDMMC1->DCTRL, SDMMC1->DCOUNT, SDMMC1->DLEN, SDMMC1->IDMACTRL, SDMMC1->IDMABASE0);
+            }
+#endif
             if(sd_multi)
             {
                 // send stop command
-                sd_issue_command(12, resp_type::R1b);
+                [[maybe_unused]] int stop_ret = sd_issue_command(12, resp_type::R1b);
+#if DEBUG_SD
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "sd: post-stop command: ret: %x, STA: %x\n",
+                        stop_ret, SDMMC1->STA);
+                }
+#endif
                 sd_multi = false;
             }
             if(sdr.completion_event)

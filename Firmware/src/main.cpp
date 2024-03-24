@@ -390,20 +390,10 @@ void *init_thread(void *p)
     s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
 #endif
 
-
 #if GK_ENABLE_NET
     proccreate_t pt;
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
-
-    // Test SD write - do random writes of 8+ sectors to 4GB mark
-    for(int i = 8; i < 16; i++)
-    {
-        for(int j = 0; j < 4; j++)
-        {
-            sd_perform_transfer(8388608U, i, (void*)(0x24000000U + i * j * 4096U), false);
-        }
-    }
 
     return nullptr;
 }
