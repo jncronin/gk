@@ -38,6 +38,13 @@ SDT_DATA static bool is_hc = false;
 SDT_DATA static volatile bool tfer_inprogress = false;
 SDT_DATA static volatile bool dma_ready = false;
 __attribute__((section(".sram4"))) static volatile uint32_t sd_status = 0;
+__attribute__((section(".sram4"))) static volatile uint32_t sd_dcount = 0;
+__attribute__((section(".sram4"))) static volatile uint32_t sd_idmabase = 0;
+__attribute__((section(".sram4"))) static volatile uint32_t sd_idmasize = 0;
+__attribute__((section(".sram4"))) static volatile uint32_t sd_idmactrl = 0;
+__attribute__((section(".sram4"))) static volatile uint32_t sd_dctrl = 0;
+
+
 SDT_DATA static volatile bool sd_multi = false;
 __attribute__((section(".sram4"))) volatile uint64_t sd_size = 0;
 
@@ -135,6 +142,9 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         SDMMC1->ARG = arg;
 
         uint32_t start_data = with_data ? SDMMC_CMD_CMDTRANS : 0UL;
+
+        if(command == 12U)
+            command |= SDMMC_CMD_CMDSTOP;
 
         SDMMC1->CMD = command | (waitresp << SDMMC_CMD_WAITRESP_Pos) | SDMMC_CMD_CPSMEN | start_data;
 
@@ -661,6 +671,7 @@ void sd_reset()
                 SEGGER_RTT_printf(0, "init_sd: cmd6: fg1_setting: %lx\n", fg1_setting);
             }
 
+#if USE_HS_MODE
             if(fg1_setting == 1)
             {
                 SDMMC_set_clock(48000000);
@@ -670,6 +681,7 @@ void sd_reset()
                     SEGGER_RTT_printf(0, "init_sd: set to high speed mode\n");
                 }
             }
+#endif
         }
     }
 
@@ -813,7 +825,7 @@ void *sd_thread(void *param)
             {
                 sd_ready = false;
             }
-            else if(sd_multi)
+            if(sd_multi)
             {
                 // send stop command
                 sd_issue_command(12, resp_type::R1b);
@@ -885,8 +897,9 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     if(cret != 0)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x, retrying\n",
-            is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret);
+        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x, DCOUNT: %x, DCTRL: %x, IDMACTRL: %x, IDMABASE: %x, IDMASIZE: %x, retrying\n",
+            is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret,
+            sd_dcount, sd_dctrl, sd_idmactrl, sd_idmabase, sd_idmasize);
     }
 
     return cret;
@@ -924,7 +937,14 @@ extern "C" void SDMMC1_IRQHandler()
     auto sta = SDMMC1->STA;
     if(sta & errors)
     {
-        sd_status = SDMMC1->STA;
+        SDMMC1->DCTRL |= SDMMC_DCTRL_FIFORST;
+        
+        sd_status = sta;
+        sd_dcount = SDMMC1->DCOUNT;
+        sd_idmabase = SDMMC1->IDMABASE0;
+        sd_idmactrl = SDMMC1->IDMACTRL;
+        sd_idmasize = SDMMC1->IDMABSIZE;
+        sd_dctrl = SDMMC1->DCTRL;
         sd_ready = false;
         sdt_ready.Signal();
     }
