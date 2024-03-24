@@ -390,10 +390,12 @@ void *init_thread(void *p)
     s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
 #endif
 
-#if GK_ENABLE_NET
     proccreate_t pt;
+#if GK_ENABLE_NET
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
+
+    deferred_call(syscall_proccreate, "/bin/echo", &pt);
 
     return nullptr;
 }

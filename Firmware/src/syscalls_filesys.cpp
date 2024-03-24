@@ -120,6 +120,11 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         p.open_files[fd] = new SeggerRTTFile(0, false, true);
         return fd;
     }
+    if(strcmp("/dev/ttyUSB0", pathname) == 0)
+    {
+        p.open_files[fd] = new USBTTYFile();
+        return fd;
+    }
 
     // use lwext4
     auto lwf = new LwextFile({ 0 }, pathname);

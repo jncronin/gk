@@ -58,6 +58,18 @@ class SeggerRTTFile : public File
         bool can_write;
 };
 
+class USBTTYFile : public File
+{
+    public:
+        ssize_t Write(const char *buf, size_t count, int *_errno);
+        ssize_t Read(char *buf, size_t count, int *_errno);
+
+        int Fstat(struct stat *buf, int *_errno);
+        off_t Lseek(off_t offset, int whence, int *_errno);
+
+        int Isattty(int *_errno);
+};
+
 class LwextFile : public File
 {
     public:
