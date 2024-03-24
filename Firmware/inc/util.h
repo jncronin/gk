@@ -6,14 +6,14 @@
 
 inline __attribute__((always_inline)) static uint32_t DisableInterrupts()
 {
-    auto cpsr = __get_PRIMASK();
-    __disable_irq();
+    auto cpsr = __get_BASEPRI();
+    __set_BASEPRI(0x10U);
     return cpsr;
 }
 
 inline __attribute__((always_inline)) static void RestoreInterrupts(uint32_t cpsr)
 {
-    __set_PRIMASK(cpsr);
+    __set_BASEPRI(cpsr);
 }
 
 /* Need to use HSEM here because STM32H7 does not implement bus locking on AXI */

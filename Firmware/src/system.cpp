@@ -15,6 +15,28 @@ extern Spinlock s_rtt;
 
 void init_clocks();
 
+static void init_nvic()
+{
+    /* NVIC priorities:
+        All faults priority 0
+         Peripheral IRQs priority 1
+         SVCall and PendSV lowest priority i.e. they can be interrupted but cannot interrupt each other */
+    
+    // H7 has 16 interrupt priorities for both M4 and M7
+    static_assert(__NVIC_PRIO_BITS == 4U);
+    NVIC_SetPriority(SVCall_IRQn, 0xfU);
+    NVIC_SetPriority(PendSV_IRQn, 0xfU);
+    NVIC_SetPriority(HardFault_IRQn, 0);
+    NVIC_SetPriority(MemoryManagement_IRQn, 0);
+    NVIC_SetPriority(UsageFault_IRQn, 0);
+    NVIC_SetPriority(BusFault_IRQn, 0);
+
+    for(int i = 0; i < nvtors; i++)
+    {
+        NVIC_SetPriority((IRQn_Type)i, 1U);
+    }
+}
+
 void system_init_cm7()
 {
     // disable LDO, enable SMPS - can only write lower byte once
@@ -38,6 +60,8 @@ void system_init_cm7()
         cm7_vtor[i] = orig_vtors[i];
     }
     SCB->VTOR = (uint32_t)(uintptr_t)&cm7_vtor[0];
+
+    init_nvic();
 
     // enable detection of CPU interrupt whilst in WFI state
     SCB->SCR |= SCB_SCR_SEVONPEND_Msk;
@@ -94,6 +118,8 @@ void system_init_cm4()
         }
     }
     SCB->VTOR = (uint32_t)(uintptr_t)&cm4_vtor[0];
+
+    init_nvic();
 
     // enable detection of CPU interrupt whilst in WFI state
     SCB->SCR |= SCB_SCR_SEVONPEND_Msk;
