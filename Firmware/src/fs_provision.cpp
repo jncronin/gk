@@ -292,6 +292,26 @@ int fs_provision()
     // mount a read-only FatFS system from partition 0
     if(!prep_fake_mbr())
         return -1;
+
+    // Get the most recently provisioned file from ext4
+    unsigned long long int c_prov_tstamp = 0ULL;
+    auto er = deferred_call(syscall_open, "/provision.txt", O_RDONLY, 0);
+    if(er >= 0)
+    {
+        char buf[32];
+        memset(buf, 0, 32);
+        auto br = deferred_call(syscall_read, er, buf, 31);
+        if(br > 0)
+        {
+            c_prov_tstamp = atoll(buf);
+        }
+        close(er);
+    }
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision: c_prov_tstamp: %d\n", (int)c_prov_tstamp);
+    }
     
     FATFS fs;
     auto fr = f_mount(&fs, "", 0);
@@ -312,8 +332,14 @@ int fs_provision()
         return fr;
     }
 
+    bool had_failure = false;
+    unsigned long long max_provisioned = 0ULL;
+
     while(true)
     {
+        if(had_failure)
+            break;
+        
         FILINFO fi;
         fr = f_readdir(&dp, &fi);
         if(fr != FR_OK || fi.fname[0] == 0)
@@ -369,7 +395,11 @@ int fs_provision()
                     SEGGER_RTT_printf(0, "fs_provision: unsupported file\n");
             }
 
-            // TODO: check tstamp against already installed files
+            // check tstamp against already installed files
+            if(tstamp <= c_prov_tstamp)
+            {
+                continue;
+            }
 
             // install files
             if(is_tar)
@@ -380,15 +410,61 @@ int fs_provision()
                 {
                     CriticalGuard cg(s_rtt);
                     SEGGER_RTT_printf(0, "fs_provision: couldn't f_open %s: %d\n", fi.fname, fr);
-                    continue;
+                    had_failure = true;
+                    break;
                 }
-                fs_provision_tarball(direct_fread, direct_lseek, &fp);
+                auto fs_p_ret = fs_provision_tarball(direct_fread, direct_lseek, &fp);
                 f_close(&fp);
+
+
+                if(fs_p_ret == 0)
+                {
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "fs_provision: provisioned %d\n", (int)tstamp);
+                    }
+                    max_provisioned = std::max(max_provisioned, tstamp);
+                }
+                else
+                {
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "fs_provision: failed to provision %d\n", (int)tstamp);
+                    }
+                    had_failure = true;
+                    break;
+                }
             }
         }
     }
     f_closedir(&dp);
     f_unmount("/");
+
+    // Write out provision.txt
+    if(!had_failure && max_provisioned)
+    {
+        er = deferred_call(syscall_open, "/provision.txt", O_CREAT | O_TRUNC | O_WRONLY, 0);
+        if(er >= 0)
+        {
+            char buf[32];
+            memset(buf, 0, 32);
+            sprintf(buf, "%llu", max_provisioned);
+            auto blen = (int)strlen(buf);
+            auto bw = deferred_call(syscall_write, er, buf, blen + 1);
+            if(bw == blen + 1)
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "fs_provision: completed provisioning\n");
+            }
+            else
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "fs_provision: failed to write /provision.txt : %d\n", bw);
+            }
+
+            close(er);
+        }
+    }
 
     return 0;
 }
