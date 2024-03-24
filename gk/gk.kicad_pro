@@ -623,6 +623,10 @@
       {
         "netclass": "MCUPIN",
         "pattern": "VBAT_STAT"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "SD_PWR"
       }
     ]
   },
