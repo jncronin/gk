@@ -26,9 +26,14 @@ extern "C" void PendSV_Handler()
         /* At entry, we have r0,r1,r2,r3 and r12 to use freely.  Need to save the rest if used */
 
         /* Disable interrupts, cpsr saved to R3 */
+#if GK_USE_IRQ_PRIORITIES
         "mrs r3, basepri                \n"
         "ldr r0, =0x10                  \n"
         "msr basepri, r0                \n"
+#else
+        "mrs r3, primask                \n"
+        "cpsid i                        \n"
+#endif
 
         /* Get CoreID */
         "push {lr}                      \n"
@@ -52,7 +57,11 @@ extern "C" void PendSV_Handler()
         /* If the threads are the same just exit */
         "cmp r0, r1                     \n"
         "bne    .L0%=                   \n"
+#if GK_USE_IRQ_PRIORITIES
         "msr basepri, r3                \n"
+#else
+        "msr primask, r3                \n"
+#endif
         "pop {pc}                       \n"
         ".L0%=:                         \n"
 
@@ -156,7 +165,11 @@ extern "C" void PendSV_Handler()
         "it eq                      \n"
         "vldmiaeq r1!, {s16-s31}    \n"
 
+#if GK_USE_IRQ_PRIORITIES
         "msr basepri, r3            \n"     // restore interrupts
+#else
+        "msr primask, r3            \n"
+#endif
         "bx lr                      \n"     // return
 
         ::: "memory"

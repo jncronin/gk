@@ -17,6 +17,7 @@ void init_clocks();
 
 static void init_nvic()
 {
+#if GK_USE_IRQ_PRIORITIES
     /* NVIC priorities:
         All faults priority 0
          Peripheral IRQs priority 1
@@ -35,6 +36,7 @@ static void init_nvic()
     {
         NVIC_SetPriority((IRQn_Type)i, 1U);
     }
+#endif
 }
 
 void system_init_cm7()
