@@ -10,6 +10,7 @@
 #include "cache.h"
 #include "osnet.h"
 #include "ext4_thread.h"
+#include "gk_conf.h"
 
 //#define DEBUG_SD    1
 
@@ -693,7 +694,7 @@ void sd_reset()
                 SEGGER_RTT_printf(0, "init_sd: cmd6: fg1_setting: %lx\n", fg1_setting);
             }
 
-#if USE_HS_MODE
+#if GK_SD_USE_HS_MODE
             if(fg1_setting == 1)
             {
                 SDMMC_set_clock(48000000);
