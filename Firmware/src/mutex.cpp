@@ -230,6 +230,9 @@ void Condition::Signal()
     }
 }
 
+Mutex::Mutex(bool recursive) : is_recursive(recursive), lockcount(0), owner(nullptr)
+{}
+
 void Mutex::lock()
 {
     while(!try_lock());
@@ -239,9 +242,11 @@ bool Mutex::try_lock()
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
-    if(owner == nullptr)
+    if(owner == nullptr || (is_recursive && owner == t))
     {
         owner = t;
+        if(is_recursive)
+            lockcount++;
         return true;
     }
     else
@@ -262,13 +267,16 @@ bool Mutex::unlock()
     {
         return false;
     }
-    for(auto wt : waiting_threads)
+    if(!is_recursive || --lockcount == 0)
     {
-        wt->is_blocking = false;
-        wt->block_until = 0;
-        wt->blocking_on = nullptr;
+        for(auto wt : waiting_threads)
+        {
+            wt->is_blocking = false;
+            wt->block_until = 0;
+            wt->blocking_on = nullptr;
+        }
+        waiting_threads.clear();
+        owner = nullptr;
     }
-    waiting_threads.clear();
-    owner = nullptr;
     return true;
 }

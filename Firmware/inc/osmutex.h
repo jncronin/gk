@@ -36,8 +36,12 @@ class Mutex
         Thread *owner = nullptr;
         Spinlock sl;
         std::unordered_set<Thread *> waiting_threads;
+        int lockcount = 0;
+        bool is_recursive = false;
 
     public:
+        Mutex(bool recursive = false);
+        
         void lock();
         bool try_lock();
         bool unlock();
