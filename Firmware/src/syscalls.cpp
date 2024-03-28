@@ -417,6 +417,21 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_sleep_ms:
+            {
+                auto tout = clock_cur_ms() + *reinterpret_cast<unsigned long *>(r2);
+                auto curt = GetCurrentThreadForCore();
+                {
+                    CriticalGuard cg(curt->sl);
+                    curt->block_until = tout;
+                    curt->is_blocking = true;
+                    curt->blocking_on = nullptr;
+                    *reinterpret_cast<int *>(r1) = 0;
+                    Yield();
+                }
+            }
+            break;
+
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);
