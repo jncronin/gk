@@ -30,10 +30,15 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno);
 int syscall_proccreate(const char *fname, const proccreate_t *proc_info, int *_errno);
 
-int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
-int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex);
-int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex);
-int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex);
+int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr, int *_errno);
+int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno);
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int *_errno);
+int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno);
+
+int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), int *_errno);
+int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno);
+int syscall_pthread_setspecific(pthread_key_t key, const void *val, int *_errno);
+int syscall_pthread_key_delete(pthread_key_t key, int *_errno);
 
 
 static inline int deferred_return(int ret, int _errno)

@@ -279,7 +279,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_pthread_mutex_init:
             {
                 auto p = reinterpret_cast<__syscall_pthread_mutex_init_params *>(r2);
-                int ret = syscall_pthread_mutex_init(p->mutex, p->attr);
+                int ret = syscall_pthread_mutex_init(p->mutex, p->attr, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -287,7 +287,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_pthread_mutex_destroy:
             {
                 auto p = reinterpret_cast<pthread_mutex_t *>(r2);
-                int ret = syscall_pthread_mutex_destroy(p);
+                int ret = syscall_pthread_mutex_destroy(p, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -295,7 +295,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_pthread_mutex_trylock:
             {
                 auto p = reinterpret_cast<pthread_mutex_t *>(r2);
-                int ret = syscall_pthread_mutex_trylock(p);
+                int ret = syscall_pthread_mutex_trylock(p, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -303,7 +303,39 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_pthread_mutex_unlock:
             {
                 auto p = reinterpret_cast<pthread_mutex_t *>(r2);
-                int ret = syscall_pthread_mutex_unlock(p);
+                int ret = syscall_pthread_mutex_unlock(p, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_key_create:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_key_create_params *>(r2);
+                int ret = syscall_pthread_key_create(p->key, p->destructor, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_key_delete:
+            {
+                auto p = reinterpret_cast<pthread_key_t>(r2);
+                int ret = syscall_pthread_key_delete(p, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_setspecific:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_setspecific_params *>(r2);
+                int ret = syscall_pthread_setspecific(p->key, p->value, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_getspecific:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_getspecific_params *>(r2);
+                int ret = syscall_pthread_getspecific(p->key, p->retp, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
