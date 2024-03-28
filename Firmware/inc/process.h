@@ -27,6 +27,10 @@ class Process
         bool for_deletion = false;
 
         File *open_files[GK_MAX_OPEN_FILES];
+
+        /* pthread TLS data */
+        pthread_key_t next_key = 0;
+        std::map<pthread_key_t, void (*)(void *)> tls_data;
 };
 
 

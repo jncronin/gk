@@ -157,16 +157,20 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     return 0;
 }
 
-int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr, int *_errno)
 {
-    if(!mutex)
-        return EINVAL;
-    if(!attr)
-        return EINVAL;
+    if(!mutex || !attr)
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
     
     auto m = new Mutex(attr->recursive ? true : false);
     if(!m)
-        return ENOMEM;
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
     
     *reinterpret_cast<Mutex **>(mutex) = m;
     return 0;
@@ -181,10 +185,14 @@ static bool check_mutex(pthread_mutex_t *mutex)
     return true;    // TODO: check against list of mutexes this process can access
 }
 
-int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex)
+int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
 {
     if(!check_mutex(mutex))
-        return EINVAL;
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
     auto m = *reinterpret_cast<Mutex **>(mutex);
     auto ret = m->try_delete();
     if(ret)
@@ -192,13 +200,19 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex)
         delete m;
         return 0;
     }
-    return EBUSY;
+
+    *_errno = EBUSY;
+    return -1;
 }
 
-int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex)
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int *_errno)
 {
     if(!check_mutex(mutex))
-        return EINVAL;
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
     auto m = *reinterpret_cast<Mutex **>(mutex);
     if(m->try_lock())
         return 0;
@@ -206,14 +220,95 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex)
         return -3;      // Try again
 }
 
-int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex)
+int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)
 {
     if(!check_mutex(mutex))
-        return EINVAL;
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
     auto m = *reinterpret_cast<Mutex **>(mutex);
     if(m->unlock())
         return 0;
     else
+    {   
+        *_errno = EPERM;
         return -1;
+    }
 }
 
+int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), int *_errno)
+{
+    if(!key)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto t = GetCurrentThreadForCore();
+    {
+        CriticalGuard cg_t(t->sl);
+
+        auto &p = t->p;
+        CriticalGuard cg_p(p.sl);
+
+        auto ret = p.next_key++;
+        p.tls_data[ret] = destructor;
+        *key = ret;
+
+        return 0;
+    }
+}
+
+int syscall_pthread_key_delete(pthread_key_t key, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg_t(t->sl);
+    auto &p = t->p;
+    CriticalGuard cg_p(p.sl);
+
+    auto iter = p.tls_data.find(key);
+    if(iter == p.tls_data.end())
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    p.tls_data.erase(iter);
+    return 0;
+}
+
+int syscall_pthread_setspecific(pthread_key_t key, const void *val, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg_t(t->sl);
+    auto &p = t->p;
+    CriticalGuard cg_p(p.sl);
+
+    auto iter = p.tls_data.find(key);
+    if(iter == p.tls_data.end())
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    t->tls_data[key] = const_cast<void *>(val);
+    return 0;
+}
+
+int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg_t(t->sl);
+
+    auto iter = t->tls_data.find(key);
+    if(iter == t->tls_data.end())
+    {
+        *retval = nullptr;
+    }
+    else
+    {
+        *retval = iter->second;
+    }
+    return 0;
+}

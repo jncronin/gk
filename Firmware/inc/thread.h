@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <map>
 #include <osmutex.h>
 #include "region_allocator.h"
 #include "memblk.h"
@@ -49,6 +50,9 @@ class Thread
         /* Used for waiting on inter-process RPC returns */
         SimpleSignal ss;
         WaitSimpleSignal_params ss_p;
+
+        /* pthread TLS data */
+        std::map<pthread_key_t, void *> tls_data;
 
         Thread(Process &owning_process);
 
