@@ -5,6 +5,7 @@
 #include <util.h>
 #include <region_allocator.h>
 #include <unordered_set>
+#include <unordered_map>
 
 #define DEBUG_SPINLOCK      1
 
@@ -51,12 +52,14 @@ class Mutex
 class Condition
 {
     protected:
-        std::unordered_set<Thread *> waiting_threads;
+        struct timeout { uint64_t tout; bool *signalled; };
+        std::unordered_map<Thread *, timeout> waiting_threads;
         Spinlock sl;
 
     public:
-        void Wait();
-        void Signal();
+        void Wait(uint64_t tout = UINT64_MAX, bool *signalled_ret = nullptr);
+        void Signal(bool all = true);
+        ~Condition();
 };
 
 class SimpleSignal

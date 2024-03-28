@@ -340,6 +340,38 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_cond_init:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_cond_init_params *>(r2);
+                int ret = syscall_pthread_cond_init(p->cond, p->attr, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_cond_destroy:
+            {
+                auto p = reinterpret_cast<pthread_cond_t *>(r2);
+                int ret = syscall_pthread_cond_destroy(p, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_cond_timedwait:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_cond_timedwait_params *>(r2);
+                int ret = syscall_pthread_cond_timedwait(p->cond, p->mutex, p->abstime, p->signalled, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_cond_signal:
+            {
+                auto p = reinterpret_cast<pthread_cond_t *>(r2);
+                int ret = syscall_pthread_cond_signal(p, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);
