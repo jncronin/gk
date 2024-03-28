@@ -172,7 +172,7 @@ void SimpleSignal::Reset()
     signal_value = 0;
 }
 
-void Condition::Wait(uint64_t tout, bool *signalled_ret)
+void Condition::Wait(uint64_t tout, int *signalled_ret)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -249,7 +249,7 @@ void Condition::Signal(bool signal_all)
             if(bt.second.tout != UINT64_MAX &&
                 tnow > bt.second.tout)
             {
-                timedout = true;
+                timedout = 1;
             }
 
             if(!timedout)
@@ -276,7 +276,7 @@ void Condition::Signal(bool signal_all)
             if(tp.tout != UINT64_MAX &&
                 tnow > tp.tout)
             {
-                timedout = true;
+                timedout = 1;
             }
 
             if(!timedout)

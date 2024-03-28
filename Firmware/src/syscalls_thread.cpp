@@ -348,7 +348,7 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
 
 int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
     pthread_mutex_t *mutex, const struct timespec *abstime,
-    bool *signalled, int *_errno)
+    int *signalled, int *_errno)
 {
     if(!check_mutex(cond) || !check_mutex(mutex))
     {
