@@ -3,6 +3,7 @@
 #include "thread.h"
 #include "screen.h"
 #include "scheduler.h"
+#include "clocks.h"
 #include "syscalls_int.h"
 
 extern Scheduler s;
@@ -369,6 +370,42 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 auto p = reinterpret_cast<pthread_cond_t *>(r2);
                 int ret = syscall_pthread_cond_signal(p, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_clock_gettime:
+            {
+                auto p = reinterpret_cast<__syscall_clock_gettime_params *>(r2);
+                if(!p->tp)
+                {
+                    *reinterpret_cast<int *>(r3) = EINVAL;
+                    *reinterpret_cast<int *>(r1) = -1;
+                }
+                else
+                {
+                    switch(p->clk_id)
+                    {
+                        case CLOCK_REALTIME:
+                            clock_get_now(p->tp);
+                            *reinterpret_cast<int *>(r1) = 0;
+                            break;
+
+                        case 4: // MONOTONIC
+                            {
+                                auto curt = clock_cur_ms();
+
+                                p->tp->tv_nsec = (curt % 1000000) * 1000;
+                                p->tp->tv_sec = curt / 1000000;
+                                *reinterpret_cast<int *>(r1) = 0;
+                            }
+                            break;
+
+                        default:
+                            *reinterpret_cast<int *>(r3) = EINVAL;
+                            *reinterpret_cast<int *>(r1) = -1;
+                            break;
+                    }
+                }
             }
             break;
 
