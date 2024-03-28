@@ -20,6 +20,38 @@ static void thread_cleanup(void *tretval)   // both return value and first param
         CriticalGuard cg(t->sl);
         t->for_deletion = true;
         t->retval = tretval;
+
+        // clean up any tls data
+        for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
+        {
+            bool has_nonnull = false;
+            auto &p = t->p;
+
+            {
+                CriticalGuard cg_p(p.sl);
+                for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
+                {
+                    auto k = iter->first;
+                    auto d = iter->second;
+
+                    auto t_iter = t->tls_data.find(k);
+                    if(t_iter != t->tls_data.end())
+                    {
+                        if(t_iter->second)
+                        {
+                            // non-null
+                            has_nonnull = true;
+
+                            // run destructor
+                            d(t_iter->second);
+                        }
+                    }
+                }
+            }
+
+            if(!has_nonnull)
+                break;
+        }
     }
     while(true)
     {
