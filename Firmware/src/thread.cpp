@@ -21,6 +21,15 @@ static void thread_cleanup(void *tretval)   // both return value and first param
         t->for_deletion = true;
         t->retval = tretval;
 
+        // signal any thread waiting on a join
+        if(t->join_thread)
+        {
+            if(t->join_thread_retval)
+                *t->join_thread_retval = tretval;
+            t->join_thread->ss_p.ival1 = 0;
+            t->join_thread->ss.Signal();
+        }
+
         // clean up any tls data
         for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
         {

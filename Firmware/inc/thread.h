@@ -54,6 +54,10 @@ class Thread
         /* pthread TLS data */
         std::map<pthread_key_t, void *> tls_data;
 
+        /* pthread_join waiting thread */
+        Thread *join_thread = nullptr;
+        void **join_thread_retval;
+
         Thread(Process &owning_process);
 
         typedef void *(*threadstart_t)(void *p);
