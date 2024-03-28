@@ -373,6 +373,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_join:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_join_params *>(r2);
+                int ret = syscall_pthread_join((Thread *)p->t, p->retval, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         case __syscall_clock_gettime:
             {
                 auto p = reinterpret_cast<__syscall_clock_gettime_params *>(r2);

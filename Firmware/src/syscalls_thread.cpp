@@ -381,3 +381,56 @@ int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno)
     c->Signal(false);
     return 0;
 }
+
+int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
+{
+    // we need to make sure the thread hasn't already been destroyed
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    {
+        CriticalGuard cg_p(p.sl);
+
+        bool thread_exists = false;
+        for(auto curt : p.threads)
+        {
+            if(curt == thread)
+            {
+                thread_exists = true;
+                break;
+            }
+        }
+
+        if(!thread_exists)
+        {
+            *_errno = ESRCH;
+            return -1;
+        }
+
+        // At this point the thread exists, check if it has already been destroyed
+        {
+            CriticalGuard cg_t(thread->sl);
+            if(thread->for_deletion)
+            {
+                *retval = thread->retval;
+                return 0;
+            }
+
+            // is anything else waiting?
+            if(thread->join_thread)
+            {
+                *_errno = EDEADLK;
+                return -1;
+            }
+
+            // else, tell the thread we are waiting for it to be destroyed
+            thread->join_thread = t;
+            thread->join_thread_retval = retval;
+
+            t->is_blocking = true;
+            t->block_until = 0;
+            Yield();
+
+            return 0;
+        }
+    }
+}

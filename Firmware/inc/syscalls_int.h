@@ -45,7 +45,7 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno);
 int syscall_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime, int *signalled, int *_errno);
 int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno);
 
-
+int syscall_pthread_join(Thread *thread, void **retval, int *_errno);
 
 static inline int deferred_return(int ret, int _errno)
 {
