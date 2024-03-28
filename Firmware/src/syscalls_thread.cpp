@@ -5,6 +5,7 @@
 #include "elf.h"
 #include "SEGGER_RTT.h"
 #include "osmutex.h"
+#include "clocks.h"
 
 extern Scheduler s;
 extern Spinlock s_rtt;
@@ -310,5 +311,73 @@ int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno)
     {
         *retval = iter->second;
     }
+    return 0;
+}
+
+int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr, int *_errno)
+{
+    if(!cond || !attr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto c = new Condition();
+    if(!c)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+    
+    *reinterpret_cast<Condition **>(cond) = c;
+    return 0;
+}
+
+int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
+{
+    if(!check_mutex(cond))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto c = *reinterpret_cast<Condition **>(cond);
+    delete c;
+    return 0;
+}
+
+int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
+    pthread_mutex_t *mutex, const struct timespec *abstime,
+    bool *signalled, int *_errno)
+{
+    if(!check_mutex(cond) || !check_mutex(mutex))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto c = *reinterpret_cast<Condition **>(cond);
+    auto m = *reinterpret_cast<Mutex **>(mutex);
+    m->unlock();
+
+    uint64_t tout = UINT64_MAX;
+    if(abstime)
+    {
+        tout = clock_timespec_to_ms(*abstime);
+    }
+    c->Wait(tout, signalled);
+    return 0;
+}
+
+int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno)
+{
+    if(!check_mutex(cond))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto c = *reinterpret_cast<Condition **>(cond);
+    c->Signal(false);
     return 0;
 }

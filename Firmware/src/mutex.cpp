@@ -172,12 +172,15 @@ void SimpleSignal::Reset()
     signal_value = 0;
 }
 
-void Condition::Wait()
+void Condition::Wait(uint64_t tout, bool *signalled_ret)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
-    waiting_threads.insert(t);
+    timeout to { tout, signalled_ret };
+    waiting_threads.insert_or_assign(t, to);
     t->is_blocking = true;
+    if(tout != UINT64_MAX)
+        t->block_until = tout;
     Yield();
 }
 
@@ -211,19 +214,90 @@ bool CountingSemaphore::WaitOnce(uint64_t tout)
     return ss.WaitOnce(SimpleSignal::Sub, 1, tout) != 0;
 }
 
-void Condition::Signal()
+Condition::~Condition()
+{
+    // wake up all waiting threads
+    CriticalGuard cg(sl);
+    bool hpt = false;
+    auto t = GetCurrentThreadForCore();
+    for(auto &bt : waiting_threads)
+    {
+        bt.first->is_blocking = false;
+        bt.first->block_until = 0;
+        if(bt.first->base_priority > t->base_priority)
+            hpt = true;
+    }
+
+    if(hpt)
+    {
+        Yield();
+    }
+}
+
+void Condition::Signal(bool signal_all)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     bool hpt = false;
-    for(auto bt : waiting_threads)
+    auto tnow = clock_cur_ms();
+
+    if(signal_all)
     {
-        bt->is_blocking = false;
-        bt->block_until = 0;
-        if(bt->base_priority > t->base_priority)
-            hpt = true;
+        for(auto &bt : waiting_threads)
+        {
+            bool timedout = false;
+            if(bt.second.tout != UINT64_MAX &&
+                tnow > bt.second.tout)
+            {
+                timedout = true;
+            }
+
+            if(!timedout)
+            {
+                if(bt.second.signalled)
+                    *bt.second.signalled = true;
+                
+                bt.first->is_blocking = false;
+                bt.first->block_until = 0;
+                if(bt.first->base_priority > t->base_priority)
+                    hpt = true;
+            }
+        }
+        waiting_threads.clear();
     }
-    waiting_threads.clear();
+    else
+    {
+        // need to keep looking for a single thread to wake
+        auto iter = waiting_threads.begin();
+        while(iter != waiting_threads.end())
+        {
+            bool timedout = false;
+            auto &tp = iter->second;
+            if(tp.tout != UINT64_MAX &&
+                tnow > tp.tout)
+            {
+                timedout = true;
+            }
+
+            if(!timedout)
+            {
+                if(tp.signalled)
+                    *tp.signalled = true;
+                
+                iter->first->is_blocking = false;
+                iter->first->block_until = 0;
+                if(iter->first->base_priority > t->base_priority)
+                    hpt = true;
+                waiting_threads.erase(iter);
+                break;
+            }
+            else
+            {
+                iter = waiting_threads.erase(iter);
+            }
+        }
+    }
+
     if(hpt)
     {
         Yield();
