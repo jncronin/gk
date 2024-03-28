@@ -1,8 +1,12 @@
 #include <stm32h7xx.h>
 
 #include "clocks.h"
+#include <ctime>
+#include "osmutex.h"
 
 __attribute__((section(".sram4"))) uint32_t SystemCoreClock;
+__attribute__((section(".sram4"))) struct timespec toffset;
+__attribute__((section(".sram4"))) Spinlock sl_toffset;
 
 void init_clocks()
 {
@@ -219,4 +223,51 @@ bool clock_set_cpu(clock_cpu_speed speed)
     while((RCC->CFGR & RCC_CFGR_SW_Msk) != 3UL);
 
     return true;
+}
+
+void clock_get_timebase(struct timespec *tp)
+{
+    CriticalGuard cg(sl_toffset);
+    *tp = toffset;
+}
+
+void clock_set_timebase(const struct timespec *tp)
+{
+    CriticalGuard cg(sl_toffset);
+    if(tp)
+        toffset = *tp;
+}
+
+void clock_get_now(struct timespec *tp)
+{
+    clock_get_timebase(tp);
+    auto curt = clock_cur_ms();
+
+    auto cur_ns = (curt % 1000000) * 1000;
+    auto cur_s = curt / 1000000;
+
+    tp->tv_nsec += cur_ns;
+    while(tp->tv_nsec >= 1000000000)
+    {
+        tp->tv_sec++;
+        tp->tv_nsec -= 1000000000;
+    }
+    tp->tv_sec += cur_s;
+}
+
+uint64_t clock_timespec_to_ms(const struct timespec &tp)
+{
+    struct timespec tzero;
+    clock_get_timebase(&tzero);
+
+    auto ns_diff = tp.tv_nsec - tzero.tv_nsec;
+    auto s_diff = tp.tv_sec - tzero.tv_sec;
+
+    while(ns_diff < 0)
+    {
+        s_diff--;
+        ns_diff += 1000000000;
+    }
+    return static_cast<uint64_t>(ns_diff / 1000) +
+        static_cast<uint64_t>(s_diff * 1000);
 }
