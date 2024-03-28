@@ -276,6 +276,38 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_mutex_init:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_mutex_init_params *>(r2);
+                int ret = syscall_pthread_mutex_init(p->mutex, p->attr);
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_mutex_destroy:
+            {
+                auto p = reinterpret_cast<pthread_mutex_t *>(r2);
+                int ret = syscall_pthread_mutex_destroy(p);
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_mutex_trylock:
+            {
+                auto p = reinterpret_cast<pthread_mutex_t *>(r2);
+                int ret = syscall_pthread_mutex_trylock(p);
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_pthread_mutex_unlock:
+            {
+                auto p = reinterpret_cast<pthread_mutex_t *>(r2);
+                int ret = syscall_pthread_mutex_unlock(p);
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);

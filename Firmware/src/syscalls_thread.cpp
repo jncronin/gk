@@ -4,6 +4,7 @@
 #include <cstring>
 #include "elf.h"
 #include "SEGGER_RTT.h"
+#include "osmutex.h"
 
 extern Scheduler s;
 extern Spinlock s_rtt;
@@ -155,3 +156,64 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
 
     return 0;
 }
+
+int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+{
+    if(!mutex)
+        return EINVAL;
+    if(!attr)
+        return EINVAL;
+    
+    auto m = new Mutex(attr->recursive ? true : false);
+    if(!m)
+        return ENOMEM;
+    
+    *reinterpret_cast<Mutex **>(mutex) = m;
+    return 0;
+}
+
+static bool check_mutex(pthread_mutex_t *mutex)
+{
+    if(!mutex)
+        return false;
+    if(*mutex < 0x38000000U || *mutex >= 0x38010000u)
+        return false;
+    return true;    // TODO: check against list of mutexes this process can access
+}
+
+int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex)
+{
+    if(!check_mutex(mutex))
+        return EINVAL;
+    auto m = *reinterpret_cast<Mutex **>(mutex);
+    auto ret = m->try_delete();
+    if(ret)
+    {
+        delete m;
+        return 0;
+    }
+    return EBUSY;
+}
+
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex)
+{
+    if(!check_mutex(mutex))
+        return EINVAL;
+    auto m = *reinterpret_cast<Mutex **>(mutex);
+    if(m->try_lock())
+        return 0;
+    else
+        return -3;      // Try again
+}
+
+int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex)
+{
+    if(!check_mutex(mutex))
+        return EINVAL;
+    auto m = *reinterpret_cast<Mutex **>(mutex);
+    if(m->unlock())
+        return 0;
+    else
+        return -1;
+}
+
