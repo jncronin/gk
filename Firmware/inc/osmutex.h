@@ -52,12 +52,12 @@ class Mutex
 class Condition
 {
     protected:
-        struct timeout { uint64_t tout; bool *signalled; };
+        struct timeout { uint64_t tout; int *signalled; };
         std::unordered_map<Thread *, timeout> waiting_threads;
         Spinlock sl;
 
     public:
-        void Wait(uint64_t tout = UINT64_MAX, bool *signalled_ret = nullptr);
+        void Wait(uint64_t tout = UINT64_MAX, int *signalled_ret = nullptr);
         void Signal(bool all = true);
         ~Condition();
 };

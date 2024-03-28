@@ -42,7 +42,7 @@ int syscall_pthread_key_delete(pthread_key_t key, int *_errno);
 
 int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr, int *_errno);
 int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno);
-int syscall_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime, bool *signalled, int *_errno);
+int syscall_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime, int *signalled, int *_errno);
 int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno);
 
 
