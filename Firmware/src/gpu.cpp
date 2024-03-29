@@ -2,12 +2,15 @@
 #include "gpu.h"
 #include "osqueue.h"
 #include "screen.h"
+#include "cache.h"
 
 __attribute__((section (".sram4"))) static Condition gpu_ready;
 __attribute__((section (".sram4"))) static FixedQueue<gpu_message, 8> gpu_msg_list;
 
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
+
+#define GPU_DEBUG 1
 
 void *gpu_thread(void *p)
 {
@@ -27,8 +30,8 @@ void *gpu_thread(void *p)
 #ifdef GPU_DEBUG
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "gpu: type: %d, dest_addr: %x, src_addr_color: %x\n",
-                g.type, g.dest_addr, g.src_addr_color);
+            SEGGER_RTT_printf(0, "gpu: type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
+                g.type, g.dest_addr, g.src_addr_color, g.nlines, g.row_width);
         }
 #endif
         
@@ -40,6 +43,25 @@ void *gpu_thread(void *p)
 
             case gpu_message_type::SetBuffers:
                 screen_set_frame_buffer((void *)g.dest_addr, (void*)g.src_addr_color, g.dest_pf);
+                break;
+
+            case gpu_message_type::CleanCache:
+                {
+                    auto start_addr = g.dest_addr + (g.dest_fbuf_relative ? (uint32_t)(uintptr_t)screen_get_frame_buffer() : 0UL);
+                    auto len = g.row_width * 4 + g.nlines * 640 * 4;
+                    CleanM7Cache(start_addr, len, CacheType_t::Data);
+                }
+                break;
+
+            case gpu_message_type::SignalThread:
+                {
+                    auto t = (Thread *)g.dest_addr;
+                    {
+                        CriticalGuard cg(t->sl);
+                        t->ss_p.ival1 = 0;
+                        t->ss.Signal();
+                    }
+                }
                 break;
 
             case gpu_message_type::BlitColor:
@@ -107,7 +129,12 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
     auto cpsr = DisableInterrupts();
     for(size_t i = 0; i < nmsg; i++)
     {
-        if(!gpu_msg_list.Push(msgs[i]))
+        gpu_message msg = msgs[i];
+        if(msg.type == gpu_message_type::SignalThread)
+        {
+            msg.dest_addr = (uint32_t)(uintptr_t)GetCurrentThreadForCore();
+        }
+        if(!gpu_msg_list.Push(msg))
         {
             RestoreInterrupts(cpsr);
             return nsent;
