@@ -140,7 +140,7 @@ void init_clocks()
     (void)LPTIM1->CR;
     LPTIM1->CR = 0;
 
-    LPTIM1->CFGR = 4UL << LPTIM_CFGR_PRESC_Pos;     // /16 => 1 MHz tick
+    LPTIM1->CFGR = 5UL << LPTIM_CFGR_PRESC_Pos;     // /16 => 1 MHz tick (should be.. we use /32 which seems to work better)
     LPTIM1->IER = LPTIM_IER_ARRMIE;
     LPTIM1->CR = LPTIM_CR_ENABLE;
     LPTIM1->ARR = 999;                              // Reload every 1 kHz
