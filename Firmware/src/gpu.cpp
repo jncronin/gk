@@ -38,6 +38,10 @@ void *gpu_thread(void *p)
                 screen_flip();
                 break;
 
+            case gpu_message_type::SetBuffers:
+                screen_set_frame_buffer((void *)g.dest_addr, (void*)g.src_addr_color, g.dest_pf);
+                break;
+
             case gpu_message_type::BlitColor:
                 if(!g.row_width || !g.nlines)
                     break;
