@@ -2,6 +2,7 @@
 #include "thread.h"
 #include "scheduler.h"
 #include "clocks.h"
+#include "gk_conf.h"
 
 extern Scheduler s;
 
@@ -18,6 +19,7 @@ UninterruptibleGuard::~UninterruptibleGuard()
 CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
 {
     cpsr = DisableInterrupts();
+#if GK_DUAL_CORE
 #if DEBUG_SPINLOCK
     uint32_t lr;
     __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
@@ -25,11 +27,14 @@ CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
 #else
     _s.lock();
 #endif
+#endif
 }
 
 CriticalGuard::~CriticalGuard()
 {
+#if GK_DUAL_CORE
     _s.unlock();
+#endif
     RestoreInterrupts(cpsr);
 }
 
