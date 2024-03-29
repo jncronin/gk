@@ -60,6 +60,8 @@ class Thread
 
         Thread(Process &owning_process);
 
+        void Cleanup(void *tretval);
+
         typedef void *(*threadstart_t)(void *p);
         static Thread *Create(std::string name,
             threadstart_t func,

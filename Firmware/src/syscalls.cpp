@@ -182,11 +182,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                     CriticalGuard cg2(pt->sl);
                     pt->for_deletion = true;
                     pt->is_blocking = true;
-                    memblk_deallocate(pt->stack);
                 }
-
-                memblk_deallocate(p.code_data);
-                memblk_deallocate(p.heap);
 
                 p.rc = rc;
                 p.for_deletion = true;

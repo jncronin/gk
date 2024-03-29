@@ -13,55 +13,57 @@ extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
 
-static void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
+void Thread::Cleanup(void *tretval)
 {
-    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg(sl);
+    for_deletion = true;
+    retval = tretval;
+
+    // signal any thread waiting on a join
+    if(join_thread)
     {
-        CriticalGuard cg(t->sl);
-        t->for_deletion = true;
-        t->retval = tretval;
+        if(join_thread_retval)
+            *join_thread_retval = tretval;
+        join_thread->ss_p.ival1 = 0;
+        join_thread->ss.Signal();
+    }
 
-        // signal any thread waiting on a join
-        if(t->join_thread)
+    // clean up any tls data
+    for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
+    {
+        bool has_nonnull = false;
+
         {
-            if(t->join_thread_retval)
-                *t->join_thread_retval = tretval;
-            t->join_thread->ss_p.ival1 = 0;
-            t->join_thread->ss.Signal();
-        }
-
-        // clean up any tls data
-        for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
-        {
-            bool has_nonnull = false;
-            auto &p = t->p;
-
+            CriticalGuard cg_p(p.sl);
+            for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
             {
-                CriticalGuard cg_p(p.sl);
-                for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
+                auto k = iter->first;
+                auto d = iter->second;
+
+                auto t_iter = tls_data.find(k);
+                if(t_iter != tls_data.end())
                 {
-                    auto k = iter->first;
-                    auto d = iter->second;
-
-                    auto t_iter = t->tls_data.find(k);
-                    if(t_iter != t->tls_data.end())
+                    if(t_iter->second)
                     {
-                        if(t_iter->second)
-                        {
-                            // non-null
-                            has_nonnull = true;
+                        // non-null
+                        has_nonnull = true;
 
-                            // run destructor
-                            d(t_iter->second);
-                        }
+                        // run destructor
+                        d(t_iter->second);
                     }
                 }
             }
-
-            if(!has_nonnull)
-                break;
         }
+
+        if(!has_nonnull)
+            break;
     }
+}
+
+static void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
+{
+    auto t = GetCurrentThreadForCore();
+    t->Cleanup(tretval);
     while(true)
     {
         Yield();
@@ -157,6 +159,7 @@ Thread *Thread::Create(std::string name,
 
 Thread *GetCurrentThreadForCore(int coreid)
 {
+#if GK_DUAL_CORE
     if(coreid == -1)
     {
         coreid = GetCoreID();
@@ -166,31 +169,46 @@ Thread *GetCurrentThreadForCore(int coreid)
         //CriticalGuard cg(s.current_thread[coreid].m);
         return s.current_thread[coreid].v;  // <- should be atomic
     }
+#else
+    return s.current_thread[0].v;
+#endif
 }
 
 Thread *GetNextThreadForCore(int coreid)
 {
+#if GK_DUAL_CORE
     if(coreid == -1)
     {
         coreid = GetCoreID();
     }
 
     return s.GetNextThread(coreid);
+#else
+    return s.GetNextThread(0);
+#endif
 }
 
 int GetCoreID()
 {
+#if GK_DUAL_CORE
     return (*( ( volatile uint32_t * ) 0xE000ed00 ) & 0xfff0UL) == 0xc240 ? 1 : 0;
+#else
+    return 0;
+#endif
 }
 
 void SetNextThreadForCore(Thread *t, int coreid)
 {
     [[maybe_unused]] bool flush_cache = false;
 
+#if GK_DUAL_CORE
     if(coreid == -1)
     {
         coreid = GetCoreID();
     }
+#else
+    coreid = 0;
+#endif
 
     {
         CriticalGuard cg(s.current_thread[coreid].m);

@@ -282,6 +282,8 @@ int elf_load_memory(const void *e, const std::string &pname)
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));
 
     SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
+    SEGGER_RTT_printf(0, "%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
+        pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
 
     return 0;
 }
