@@ -131,6 +131,7 @@ extern "C" void PendSV_Handler()
         "pop { r1 }                 \n"
 
         /* Set up new task MPU, can discard R0 now */
+#if GK_USE_MPU
         "add r0, r1, #108           \n"     // R0 = &cm7_mpu0
         "add r2, r0, r2, lsl #2     \n"     // R2 = &cm7_mpu0 or &cm4_mpu0
         "add r0, r0, #16            \n"     // R0 = &mpuss[0]
@@ -153,6 +154,7 @@ extern "C" void PendSV_Handler()
         "str r5, [r4]               \n"
         "dsb                        \n"
         "isb                        \n"
+#endif
 
         /* Load saved tss registers */
         "ldmia r1!, { r12 }         \n"     // load registers from tss

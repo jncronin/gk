@@ -149,15 +149,6 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
             auto r_sym = reinterpret_cast<const Elf32_Sym *>(p + symtab->sh_offset + r_sym_idx *
                 symtab->sh_entsize);
 
-            void *dest = (void *)(base_ptr + rel->r_offset);
-            uint32_t A = *(uint32_t *)dest;
-            uint32_t P = (uint32_t)dest;
-            [[maybe_unused]] uint32_t Pa = P & 0xfffffffc;
-            [[maybe_unused]] uint32_t T = ((r_sym->st_info & 0xf) == STT_FUNC) ? 1 : 0;
-            [[maybe_unused]] uint32_t S = base_ptr + r_sym->st_value;
-            uint32_t mask = 0xffffffff;
-            uint32_t value = 0;
-
             /*if((uint32_t)dest >= 0x240020d4 && (uint32_t)dest <= 0x240020d8)
             {
                 __asm volatile
@@ -175,6 +166,21 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
                 case R_ARM_TARGET1:
                 case R_ARM_ABS32:
                     {
+                        if((base_ptr + rel->r_offset) & 0x3)
+                        {
+                            SEGGER_RTT_printf(0, "unaligned reloc at %x\n", base_ptr + rel->r_offset);
+                            __asm__ volatile ("bkpt \n" ::: "memory");
+                        }
+                        
+                        void *dest = (void *)(base_ptr + rel->r_offset);
+                        uint32_t A = *(uint32_t *)dest;
+                        uint32_t P = (uint32_t)dest;
+                        [[maybe_unused]] uint32_t Pa = P & 0xfffffffc;
+                        [[maybe_unused]] uint32_t T = ((r_sym->st_info & 0xf) == STT_FUNC) ? 1 : 0;
+                        [[maybe_unused]] uint32_t S = base_ptr + r_sym->st_value;
+                        uint32_t mask = 0xffffffff;
+                        uint32_t value = 0;
+
                         bool is_stack = false;
 
                         if(r_sym->st_shndx == SHN_UNDEF)

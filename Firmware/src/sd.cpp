@@ -920,7 +920,13 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     req.completion_event = cond;
     req.res_out = ret;
 
-    if(!is_read)
+    /* need cache lines are 32 bytes, so on an unaligned read the subsequent invalidate will
+        delete valid data in the cache - often this is part of the lwext4 structs, so
+        is vaguely important.
+
+        To avoid this, if we are unaligned then also clean the cache here so that the memory
+        has the correct data once we invalidate it again later (after a read). */
+    if(!is_read || (uint32_t)mem_address & 0x1f)    
     {
         CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
     }
