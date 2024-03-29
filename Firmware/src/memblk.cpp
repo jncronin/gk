@@ -185,6 +185,11 @@ void memblk_deallocate(MemRegion &r)
             r.valid = false;
             break;
     }
+
+    if(!r.valid)
+    {
+        SEGGER_RTT_printf(0, "memblk deallocate: %x - %x\n", r.address, r.address + r.length);
+    }
 }
 
 MemRegion memblk_allocate(size_t n, MemRegionType rtype)
