@@ -381,6 +381,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_gettimeofday:
+            {
+                auto p = reinterpret_cast<__syscall_gettimeofday_params *>(r2);
+                int ret = syscall_gettimeofday(p->tv, (timezone *)p->tz, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         case __syscall_clock_gettime:
             {
                 auto p = reinterpret_cast<__syscall_clock_gettime_params *>(r2);
