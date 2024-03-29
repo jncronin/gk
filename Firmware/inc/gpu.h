@@ -4,23 +4,7 @@
 #include <cstdint>
 #include <cstddef>
 
-enum gpu_message_type
-{
-    FlipBuffers,
-    BlitColor,
-    BlitImage
-};
-
-struct gpu_message
-{
-    gpu_message_type type;
-    uint32_t dest_addr;
-    uint32_t src_addr_color;
-    uint32_t dest_pf;
-    uint32_t src_pf;
-    uint32_t nlines, row_width;
-    bool dest_fbuf_relative;
-};
+#include "_gk_gpu.h"
 
 void GPUEnqueueMessage(const gpu_message &msg);
 void GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg);
