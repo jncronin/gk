@@ -140,7 +140,7 @@ void init_clocks()
     (void)LPTIM1->CR;
     LPTIM1->CR = 0;
 
-    LPTIM1->CFGR = 5UL << LPTIM_CFGR_PRESC_Pos;     // /16 => 1 MHz tick (should be.. we use /32 which seems to work better)
+    LPTIM1->CFGR = 4UL << LPTIM_CFGR_PRESC_Pos;     // /16 => 1 MHz tick
     LPTIM1->IER = LPTIM_IER_ARRMIE;
     LPTIM1->CR = LPTIM_CR_ENABLE;
     LPTIM1->ARR = 999;                              // Reload every 1 kHz
@@ -153,8 +153,10 @@ void init_clocks()
 __attribute__((section(".sram4"))) static volatile uint64_t _cur_ms = 0;
 extern "C" void LPTIM1_IRQHandler()
 {
-    _cur_ms++;
+    // do it this way round or the IRQ is still active on IRQ return
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
+    _cur_ms++;
+    __DMB();
 }
 
 uint64_t clock_cur_ms()
