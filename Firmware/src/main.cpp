@@ -202,13 +202,11 @@ void *b_thread(void *p)
 {
     (void)p;
 
-    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
     auto bb = memblk_allocate(0x200000, MemRegionType::SDRAM);
 
-    if(!fb.valid || !bb.valid)
+    if(!bb.valid)
         return nullptr;
 
-    __syscall_SetFrameBuffer((void *)fb.address, (void *)(fb.address + 0x200000), ARGB8888);
     RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
     (void)RCC->AHB3ENR;
 
@@ -384,6 +382,10 @@ void *x_thread(void *p)
 /* Init thread - loads services from sdcard */
 void *init_thread(void *p)
 {
+    // Init framebuffer
+    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
+    __syscall_SetFrameBuffer((void *)fb.address, (void *)(fb.address + 0x200000), ARGB8888);
+
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
@@ -396,6 +398,7 @@ void *init_thread(void *p)
 #endif
 
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
+    deferred_call(syscall_proccreate, "/sinv", &pt);
 
     return nullptr;
 }
