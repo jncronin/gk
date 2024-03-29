@@ -7,7 +7,7 @@
 #include "_gk_gpu.h"
 
 void GPUEnqueueMessage(const gpu_message &msg);
-void GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg);
+size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg);
 void GPUEnqueueFlip();
 void GPUEnqueueFBColor(uint32_t col);
 void GPUEnqueueBlitRectangle(void *src, int x, int y, int width, int height, int dest_x, int dest_y);

@@ -4,6 +4,7 @@
 #include "syscalls_int.h"
 #include "memblk.h"
 #include <errno.h>
+#include "gpu.h"
 
 int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 {
@@ -86,5 +87,17 @@ int syscall_memdealloc(size_t len, const void *addr, int *_errno)
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno)
 {
     // We have run out of MPU slots, so this does nothing at the moment
+    return 0;
+}
+
+int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int *_errno)
+{
+    if(!msgs || !nsent)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    *nsent = GPUEnqueueMessages(msgs, nmsg);
     return 0;
 }
