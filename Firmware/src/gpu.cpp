@@ -10,7 +10,7 @@ __attribute__((section (".sram4"))) static FixedQueue<gpu_message, 8> gpu_msg_li
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
 
-#define GPU_DEBUG 1
+#define GPU_DEBUG 0
 
 void *gpu_thread(void *p)
 {
@@ -27,7 +27,7 @@ void *gpu_thread(void *p)
         if(!gpu_msg_list.Pop(&g))
             continue;
 
-#ifdef GPU_DEBUG
+#if GPU_DEBUG
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
@@ -94,7 +94,7 @@ void *gpu_thread(void *p)
                 gpu_ready.Wait();
                 break;
         }
-#ifdef GPU_DEBUG
+#if GPU_DEBUG
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "gpu: @%u complete\n",
@@ -155,7 +155,7 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
 
 extern "C" void DMA2D_IRQHandler()
 {
-#ifdef GPU_DEBUG
+#if GPU_DEBUG
     SEGGER_RTT_printf(0, "gpuint: @%u\n", clock_cur_ms());
 #endif
     gpu_ready.Signal();
