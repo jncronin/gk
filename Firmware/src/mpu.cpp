@@ -1,11 +1,13 @@
 #include "mpuregions.h"
 #include "stm32h7xx.h"
 #include "thread.h"
+#include "gk_conf.h"
 
 __attribute__((section(".sram4"))) volatile Thread *last_thread;
 
 bool SetMPUForCurrentThread(mpu_saved_state const &mpu_reg)
 {
+#if GK_USE_MPU
     if(!(mpu_reg.rbar & (1UL << 4)))    // VALID not set
         return false;
     auto reg_id = mpu_reg.rbar & 0xfUL;
@@ -26,4 +28,7 @@ bool SetMPUForCurrentThread(mpu_saved_state const &mpu_reg)
         __ISB();
         return true;
     }
+#else
+    return true;
+#endif
 }

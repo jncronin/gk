@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "osnet.h"
 #include "thread.h"
+#include "gk_conf.h"
 
 struct cache_req
 {
