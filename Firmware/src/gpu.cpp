@@ -30,8 +30,8 @@ void *gpu_thread(void *p)
 #ifdef GPU_DEBUG
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "gpu: type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
-                g.type, g.dest_addr, g.src_addr_color, g.nlines, g.row_width);
+            SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
+                (unsigned int)clock_cur_ms(), g.type, g.dest_addr, g.src_addr_color, g.nlines, g.row_width);
         }
 #endif
         
@@ -94,6 +94,14 @@ void *gpu_thread(void *p)
                 gpu_ready.Wait();
                 break;
         }
+#ifdef GPU_DEBUG
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "gpu: @%u complete\n",
+                (unsigned int)clock_cur_ms());
+        }
+#endif
+
     }
 }
 
@@ -147,6 +155,9 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
 
 extern "C" void DMA2D_IRQHandler()
 {
+#ifdef GPU_DEBUG
+    SEGGER_RTT_printf(0, "gpuint: @%u\n", clock_cur_ms());
+#endif
     gpu_ready.Signal();
     DMA2D->IFCR = DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
 }
