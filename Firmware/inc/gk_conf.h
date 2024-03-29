@@ -14,6 +14,8 @@
 #define GK_EXT_USE_JOURNAL          0
 #define GK_SD_USE_HS_MODE           1
 
+#define GK_SDRAM_BASE               0x60000000
+
 #define SRAM4_DATA __attribute__((section(".sram4")))
 
 #endif

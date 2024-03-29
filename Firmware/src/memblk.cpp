@@ -2,11 +2,12 @@
 #include "memblk.h"
 #include "buddy.h"
 #include "SEGGER_RTT.h"
+#include "gk_conf.h"
 
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_axisram;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x30000000> b_sram;
-__attribute__((section(".sram4"))) BuddyAllocator<512*1024, 65536*1024, 0xc0000000> b_sdram;
+__attribute__((section(".sram4"))) BuddyAllocator<512*1024, 65536*1024, GK_SDRAM_BASE> b_sdram;
 
 
 // The following are the ends of all the input sections in the
@@ -104,7 +105,7 @@ void init_memblk()
     add_memory_region(eaxisram, 0x24080000UL - eaxisram, MemRegionType::AXISRAM);
     add_memory_region(edtcm, 0x20020000 - edtcm, MemRegionType::DTCM);
     add_memory_region(esram, 0x30048000 - esram, MemRegionType::SRAM);
-    add_memory_region(esdram, 0xc0000000UL + 64 * 1024 * 1024 - esdram, MemRegionType::SDRAM);
+    add_memory_region(esdram, GK_SDRAM_BASE + 64 * 1024 * 1024 - esdram, MemRegionType::SDRAM);
     //add_memory_region(0x38000000UL, 0x10000);   // SRAM4 - handled separately by malloc interface
 }
 
