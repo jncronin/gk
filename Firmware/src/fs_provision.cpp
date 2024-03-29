@@ -224,12 +224,16 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
 
         // get file size, octal encoded over 12 bytes
         uint64_t fsize = 0;
+        int nfsize = 0;
         const char *fsptr = &tar_header[124];
-        while(*fsptr)
+        while(*fsptr != 0 && *fsptr != ' ')
         {
             fsize *= 8;
             fsize += (uint64_t)(*fsptr - '0');
             fsptr++;
+            nfsize++;
+            if(nfsize >= 12)
+                break;
         }
         
         {
