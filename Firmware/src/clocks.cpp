@@ -243,8 +243,8 @@ void clock_get_now(struct timespec *tp)
     clock_get_timebase(tp);
     auto curt = clock_cur_ms();
 
-    auto cur_ns = (curt % 1000000) * 1000;
-    auto cur_s = curt / 1000000;
+    auto cur_ns = (curt % 1000) * 1000000;
+    auto cur_s = curt / 1000;
 
     tp->tv_nsec += cur_ns;
     while(tp->tv_nsec >= 1000000000)
@@ -268,6 +268,6 @@ uint64_t clock_timespec_to_ms(const struct timespec &tp)
         s_diff--;
         ns_diff += 1000000000;
     }
-    return static_cast<uint64_t>(ns_diff / 1000) +
+    return static_cast<uint64_t>(ns_diff / 1000000) +
         static_cast<uint64_t>(s_diff * 1000);
 }
