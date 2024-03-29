@@ -80,8 +80,8 @@ void init_sdram()
     
     // Set up timing register
     FMC_Bank5_6_R->SDTR[0] = (1UL << FMC_SDTRx_TMRD_Pos) |
-        (7UL << FMC_SDTRx_TXSR_Pos) |
-        (7UL << FMC_SDTRx_TRAS_Pos) |
+        (6UL << FMC_SDTRx_TXSR_Pos) |
+        (4UL << FMC_SDTRx_TRAS_Pos) |
         (7UL << FMC_SDTRx_TRC_Pos) |
         (1UL << FMC_SDTRx_TWR_Pos) |
         (1UL << FMC_SDTRx_TRP_Pos) |
