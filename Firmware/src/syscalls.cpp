@@ -403,6 +403,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                             break;
 
                         case 4: // MONOTONIC
+                        case 5: // MONOTONIC_RAW
                             {
                                 auto curt = clock_cur_ms();
 
