@@ -436,6 +436,30 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_memalloc:
+            {
+                auto p = reinterpret_cast<__syscall_memalloc_params *>(r2);
+                int ret = syscall_memalloc(p->len, p->retaddr, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_memdealloc:
+            {
+                auto p = reinterpret_cast<__syscall_memdealloc_params *>(r2);
+                int ret = syscall_memdealloc(p->len, p->retaddr, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_setprot:
+            {
+                auto p = reinterpret_cast<__syscall_setprot_params *>(r2);
+                int ret = syscall_setprot(p->addr, p->is_read, p->is_write, p->is_exec, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+        
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);

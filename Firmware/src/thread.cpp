@@ -251,3 +251,15 @@ void ScheduleThread(Thread *t)
 {
     //s.Schedule(t);
 }
+
+
+std::map<uint32_t, Process::mmap_region>::iterator Process::get_mmap_region(uint32_t addr, uint32_t len)
+{
+    // lookup on addr but also has to match length (we can't delete bits of blocks)
+    auto iter = mmap_regions.find(addr);
+    if(iter != mmap_regions.end() && iter->second.mr.length == len)
+    {
+        return iter;
+    }
+    return mmap_regions.end();
+}

@@ -31,6 +31,11 @@ class Process
         /* pthread TLS data */
         pthread_key_t next_key = 0;
         std::map<pthread_key_t, void (*)(void *)> tls_data;
+
+        /* mmap regions */
+        struct mmap_region { MemRegion mr; int fd; int is_read; int is_write; int is_exec; };
+        std::map<uint32_t, mmap_region> mmap_regions;
+        std::map<uint32_t, mmap_region>::iterator get_mmap_region(uint32_t addr, uint32_t len);
 };
 
 
