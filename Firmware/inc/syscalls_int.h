@@ -26,6 +26,8 @@ int syscall_recvfrom(int sockfd, void *buf, size_t len, int flags,
 int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
     const sockaddr *dest_addr, socklen_t addrlen, int *_errno);
 
+int syscall_gettimeofday(struct timeval *tv, struct timezone *tz, int *_errno);
+
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno);
 int syscall_proccreate(const char *fname, const proccreate_t *proc_info, int *_errno);
