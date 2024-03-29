@@ -382,6 +382,8 @@ void *x_thread(void *p)
 /* Init thread - loads services from sdcard */
 void *init_thread(void *p)
 {
+    clock_set_cpu(clock_cpu_speed::cpu_384_192);
+    
     // Init framebuffer
     auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
     __syscall_SetFrameBuffer((void *)fb.address, (void *)(fb.address + 0x200000), ARGB8888);
