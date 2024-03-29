@@ -111,7 +111,7 @@ void init_sdram()
         (2UL << FMC_SDCMR_NRFS_Pos);
 
     // Load mode register
-    uint32_t mode = 0 | (2UL << 4); // Burst Length = 0, CAS=2
+    uint32_t mode = 0 | (2UL << 4) | (1UL << 9); // Burst Length = 1 (RM p900), CAS=2, single location write (RM p901)
     //uint32_t mode = 1UL | (3UL << 4) | (1UL << 9);
     FMC_Bank5_6_R->SDCMR = (4UL << FMC_SDCMR_MODE_Pos) |
         FMC_SDCMR_CTB1 |
