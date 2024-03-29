@@ -3,7 +3,7 @@
 
 #include <string>
 
-int elf_load_memory(const void *elf, const std::string &procname);
+int elf_load_memory(const void *elf, const std::string &procname, uint32_t heap_size = 8192);
 
 /* Copyright (C) 2013 by John Cronin <jncronin@tysos.org>
  *
