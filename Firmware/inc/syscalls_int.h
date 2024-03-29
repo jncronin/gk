@@ -49,6 +49,10 @@ int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno);
 
 int syscall_pthread_join(Thread *thread, void **retval, int *_errno);
 
+int syscall_memalloc(size_t len, void **retaddr, int *_errno);
+int syscall_memdealloc(size_t len, const void *addr, int *_errno);
+int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
