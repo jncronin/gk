@@ -407,8 +407,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                             {
                                 auto curt = clock_cur_ms();
 
-                                p->tp->tv_nsec = (curt % 1000000) * 1000;
-                                p->tp->tv_sec = curt / 1000000;
+                                p->tp->tv_nsec = (curt % 1000) * 1000000;
+                                p->tp->tv_sec = curt / 1000;
                                 *reinterpret_cast<int *>(r1) = 0;
                             }
                             break;
