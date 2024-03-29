@@ -190,6 +190,12 @@ void memblk_deallocate(MemRegion &r)
 MemRegion memblk_allocate(size_t n, MemRegionType rtype)
 {
     BuddyEntry ret;
+    if(!n)
+    {
+        MemRegion mret;
+        mret.valid = false;
+        return mret;
+    }
 
     switch(rtype)
     {
