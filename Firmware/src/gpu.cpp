@@ -100,20 +100,22 @@ bool GPUBusy()
     return !gpu_msg_list.empty();
 }
 
-void GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
+size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
 {
-    if(!msgs) return;
+    size_t nsent = 0;
+    if(!msgs) return nsent;
     auto cpsr = DisableInterrupts();
     for(size_t i = 0; i < nmsg; i++)
     {
         if(!gpu_msg_list.Push(msgs[i]))
         {
             RestoreInterrupts(cpsr);
-            return;
+            return nsent;
         }
+        nsent++;
     }
     RestoreInterrupts(cpsr);
-    return;
+    return nsent;
 }
 
 extern "C" void DMA2D_IRQHandler()

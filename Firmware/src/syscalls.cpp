@@ -459,6 +459,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
+
+        case __syscall_gpuenqueue:
+            {
+                auto p = reinterpret_cast<__syscall_gpuenqueue_params *>(r2);
+                int ret = syscall_gpuenqueue(p->msgs, p->nmsg, p->nsent, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
         
         default:
             __asm__ volatile ("bkpt #0\n");
