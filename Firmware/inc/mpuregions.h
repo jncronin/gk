@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include "ostypes.h"
+#include "gk_conf.h"
 
 constexpr const uint32_t WBWA_S =       0b001111;
 constexpr const uint32_t WBWA_NS =      0b001011;
@@ -127,7 +128,7 @@ constexpr mpu_saved_state mpu_periph = MPUGenerate(0x40000000, 0x20000000, 2, fa
     MemRegionAccess::RW, MemRegionAccess::NoAccess, DEV_S);
 constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 4, false,
     MemRegionAccess::RW, MemRegionAccess::RO, N_NC_S);
-constexpr mpu_saved_state mpu_sdram = MPUGenerate(0xc0000000, 0x04000000, 5, true,
+constexpr mpu_saved_state mpu_sdram = MPUGenerate(GK_SDRAM_BASE, 0x04000000, 5, true,
     MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS);
 
 

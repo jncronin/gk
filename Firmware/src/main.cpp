@@ -81,7 +81,7 @@ int main()
 #if GK_ENABLE_TEST_THREADS
     s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, 5, kernel_proc));
     s.Schedule(Thread::Create("b", b_thread, nullptr, true, 6, kernel_proc, CPUAffinity::Either, InvalidMemregion(),
-        MPUGenerate(0xc0000000, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
+        MPUGenerate(GK_SDRAM_BASE, 0x800000, 6, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
         WT_NS)));
     s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, 5, kernel_proc));
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
@@ -168,10 +168,10 @@ void *idle_thread(void *p)
 void *bluescreen_thread(void *p)
 {
     (void)p;
-    /*__syscall_SetFrameBuffer((void *)0xc0000000, (void *)0xc0200000, ARGB8888);
+    /*__syscall_SetFrameBuffer((void *)GK_SDRAM_BASE, (void *)0xc0200000, ARGB8888);
     for(int i = 0; i < 640*480; i++)
     {
-        ((volatile uint32_t *)0xc0000000)[i] = 0xff0000ff;
+        ((volatile uint32_t *)GK_SDRAM_BASE)[i] = 0xff0000ff;
     }
     __syscall_FlipFrameBuffer();*/
     uint64_t last_update = 0ULL;

@@ -2,6 +2,7 @@
 
 #include "pins.h"
 #include "clocks.h"
+#include "gk_conf.h"
 
 /* SDRAM pins */
 static constexpr pin sdram_pins[] =
@@ -60,6 +61,11 @@ void init_sdram()
     (void)RCC->AHB3ENR;
 
     FMC_Bank1_R->BTCR[0] |= FMC_BCR1_FMCEN;
+    if(GK_SDRAM_BASE == 0x60000000)
+    {
+        FMC_Bank1_R->BTCR[0] &= ~FMC_BCR1_BMAP_Msk;
+        FMC_Bank1_R->BTCR[0] |= 1UL << FMC_BCR1_BMAP_Pos;
+    }
     
     // Set up control register
     FMC_Bank5_6_R->SDCR[0] = (2UL << FMC_SDCRx_NC_Pos) |
@@ -116,6 +122,6 @@ void init_sdram()
 
     for(unsigned int i = 0; i < 256; i += 4)
     {
-        *(volatile unsigned int *)(0xc0000000 + i) = 0xaa55aa55;
+        *(volatile unsigned int *)(GK_SDRAM_BASE + i) = 0xaa55aa55;
     }
 }
