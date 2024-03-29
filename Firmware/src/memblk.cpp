@@ -231,6 +231,7 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
     {
         mr.address = ret.base;
         mr.length = ret.length;
+        SEGGER_RTT_printf(0, "memblk allocate: %x - %x\n", mr.address, mr.address + mr.length);
     }
     else
     {
@@ -238,8 +239,6 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
         mr.length = 0;
     }
     mr.valid = ret.valid;
-
-    SEGGER_RTT_printf(0, "memblk allocate: %x - %x\n", mr.address, mr.address + mr.length);
 
     return mr;
 }

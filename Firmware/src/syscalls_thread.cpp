@@ -146,7 +146,9 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
 
     // load from memory
     std::string cpname(pname);
-    eret = elf_load_memory((const void *)fbuf.address, cpname);
+    auto heap_size = pcinfo->heap_size;
+    if(!heap_size) heap_size = 8192;
+    eret = elf_load_memory((const void *)fbuf.address, cpname, heap_size);
     ext4_fclose(&f);
     memblk_deallocate(fbuf);
     if(eret != 0)

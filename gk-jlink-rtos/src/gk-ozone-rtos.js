@@ -177,9 +177,16 @@ function update()
                     is_executing = true;
                 }
             }
-            if(!is_executing && Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
+            if(!is_executing)
             {
-                t_status = "blocking";
+                if(Debug.evaluate("((Thread *)" + t + ")->for_deletion"))
+                {
+                    t_status = "deleted";
+                }
+                else if(Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
+                {
+                    t_status = "blocking";
+                }
             }
             var stack_start = Debug.evaluate("((Thread *)" + t + ")->stack.address");
             if(stack_start == undefined)

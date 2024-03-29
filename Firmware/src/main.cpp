@@ -393,11 +393,14 @@ void *init_thread(void *p)
 #endif
 
     proccreate_t pt;
+    memset(&pt, 0, sizeof(pt));
 #if GK_ENABLE_NET
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
 
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
+
+    pt.heap_size = 8192*1024;
     deferred_call(syscall_proccreate, "/sinv", &pt);
 
     return nullptr;
@@ -472,8 +475,26 @@ extern "C" void BusFault_Handler()
 
 extern "C" void UsageFault_Handler()
 {
-    HardFault_Handler();
-    while(true);
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    SEGGER_RTT_printf(0, "panic: process %s thread %s caused usage fault\n",
+        p.name.c_str(), t->name.c_str());
+    if(&p != &kernel_proc)
+    {
+        CriticalGuard cg_p(p.sl);
+        for(auto thr : p.threads)
+        {
+            CriticalGuard cg_t(thr->sl);
+            thr->for_deletion = true;
+        }
+        p.for_deletion = true;
+        Yield();
+    }
+    else
+    {
+        HardFault_Handler();
+        while(true);
+    }
 }
 
 extern "C" void SysTick_Handler()

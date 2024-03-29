@@ -12,7 +12,7 @@
 
 extern Scheduler s;
 
-int elf_load_memory(const void *e, const std::string &pname)
+int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
 {
     // pointer
     auto p = reinterpret_cast<const char *>(e);
@@ -261,15 +261,33 @@ int elf_load_memory(const void *e, const std::string &pname)
     proc->name = pname;
     proc->brk = 0;
     proc->code_data = memblk;
-    proc->heap = memblk_allocate(8192, MemRegionType::AXISRAM);
-    if(!proc->heap.valid)
+    uint32_t act_heap_size = heap_size;
+    while(true)
     {
-        proc->heap = memblk_allocate(8192, MemRegionType::SDRAM);
+        proc->heap = memblk_allocate(act_heap_size, MemRegionType::AXISRAM);
+        if(!proc->heap.valid)
+        {
+            proc->heap = memblk_allocate(act_heap_size, MemRegionType::SDRAM);
+        }
+        if(!proc->heap.valid)
+        {
+            act_heap_size /= 2;
+
+            if(act_heap_size < 8192)
+            {
+                __BKPT();
+                while(true);
+            }
+        }
+        else
+        {
+            break;
+        }
     }
-    if(!proc->heap.valid)
+    if(act_heap_size != heap_size)
     {
-        __BKPT();
-        while(true);
+        SEGGER_RTT_printf(0, "elf: couldn't allocate heap size of %u, only %u available\n",
+            heap_size, act_heap_size);
     }
     memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
     proc->open_files[STDIN_FILENO] = new SeggerRTTFile(0, true, false);
