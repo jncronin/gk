@@ -12,7 +12,7 @@
 
 extern Scheduler s;
 
-int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
+int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size, CPUAffinity affinity)
 {
     // pointer
     auto p = reinterpret_cast<const char *>(e);
@@ -171,7 +171,7 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
                             SEGGER_RTT_printf(0, "unaligned reloc at %x\n", base_ptr + rel->r_offset);
                             __asm__ volatile ("bkpt \n" ::: "memory");
                         }
-                        
+
                         void *dest = (void *)(base_ptr + rel->r_offset);
                         uint32_t A = *(uint32_t *)dest;
                         uint32_t P = (uint32_t)dest;
@@ -267,6 +267,7 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
     proc->name = pname;
     proc->brk = 0;
     proc->code_data = memblk;
+    proc->default_affinity = affinity;
     uint32_t act_heap_size = heap_size;
     while(true)
     {
@@ -301,7 +302,7 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size)
     proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
     s.Schedule(Thread::Create(pname + "_0", start, nullptr, true, 8, *proc,
-        CPUAffinity::Either, stack,
+        affinity, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));
 
