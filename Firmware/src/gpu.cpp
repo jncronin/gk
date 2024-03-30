@@ -4,7 +4,7 @@
 #include "screen.h"
 #include "cache.h"
 
-__attribute__((section (".sram4"))) static Condition gpu_ready;
+__attribute__((section (".sram4"))) static BinarySemaphore gpu_ready;
 __attribute__((section (".sram4"))) static FixedQueue<gpu_message, 8> gpu_msg_list;
 
 extern Spinlock s_rtt;
@@ -12,7 +12,7 @@ extern Spinlock s_rtt;
 
 extern Condition scr_vsync;
 
-#define GPU_DEBUG 1
+#define GPU_DEBUG 0
 
 static inline void wait_dma2d()
 {
@@ -98,7 +98,7 @@ void *gpu_thread(void *p)
                 DMA2D->CR = DMA2D_CR_TCIE |
                     DMA2D_CR_TEIE |
                     (3UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
-                gpu_ready.Wait();
+                gpu_ready.Wait(clock_cur_ms() + 20ULL);
                 break;
 
             case gpu_message_type::BlitImage:
@@ -115,7 +115,7 @@ void *gpu_thread(void *p)
                 DMA2D->CR = DMA2D_CR_TCIE | 
                     DMA2D_CR_TEIE |
                     (0UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
-                gpu_ready.Wait();
+                gpu_ready.Wait(clock_cur_ms() + 20ULL);
                 break;
         }
 #if GPU_DEBUG
