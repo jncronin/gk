@@ -5,6 +5,7 @@
 #include <limits>
 #include "thread.h"
 #include "SEGGER_RTT.h"
+#include "ossharedmem.h"
 
 //#define DEBUG_IP4 1
 
@@ -423,7 +424,10 @@ void IP4Socket::HandleWaitingReads()
 
             auto to_read = std::min(pkt_size, buf_size);
 
-            memcpy(buf_addr, pkt_addr, to_read);
+            {
+                SharedMemoryGuard(buf_addr, to_read, false, true);
+                memcpy(buf_addr, pkt_addr, to_read);
+            }
 
             from = rp.from;
             from_port = rp.from_port;
@@ -453,6 +457,7 @@ void IP4Socket::HandleWaitingReads()
 
             if(rwt.srcaddr && rwt.addrlen && *rwt.addrlen >= sizeof(sockaddr_in))
             {
+                SharedMemoryGuard(rwt.srcaddr, sizeof(sockaddr_in), false, true);
                 auto addr = reinterpret_cast<sockaddr_in *>(rwt.srcaddr);
                 memset(addr, 0, sizeof(sockaddr_in));
                 addr->sin_family = AF_INET;

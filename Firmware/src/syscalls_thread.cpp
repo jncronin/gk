@@ -55,7 +55,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     auto &p = curt->p;
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
-        curt->base_priority, p, CPUAffinity::Either, stack, curt->tss.mpuss[5], curt->tss.mpuss[6]);
+        curt->base_priority, p, p.default_affinity, stack, curt->tss.mpuss[5], curt->tss.mpuss[6]);
     if(!t)
     {
         memblk_deallocate(stack);
@@ -148,7 +148,12 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     std::string cpname(pname);
     auto heap_size = pcinfo->heap_size;
     if(!heap_size) heap_size = 8192;
-    eret = elf_load_memory((const void *)fbuf.address, cpname, heap_size);
+
+    auto core_affinity = pcinfo->core_mask & 3;
+    if(core_affinity == 0) core_affinity = Either;
+    core_affinity |= (pcinfo->prefer_core_mask & 0x3) << 2;
+
+    eret = elf_load_memory((const void *)fbuf.address, cpname, heap_size, (CPUAffinity)core_affinity);
     ext4_fclose(&f);
     memblk_deallocate(fbuf);
     if(eret != 0)

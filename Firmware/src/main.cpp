@@ -87,16 +87,16 @@ int main()
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
 #endif
 
-    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
+    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc, CPUAffinity::PreferM4));
 
 #if GK_ENABLE_NET
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
-    s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, 5, kernel_proc));
-    s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
-    s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, 5, kernel_proc, CPUAffinity::PreferM4));
+    s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc, CPUAffinity::PreferM4));
+    s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
-    s.Schedule(Thread::Create("init", init_thread, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("init", init_thread, nullptr, true, 5, kernel_proc, CPUAffinity::PreferM7));
 
     // Nudge M4 to wakeup
 #if GK_DUAL_CORE
@@ -224,8 +224,6 @@ void *b_thread(void *p)
 
     // try and load mbr
     auto mbr = memblk_allocate(512, MemRegionType::AXISRAM);
-    SetMPUForCurrentThread(MPUGenerate(mbr.address, mbr.length, 7, false,
-        RW, NoAccess, WBWA_NS));
     //SCB_CleanInvalidateDCache();
     memset((void*)mbr.address, 0, 512);
     auto sdt = sd_perform_transfer(0, 1, (void*)mbr.address, true);
@@ -391,11 +389,12 @@ void *init_thread(void *p)
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
-    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
+    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
     proccreate_t pt;
     memset(&pt, 0, sizeof(pt));
+    pt.core_mask = M4Only;
 #if GK_ENABLE_NET
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
@@ -403,6 +402,7 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
 
     pt.heap_size = 8192*1024;
+    pt.core_mask = M7Only;
     deferred_call(syscall_proccreate, "/sinv", &pt);
 
     return nullptr;

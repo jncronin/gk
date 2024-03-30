@@ -14,6 +14,7 @@
 #include "ext4_thread.h"
 #include "cache.h"
 #include "gk_conf.h"
+#include "ossharedmem.h"
 
 #include <sys/stat.h>
 
@@ -42,10 +43,6 @@ EXT4_BLOCKDEV_STATIC_INSTANCE(sd, 512, 0, sd_open, sd_bread, sd_bwrite, sd_close
 
 EXT4_DATA static ext4_blockdev sd_part;
 
-/* Handle buffer allocations to return regions in AXISRAM */
-EXT4_DATA static uint32_t buf_min = 0xffffffffUL;
-EXT4_DATA static uint32_t buf_max = 0UL;
-
 /* message queue */
 __attribute__((section(".sram4"))) static FixedQueue<ext4_message, 8> ext4_queue;
 
@@ -54,23 +51,6 @@ extern "C" void *ext4_user_buf_alloc(size_t n)
     auto reg = memblk_allocate(n, AXISRAM);
     if(!reg.valid)
         return nullptr;
-    
-    bool update = false;
-    if(reg.address < buf_min)
-    {
-        buf_min = reg.address;
-        update = true;
-    }
-    if((reg.address + reg.length) > buf_max)
-    {
-        buf_max = reg.address + reg.length;
-        update = true;
-    }
-    if(update)
-    {
-        SetMPUForCurrentThread(MPUGenerate(buf_min, buf_max - buf_min, 7, false,
-            RW, RO, N_NC_S));
-    }
 
     return (void*)reg.address;
 }
@@ -258,12 +238,14 @@ static void handle_open_message(ext4_message &msg)
 static void handle_read_message(ext4_message &msg)
 {
     size_t br;
-    SetMPUForCurrentThread(MPUGenerate((uint32_t)(uintptr_t)msg.params.rw_params.buf,
-        msg.params.rw_params.nbytes, 5, false, MemRegionAccess::RW,
-        MemRegionAccess::NoAccess, N_NC_NS));
-    auto extret = ext4_fread(msg.params.rw_params.e4f,
-        msg.params.rw_params.buf, msg.params.rw_params.nbytes,
-        &br);
+    int extret;
+
+    {
+        SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, true, false);
+        extret = ext4_fread(msg.params.rw_params.e4f,
+            msg.params.rw_params.buf, msg.params.rw_params.nbytes,
+            &br);
+    }
     if(extret == EOK)
     {
         msg.ss_p->ival1 = static_cast<int>(br);
@@ -280,12 +262,15 @@ static void handle_read_message(ext4_message &msg)
 static void handle_write_message(ext4_message &msg)
 {
     size_t bw;
-    SetMPUForCurrentThread(MPUGenerate((uint32_t)(uintptr_t)msg.params.rw_params.buf,
-        msg.params.rw_params.nbytes, 5, false, MemRegionAccess::RO,
-        MemRegionAccess::NoAccess, N_NC_NS));
-    auto extret = ext4_fwrite(msg.params.rw_params.e4f,
-        msg.params.rw_params.buf, msg.params.rw_params.nbytes,
-        &bw);
+    int extret;
+
+    {
+        SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, false, true);
+        extret = ext4_fwrite(msg.params.rw_params.e4f,
+            msg.params.rw_params.buf, msg.params.rw_params.nbytes,
+            &bw);
+    }
+
     if(extret == EOK)
     {
         msg.ss_p->ival1 = static_cast<int>(bw);
@@ -351,10 +336,10 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_blksize = 512;
     buf.st_blocks = (f->fsize + 511) / 512; // round up
 
-    SetMPUForCurrentThread(MPUGenerate((uint32_t)(uintptr_t)msg.params.fstat_params.st,
-        sizeof(struct stat), 5, false, MemRegionAccess::RW,
-        MemRegionAccess::NoAccess, N_NC_NS));
-    *msg.params.fstat_params.st = buf;
+    {
+        SharedMemoryGuard(msg.params.fstat_params.st, sizeof(struct stat), false, true);
+        *msg.params.fstat_params.st = buf;
+    }
     msg.ss_p->ival1 = 0;
     msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     

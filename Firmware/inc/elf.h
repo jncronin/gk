@@ -2,8 +2,10 @@
 #define ELF_H
 
 #include <string>
+#include "ostypes.h"
 
-int elf_load_memory(const void *elf, const std::string &procname, uint32_t heap_size = 8192);
+int elf_load_memory(const void *elf, const std::string &procname, uint32_t heap_size = 8192,
+	CPUAffinity def_affinity = Either);
 
 /* Copyright (C) 2013 by John Cronin <jncronin@tysos.org>
  *

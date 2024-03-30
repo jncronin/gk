@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "clocks.h"
 #include "syscalls_int.h"
+#include "ossharedmem.h"
 
 extern Spinlock s_rtt;
 
@@ -771,7 +772,11 @@ bool TCPSocket::SendToInt(const net_msg &m)
 
         // copy data to packet
         auto data = &pbuf[NET_SIZE_TCP_OFFSET];
-        memcpy(data, &msg.buf[n_sent], n_packet);
+
+        {
+            SharedMemoryGuard(&msg.buf[n_sent], n_packet, true, false);
+            memcpy(data, &msg.buf[n_sent], n_packet);
+        }
 
         auto seq_id = my_seq_start + n_data_sent;
         auto cur_wnd_size = net_pbuf_nfree();
