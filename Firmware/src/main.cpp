@@ -87,16 +87,16 @@ int main()
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, 5, kernel_proc));
 #endif
 
-    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc));
+    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, 9, kernel_proc, CPUAffinity::PreferM4));
 
 #if GK_ENABLE_NET
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
-    s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, 5, kernel_proc));
-    s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc));
-    s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, 5, kernel_proc, CPUAffinity::PreferM4));
+    s.Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, 5, kernel_proc, CPUAffinity::PreferM4));
+    s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, 5, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
-    s.Schedule(Thread::Create("init", init_thread, nullptr, true, 5, kernel_proc));
+    s.Schedule(Thread::Create("init", init_thread, nullptr, true, 5, kernel_proc, CPUAffinity::PreferM7));
 
     // Nudge M4 to wakeup
 #if GK_DUAL_CORE
