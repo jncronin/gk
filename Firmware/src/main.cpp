@@ -224,8 +224,6 @@ void *b_thread(void *p)
 
     // try and load mbr
     auto mbr = memblk_allocate(512, MemRegionType::AXISRAM);
-    SetMPUForCurrentThread(MPUGenerate(mbr.address, mbr.length, 7, false,
-        RW, NoAccess, WBWA_NS));
     //SCB_CleanInvalidateDCache();
     memset((void*)mbr.address, 0, 512);
     auto sdt = sd_perform_transfer(0, 1, (void*)mbr.address, true);

@@ -1,31 +1,17 @@
 #ifndef MPUREGIONS_H
 #define MPUREGIONS_H
 
-/* We have 8 MPU regions available.
-    In case of overlapping, higher IDs take priority.
-
-    0 - MSP - in AXISRAM for CM7 stacks and in SRAM for CM4 stacks.
-        64 kb to allow interrupt stacking.  Privilege RW, unprivilege no access.
-    1 - FLASH - Privilege RX, unprivilege no access.
-    2 - Peripherals - Privilege RW, unprivilege no access.
-    3 - PSP - both rw.  Somewhere in AXISRAM.
-    4 - SRAM4 - 64 kb for control structures (TCB, queues, semaphores etc).  Shared uncacheable.
-        Privilege rw, unprivilege ro.
-    5 - SDRAM - Normal.  RWX for both privileged and non-privileged.
-    6 - Allocatable to user mode program (e.g. peripheral/SRAM access)
-    7 - Allocatable to user mode program (e.g. peripheral/SRAM access)
-*/
-
 /* 
     Revision of MPU allocations:
     We allow privileged code to use the default map, so it already has access to FLASH and peripherals
     General map is to first allow access to most things, then restrict
         0 - SRAM            Normal      0x20000000 - 0x3fffffff     RWX/RWX
-        1 - External RAM    Normal      0x60000000 - 0x9fffffff     RWX/RWX
+        1 - External RAM    Normal      0x60000000 - 0x7fffffff     RWX/RWX
         2 - SRAM4           UC          0x38000000 - 0x3800ffff     RW/RW
-        3 - MSP             Normal      varies                      RW/N
-        4 - Framebuffer 0   WT          0x60000000 - 0x601fffff     RW/RW
-        5 - Framebuffer 1   WT          0x61000000 - 0x611fffff     RW/RW
+        3 - MSP-CM4         Normal      0x30001000 - 0x30001fff     RW/N        // can use a single entry here, but optimise later
+        4 - MSP-CM7         Normal      0x20001000 - 0x20001fff     RW/N
+        5 - Framebuffer 0   WT          0x60000000 - 0x601fffff     RW/RW
+        6 - Framebuffer 1   WT          0x61000000 - 0x611fffff     RW/RW
 */
 
 #include <cstdint>
@@ -130,20 +116,24 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
     return ret;
 }
 
-constexpr mpu_saved_state mpu_msp_cm7 = MPUGenerate(0x20001000, 4096, 0, false,
-    MemRegionAccess::RW, MemRegionAccess::NoAccess, WBWA_NS);
-constexpr mpu_saved_state mpu_msp_cm4 = MPUGenerate(0x30001000, 4096, 0, false,
-    MemRegionAccess::RW, MemRegionAccess::NoAccess, WBWA_NS);
-constexpr mpu_saved_state mpu_flash = MPUGenerate(0x08000000, 0x200000, 1, true,
-    MemRegionAccess::RO, MemRegionAccess::NoAccess, WT_NS);
-constexpr mpu_saved_state mpu_periph = MPUGenerate(0x40000000, 0x20000000, 2, false,
-    MemRegionAccess::RW, MemRegionAccess::NoAccess, DEV_S);
-constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 4, false,
-    MemRegionAccess::RW, MemRegionAccess::RO, N_NC_S);
-constexpr mpu_saved_state mpu_sdram = MPUGenerate(GK_SDRAM_BASE, 0x04000000, 5, true,
-    MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS);
+constexpr mpu_saved_state mpu_sram = MPUGenerate(0x20000000, 0x20000000, 0, true, RW, RW, WBWA_NS);
+constexpr mpu_saved_state mpu_extram = MPUGenerate(GK_SDRAM_BASE, 0x20000000, 1, true, RW, RW, WBWA_NS);
+constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 2, false, RW, RO, N_NC_S);
+constexpr mpu_saved_state mpu_msp_cm4 = MPUGenerate(0x30001000, 4096, 3, false, RW, NoAccess, WBWA_NS);
+constexpr mpu_saved_state mpu_msp_cm7 = MPUGenerate(0x20001000, 4096, 4, false, RW, NoAccess, WBWA_NS);
+constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x20000, 5, false, RW, RW, WT_NS);
+constexpr mpu_saved_state mpu_fb1 = MPUGenerate(0x61000000, 0x20000, 6, false, RW, RW, WT_NS);
 
-
-bool SetMPUForCurrentThread(const mpu_saved_state &mpu_entry);
+constexpr mpu_saved_state mpu_default[8] =
+{
+    mpu_sram,
+    mpu_extram,
+    mpu_sram4,
+    mpu_msp_cm4,
+    mpu_msp_cm7,
+    mpu_fb0,
+    mpu_fb1,
+    MPUGenerateNonValid(7)
+};
 
 #endif

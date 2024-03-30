@@ -84,18 +84,6 @@ void *usb_task(void *pvParams)
 {
     (void)pvParams;
 
-    uint32_t data_start = (uint32_t)&_stusb_data;
-    uint32_t data_end = (uint32_t)&_etusb_data;
-    SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false,
-        RW, NoAccess, WBWA_NS));
-
-    data_start = (uint32_t)&_slwip_data;
-    data_end = (uint32_t)&_elwip_data;
-    SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 7, false,
-        RW, NoAccess, WBWA_NS));
-
-
-
     init_usb();
     tusb_init();
 
