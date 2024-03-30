@@ -14,6 +14,7 @@
 #include "ext4_thread.h"
 #include "cache.h"
 #include "gk_conf.h"
+#include "ossharedmem.h"
 
 #include <sys/stat.h>
 
@@ -237,9 +238,14 @@ static void handle_open_message(ext4_message &msg)
 static void handle_read_message(ext4_message &msg)
 {
     size_t br;
-    auto extret = ext4_fread(msg.params.rw_params.e4f,
-        msg.params.rw_params.buf, msg.params.rw_params.nbytes,
-        &br);
+    int extret;
+
+    {
+        SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, true, false);
+        extret = ext4_fread(msg.params.rw_params.e4f,
+            msg.params.rw_params.buf, msg.params.rw_params.nbytes,
+            &br);
+    }
     if(extret == EOK)
     {
         msg.ss_p->ival1 = static_cast<int>(br);
@@ -256,9 +262,15 @@ static void handle_read_message(ext4_message &msg)
 static void handle_write_message(ext4_message &msg)
 {
     size_t bw;
-    auto extret = ext4_fwrite(msg.params.rw_params.e4f,
-        msg.params.rw_params.buf, msg.params.rw_params.nbytes,
-        &bw);
+    int extret;
+
+    {
+        SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, false, true);
+        extret = ext4_fwrite(msg.params.rw_params.e4f,
+            msg.params.rw_params.buf, msg.params.rw_params.nbytes,
+            &bw);
+    }
+
     if(extret == EOK)
     {
         msg.ss_p->ival1 = static_cast<int>(bw);
@@ -324,7 +336,10 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_blksize = 512;
     buf.st_blocks = (f->fsize + 511) / 512; // round up
 
-    *msg.params.fstat_params.st = buf;
+    {
+        SharedMemoryGuard(msg.params.fstat_params.st, sizeof(struct stat), false, true);
+        *msg.params.fstat_params.st = buf;
+    }
     msg.ss_p->ival1 = 0;
     msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     
