@@ -75,7 +75,7 @@ extern "C" void PendSV_Handler()
         "cbnz r2, .L3%=                 \n"     // skip if not core 0
 
         "push {r0-r3}                   \n"
-        "ldr r0, [r0, #" xstr(GK_TSS_AFFINITY_OFFSET) "180]             \n"     // cur_t->affinity
+        "ldr r0, [r0, #" xstr(GK_TSS_AFFINITY_OFFSET) "]             \n"     // cur_t->affinity
         "and r0, r0, #3                 \n"     // mask
         "cmp r0, #3                     \n"
 //        "bne .L1%=                      \n"
