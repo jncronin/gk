@@ -389,11 +389,12 @@ void *init_thread(void *p)
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
-    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc));
+    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
     proccreate_t pt;
     memset(&pt, 0, sizeof(pt));
+    pt.core_mask = M4Only;
 #if GK_ENABLE_NET
     syscall_proccreate("/bin/tftpd", &pt, &errno);
 #endif
@@ -401,6 +402,7 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
 
     pt.heap_size = 8192*1024;
+    pt.core_mask = M7Only;
     deferred_call(syscall_proccreate, "/sinv", &pt);
 
     return nullptr;
