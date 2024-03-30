@@ -16,6 +16,18 @@
     7 - Allocatable to user mode program (e.g. peripheral/SRAM access)
 */
 
+/* 
+    Revision of MPU allocations:
+    We allow privileged code to use the default map, so it already has access to FLASH and peripherals
+    General map is to first allow access to most things, then restrict
+        0 - SRAM            Normal      0x20000000 - 0x3fffffff     RWX/RWX
+        1 - External RAM    Normal      0x60000000 - 0x9fffffff     RWX/RWX
+        2 - SRAM4           UC          0x38000000 - 0x3800ffff     RW/RW
+        3 - MSP             Normal      varies                      RW/N
+        4 - Framebuffer 0   WT          0x60000000 - 0x601fffff     RW/RW
+        5 - Framebuffer 1   WT          0x61000000 - 0x611fffff     RW/RW
+*/
+
 #include <cstdint>
 #include "ostypes.h"
 #include "gk_conf.h"
