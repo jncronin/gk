@@ -34,10 +34,10 @@ void *gpu_thread(void *p)
         if(!gpu_msg_list.Pop(&g))
             continue;
 
-        auto ltdc_curfb = LTDC_Layer1->CFBAR;
-        auto scr_curfb = (uint32_t)(uintptr_t)screen_get_frame_buffer();
 
 #if GPU_DEBUG
+        auto ltdc_curfb = LTDC_Layer1->CFBAR;
+        auto scr_curfb = (uint32_t)(uintptr_t)screen_get_frame_buffer();
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
