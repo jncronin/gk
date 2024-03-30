@@ -49,11 +49,29 @@ struct thread_saved_state
     uint32_t lr;
 
     uint32_t fpuregs[16];
-    mpu_saved_state cm7_mpu0, cm4_mpu0; /* MSP - varies depending on which core is running */
-    mpu_saved_state mpuss[7];
+    mpu_saved_state mpuss[8];
+
+    CPUAffinity affinity;           
+    int running_on_core = 0;
+    int chosen_for_core = 0;
+    int deschedule_from_core = 0;
+    int pinned_on_core = 0;
 };
 
-static_assert(sizeof(thread_saved_state) == 45 * 4);
-static_assert(offsetof(thread_saved_state, cm7_mpu0) == 108);
+#define GK_TSS_SIZE                 192
+#define GK_TSS_MPUSS_OFFSET         108
+#define GK_TSS_AFFINITY_OFFSET      172
+#define GK_TSS_ROC_OFFSET           176
+#define GK_TSS_CFC_OFFSET           180
+#define GK_TSS_DFC_OFFSET           184
+#define GK_TSS_POC_OFFSET           188
+
+static_assert(sizeof(thread_saved_state) == GK_TSS_SIZE);
+static_assert(offsetof(thread_saved_state, mpuss) == GK_TSS_MPUSS_OFFSET);
+static_assert(offsetof(thread_saved_state, affinity) == GK_TSS_AFFINITY_OFFSET);
+static_assert(offsetof(thread_saved_state, running_on_core) == GK_TSS_ROC_OFFSET);
+static_assert(offsetof(thread_saved_state, chosen_for_core) == GK_TSS_CFC_OFFSET);
+static_assert(offsetof(thread_saved_state, deschedule_from_core) == GK_TSS_DFC_OFFSET);
+static_assert(offsetof(thread_saved_state, pinned_on_core) == GK_TSS_POC_OFFSET);
 
 #endif

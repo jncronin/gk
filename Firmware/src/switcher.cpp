@@ -6,6 +6,9 @@
 #include "scheduler.h"
 extern Scheduler s;
 
+#define xstr(s) str(s)
+#define str(s) #s
+
 /* These are inlined by default, so include them in a method to ensure they link */
 extern "C" void cclean()
 {
@@ -72,7 +75,7 @@ extern "C" void PendSV_Handler()
         "cbnz r2, .L3%=                 \n"     // skip if not core 0
 
         "push {r0-r3}                   \n"
-        "ldr r0, [r0, #180]             \n"     // cur_t->affinity
+        "ldr r0, [r0, #" xstr(GK_TSS_AFFINITY_OFFSET) "]             \n"     // cur_t->affinity
         "and r0, r0, #3                 \n"     // mask
         "cmp r0, #3                     \n"
 //        "bne .L1%=                      \n"
@@ -82,7 +85,7 @@ extern "C" void PendSV_Handler()
         "pop {r0-r3}                    \n"
 
         "push {r0-r3}                   \n"
-        "ldr r0, [r1, #180]             \n"     // next_t->affinity
+        "ldr r0, [r1, #" xstr(GK_TSS_AFFINITY_OFFSET) "]             \n"     // next_t->affinity
         "and r0, r0, #3                 \n"     // mask
         "cmp r0, #3                     \n"
 //        "bne .L2%=                      \n"
@@ -127,14 +130,12 @@ extern "C" void PendSV_Handler()
         "pop { r0 }                 \n"
         "push { r1 }                \n"
         "eor r1, r1                 \n"
-        "str r1, [r0, #192]         \n"
+        "str r1, [r0, #" xstr(GK_TSS_DFC_OFFSET) "]         \n"
         "pop { r1 }                 \n"
 
         /* Set up new task MPU, can discard R0 now */
 #if GK_USE_MPU
-        "add r0, r1, #108           \n"     // R0 = &cm7_mpu0
-        "add r2, r0, r2, lsl #2     \n"     // R2 = &cm7_mpu0 or &cm4_mpu0
-        "add r0, r0, #16            \n"     // R0 = &mpuss[0]
+        "add r0, r1, #" xstr(GK_TSS_MPUSS_OFFSET) "           \n"     // R0 = &mpuss[0]
 
         "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
         "ldr r5, [r4]               \n"
@@ -142,8 +143,7 @@ extern "C" void PendSV_Handler()
         "str r5, [r4]               \n"
 
         "ldr r4, =0xe000ed9c        \n"     // R4 = RBAR
-        "ldmia r2, {r5-r6}          \n"
-        "ldmia r0!, {r7-r12}        \n"
+        "ldmia r0!, {r5-r12}        \n"
         "stmia r4, {r5-r12}         \n"     // first 4 mpu regions
         "ldmia r0!, {r5-r12}        \n"
         "stmia r4, {r5-r12}         \n"     // second 4 mpu regions

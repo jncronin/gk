@@ -82,8 +82,17 @@ void system_init_cm7()
     // perform clock init
     init_clocks();
 
-    // Enable caches
+
 #if GK_USE_CACHE
+#if GK_USE_MPU
+    // Enable SRAM4 as noncacheable for setup
+    auto mpu_val = mpu_sram4;
+    MPU->RBAR = mpu_val.rbar;
+    MPU->RASR = mpu_val.rasr;
+    MPU->CTRL = MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk;
+#endif
+
+    // Enable caches
     SCB_InvalidateDCache();
     SCB_InvalidateICache();
     SCB_EnableICache();
