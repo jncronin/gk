@@ -87,7 +87,7 @@ Thread *Thread::Create(std::string name,
     auto t = new(tloc) Thread(owning_process);
     memset(&t->tss, 0, sizeof(thread_saved_state));
 
-    t->affinity = affinity;
+    t->tss.affinity = affinity;
     t->base_priority = priority;
     t->is_privileged = is_priv;
     t->name = name;
@@ -134,21 +134,12 @@ Thread *Thread::Create(std::string name,
     t->tss.psp = reinterpret_cast<uint32_t>(&stack[top_stack]);
     
     /* Create mpu regions */
-    t->tss.cm7_mpu0 = mpu_msp_cm7;
-    t->tss.cm4_mpu0 = mpu_msp_cm4;
-    t->tss.mpuss[0] = mpu_flash;
-    t->tss.mpuss[1] = mpu_periph;
-    t->tss.mpuss[2] = MPUGenerate(t->stack.address,
-        t->stack.length, 3, false,
-        MemRegionAccess::RW, MemRegionAccess::RW,
-        WBWA_NS);
-    t->tss.mpuss[3] = mpu_sram4;
-    t->tss.mpuss[4] = mpu_sdram;
-    t->tss.mpuss[5] = extra_permissions;
-    t->tss.mpuss[6] = extra_permissions2;
+    memcpy(t->tss.mpuss, mpu_default, sizeof(mpu_default));
 
-    CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
-    CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);
+    // TODO: shared memory guards around stack
+
+    //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
+    //CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);
     {
         CriticalGuard cg(owning_process.sl);
         owning_process.threads.push_back(t);
@@ -216,8 +207,8 @@ void SetNextThreadForCore(Thread *t, int coreid)
         if(s.current_thread[coreid].v)
         {
             CriticalGuard cg2(s.current_thread[coreid].v->sl);
-            s.current_thread[coreid].v->chosen_for_core = 0;
-            s.current_thread[coreid].v->running_on_core = 0;
+            s.current_thread[coreid].v->tss.chosen_for_core = 0;
+            s.current_thread[coreid].v->tss.running_on_core = 0;
             if(s.current_thread[coreid].v == &dt)
             {
                 flush_cache = true;
@@ -226,8 +217,8 @@ void SetNextThreadForCore(Thread *t, int coreid)
 
         {
             CriticalGuard cg2(t->sl);
-            t->chosen_for_core = 0;
-            t->running_on_core = coreid + 1;
+            t->tss.chosen_for_core = 0;
+            t->tss.running_on_core = coreid + 1;
 
             if(t->is_blocking)
             {
