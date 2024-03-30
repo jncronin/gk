@@ -10,6 +10,7 @@
 #include "pins.h"
 #include "clocks.h"
 #include "conf_winc.h"
+#include "ossharedmem.h"
 
 #include "SEGGER_RTT.h"
 
@@ -377,16 +378,23 @@ sint8 nm_spi_rw(uint8* p_txBuf, uint8* p_rxBuf, uint16 txrxLen)
         SPI1->CR1 = SPI_CR1_SPE;
         SPI1->CR1 = SPI_CR1_SPE | SPI_CR1_CSTART;
 
-        for(uint16_t i = 0; i < txrxLen; i++)
         {
-            uint8_t tb, rb;
-            tb = (p_txBuf) ? p_txBuf[i] : 0;
-            while(!(SPI1->SR & SPI_SR_TXP));
-            *reinterpret_cast<volatile uint8_t *>(&SPI1->TXDR) = tb;
-            while(!(SPI1->SR & SPI_SR_RXP));
-            rb = *reinterpret_cast<volatile uint8_t *>(&SPI1->RXDR);
-            if(p_rxBuf)
-                p_rxBuf[i] = rb;
+            SharedMemoryGuard(p_txBuf, txrxLen, true, false);
+            {
+                SharedMemoryGuard(p_rxBuf, txrxLen, false, true);
+
+                for(uint16_t i = 0; i < txrxLen; i++)
+                {
+                    uint8_t tb, rb;
+                    tb = (p_txBuf) ? p_txBuf[i] : 0;
+                    while(!(SPI1->SR & SPI_SR_TXP));
+                    *reinterpret_cast<volatile uint8_t *>(&SPI1->TXDR) = tb;
+                    while(!(SPI1->SR & SPI_SR_RXP));
+                    rb = *reinterpret_cast<volatile uint8_t *>(&SPI1->RXDR);
+                    if(p_rxBuf)
+                        p_rxBuf[i] = rb;
+                }
+            }
         }
 
         while(!(SPI1->SR & SPI_SR_EOT));

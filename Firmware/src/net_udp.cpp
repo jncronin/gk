@@ -3,6 +3,7 @@
 #include "thread.h"
 #include "osqueue.h"
 #include "SEGGER_RTT.h"
+#include "ossharedmem.h"
 
 extern Spinlock s_rtt;
 
@@ -215,11 +216,18 @@ bool UDPSocket::SendToInt(const net_msg &m)
     }
 
     auto data = &pbuf[NET_SIZE_UDP_OFFSET];
-    memcpy(data, msg.buf, msg.n);
+    {
+        SharedMemoryGuard(msg.buf, msg.n, true, false);
+        memcpy(data, msg.buf, msg.n);
+    }
 
-    auto sret = net_udp_decorate_packet(data, msg.n,
-        msg.dest_addr->sin_addr.s_addr, msg.dest_addr->sin_port,
-        bound_addr, port, true);
+    bool sret;
+    {
+        SharedMemoryGuard(msg.dest_addr, sizeof(sockaddr_in), true, false);
+        sret = net_udp_decorate_packet(data, msg.n,
+            msg.dest_addr->sin_addr.s_addr, msg.dest_addr->sin_port,
+            bound_addr, port, true);
+    }
     if(sret)
     {
         msg.t->ss_p.uval1 = msg.n;
