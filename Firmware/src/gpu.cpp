@@ -22,6 +22,45 @@ static inline void wait_dma2d()
     }
 }
 
+static inline size_t get_bpp(int pf)
+{
+    switch(pf)
+    {
+        case GK_PIXELFORMAT_ARGB8888:
+            return 4;
+        case GK_PIXELFORMAT_RGB888:
+            return 3;
+        case GK_PIXELFORMAT_RGB565:
+            return 2;
+        case GK_PIXELFORMAT_L8:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+static inline uint32_t color_encode(uint32_t col, uint32_t pf)
+{
+    switch(pf)
+    {
+        case GK_PIXELFORMAT_ARGB8888:
+            return col;
+        case GK_PIXELFORMAT_RGB888:
+            return col & 0xffffffU;
+        case GK_PIXELFORMAT_RGB565:
+            {
+                uint32_t r = (col >> 3) & 0x1f;
+                uint32_t g = (col >> 10) & 0x3f;
+                uint32_t b = (col >> 14) & 0x1f;
+                return r | (g << 5) | (b << 11);
+            }
+        case GK_PIXELFORMAT_L8:
+            return col & 0xffU;
+        default:
+            return 0;
+    }
+}
+
 void *gpu_thread(void *p)
 {
     (void)p;
@@ -44,7 +83,7 @@ void *gpu_thread(void *p)
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
-                (unsigned int)clock_cur_ms(), g.type, g.dest_addr, g.src_addr_color, g.nlines, g.row_width);
+                (unsigned int)clock_cur_ms(), g.type, g.dest_addr, g.src_addr_color, g.h, g.w);
             SEGGER_RTT_printf(0, "gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
         }
 #endif
@@ -54,6 +93,15 @@ void *gpu_thread(void *p)
             while(LTDC_Layer1->CFBAR == (uint32_t)(uintptr_t)screen_get_frame_buffer())
                 Yield();
         }
+
+        /* get details on pixel formats, strides etc */
+        uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_mode;
+        int bpp = get_bpp(dest_pf);
+        //uint32_t scr_fbuf = (uint32_t)(uintptr_t)screen_get_frame_buffer();
+        uint32_t dest_addr = g.dest_addr ? g.dest_addr : (uint32_t)(uintptr_t)screen_get_frame_buffer();
+        uint32_t dest_pitch = g.dest_addr ? g.dp : 640 * bpp;
+
+
         
         switch(g.type)
         {
@@ -69,8 +117,8 @@ void *gpu_thread(void *p)
 
             case gpu_message_type::CleanCache:
                 {
-                    auto start_addr = g.dest_addr + (g.dest_fbuf_relative ? (uint32_t)(uintptr_t)screen_get_frame_buffer() : 0UL);
-                    auto len = g.row_width * 4 + g.nlines * 640 * 4;
+                    auto start_addr = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                    auto len = g.h * dest_pitch + g.w * bpp;
                     CleanM7Cache(start_addr, len, CacheType_t::Data);
                 }
                 break;
@@ -88,33 +136,42 @@ void *gpu_thread(void *p)
                 break;
 
             case gpu_message_type::BlitColor:
-                if(!g.row_width || !g.nlines)
+                if(!g.w || !g.h)
                     break;
                 wait_dma2d();
-                DMA2D->OPFCCR = g.dest_pf;
-                DMA2D->OCOLR = g.src_addr_color;
-                DMA2D->OMAR = g.dest_addr + (g.dest_fbuf_relative ? (uint32_t)(uintptr_t)screen_get_frame_buffer() : 0UL);
-                DMA2D->OOR = 640 - g.row_width;
-                DMA2D->NLR = (g.row_width << DMA2D_NLR_PL_Pos) | (g.nlines << DMA2D_NLR_NL_Pos);
+                DMA2D->OPFCCR = dest_pf;
+                DMA2D->OCOLR = color_encode(g.src_addr_color, dest_pf);
+                DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                DMA2D->OOR = (dest_pitch / bpp) - g.w;
+                DMA2D->NLR = (g.w << DMA2D_NLR_PL_Pos) | (g.h << DMA2D_NLR_NL_Pos);
                 DMA2D->CR = DMA2D_CR_TCIE |
                     DMA2D_CR_TEIE |
                     (3UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
                 break;
 
             case gpu_message_type::BlitImage:
-                if(!g.row_width || !g.nlines)
+                if(!g.w || !g.h)
                     break;
                 wait_dma2d();
-                DMA2D->OPFCCR = g.dest_pf;
-                DMA2D->OMAR = g.dest_addr + (g.dest_fbuf_relative ? (uint32_t)(uintptr_t)screen_get_frame_buffer() : 0UL);
-                DMA2D->OOR = 640 - g.row_width;
-                DMA2D->NLR = (g.row_width << DMA2D_NLR_PL_Pos) | (g.nlines << DMA2D_NLR_NL_Pos);
-                DMA2D->FGMAR = g.src_addr_color;
-                DMA2D->FGPFCCR = 0;
-                DMA2D->FGOR = 640 - g.row_width;
-                DMA2D->CR = DMA2D_CR_TCIE | 
-                    DMA2D_CR_TEIE |
-                    (0UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
+                DMA2D->OPFCCR = dest_pf;
+                DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                DMA2D->OOR = (dest_pitch / bpp) - g.w;
+                DMA2D->NLR = (g.w << DMA2D_NLR_PL_Pos) | (g.h << DMA2D_NLR_NL_Pos);
+
+                {
+                    // configure source, +/- pixel format correction
+                    auto src_bpp = get_bpp(g.src_pf);
+                    DMA2D->FGMAR = g.src_addr_color + g.sx * src_bpp + g.sy * g.sp;
+                    DMA2D->FGPFCCR = g.src_pf;
+                    DMA2D->FGOR = (g.sp / src_bpp) - g.w;
+
+                    uint32_t mode = 0;
+                    if(g.src_pf != dest_pf)
+                        mode = 1U;
+                    DMA2D->CR = DMA2D_CR_TCIE | 
+                        DMA2D_CR_TEIE |
+                        (mode << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
+                }
                 break;
         }
 #if GPU_DEBUG
@@ -165,6 +222,7 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
         {
             msg.dest_addr = (uint32_t)(uintptr_t)GetCurrentThreadForCore();
         }
+        // TODO check sending thread has focus
         if(!gpu_msg_list.Push(msg))
         {
             RestoreInterrupts(cpsr);

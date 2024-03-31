@@ -25,10 +25,11 @@ constexpr gpu_message GPUMessageFBColor(uint32_t c)
     gpu_message g = {};
     g.type = gpu_message_type::BlitColor;
     g.dest_addr = 0;
-    g.dest_fbuf_relative = true;
     g.dest_pf = 0;
-    g.nlines = 480;
-    g.row_width = 640;
+    g.dx = 0;
+    g.dy = 0;
+    g.w = 640;
+    g.h = 480;
     g.src_addr_color = c;
     return g;
 }
@@ -37,13 +38,17 @@ constexpr gpu_message GPUMessageBlitRectangle(void *src, int x, int y, int width
 {
     gpu_message g = {};
     g.type = gpu_message_type::BlitImage;
-    g.dest_addr = 4 * (dest_x + dest_y * 640);
-    g.dest_fbuf_relative = true;
+    g.dest_addr = 0;
     g.dest_pf = 0;
-    g.src_addr_color = (uint32_t)(uintptr_t)src + 4 * (x + y * 640);
+    g.dx = dest_x;
+    g.dy = dest_y;
+    g.w = width;
+    g.h = height;
+    g.src_addr_color = (uint32_t)(uintptr_t)src;
     g.src_pf = 0;
-    g.nlines = height;
-    g.row_width = width;
+    g.sp = 640 * 4;
+    g.sx = x;
+    g.sy = y;
     return g;
 }
 

@@ -12,7 +12,8 @@
 
 extern Scheduler s;
 
-int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size, CPUAffinity affinity)
+int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size, CPUAffinity affinity,
+    Thread **startup_thread_ret, Process **proc_ret)
 {
     // pointer
     auto p = reinterpret_cast<const char *>(e);
@@ -301,10 +302,17 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
     proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
     proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
-    s.Schedule(Thread::Create(pname + "_0", start, nullptr, true, 8, *proc,
+    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, true, 8, *proc,
         affinity, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
-        MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS)));
+        MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS));
+
+    if(startup_thread_ret)
+        *startup_thread_ret = startup_thread;
+    else
+        s.Schedule(startup_thread);
+    if(proc_ret)
+        *proc_ret = proc;
 
     SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
     SEGGER_RTT_printf(0, "%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
