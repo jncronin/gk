@@ -42,6 +42,9 @@ class Process
 
         /* display modes */
         uint32_t screen_mode = 0;
+
+        /* current working directory */
+        std::string cwd = "/";
 };
 
 extern Process *focus_process;

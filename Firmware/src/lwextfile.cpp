@@ -4,9 +4,19 @@
 #include <sys/stat.h>
 #include "ext4_thread.h"
 #include "thread.h"
+#include "process.h"
 
-LwextFile::LwextFile(ext4_file fildes, std::string _fname) : f(fildes), fname(_fname)
+LwextFile::LwextFile(ext4_file fildes, std::string _fname) : f(fildes)
 { 
+    if(_fname.length() > 0 && _fname[0] != '/')
+    {
+        // append current directory
+        fname = GetCurrentThreadForCore()->p.cwd + _fname;
+    }
+    else
+    {
+        fname = _fname;
+    }
     type = FileType::FT_Lwext;
 }
 
