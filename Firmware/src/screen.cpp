@@ -3,12 +3,13 @@
 #include "screen.h"
 #include "pins.h"
 #include "clocks.h"
+#include "process.h"
+#include "scheduler.h"
 
 #include "osmutex.h"
 __attribute__((section(".sram4"))) static Spinlock s_scrbuf;
 __attribute__((section(".sram4"))) static void *scr_bufs[2] = { 0, 0 };
 __attribute__((section(".sram4"))) static int scr_cbuf = 0;
-__attribute__((section(".sram4"))) static uint32_t scr_pf = 0;
 
 __attribute__((section(".sram4"))) Condition scr_vsync;
 
@@ -24,6 +25,7 @@ void *screen_flip()
     scr_cbuf++;
     int wbuf = scr_cbuf & 0x1;
     int rbuf = wbuf ? 0 : 1;
+    auto scr_pf = focus_process->screen_mode;
     LTDC_Layer1->CFBAR = (uint32_t)(uintptr_t)scr_bufs[rbuf];
     LTDC_Layer1->PFCR = scr_pf;
     switch(scr_pf)
@@ -64,9 +66,17 @@ void *screen_flip()
 void screen_set_frame_buffer(void *b0, void *b1, uint32_t pf)
 {
     CriticalGuard cg(s_scrbuf);
-    scr_bufs[0] = b0;
-    scr_bufs[1] = b1;
-    scr_pf = pf;
+    if(b0)
+        scr_bufs[0] = b0;
+    if(b1)
+        scr_bufs[1] = b1;
+
+    {
+        auto t = GetCurrentThreadForCore();
+        auto &proc = t->p;
+        CriticalGuard cg_p(proc.sl);
+        proc.screen_mode = pf;
+    }
 }
 
 static constexpr pin lcd_pins[] = {
@@ -369,7 +379,9 @@ void init_screen()
         H back porch = 48, V back porch = 13
         Display = 640x480
         H front porch = 16, V front porch = 5
-        Total = 720*500
+        Total = 720*500 => gives 66.67 Hz refresh
+
+        We make slightly bigger h front porch, so 800*500 gives 60 Hz refresh
         
         Values accumulate in the register settings (and always -1 at end) */
     LTDC->SSCR = (1UL << LTDC_SSCR_VSH_Pos) |

@@ -9,6 +9,7 @@
 extern Spinlock s_rtt;
 
 extern Process kernel_proc;
+Process *focus_process = &kernel_proc;     // which process has access to screen and inputs
 __attribute__((section(".sram4"))) Thread dt(kernel_proc);
 
 Scheduler::Scheduler()

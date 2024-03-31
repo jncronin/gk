@@ -16,7 +16,10 @@ extern Condition scr_vsync;
 
 static inline void wait_dma2d()
 {
-    while(DMA2D->CR & DMA2D_CR_START);
+    while(DMA2D->CR & DMA2D_CR_START)
+    {
+        gpu_ready.Wait(clock_cur_ms() + 20ULL);
+    }
 }
 
 void *gpu_thread(void *p)
@@ -61,12 +64,10 @@ void *gpu_thread(void *p)
                 break;
 
             case gpu_message_type::SetBuffers:
-                wait_dma2d();
                 screen_set_frame_buffer((void *)g.dest_addr, (void*)g.src_addr_color, g.dest_pf);
                 break;
 
             case gpu_message_type::CleanCache:
-                wait_dma2d();
                 {
                     auto start_addr = g.dest_addr + (g.dest_fbuf_relative ? (uint32_t)(uintptr_t)screen_get_frame_buffer() : 0UL);
                     auto len = g.row_width * 4 + g.nlines * 640 * 4;
@@ -98,7 +99,6 @@ void *gpu_thread(void *p)
                 DMA2D->CR = DMA2D_CR_TCIE |
                     DMA2D_CR_TEIE |
                     (3UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
-                gpu_ready.Wait(clock_cur_ms() + 20ULL);
                 break;
 
             case gpu_message_type::BlitImage:
@@ -115,7 +115,6 @@ void *gpu_thread(void *p)
                 DMA2D->CR = DMA2D_CR_TCIE | 
                     DMA2D_CR_TEIE |
                     (0UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
-                gpu_ready.Wait(clock_cur_ms() + 20ULL);
                 break;
         }
 #if GPU_DEBUG
