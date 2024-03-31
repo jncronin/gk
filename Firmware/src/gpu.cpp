@@ -153,6 +153,7 @@ void *gpu_thread(void *p)
                     break;
                 
                 // does it blend?
+                #if 0
                 if(g.src_pf == GK_PIXELFORMAT_ARGB8888)
                 {
                     wait_dma2d();
@@ -169,6 +170,7 @@ void *gpu_thread(void *p)
                         DMA2D_CR_TEIE |
                         (0UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
                 }
+                #endif
 
                 wait_dma2d();
                 DMA2D->OPFCCR = dest_pf;
@@ -190,8 +192,8 @@ void *gpu_thread(void *p)
                         mode = 2U;
                         
                         // set background as scratch to allow blend
-                        DMA2D->BGMAR = (uint32_t)(uintptr_t)gpu_scratch_buffer;
-                        DMA2D->BGOR = 0;
+                        DMA2D->BGMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                        DMA2D->BGOR = (dest_pitch / bpp) - g.w;
                         DMA2D->BGPFCCR = dest_pf;
                     }
                     else if(g.src_pf != dest_pf)
