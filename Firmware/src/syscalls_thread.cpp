@@ -173,8 +173,14 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
         case GK_PIXELFORMAT_ARGB8888:
         case GK_PIXELFORMAT_RGB888:
         case GK_PIXELFORMAT_RGB565:
-        case GK_PIXELFORMAT_L8:
             proc->screen_mode = pcinfo->pixel_format;
+            break;
+        case GK_PIXELFORMAT_L8:
+            // DMA2D cannot write to L8 buffers (but can read from them)
+            proc->screen_mode = GK_PIXELFORMAT_RGB565;
+            break;
+        default:
+            proc->screen_mode = GK_PIXELFORMAT_RGB565;  // something sensible
             break;
     }
 

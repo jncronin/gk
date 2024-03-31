@@ -5,7 +5,7 @@
 #include "cache.h"
 
 __attribute__((section (".sram4"))) static BinarySemaphore gpu_ready;
-__attribute__((section (".sram4"))) static FixedQueue<gpu_message, 8> gpu_msg_list;
+__attribute__((section (".sram4"))) static FixedQueue<gpu_message, 64> gpu_msg_list;
 
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
@@ -54,8 +54,6 @@ static inline uint32_t color_encode(uint32_t col, uint32_t pf)
                 uint32_t b = (col >> 14) & 0x1f;
                 return r | (g << 5) | (b << 11);
             }
-        case GK_PIXELFORMAT_L8:
-            return col & 0xffU;
         default:
             return 0;
     }
