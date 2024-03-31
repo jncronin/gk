@@ -13,8 +13,6 @@ __attribute__((section(".sram4"))) static int scr_cbuf = 0;
 
 __attribute__((section(".sram4"))) Condition scr_vsync;
 
-extern void *gpu_scratch_buffer;
-
 void *screen_get_frame_buffer()
 {
     CriticalGuard cg(s_scrbuf);
@@ -65,15 +63,13 @@ void *screen_flip()
     return scr_bufs[wbuf];
 }
 
-void screen_set_frame_buffer(void *b0, void *b1, void *gpu_scratch)
+void screen_set_frame_buffer(void *b0, void *b1)
 {
     CriticalGuard cg(s_scrbuf);
     if(b0)
         scr_bufs[0] = b0;
     if(b1)
         scr_bufs[1] = b1;
-    if(gpu_scratch)
-        gpu_scratch_buffer = gpu_scratch;
 }
 
 static constexpr pin lcd_pins[] = {
