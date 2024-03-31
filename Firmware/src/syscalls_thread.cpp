@@ -153,7 +153,10 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     if(core_affinity == 0) core_affinity = Either;
     core_affinity |= (pcinfo->prefer_core_mask & 0x3) << 2;
 
-    eret = elf_load_memory((const void *)fbuf.address, cpname, heap_size, (CPUAffinity)core_affinity);
+    Thread *startup_thread;
+    Process *proc;
+    eret = elf_load_memory((const void *)fbuf.address, cpname, heap_size, (CPUAffinity)core_affinity,
+        &startup_thread, &proc);
     ext4_fclose(&f);
     memblk_deallocate(fbuf);
     if(eret != 0)
@@ -161,6 +164,28 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
         *_errno = EFAULT;
         return -1;
     }
+
+    // TODO: inherit fds
+
+    // Set default pixel mode
+    switch(pcinfo->pixel_format)
+    {
+        case GK_PIXELFORMAT_ARGB8888:
+        case GK_PIXELFORMAT_RGB888:
+        case GK_PIXELFORMAT_RGB565:
+        case GK_PIXELFORMAT_L8:
+            proc->screen_mode = pcinfo->pixel_format;
+            break;
+    }
+
+    // Set as focus if possible
+    if(pcinfo->with_focus)
+    {
+        focus_process = proc;
+    }
+
+    // schedule startup thread
+    s.Schedule(startup_thread);
 
     return 0;
 }
