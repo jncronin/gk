@@ -53,6 +53,8 @@ SDT_DATA static uint32_t cmd6_buf[512/32];
 
 extern char _ssdt_data, _esdt_data;
 
+SRAM4_DATA MemRegion mr_unaligned_buf;
+
 static constexpr pin sd_pins[] =
 {
     { GPIOC, 8, 12 },
@@ -77,6 +79,32 @@ enum StatusFlags { CCRCFAIL = 1, DCRCFAIL = 2, CTIMEOUT = 4, DTIMEOUT = 8,
     TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000 };
 
 static void *sd_thread(void *param);
+
+static inline bool is_valid_dma(void *mem_address, uint32_t block_count)
+{
+    /* SDMMC1 can only access FlashA, FlashB, AXISRAM, QUADSPI and FMC */
+    uint32_t mem_start = (uint32_t)(uintptr_t)mem_address;
+    uint32_t mem_len = block_count * 512U;
+    uint32_t mem_end = mem_start + mem_len;
+    bool is_valid = false;
+    if((mem_start >= 0x08000000U) && (mem_end < 0x08200000U))
+    {
+        is_valid = true;
+    }
+    else if((mem_start >= 0x24000000U) && (mem_end < 0x24080000U))
+    {
+        is_valid = true;
+    }
+    else if((mem_start >= 0x60000000U) && (mem_end < 0xd4000000U))
+    {
+        is_valid = true;
+    }
+    if(mem_start & 0x3U)
+    {
+        is_valid = false;
+    }
+    return is_valid;
+}
 
 static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, uint32_t *resp = nullptr, 
     bool with_data = false,
@@ -724,10 +752,58 @@ void sd_reset()
     sd_ready = true;
 }
 
+static inline uint32_t do_mdma_transfer(uint32_t src, uint32_t dest)
+{
+    // get least alignment of src/dest
+    uint32_t align_val = (src & 0x7f) | (dest & 0x7f);
+    uint32_t size_val = 3U;
+    if(align_val & 0x1U)
+    {
+        // byte alignment
+        size_val = 0U;
+    }
+    else if(align_val & 0x2U)
+    {
+        // hword alignement
+        size_val = 1U;
+    }
+    else if(align_val & 0x4U)
+    {
+        // word alignemnt
+        size_val = 2U;
+    }
+    
+
+    MDMA_Channel0->CTCR = MDMA_CTCR_SWRM |  // software trigger
+        (1UL << MDMA_CTCR_TRGM_Pos) |       // block transfers
+        (127UL << MDMA_CTCR_TLEN_Pos) |     // 128 bytes/buffer (max)
+        (size_val << MDMA_CTCR_DINCOS_Pos) |      // dest increment 4 bytes
+        (size_val << MDMA_CTCR_SINCOS_Pos) |      // src increment 4 bytes
+        (size_val << MDMA_CTCR_DSIZE_Pos) |       // dest 4 byte transfers
+        (size_val << MDMA_CTCR_SSIZE_Pos) |       // src 4 byte transfers
+        (2U << MDMA_CTCR_DINC_Pos) |        // dest increments
+        (2U << MDMA_CTCR_SINC_Pos);         // src increments
+    MDMA_Channel0->CBNDTR = 512UL;          // 512 byte blocks, no repeat
+    MDMA_Channel0->CSAR = src;
+    MDMA_Channel0->CDAR = dest;
+    MDMA_Channel0->CMAR = 0;
+    MDMA_Channel0->CIFCR = 0x1f; // clear all interrupts
+    uint32_t cr_val = MDMA_CCR_SWRQ | (3UL << MDMA_CCR_PL_Pos);
+    MDMA_Channel0->CCR = cr_val;
+    MDMA_Channel0->CCR = cr_val | MDMA_CCR_EN;
+    while(!(MDMA_Channel0->CISR & MDMA_CISR_CTCIF));
+    return 0;
+}
+
 // sd thread function
 void *sd_thread(void *param)
 {
     (void)param;
+
+    mr_unaligned_buf = memblk_allocate(512U, MemRegionType::AXISRAM);
+
+    RCC->AHB3ENR |= RCC_AHB3ENR_MDMAEN;
+    (void)RCC->AHB3ENR;
 
     while(true)
     {
@@ -755,40 +831,14 @@ void *sd_thread(void *param)
                 continue;
             }
 
-            /* SDMMC1 can only access FlashA, FlashB, AXISRAM, QUADSPI and FMC */
-            uint32_t mem_start = (uint32_t)(uintptr_t)sdr.mem_address;
+            bool is_valid = is_valid_dma(sdr.mem_address, sdr.block_count);
             uint32_t mem_len = sdr.block_count * 512U;
-            uint32_t mem_end = mem_start + mem_len;
-            bool is_valid = false;
-            if((mem_start >= 0x08000000U) && (mem_end < 0x08200000U))
-            {
-                is_valid = true;
-            }
-            else if((mem_start >= 0x24000000U) && (mem_end < 0x24080000U))
-            {
-                is_valid = true;
-            }
-            else if((mem_start >= 0x60000000U) && (mem_end < 0xd4000000U))
-            {
-                is_valid = true;
-            }
-            if(mem_start & 0x3U)
-            {
-                is_valid = false;
-            }
+            uint32_t mem_start = is_valid ? (uint32_t)(uintptr_t)sdr.mem_address : mr_unaligned_buf.address;
 
-            if(!is_valid)
+            if(!is_valid && !sdr.is_read)
             {
-                __asm__ volatile ("bkpt \n" ::: "memory");
-                if(sdr.res_out)
-                {
-                    *sdr.res_out = -3;
-                }
-                if(sdr.completion_event)
-                {
-                    sdr.completion_event->Signal();
-                }
-                continue;
+                // need to copy memory to the sram buffer
+                do_mdma_transfer((uint32_t)(uintptr_t)sdr.mem_address, mr_unaligned_buf.address);
             }
 
             SDMMC1->DCTRL = 0;
@@ -884,6 +934,13 @@ void *sd_thread(void *param)
 #endif
                 sd_multi = false;
             }
+
+            if(!is_valid && sdr.is_read)
+            {
+                // need to copy memory from the sram buffer
+                do_mdma_transfer(mr_unaligned_buf.address, (uint32_t)(uintptr_t)sdr.mem_address);
+            }
+
             if(sdr.completion_event)
             {
                 sdr.completion_event->Signal();
@@ -964,9 +1021,119 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     return cret;
 }
 
+static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t block_count,
+    void *mem_address, bool is_read)
+{
+    SRAM4RegionAllocator<SimpleSignal> ralloc;
+    auto cond = ralloc.allocate(1);
+    if(!cond)
+        return -3;
+    new(cond) SimpleSignal();
+
+    SRAM4RegionAllocator<int> ialloc;
+    auto ret = ialloc.allocate(1);
+    if(!ret)
+        return -5;
+    *ret = -4;
+
+    sd_request req;
+    req.block_start = block_start;
+    req.block_count = block_count;
+    req.mem_address = mem_address;
+    req.is_read = is_read;
+    req.completion_event = cond;
+    req.res_out = ret;
+
+    /* need cache lines are 32 bytes, so on an unaligned read the subsequent invalidate will
+        delete valid data in the cache - often this is part of the lwext4 structs, so
+        is vaguely important.
+
+        To avoid this, if we are unaligned then also clean the cache here so that the memory
+        has the correct data once we invalidate it again later (after a read). */
+    if(!is_read || (uint32_t)mem_address & 0x1f)    
+    {
+        CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
+    }
+
+    auto send_ret = sd_perform_transfer_async(req);
+    if(send_ret)
+    {
+        cond->~SimpleSignal();
+        ralloc.deallocate(cond, 1);
+        ialloc.deallocate(ret, 1);
+        return send_ret;
+    }
+    
+    cond->Wait();
+
+    if(is_read)
+    {
+        InvalidateM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
+    }
+
+    int cret = *ret;
+
+    cond->~SimpleSignal();
+    ralloc.deallocate(cond, 1);
+    ialloc.deallocate(ret, 1);
+
+    if(cret != 0)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "sd_perform_transfer %s of %d blocks at %x failed: %x, DCOUNT: %x, DCTRL: %x, IDMACTRL: %x, IDMABASE: %x, IDMASIZE: %x, retrying\n",
+            is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret,
+            sd_dcount, sd_dctrl, sd_idmactrl, sd_idmabase, sd_idmasize);
+    }
+
+    return cret;
+}
+
+
+static int sd_perform_unaligned_transfer(uint32_t block_start, uint32_t block_count,
+    void *mem_address, bool is_read, int nretries)
+{
+    int ret = 0;
+    uint32_t nblocks_sent = 0;
+    while(nblocks_sent < block_count)
+    {
+        bool failed = true;
+        // only ever one block at a time for unaligned transfers
+        for(int i = 0; i < nretries; i++)
+        {
+            ret = sd_perform_unaligned_transfer_int(block_start + nblocks_sent, 1,
+                (void *)(((char *)mem_address) + (512U * nblocks_sent)), is_read);
+            
+            if(ret == 0)
+            {
+                failed = false;
+                break;
+            }
+        }
+
+        if(failed)
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "sd_perform_unaligned_transfer %s of %d blocks at %x failed: %x\n",
+                is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, ret);
+            return ret;
+        }
+
+        nblocks_sent++;
+    }
+
+    return ret;    
+}
+
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries)
 {
+    /* Check mem_address is valid for direct SD DMA */
+    if(!is_valid_dma(mem_address, block_count))
+    {
+        return sd_perform_unaligned_transfer(block_start, block_count,
+            mem_address, is_read, nretries);
+    }
+
     int ret = 0;
     for(int i = 0; i < nretries; i++)
     {
