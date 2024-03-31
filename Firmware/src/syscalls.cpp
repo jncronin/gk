@@ -45,15 +45,10 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             break;
 
         case FlipFrameBuffer:
-            *reinterpret_cast<void **>(r1) = screen_flip();
-            break;
-
         case GetFrameBuffer:
-            *reinterpret_cast<void **>(r1) = screen_get_frame_buffer();
-            break;
-
         case SetFrameBuffer:
-            screen_set_frame_buffer(r1, r2, (uint32_t)r3);
+            // don't support these anymore - use gpu interface
+            *reinterpret_cast<int *>(r1) = -1;
             break;
 
         case __syscall_sbrk:

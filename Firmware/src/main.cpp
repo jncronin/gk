@@ -384,7 +384,8 @@ void *init_thread(void *p)
 
     // Init framebuffer
     auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
-    __syscall_SetFrameBuffer((void *)fb.address, (void *)(fb.address + 0x200000), ARGB8888);
+    screen_set_frame_buffer((void *)fb.address, (void *)(fb.address + 1228800U),
+        (void *)(fb.address + 1228800U*2));
 
     // Provision root file system, then allow USB write access to MSC
     fs_provision();

@@ -11,8 +11,9 @@ extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
 
 extern Condition scr_vsync;
+SRAM4_DATA void *gpu_scratch_buffer;    // used for blending
 
-#define GPU_DEBUG 0
+#define GPU_DEBUG 1
 
 static inline void wait_dma2d()
 {
@@ -110,7 +111,7 @@ void *gpu_thread(void *p)
                 break;
 
             case gpu_message_type::SetBuffers:
-                screen_set_frame_buffer((void *)g.dest_addr, (void*)g.src_addr_color, g.dest_pf);
+                screen_set_frame_buffer((void *)g.dest_addr, (void*)g.src_addr_color, nullptr);
                 break;
 
             case gpu_message_type::CleanCache:
@@ -150,6 +151,25 @@ void *gpu_thread(void *p)
             case gpu_message_type::BlitImage:
                 if(!g.w || !g.h)
                     break;
+                
+                // does it blend?
+                if(g.src_pf == GK_PIXELFORMAT_ARGB8888)
+                {
+                    wait_dma2d();
+                    // need to copy dest to background, and then blend from there
+                    DMA2D->OPFCCR = dest_pf;
+                    DMA2D->OMAR = (uint32_t)(uintptr_t)gpu_scratch_buffer;
+                    DMA2D->OOR = 0;
+                    DMA2D->NLR = (g.w << DMA2D_NLR_PL_Pos) | (g.h << DMA2D_NLR_NL_Pos);
+                    DMA2D->FGMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                    DMA2D->FGOR = (dest_pitch / bpp) - g.w;
+                    DMA2D->FGPFCCR = dest_pf;
+
+                    DMA2D->CR = DMA2D_CR_TCIE | 
+                        DMA2D_CR_TEIE |
+                        (0UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
+                }
+                
                 wait_dma2d();
                 DMA2D->OPFCCR = dest_pf;
                 DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
@@ -163,9 +183,22 @@ void *gpu_thread(void *p)
                     DMA2D->FGPFCCR = g.src_pf;
                     DMA2D->FGOR = (g.sp / src_bpp) - g.w;
 
+                    // does it blend?
                     uint32_t mode = 0;
-                    if(g.src_pf != dest_pf)
+                    if(g.src_pf == GK_PIXELFORMAT_ARGB8888)
+                    {
                         mode = 1U;
+                        
+                        // set output as background to allow blend - no, doesn't work
+                        DMA2D->BGMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                        DMA2D->BGOR = (dest_pitch / bpp) - g.w;
+                        DMA2D->OPFCCR = dest_pf;
+                    }
+                    else if(g.src_pf != dest_pf)
+                    {
+                        // need pixel format conversion, but no blending
+                        mode = 1U;
+                    }
                     DMA2D->CR = DMA2D_CR_TCIE | 
                         DMA2D_CR_TEIE |
                         (mode << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
