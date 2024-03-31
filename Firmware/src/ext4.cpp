@@ -17,6 +17,17 @@
 #include "ossharedmem.h"
 
 #include <sys/stat.h>
+#include <_sys_dirent.h>
+
+// checks lwext remains in sync with our exported dir types
+static_assert(EXT4_DE_UNKNOWN == DT_UNKNOWN);
+static_assert(EXT4_DE_REG_FILE == DT_REG);
+static_assert(EXT4_DE_DIR == DT_DIR);
+static_assert(EXT4_DE_CHRDEV == DT_CHR);
+static_assert(EXT4_DE_BLKDEV == DT_BLK);
+static_assert(EXT4_DE_FIFO == DT_FIFO);
+static_assert(EXT4_DE_SOCK == DT_SOCK);
+static_assert(EXT4_DE_SYMLINK == DT_LNK);
 
 extern Spinlock s_rtt;
 
