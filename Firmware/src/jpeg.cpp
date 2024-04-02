@@ -5,13 +5,129 @@
 #include "memblk.h"
 #include "gpu.h"
 #include "cache.h"
+#include <cstring>
 
 extern Spinlock s_rtt;
 
-void jpeg_test()
+SRAM4_DATA static BinarySemaphore sem_jpeg_done, sem_jpeg_hdr_done;
+SRAM4_DATA static uint32_t __confr[8];
+
+static uint32_t bndtr_prog(uint32_t size)
 {
+    size = (size + 0x7fffU) & ~0x7fffU;
+    auto nblocks = size / 0x8000U;
+    return (nblocks << 20) | 0x8000U;
+}
+
+int jpeg_decode(const void *src, size_t src_size,
+    void *dest, size_t dest_size,
+    uint32_t *confr)
+{
+    RCC->AHB3ENR |= RCC_AHB3ENR_MDMAEN;
+    (void)RCC->AHB3ENR;
+
+    // Set up MDMA channel 1 as memory read/JPEG input and 2 as memory write/JPEG output
+    MDMA_Channel1->CTCR = (0UL << MDMA_CTCR_TRGM_Pos) |     // 1 buffer per trigger
+        (3UL << MDMA_CTCR_TLEN_Pos) |                      // 16 bytes/buffer
+        (2UL << MDMA_CTCR_SINCOS_Pos) |                     // 4 byte src increment
+        (2UL << MDMA_CTCR_DSIZE_Pos) |
+        (2UL << MDMA_CTCR_SSIZE_Pos) |
+        (2U << MDMA_CTCR_SINC_Pos);                         // increment src
+    MDMA_Channel1->CBNDTR = bndtr_prog(src_size);
+    MDMA_Channel1->CSAR = (uint32_t)(uintptr_t)src;
+    MDMA_Channel1->CDAR = (uint32_t)(uintptr_t)&JPEG->DIR;
+    MDMA_Channel1->CMAR = 0;
+    MDMA_Channel1->CIFCR = 0x1f;
+    MDMA_Channel1->CTBR = 18U;                              // trigger
+    MDMA_Channel1->CBRUR = 0;
+
+    MDMA_Channel2->CTCR = (0UL << MDMA_CTCR_TRGM_Pos) |     // 1 buffer per trigger
+        (3UL << MDMA_CTCR_TLEN_Pos) |                      // 16 bytes/buffer
+        (2UL << MDMA_CTCR_DINCOS_Pos) |                     // 4 byte dest increment
+        (2UL << MDMA_CTCR_DSIZE_Pos) |
+        (2UL << MDMA_CTCR_SSIZE_Pos) |
+        (2U << MDMA_CTCR_DINC_Pos);                         // increment dest
+    MDMA_Channel2->CBNDTR = bndtr_prog(dest_size);
+    MDMA_Channel2->CSAR = (uint32_t)(uintptr_t)&JPEG->DOR;
+    MDMA_Channel2->CDAR = (uint32_t)(uintptr_t)dest;
+    MDMA_Channel2->CMAR = 0;
+    MDMA_Channel2->CIFCR = 0x1f;
+    MDMA_Channel2->CTBR = 20U;                              // trigger
+    MDMA_Channel2->CBRUR = 0;
+
+    MDMA_Channel2->CCR = MDMA_CCR_EN;
+    MDMA_Channel1->CCR = MDMA_CCR_EN;
+
+    // Prepare JPEG
     RCC->AHB3ENR |= RCC_AHB3ENR_JPGDECEN;
     (void)RCC->AHB3ENR;
+
+    JPEG->CR = JPEG_CR_JCEN;
+    JPEG->CONFR1 = JPEG_CONFR1_DE |
+        JPEG_CONFR1_HDR;
+
+    JPEG->CR |= JPEG_CR_OFF;
+    JPEG->CR |= JPEG_CR_IFF;
+
+    JPEG->CR |= JPEG_CR_HPDIE | JPEG_CR_EOCIE;
+    NVIC_EnableIRQ(JPEG_IRQn);
+
+    JPEG->CONFR0 = JPEG_CONFR0_START;
+
+    // Start MDMA channels
+    MDMA_Channel1->CISR = MDMA_CISR_TEIF;
+    MDMA_Channel2->CISR = MDMA_CISR_TEIF;
+    MDMA->GISR0 |= (1U << 1) | (1U << 2);
+    NVIC_EnableIRQ(MDMA_IRQn);
+
+    MDMA_Channel2->CCR = MDMA_CCR_EN;
+    MDMA_Channel1->CCR = MDMA_CCR_EN;
+
+    // Await headers
+    sem_jpeg_hdr_done.Wait();
+    if(confr)
+    {
+        memcpy(confr, __confr, sizeof(__confr));
+    }
+
+    // Await completion
+    sem_jpeg_done.Wait();
+
+    return 0;
+}
+
+extern "C" void MDMA_IRQHandler()
+{
+    __asm__ volatile("bkpt \n" ::: "memory");
+    while(true);
+}
+
+extern "C" void JPEG_IRQHandler()
+{
+    if(JPEG->SR & JPEG_SR_HPDF)
+    {
+        memcpy(__confr, (const void *)&JPEG->CONFR0, 8*sizeof(uint32_t));
+        JPEG->CFR = JPEG_SR_HPDF;   // cmsis CFR flag is incorrect
+
+        sem_jpeg_hdr_done.Signal();
+    }
+    if(JPEG->SR & JPEG_SR_EOCF)
+    {
+        // stop mdma channels and flush fifos
+        MDMA_Channel1->CCR = 0;
+        MDMA_Channel2->CCR = 0;
+        JPEG->CR |= JPEG_CR_OFF;
+        JPEG->CR |= JPEG_CR_IFF;
+
+        JPEG->CFR = JPEG_SR_EOCF;
+        
+        // signal completion
+        sem_jpeg_done.Signal();
+    }
+}
+
+void jpeg_test()
+{
 
     // load file
     auto f = deferred_call(syscall_open, "/testimg.jpg", O_RDONLY, 0);
@@ -45,68 +161,10 @@ void jpeg_test()
     if(br < 0)
         return;
     
-    JPEG->CR = JPEG_CR_JCEN;
-    JPEG->CONFR1 = JPEG_CONFR1_DE |
-        JPEG_CONFR1_HDR;
-
-    JPEG->CR |= JPEG_CR_OFF;
-    JPEG->CR |= JPEG_CR_IFF;
-
-    JPEG->CONFR0 = JPEG_CONFR0_START;
-    int nr = 0;
-    int nw = 0;
     uint32_t confr[8];
-    while(true)
-    {
-        if(JPEG->SR & JPEG_SR_HPDF)
-        {
-            CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "header parsing done after %d bytes\n", nr);
-            for(int i = 0; i < 8; i++)
-            {
-                confr[i] = (&JPEG->CONFR0)[i];
-                SEGGER_RTT_printf(0, "CONFR%d = %x\n", i, confr[i]);
-            }
-            JPEG->CFR = (1UL << 6);
-        }
-        if(JPEG->SR & JPEG_SR_IFTF && nr < (br - 3))
-        {
-            for(int i = 0; i < 4; i++)
-            {
-                JPEG->DIR = *(uint32_t *)(mr_jpeg.address + nr);
-                nr += 4;
-            }
-        }
-        else if(JPEG->SR & JPEG_SR_IFNFF && nr < br)
-        {
-            JPEG->DIR = *(uint32_t *)(mr_jpeg.address + nr);
-            nr += 4;
-        }
-
-        if(JPEG->SR & JPEG_SR_OFTF && nw < ((int)mr_jpegout.length - 3))
-        {
-            for(int i = 0; i < 4; i++)
-            {
-                *(uint32_t *)(mr_jpegout.address + nw) = JPEG->DOR;
-                nw += 4;
-            }
-        }
-        else if(JPEG->SR & JPEG_SR_OFNEF && nw < (int)mr_jpegout.length)
-        {
-            *(uint32_t *)(mr_jpegout.address + nw) = JPEG->DOR;
-            nw += 4;
-        }
-
-        if(JPEG->SR & JPEG_SR_EOCF)
-        {
-            while(JPEG->SR & JPEG_SR_OFNEF && nw < (int)mr_jpegout.length)
-            {
-                *(uint32_t *)(mr_jpegout.address + nw) = JPEG->DOR;
-                nw += 4;
-            }
-            break;
-        }
-    }
+    jpeg_decode((void *)mr_jpeg.address, br,
+        (void *)mr_jpegout.address, mr_jpegout.length,
+        confr);
 
     {
         CriticalGuard cg(s_rtt);
@@ -135,11 +193,11 @@ void jpeg_test()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "%d x %d, %d bytes\n", w, h, nw);
+        SEGGER_RTT_printf(0, "%d x %d\n", w, h);
     }
 
     GetCurrentThreadForCore()->p.screen_mode = GK_PIXELFORMAT_RGB565;
-    CleanM7Cache(mr_jpegout.address, nw, CacheType_t::Data);
+    CleanM7Cache(mr_jpegout.address, mr_jpegout.length, CacheType_t::Data);
 
     /* gpu_message gmsgs[3];
     gmsgs[0].type = CleanCache;
