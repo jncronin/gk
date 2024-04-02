@@ -38,6 +38,8 @@ void *net_telnet_thread(void *p);
 
 static void *init_thread(void *p);
 
+extern void jpeg_test();
+
 __attribute__((section(".sram4")))Scheduler s;
 __attribute__((section(".sram4")))Process kernel_proc;
 
@@ -405,7 +407,9 @@ void *init_thread(void *p)
     pt.core_mask = M7Only;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     pt.with_focus = 1;
-    deferred_call(syscall_proccreate, "/sinv", &pt);
+    //deferred_call(syscall_proccreate, "/sinv", &pt);
+
+    jpeg_test();
 
     return nullptr;
 }
