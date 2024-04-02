@@ -35,6 +35,19 @@ static inline size_t get_bpp(int pf)
         case GK_PIXELFORMAT_L8:
             return 1;
         default:
+            if((pf & 0xf) == 11)
+            {
+                // YCbCr - interpret CSS
+                switch((pf & DMA2D_FGPFCCR_CSS_Msk) >> DMA2D_FGPFCCR_CSS_Pos)
+                {
+                    case 0:
+                        return 3;
+                    case 1:
+                        return 2;
+                    case 2:
+                        return 2;   // 1.5 really...
+                }
+            }
             return 0;
     }
 }
