@@ -4,6 +4,7 @@
 #include "osmutex.h"
 #include "memblk.h"
 #include "gpu.h"
+#include "cache.h"
 
 extern Spinlock s_rtt;
 
@@ -138,31 +139,37 @@ void jpeg_test()
     }
 
     GetCurrentThreadForCore()->p.screen_mode = GK_PIXELFORMAT_RGB565;
+    CleanM7Cache(mr_jpegout.address, nw, CacheType_t::Data);
 
-    gpu_message gmsgs[3];
+    /* gpu_message gmsgs[3];
     gmsgs[0].type = CleanCache;
     gmsgs[0].dest_addr = mr_jpegout.address;
     gmsgs[0].dest_pf = 11;
     gmsgs[0].w = w;
     gmsgs[0].h = h;
     gmsgs[0].dx = 0;
-    gmsgs[0].dy = 0;
+    gmsgs[0].dy = 0;*/
+#if 1
+    gpu_message background_msg;
 
-    gmsgs[1].type = BlitImage;
-    gmsgs[1].dest_addr = 0;
-    gmsgs[1].dx = 0;
-    gmsgs[1].dy = 0;
-    gmsgs[1].src_addr_color = mr_jpegout.address;
-    gmsgs[1].sx = 0;
-    gmsgs[1].sy = 0;
-    gmsgs[1].src_pf = 11;
-    gmsgs[1].sp = 640*3;
-    gmsgs[1].w = w;
-    gmsgs[1].h = h;
+    background_msg.type = BlitImage;
+    background_msg.dest_addr = 0;
+    background_msg.dx = 0;
+    background_msg.dy = 0;
+    background_msg.src_addr_color = mr_jpegout.address;
+    background_msg.sx = 0;
+    background_msg.sy = 0;
+    background_msg.src_pf = 11;
+    background_msg.sp = 640*3;
+    background_msg.w = w;
+    background_msg.h = h;
 
-    gmsgs[2].type = FlipBuffers;
+    extern gpu_message gpu_clear_screen_msg;
+    gpu_clear_screen_msg = background_msg;
+#endif
+    //gmsgs[2].type = FlipBuffers;
 
-    GPUEnqueueMessages(gmsgs, 3);
+    //GPUEnqueueMessages(gmsgs, 3);
 
     
 }
