@@ -109,7 +109,7 @@ static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, 
 
 static void handle_scale_blit_cpu(const gpu_message &g)
 {
-    // slow implementation on CPU
+    // slow implementation on CPU - manages ~20fps for 160x120 -> 640x480
     auto bpp = get_bpp(g.src_pf);
     CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * bpp,
         g.h * g.sp, CacheType_t::Data);
@@ -147,8 +147,102 @@ static void handle_scale_blit_cpu(const gpu_message &g)
     CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * bpp, g.dh * g.dp, CacheType_t::Data);
 }
 
+uint32_t mdma_ll[16*16] __attribute__((aligned(32)));
+
+static bool handle_scale_blit_dma(const gpu_message &g)
+{
+    // TODO: semaphore for MDMA
+    auto mdma = MDMA_Channel3;
+
+    auto bpp = get_bpp(g.src_pf);
+
+    auto sx = (uint32_t)g.dw / g.w;
+    auto sy = (uint32_t)g.dh / g.h;
+
+    if(bpp != 2 && bpp != 4)
+        return false;
+
+    if(bpp == 4 && (sx > 2 || sy > 2))
+        return false;
+
+    if(sx * sy > 16)
+        return false;
+
+    unsigned int size = 0;
+    switch(bpp)
+    {
+        case 2:
+            size = 1U;
+            break;
+        case 4:
+            size = 2U;
+            break;
+    }
+    unsigned int sincos = size;
+    unsigned int dincos = 0;
+    switch(bpp * sx)
+    {
+        case 2:
+            dincos = 1;
+            break;
+        case 4:
+            dincos = 2;
+            break;
+        case 8:
+            dincos = 3;
+            break;
+    }
+
+    // build linked lists for MDMA
+    //int mdma_ll_idx = 0;
+    
+
+    for(unsigned int csy = 0; csy < sy; csy++)
+    {
+        for(unsigned int csx = 0; csx < sx; csx++)
+        {
+
+            auto xaddr = g.dx + csx;
+            auto yaddr = g.dy + csy;
+
+
+
+            mdma->CTCR = MDMA_CTCR_SWRM |
+                (2U << MDMA_CTCR_TRGM_Pos) |            // repeated block transfer for now
+                (79U << MDMA_CTCR_TLEN_Pos) |
+                (dincos << MDMA_CTCR_DINCOS_Pos) |
+                (sincos << MDMA_CTCR_SINCOS_Pos) |
+                (size << MDMA_CTCR_DSIZE_Pos) |
+                (size << MDMA_CTCR_SSIZE_Pos) |
+                (2U << MDMA_CTCR_DINC_Pos) |
+                (2U << MDMA_CTCR_SINC_Pos);
+            mdma->CBNDTR = ((uint32_t)g.h << MDMA_CBNDTR_BRC_Pos) |
+                ((bpp * (uint32_t)g.w) << MDMA_CBNDTR_BNDT_Pos);
+            mdma->CSAR = g.src_addr_color + (uint32_t)g.sy * g.sp + (uint32_t)g.sx * bpp;
+            mdma->CDAR = g.dest_addr + yaddr * g.dp + xaddr * bpp;
+            mdma->CBRUR = ((sy - 1) * (uint32_t)g.dp) << MDMA_CBRUR_DUV_Pos;
+            mdma->CMAR = 0U;
+            mdma->CCR = MDMA_CCR_EN;
+            mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
+        }
+    }
+
+    while(mdma->CCR & MDMA_CCR_EN); // for now, poll until ready
+
+
+    return true;
+}
+
 static void handle_scale_blit(const gpu_message &g)
 {
+    if(g.dw > g.w && g.dh > g.h)
+    {
+        if((g.dw % g.w == 0) && (g.dh % g.h == 0))
+        {
+            if(handle_scale_blit_dma(g))
+                return;
+        }
+    }
     handle_scale_blit_cpu(g);
 }
 
@@ -185,7 +279,7 @@ void *gpu_thread(void *p)
     scaling_bb[1] = (void *)(fb.address + 0x32c000);
     scaling_bb_idx = 0;
 
-    RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
+    RCC->AHB3ENR |= (RCC_AHB3ENR_DMA2DEN | RCC_AHB3ENR_MDMAEN);
     (void)RCC->AHB3ENR;
 
     NVIC_EnableIRQ(DMA2D_IRQn);
@@ -318,25 +412,25 @@ void *gpu_thread(void *p)
                         }
                         if(g.w == 0 || g.h == 0)
                         {
-                            focus_process->screen_pf = g.dest_pf;
+                            //focus_process->screen_pf = g.dest_pf;
                         }
                         else if(g.w <= 160 && g.h <= 120)
                         {
                             focus_process->screen_w = 160;
                             focus_process->screen_h = 120;
-                            focus_process->screen_pf = g.dest_pf;                            
+                            //focus_process->screen_pf = g.dest_pf;                            
                         }
                         else if(g.w <= 320 && g.h <= 240)
                         {
                             focus_process->screen_w = 320;
                             focus_process->screen_h = 240;
-                            focus_process->screen_pf = g.dest_pf;
+                            //focus_process->screen_pf = g.dest_pf;
                         }
                         else if(g.w <= 640 && g.h <= 480)
                         {
                             focus_process->screen_w = 640;
                             focus_process->screen_h = 480;
-                            focus_process->screen_pf = g.dest_pf;
+                            //focus_process->screen_pf = g.dest_pf;
                         }
                     }
                     break;
@@ -417,6 +511,11 @@ void *gpu_thread(void *p)
                     }
                     else
                     {
+                        g.dest_addr = dest_addr;
+                        g.dest_pf = dest_pf;
+                        g.dp = dest_pitch;
+                        g.dw = dest_w;
+                        g.dh = dest_h;
                         handle_scale_blit(g);
                     }
                     break;
