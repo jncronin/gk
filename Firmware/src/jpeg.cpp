@@ -196,7 +196,7 @@ void jpeg_test()
         SEGGER_RTT_printf(0, "%d x %d\n", w, h);
     }
 
-    GetCurrentThreadForCore()->p.screen_mode = GK_PIXELFORMAT_RGB565;
+    GetCurrentThreadForCore()->p.screen_pf = GK_PIXELFORMAT_RGB565;
     CleanM7Cache(mr_jpegout.address, mr_jpegout.length, CacheType_t::Data);
 
     /* gpu_message gmsgs[3];
