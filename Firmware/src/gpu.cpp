@@ -96,6 +96,8 @@ static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, 
     newmsgs[0].src_pf = focus_process->screen_pf;
     newmsgs[0].w = focus_process->screen_w;
     newmsgs[0].h = focus_process->screen_h;
+    newmsgs[0].dw = 640;
+    newmsgs[0].dh = 480;
     newmsgs[0].src_addr_color = (uint32_t)(uintptr_t)get_scaling_bb();
 
     newmsgs[1].type = FlipScaleBuffers;
@@ -103,6 +105,51 @@ static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, 
     newmsgs[2].type = FlipBuffers;
 
     *nnewmsgs = 3;
+}
+
+static void handle_scale_blit_cpu(const gpu_message &g)
+{
+    // slow implementation on CPU
+    auto bpp = get_bpp(g.src_pf);
+    CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * bpp,
+        g.h * g.sp, CacheType_t::Data);
+
+    for(unsigned int y = 0; y < g.dh; y++)
+    {
+        for(unsigned int x = 0; x < g.dw; x++)
+        {
+            auto daddr = g.dest_addr + (g.dy + y) * g.dp + (g.dx + x) * bpp;
+            auto sx = (x * g.w) / g.dw;
+            auto sy = (y * g.h) / g.dh;
+            auto saddr = g.src_addr_color + (g.sy + sy) * g.sp + (g.sx + sx) * bpp;
+
+            switch(bpp)
+            {
+                case 4:
+                    *(uint32_t *)daddr = *(uint32_t *)saddr;
+                    break;
+                case 3:
+                    for(int i = 0; i < 3; i++)
+                    {
+                        *(uint8_t *)(daddr + i) = *(uint8_t *)(saddr + i);
+                    }
+                    break;
+                case 2:
+                    *(uint16_t *)daddr = *(uint16_t *)saddr;
+                    break;
+                case 1:
+                    *(uint8_t *)daddr = *(uint16_t *)saddr;
+                    break;
+            }
+        }
+    }
+
+    CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * bpp, g.dh * g.dp, CacheType_t::Data);
+}
+
+static void handle_scale_blit(const gpu_message &g)
+{
+    handle_scale_blit_cpu(g);
 }
 
 static void handle_clearscreen(const gpu_message &curmsg, gpu_message *newmsgs, size_t *nnewmsgs)
@@ -179,12 +226,6 @@ void *gpu_thread(void *p)
 #if GPU_DEBUG
             auto ltdc_curfb = LTDC_Layer1->CFBAR;
             auto scr_curfb = (uint32_t)(uintptr_t)screen_get_frame_buffer();
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, nlines: %x, row_width: %x\n",
-                    (unsigned int)clock_cur_ms(), g.type, g.dest_addr, g.src_addr_color, g.h, g.w);
-                SEGGER_RTT_printf(0, "gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
-            }
 #endif
 
             // We should never be able to write to the current framebuffer
@@ -199,24 +240,56 @@ void *gpu_thread(void *p)
             //uint32_t scr_fbuf = (uint32_t)(uintptr_t)screen_get_frame_buffer();
             uint32_t dest_addr;
             uint32_t dest_pitch;
+            uint32_t dest_w, dest_h;
             if(g.dest_addr == 0)
             {
                 if(focus_process->screen_w == 640 && focus_process->screen_h == 480)
                 {
                     dest_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer();
                     dest_pitch = 640 * bpp;
+                    if(g.dw == 0 && g.dh == 0)
+                    {
+                        dest_w = 640;
+                        dest_h = 480;
+                    }
+                    else
+                    {
+                        dest_w = g.dw;
+                        dest_h = g.dh;
+                    }
                 }
                 else
                 {
                     dest_addr = (uint32_t)(uintptr_t)get_scaling_bb();
                     dest_pitch = focus_process->screen_w * bpp;
+                    if(g.dw == 0 && g.dh == 0)
+                    {
+                        dest_w = focus_process->screen_w;
+                        dest_h = focus_process->screen_h;
+                    }
+                    else
+                    {
+                        dest_w = g.dw;
+                        dest_h = g.dh;
+                    }
                 }
             }
             else
             {
                 dest_addr = g.dest_addr;
                 dest_pitch = g.dp;
+                dest_w = g.dw;
+                dest_h = g.dh;
             }
+
+#if GPU_DEBUG
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, dw: %x, dh: %x, w: %x, h: %x\n",
+                    (unsigned int)clock_cur_ms(), g.type, dest_addr, g.src_addr_color, dest_w, dest_h, g.w, g.h);
+                SEGGER_RTT_printf(0, "gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
+            }
+#endif
             
             switch(g.type)
             {
@@ -289,14 +362,14 @@ void *gpu_thread(void *p)
                     break;
 
                 case gpu_message_type::BlitColor:
-                    if(!g.w || !g.h)
+                    if(!dest_w || !dest_h)
                         break;
                     wait_dma2d();
                     DMA2D->OPFCCR = dest_pf;
                     DMA2D->OCOLR = color_encode(g.src_addr_color, dest_pf);
                     DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
-                    DMA2D->OOR = (dest_pitch / bpp) - g.w;
-                    DMA2D->NLR = (g.w << DMA2D_NLR_PL_Pos) | (g.h << DMA2D_NLR_NL_Pos);
+                    DMA2D->OOR = (dest_pitch / bpp) - dest_w;
+                    DMA2D->NLR = (dest_w << DMA2D_NLR_PL_Pos) | (dest_h << DMA2D_NLR_NL_Pos);
                     DMA2D->CR = DMA2D_CR_TCIE |
                         DMA2D_CR_TEIE |
                         (3UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
@@ -304,21 +377,23 @@ void *gpu_thread(void *p)
 
                 case gpu_message_type::BlitImage:
                 case gpu_message_type::BlitImageNoBlend:
-                    if(!g.w || !g.h)
+                    if(!dest_w || !dest_h)
                         break;
                     
-                    wait_dma2d();
-                    DMA2D->OPFCCR = dest_pf;
-                    DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
-                    DMA2D->OOR = (dest_pitch / bpp) - g.w;
-                    DMA2D->NLR = (g.w << DMA2D_NLR_PL_Pos) | (g.h << DMA2D_NLR_NL_Pos);
-
+                    if(dest_w == g.w && dest_h == g.h)
                     {
+                        // can do DMA2D copy
+                        wait_dma2d();
+                        DMA2D->OPFCCR = dest_pf;
+                        DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
+                        DMA2D->OOR = (dest_pitch / bpp) - dest_w;
+                        DMA2D->NLR = (dest_w << DMA2D_NLR_PL_Pos) | (dest_h << DMA2D_NLR_NL_Pos);
+
                         // configure source, +/- pixel format correction
                         auto src_bpp = get_bpp(g.src_pf);
                         DMA2D->FGMAR = g.src_addr_color + g.sx * src_bpp + g.sy * g.sp;
                         DMA2D->FGPFCCR = g.src_pf;
-                        DMA2D->FGOR = (g.sp / src_bpp) - g.w;
+                        DMA2D->FGOR = (g.sp / src_bpp) - dest_w;
 
                         // does it blend?
                         uint32_t mode = 0;
@@ -328,7 +403,7 @@ void *gpu_thread(void *p)
                             
                             // set background as scratch to allow blend
                             DMA2D->BGMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
-                            DMA2D->BGOR = (dest_pitch / bpp) - g.w;
+                            DMA2D->BGOR = (dest_pitch / bpp) - dest_w;
                             DMA2D->BGPFCCR = dest_pf;
                         }
                         else if(g.src_pf != dest_pf)
@@ -339,6 +414,10 @@ void *gpu_thread(void *p)
                         DMA2D->CR = DMA2D_CR_TCIE | 
                             DMA2D_CR_TEIE |
                             (mode << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
+                    }
+                    else
+                    {
+                        handle_scale_blit(g);
                     }
                     break;
 
