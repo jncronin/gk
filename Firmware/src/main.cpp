@@ -384,10 +384,6 @@ void *init_thread(void *p)
 {
     clock_set_cpu(clock_cpu_speed::cpu_384_192);
 
-    // Init framebuffer
-    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
-    screen_set_frame_buffer((void *)fb.address, (void *)(fb.address + 0x200000));
-
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB

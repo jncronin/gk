@@ -13,6 +13,13 @@ extern Spinlock s_rtt;
 extern Condition scr_vsync;
 
 SRAM4_DATA gpu_message gpu_clear_screen_msg { .type = ClearScreen };
+SRAM4_DATA static void *scaling_bb[2];
+SRAM4_DATA static int scaling_bb_idx = 0;
+
+static inline void *get_scaling_bb()
+{
+    return scaling_bb[scaling_bb_idx & 1];
+}
 
 #define GPU_DEBUG 0
 
@@ -74,6 +81,30 @@ static inline uint32_t color_encode(uint32_t col, uint32_t pf)
     }
 }
 
+static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, size_t *nnewmsgs)
+{
+    // we need to copy + scale from scale_bb and then flip the buffers
+    newmsgs[0].type = BlitImageNoBlend;
+    newmsgs[0].dest_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer();
+    newmsgs[0].dx = 0;
+    newmsgs[0].dy = 0;
+    newmsgs[0].dest_pf = focus_process->screen_pf;
+    newmsgs[0].dp = 640 * get_bpp(newmsgs[0].dest_pf);
+    newmsgs[0].sx = 0;
+    newmsgs[0].sy = 0;
+    newmsgs[0].sp = focus_process->screen_w * get_bpp(newmsgs[0].dest_pf);
+    newmsgs[0].src_pf = focus_process->screen_pf;
+    newmsgs[0].w = focus_process->screen_w;
+    newmsgs[0].h = focus_process->screen_h;
+    newmsgs[0].src_addr_color = (uint32_t)(uintptr_t)get_scaling_bb();
+
+    newmsgs[1].type = FlipScaleBuffers;
+
+    newmsgs[2].type = FlipBuffers;
+
+    *nnewmsgs = 3;
+}
+
 static void handle_clearscreen(const gpu_message &curmsg, gpu_message *newmsgs, size_t *nnewmsgs)
 {
     if(gpu_clear_screen_msg.type == ClearScreen)
@@ -98,6 +129,15 @@ void *gpu_thread(void *p)
 {
     (void)p;
 
+    // Init framebuffer
+    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
+    screen_set_frame_buffer((void *)fb.address, (void *)(fb.address + 0x200000));
+
+    // Set up our scaling backbuffers (for 320x240 screen and 160x120 screen)
+    scaling_bb[0] = (void *)(fb.address + 0x12c000);
+    scaling_bb[1] = (void *)(fb.address + 0x32c000);
+    scaling_bb_idx = 0;
+
     RCC->AHB3ENR |= RCC_AHB3ENR_DMA2DEN;
     (void)RCC->AHB3ENR;
 
@@ -117,6 +157,16 @@ void *gpu_thread(void *p)
         {
             case ClearScreen:
                 handle_clearscreen(curmsgs[0], curmsgs, &nmsgs);
+                break;
+            case FlipBuffers:
+                if(focus_process->screen_w == 640 && focus_process->screen_h == 480)
+                {
+                    nmsgs = 1;
+                }
+                else
+                {
+                    handle_flipbuffers(curmsgs[0], curmsgs, &nmsgs);
+                }
                 break;
             default:
                 nmsgs = 1;
@@ -147,10 +197,26 @@ void *gpu_thread(void *p)
             uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_pf;
             int bpp = get_bpp(dest_pf);
             //uint32_t scr_fbuf = (uint32_t)(uintptr_t)screen_get_frame_buffer();
-            uint32_t dest_addr = g.dest_addr ? g.dest_addr : (uint32_t)(uintptr_t)screen_get_frame_buffer();
-            uint32_t dest_pitch = g.dest_addr ? g.dp : focus_process->screen_w * bpp;
-
-
+            uint32_t dest_addr;
+            uint32_t dest_pitch;
+            if(g.dest_addr == 0)
+            {
+                if(focus_process->screen_w == 640 && focus_process->screen_h == 480)
+                {
+                    dest_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer();
+                    dest_pitch = 640 * bpp;
+                }
+                else
+                {
+                    dest_addr = (uint32_t)(uintptr_t)get_scaling_bb();
+                    dest_pitch = focus_process->screen_w * bpp;
+                }
+            }
+            else
+            {
+                dest_addr = g.dest_addr;
+                dest_pitch = g.dp;
+            }
             
             switch(g.type)
             {
@@ -158,6 +224,10 @@ void *gpu_thread(void *p)
                     wait_dma2d();
                     screen_flip();
                     scr_vsync.Wait();
+                    break;
+
+                case gpu_message_type::FlipScaleBuffers:
+                    scaling_bb_idx++;
                     break;
 
                 case gpu_message_type::SetBuffers:
@@ -233,6 +303,7 @@ void *gpu_thread(void *p)
                     break;
 
                 case gpu_message_type::BlitImage:
+                case gpu_message_type::BlitImageNoBlend:
                     if(!g.w || !g.h)
                         break;
                     
@@ -251,7 +322,7 @@ void *gpu_thread(void *p)
 
                         // does it blend?
                         uint32_t mode = 0;
-                        if(g.src_pf == GK_PIXELFORMAT_ARGB8888)
+                        if(g.src_pf == GK_PIXELFORMAT_ARGB8888 && g.type == BlitImage)
                         {
                             mode = 2U;
                             
