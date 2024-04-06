@@ -207,7 +207,7 @@ void jpeg_test()
     gmsgs[0].h = h;
     gmsgs[0].dx = 0;
     gmsgs[0].dy = 0;*/
-#if 1
+#if 0
     gpu_message background_msg;
 
     background_msg.type = BlitImage;
