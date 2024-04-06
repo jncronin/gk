@@ -41,7 +41,9 @@ class Process
         std::map<uint32_t, mmap_region>::iterator get_mmap_region(uint32_t addr, uint32_t len);
 
         /* display modes */
-        uint32_t screen_mode = 0;
+        uint16_t screen_w = 640;
+        uint16_t screen_h = 480;
+        uint8_t screen_pf = 0;
 
         /* current working directory */
         std::string cwd = "/";

@@ -25,7 +25,7 @@ void *screen_flip()
     scr_cbuf++;
     int wbuf = scr_cbuf & 0x1;
     int rbuf = wbuf ? 0 : 1;
-    auto scr_pf = focus_process->screen_mode;
+    auto scr_pf = focus_process->screen_pf;
     LTDC_Layer1->CFBAR = (uint32_t)(uintptr_t)scr_bufs[rbuf];
     LTDC_Layer1->PFCR = scr_pf;
     switch(scr_pf)

@@ -82,8 +82,8 @@ static void handle_clearscreen(const gpu_message &curmsg, gpu_message *newmsgs, 
         gpu_clear_screen_msg.dest_addr = 0;
         gpu_clear_screen_msg.dx = 0;
         gpu_clear_screen_msg.dy = 0;
-        gpu_clear_screen_msg.w = 640;
-        gpu_clear_screen_msg.h = 480;
+        gpu_clear_screen_msg.w = focus_process->screen_w;
+        gpu_clear_screen_msg.h = focus_process->screen_h;
         gpu_clear_screen_msg.src_addr_color = 0U;
         gpu_clear_screen_msg.type = BlitColor;
     }
@@ -144,11 +144,11 @@ void *gpu_thread(void *p)
             }
 
             /* get details on pixel formats, strides etc */
-            uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_mode;
+            uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_pf;
             int bpp = get_bpp(dest_pf);
             //uint32_t scr_fbuf = (uint32_t)(uintptr_t)screen_get_frame_buffer();
             uint32_t dest_addr = g.dest_addr ? g.dest_addr : (uint32_t)(uintptr_t)screen_get_frame_buffer();
-            uint32_t dest_pitch = g.dest_addr ? g.dp : 640 * bpp;
+            uint32_t dest_pitch = g.dest_addr ? g.dp : focus_process->screen_w * bpp;
 
 
             
@@ -162,6 +162,40 @@ void *gpu_thread(void *p)
 
                 case gpu_message_type::SetBuffers:
                     screen_set_frame_buffer((void *)g.dest_addr, (void*)g.src_addr_color);
+                    break;
+
+                case gpu_message_type::SetScreenMode:
+                    {
+                        // sanity check
+                        if((g.dest_pf != GK_PIXELFORMAT_ARGB8888) &&
+                            (g.dest_pf != GK_PIXELFORMAT_RGB888) &&
+                            (g.dest_pf != GK_PIXELFORMAT_RGB565))
+                        {
+                            break;
+                        }
+                        if(g.w == 0 || g.h == 0)
+                        {
+                            focus_process->screen_pf = g.dest_pf;
+                        }
+                        else if(g.w <= 160 && g.h <= 120)
+                        {
+                            focus_process->screen_w = 160;
+                            focus_process->screen_h = 120;
+                            focus_process->screen_pf = g.dest_pf;                            
+                        }
+                        else if(g.w <= 320 && g.h <= 240)
+                        {
+                            focus_process->screen_w = 320;
+                            focus_process->screen_h = 240;
+                            focus_process->screen_pf = g.dest_pf;
+                        }
+                        else if(g.w <= 640 && g.h <= 480)
+                        {
+                            focus_process->screen_w = 640;
+                            focus_process->screen_h = 480;
+                            focus_process->screen_pf = g.dest_pf;
+                        }
+                    }
                     break;
 
                 case gpu_message_type::CleanCache:
