@@ -88,10 +88,8 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
     }
     SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
 
-    // TODO: allocate this MPU region for us
-
     // Create a stack for thread0
-    auto stack = memblk_allocate_for_stack(4096, CPUAffinity::Either);
+    auto stack = memblk_allocate_for_stack(4096, affinity);
     auto stack_end = stack.address + stack.length;
 
     // Load segments
