@@ -96,12 +96,6 @@ int jpeg_decode(const void *src, size_t src_size,
     return 0;
 }
 
-extern "C" void MDMA_IRQHandler()
-{
-    __asm__ volatile("bkpt \n" ::: "memory");
-    while(true);
-}
-
 extern "C" void JPEG_IRQHandler()
 {
     if(JPEG->SR & JPEG_SR_HPDF)
