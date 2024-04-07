@@ -404,6 +404,7 @@ void *init_thread(void *p)
     pt.heap_size = 8192*1024;
     pt.core_mask = M7Only;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
+    pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.with_focus = 1;
     deferred_call(syscall_proccreate, "/tglgears", &pt);
 

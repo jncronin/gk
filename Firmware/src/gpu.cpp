@@ -221,7 +221,7 @@ static bool handle_scale_blit_dma(const gpu_message &g)
                 (3U << MDMA_CTCR_TRGM_Pos) |            // repeated block transfer, follow linked list
                 (127U << MDMA_CTCR_TLEN_Pos) |
                 (7U << MDMA_CTCR_DBURST_Pos) |
-                (7U << MDMA_CTCR_SBURST_Pos) |
+                (3U << MDMA_CTCR_SBURST_Pos) |
                 (dincos << MDMA_CTCR_DINCOS_Pos) |
                 (sincos << MDMA_CTCR_SINCOS_Pos) |
                 (size << MDMA_CTCR_DSIZE_Pos) |
@@ -436,6 +436,7 @@ void *gpu_thread(void *p)
                     break;
 
                 case gpu_message_type::FlipScaleBuffers:
+                    wait_dma2d();
                     scaling_bb_idx++;
                     break;
 
