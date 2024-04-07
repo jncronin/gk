@@ -405,7 +405,7 @@ void *init_thread(void *p)
     pt.core_mask = M7Only;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     pt.with_focus = 1;
-    deferred_call(syscall_proccreate, "/pong", &pt);
+    deferred_call(syscall_proccreate, "/tglgears", &pt);
 
     jpeg_test();
 
