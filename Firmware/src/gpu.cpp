@@ -99,6 +99,15 @@ static inline uint32_t color_encode(uint32_t col, uint32_t pf)
 
 static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, size_t *nnewmsgs)
 {
+    // get data members fron newmsgs[0] prior to overwriting them
+    newmsgs[1].type = FlipScaleBuffers;
+    newmsgs[1].dest_addr = curmsg.dest_addr;
+    newmsgs[1].src_addr_color = curmsg.src_addr_color;
+
+    newmsgs[2].type = FlipBuffers;
+    newmsgs[2].dest_addr = 0;
+    newmsgs[2].src_addr_color = 0;
+
     // we need to copy + scale from scale_bb and then flip the buffers
     newmsgs[0].type = BlitImageNoBlend;
     newmsgs[0].dest_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer();
@@ -115,10 +124,6 @@ static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, 
     newmsgs[0].dw = 640;
     newmsgs[0].dh = 480;
     newmsgs[0].src_addr_color = (uint32_t)(uintptr_t)get_scaling_bb();
-
-    newmsgs[1].type = FlipScaleBuffers;
-
-    newmsgs[2].type = FlipBuffers;
 
     *nnewmsgs = 3;
 }
@@ -513,6 +518,12 @@ void *gpu_thread(void *p)
                 case gpu_message_type::FlipScaleBuffers:
                     wait_dma2d();
                     scaling_bb_idx++;
+                    {
+                        if(g.dest_addr)
+                        {
+                            *(void **)g.dest_addr = get_scaling_bb();
+                        }
+                    }
                     break;
 
                 case gpu_message_type::SetBuffers:
