@@ -6,6 +6,9 @@
 #include "clocks.h"
 #include "syscalls_int.h"
 #include <sys/times.h>
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
 
 extern Scheduler s;
 
@@ -473,8 +476,21 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = 0;
             }
             break;
+
+        case __syscall_getpid:
+            {
+                auto t = GetCurrentThreadForCore();
+                auto &p = t->p;
+                int pid = (int)((uint32_t)(uintptr_t)&p - 0x38000000U);
+                *reinterpret_cast<int *>(r1) = pid;
+            }
+            break;
         
         default:
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "syscall: unhandled syscall %d\n", (int)sno);
+            }
             __asm__ volatile ("bkpt #0\n");
             while(true);
             break;
