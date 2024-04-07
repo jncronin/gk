@@ -3,9 +3,11 @@
 #include "osqueue.h"
 #include "screen.h"
 #include "cache.h"
+#include "mdma.h"
 
-__attribute__((section (".sram4"))) static BinarySemaphore gpu_ready;
-__attribute__((section (".sram4"))) static FixedQueue<gpu_message, 64> gpu_msg_list;
+SRAM4_DATA static BinarySemaphore gpu_ready;
+SRAM4_DATA static BinarySemaphore mdma_ready;
+SRAM4_DATA static FixedQueue<gpu_message, 64> gpu_msg_list;
 
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
@@ -16,10 +18,15 @@ SRAM4_DATA gpu_message gpu_clear_screen_msg { .type = ClearScreen };
 SRAM4_DATA static void *scaling_bb[2];
 SRAM4_DATA static int scaling_bb_idx = 0;
 
+static constexpr const unsigned int gpu_mdma_channel = 3;
+static const auto mdma = ((MDMA_Channel_TypeDef *)(MDMA_BASE + 0x40U + 0x40U * gpu_mdma_channel));
+
 static inline void *get_scaling_bb()
 {
     return scaling_bb[scaling_bb_idx & 1];
 }
+
+static void mdma_handler();
 
 #define GPU_DEBUG 0
 
@@ -28,6 +35,10 @@ static inline void wait_dma2d()
     while(DMA2D->CR & DMA2D_CR_START)
     {
         gpu_ready.Wait(clock_cur_ms() + 20ULL);
+    }
+    while(mdma->CCR & MDMA_CCR_EN)
+    {
+        mdma_ready.Wait(clock_cur_ms() + 20ULL);
     }
 }
 
@@ -151,9 +162,6 @@ uint32_t mdma_ll[16*16] __attribute__((aligned(32)));
 
 static bool handle_scale_blit_dma(const gpu_message &g)
 {
-    // TODO: semaphore for MDMA
-    auto mdma = MDMA_Channel3;
-
     auto bpp = get_bpp(g.src_pf);
 
     auto sx = (uint32_t)g.dw / g.w;
@@ -193,12 +201,8 @@ static bool handle_scale_blit_dma(const gpu_message &g)
             break;
     }
 
-    while(mdma->CCR & MDMA_CCR_EN); // for now, poll until ready
-    // TODO: use semaphore reset by IRQ
-
     // build linked lists for MDMA
     int mdma_ll_idx = 0;
-    
 
     for(unsigned int csy = 0; csy < sy; csy++)
     {
@@ -262,12 +266,9 @@ static bool handle_scale_blit_dma(const gpu_message &g)
     }
     CleanM7Cache((uint32_t)(uintptr_t)mdma_ll, 4*16*16, CacheType_t::Data);
 
+    mdma->CIFCR = 0x1fU;
     mdma->CCR = MDMA_CCR_EN;
-    mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
-
-    // TODO: replace with semaphore
-    while(mdma->CCR & MDMA_CCR_EN); // for now, poll until ready
-
+    mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ | MDMA_CCR_CTCIE;
 
     return true;
 }
@@ -322,6 +323,8 @@ void *gpu_thread(void *p)
     (void)RCC->AHB3ENR;
 
     NVIC_EnableIRQ(DMA2D_IRQn);
+
+    mdma_register_handler(mdma_handler, gpu_mdma_channel);
 
     while(true)
     {
@@ -513,10 +516,10 @@ void *gpu_thread(void *p)
                     if(!dest_w || !dest_h)
                         break;
                     
+                    wait_dma2d();
                     if(dest_w == g.w && dest_h == g.h)
                     {
                         // can do DMA2D copy
-                        wait_dma2d();
                         DMA2D->OPFCCR = dest_pf;
                         DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
                         DMA2D->OOR = (dest_pitch / bpp) - dest_w;
@@ -631,4 +634,10 @@ extern "C" void DMA2D_IRQHandler()
 #endif
     DMA2D->IFCR = DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
     gpu_ready.Signal();
+}
+
+static void mdma_handler()
+{
+    mdma->CIFCR = MDMA_CIFCR_CCTCIF;
+    mdma_ready.Signal();
 }
