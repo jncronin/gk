@@ -193,22 +193,28 @@ static bool handle_scale_blit_dma(const gpu_message &g)
             break;
     }
 
+    while(mdma->CCR & MDMA_CCR_EN); // for now, poll until ready
+    // TODO: use semaphore reset by IRQ
+
     // build linked lists for MDMA
-    //int mdma_ll_idx = 0;
+    int mdma_ll_idx = 0;
     
 
     for(unsigned int csy = 0; csy < sy; csy++)
     {
         for(unsigned int csx = 0; csx < sx; csx++)
         {
+            auto cll = &mdma_ll[mdma_ll_idx];
+            mdma_ll_idx += 16;
 
             auto xaddr = g.dx + csx;
             auto yaddr = g.dy + csy;
 
-
-
-            mdma->CTCR = MDMA_CTCR_SWRM |
-                (2U << MDMA_CTCR_TRGM_Pos) |            // repeated block transfer for now
+            // CTCR
+            // TODO: BWM?
+            // TODO: burst?
+            cll[0] = MDMA_CTCR_SWRM |
+                (3U << MDMA_CTCR_TRGM_Pos) |            // repeated block transfer, follow linked list
                 (79U << MDMA_CTCR_TLEN_Pos) |
                 (dincos << MDMA_CTCR_DINCOS_Pos) |
                 (sincos << MDMA_CTCR_SINCOS_Pos) |
@@ -216,17 +222,48 @@ static bool handle_scale_blit_dma(const gpu_message &g)
                 (size << MDMA_CTCR_SSIZE_Pos) |
                 (2U << MDMA_CTCR_DINC_Pos) |
                 (2U << MDMA_CTCR_SINC_Pos);
-            mdma->CBNDTR = ((uint32_t)g.h << MDMA_CBNDTR_BRC_Pos) |
+
+            // CBNDTR
+            cll[1] = ((uint32_t)g.h << MDMA_CBNDTR_BRC_Pos) |
                 ((bpp * (uint32_t)g.w) << MDMA_CBNDTR_BNDT_Pos);
-            mdma->CSAR = g.src_addr_color + (uint32_t)g.sy * g.sp + (uint32_t)g.sx * bpp;
-            mdma->CDAR = g.dest_addr + yaddr * g.dp + xaddr * bpp;
-            mdma->CBRUR = ((sy - 1) * (uint32_t)g.dp) << MDMA_CBRUR_DUV_Pos;
+
+            // CSAR
+            cll[2] = g.src_addr_color + (uint32_t)g.sy * g.sp + (uint32_t)g.sx * bpp;
+
+            // CDAR
+            cll[3] = g.dest_addr + yaddr * g.dp + xaddr * bpp;
+
+            // CBRUR
+            cll[4] = ((sy - 1) * (uint32_t)g.dp) << MDMA_CBRUR_DUV_Pos;
+
+            // CLAR
+            cll[5] = ((csx == sx - 1) && (csy == sy - 1)) ? 0U : (uint32_t)(uintptr_t)&mdma_ll[mdma_ll_idx];
+
+            // CTBR
+            cll[6] = 0U;
+
+            // Reserved
+            cll[7] = 0U;
+
+            // CMAR
+            cll[8] = 0U;
+
+            // CMDR
+            cll[9] = 0U;
             mdma->CMAR = 0U;
-            mdma->CCR = MDMA_CCR_EN;
-            mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
         }
     }
+    // load first set of registers
+    for(int i = 0; i < 10; i++)
+    {
+        (&mdma->CTCR)[i] = mdma_ll[i];
+    }
+    CleanM7Cache((uint32_t)(uintptr_t)mdma_ll, 4*16*16, CacheType_t::Data);
 
+    mdma->CCR = MDMA_CCR_EN;
+    mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
+
+    // TODO: replace with semaphore
     while(mdma->CCR & MDMA_CCR_EN); // for now, poll until ready
 
 
