@@ -118,44 +118,95 @@ static void handle_flipbuffers(const gpu_message &curmsg, gpu_message *newmsgs, 
     *nnewmsgs = 3;
 }
 
+static inline uint32_t pfc_convert(uint32_t c, uint32_t from_pf, uint32_t to_pf)
+{
+    if(from_pf == to_pf)
+        return c;
+    uint32_t argb = 0;
+    switch(from_pf)
+    {
+        case GK_PIXELFORMAT_ARGB8888:
+            argb = c;
+            break;
+        case GK_PIXELFORMAT_RGB565:
+            argb = 0xff000000 |
+                ((c & 0x1fU) << 3) |
+                ((c & 0x7e0U) << 5) |
+                ((c & 0xf800U) << 8);
+            break;
+        case GK_PIXELFORMAT_RGB888:
+            argb = 0xff000000 | c;
+            break;
+        case GK_PIXELFORMAT_L8:
+            argb = 0xff000000 |
+                (c & 0xffU) |
+                ((c & 0xffU) << 8) |
+                ((c & 0xffU) << 16);
+            break;
+    }
+
+    switch(to_pf)
+    {
+        case GK_PIXELFORMAT_ARGB8888:
+            return argb;
+        case GK_PIXELFORMAT_RGB888:
+            return argb & 0x00ffffffU;
+        case GK_PIXELFORMAT_RGB565:
+            {
+                auto r = (argb & 0xf8U) >> 3;
+                auto g = (argb & 0xfc00U) >> 5;
+                auto b = (argb & 0xf80000U) >> 8;
+                return r | g | b;
+            }
+        case GK_PIXELFORMAT_L8:
+            return argb & 0xffU;
+    }
+    return 0U;
+}
+
 static void handle_scale_blit_cpu(const gpu_message &g)
 {
-    // slow implementation on CPU - manages ~20fps for 160x120 -> 640x480
-    auto bpp = get_bpp(g.src_pf);
-    CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * bpp,
+    // slow implementation on CPU - manages ~20fps for 160x120 -> 640x480 without PFC
+    auto sbpp = get_bpp(g.src_pf);
+    auto dbpp = get_bpp(g.dest_pf);
+    CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * sbpp,
         g.h * g.sp, CacheType_t::Data);
 
     for(unsigned int y = 0; y < g.dh; y++)
     {
         for(unsigned int x = 0; x < g.dw; x++)
         {
-            auto daddr = g.dest_addr + (g.dy + y) * g.dp + (g.dx + x) * bpp;
+            auto daddr = g.dest_addr + (g.dy + y) * g.dp + (g.dx + x) * dbpp;
             auto sx = (x * g.w) / g.dw;
             auto sy = (y * g.h) / g.dh;
-            auto saddr = g.src_addr_color + (g.sy + sy) * g.sp + (g.sx + sx) * bpp;
+            auto saddr = g.src_addr_color + (g.sy + sy) * g.sp + (g.sx + sx) * sbpp;
 
-            switch(bpp)
+            uint32_t c = *(uint32_t *)saddr;
+            c = pfc_convert(c, g.src_pf, g.dest_pf);
+
+            switch(dbpp)
             {
                 case 4:
-                    *(uint32_t *)daddr = *(uint32_t *)saddr;
+                    *(uint32_t *)daddr = c;
                     break;
                 case 3:
                     for(int i = 0; i < 3; i++)
                     {
-                        *(uint8_t *)(daddr + i) = *(uint8_t *)(saddr + i);
+                        *(uint8_t *)(daddr + i) = c;
+                        c >>= 8;
                     }
                     break;
                 case 2:
-                    *(uint16_t *)daddr = *(uint16_t *)saddr;
+                    *(uint16_t *)daddr = c;
                     break;
                 case 1:
-                    *(uint8_t *)daddr = *(uint16_t *)saddr;
+                    *(uint8_t *)daddr = c;
                     break;
             }
         }
     }
 
-    CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * bpp, g.dh * g.dp, CacheType_t::Data);
+    CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * dbpp, g.dh * g.dp, CacheType_t::Data);
 }
 
 uint32_t mdma_ll[16*16] __attribute__((aligned(32)));
@@ -277,7 +328,7 @@ static void handle_scale_blit(const gpu_message &g)
 {
     if(g.dw > g.w && g.dh > g.h)
     {
-        if((g.dw % g.w == 0) && (g.dh % g.h == 0))
+        if((g.dw % g.w == 0) && (g.dh % g.h == 0) && (g.dest_pf == g.src_pf))
         {
             if(handle_scale_blit_dma(g))
                 return;
