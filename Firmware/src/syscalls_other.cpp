@@ -6,6 +6,12 @@
 #include <errno.h>
 #include "gpu.h"
 #include <sys/times.h>
+#include "process.h"
+#include "scheduler.h"
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
+extern Process kernel_proc;
 
 int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 {
@@ -135,4 +141,43 @@ clock_t syscall_times(tms *buf, int *_errno)
     buf->tms_cstime = tot_s;
 
     return (clock_t)clock_cur_ms();
+}
+
+int syscall_kill(pid_t pid, int sig, int *_errno)
+{
+    if(pid < 0 || pid >= 0x10000)
+    {
+        *_errno = ESRCH;
+        return -1;
+    }
+    auto p = reinterpret_cast<Process *>((unsigned int)pid + 0x38000000U);
+    if(sig == SIGKILL)
+    {
+        if(p != &kernel_proc)
+        {
+            CriticalGuard cg_p(p->sl);
+            for(auto thr : p->threads)
+            {
+                CriticalGuard cg_t(thr->sl);
+                thr->for_deletion = true;
+                if(thr == GetCurrentThreadForCore())
+                {
+                    Yield();
+                }
+            }
+            p->for_deletion = true;
+        }
+        else
+        {
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "error: SIGKILL sent to kernel process\n");
+            }
+            while(true)
+            {
+                __asm__ volatile("bkpt \n" ::: "memory");
+            }
+        }
+    }
+    return 0;
 }
