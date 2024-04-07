@@ -485,6 +485,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = pid;
             }
             break;
+
+        case __syscall_kill:
+            {
+                auto p = reinterpret_cast<__syscall_kill_params *>(r2);
+                int ret = syscall_kill(p->pid, p->sig, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
         
         default:
             {
