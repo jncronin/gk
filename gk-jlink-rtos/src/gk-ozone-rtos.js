@@ -4,7 +4,7 @@ function init()
 {
     Threads.clear();
     Threads.newqueue("Task List");
-    Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack");
+    Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
     Threads.setColor("Status", "ready", "executing", "blocked");
     saddr = Debug.evaluate("&s");
 
@@ -146,6 +146,8 @@ function update()
         //TargetInterface.message("curt[" + i + "] = " + curt[i]);
     }
 
+    var tottime = Debug.evaluate("_cur_ms");
+
 
     for(var i = 0; i < 10; i++)
     {
@@ -201,6 +203,18 @@ function update()
             var stack_end = stack_start + stack_len;
             var sp = getregs(t)[13];
 
+            var ttime = Debug.evaluate("((Thread *)" + t + ")->total_us_time");
+            var time_str = "";
+            if(ttime != undefined)
+            {
+                time_str += ttime.toString(10);
+
+                if(tottime != undefined)
+                {
+                    time_str += " / " + (ttime * 100.0 / tottime).toFixed(2) + "%";
+                }
+            }
+
             //TargetInterface.message("id: " + (t - 0x38000000).toString(16));
             //TargetInterface.message("name: " + namestr);
             //TargetInterface.message("i: " + i);
@@ -213,6 +227,7 @@ function update()
                 getregs(t)[15].toString(16), t_status,
                 blocking_on(t),
                 sp.toString(16) + " (" + stack_start.toString(16) + "-" + stack_end.toString(16) + ")",
+                time_str,
                  t);
 
             vcur += 4;

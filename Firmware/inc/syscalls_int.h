@@ -55,6 +55,8 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
 
 int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int *_errno);
 
+clock_t syscall_times(struct tms *buf, int *_errno);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
