@@ -121,8 +121,7 @@ constexpr mpu_saved_state mpu_extram = MPUGenerate(GK_SDRAM_BASE, 0x20000000, 1,
 constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 2, false, RW, RO, N_NC_S);
 constexpr mpu_saved_state mpu_msp_cm4 = MPUGenerate(0x30001000, 4096, 3, false, RW, NoAccess, WBWA_NS);
 constexpr mpu_saved_state mpu_msp_cm7 = MPUGenerate(0x20001000, 4096, 4, false, RW, NoAccess, WBWA_NS);
-constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x20000, 5, false, RW, RW, WT_NS);
-constexpr mpu_saved_state mpu_fb1 = MPUGenerate(0x61000000, 0x20000, 6, false, RW, RW, WT_NS);
+constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 5, false, RW, RW, WT_NS);
 
 constexpr mpu_saved_state mpu_default[8] =
 {
@@ -132,7 +131,7 @@ constexpr mpu_saved_state mpu_default[8] =
     mpu_msp_cm4,
     mpu_msp_cm7,
     mpu_fb0,
-    mpu_fb1,
+    MPUGenerateNonValid(6),
     MPUGenerateNonValid(7)
 };
 
