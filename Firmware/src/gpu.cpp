@@ -212,11 +212,10 @@ static bool handle_scale_blit_dma(const gpu_message &g)
 
             // CTCR
             // BWM - minimal difference but appears not harmful
-            // TODO: burst?
             cll[0] = MDMA_CTCR_SWRM |
                 MDMA_CTCR_BWM |
                 (3U << MDMA_CTCR_TRGM_Pos) |            // repeated block transfer, follow linked list
-                (79U << MDMA_CTCR_TLEN_Pos) |
+                (127U << MDMA_CTCR_TLEN_Pos) |
                 (7U << MDMA_CTCR_DBURST_Pos) |
                 (7U << MDMA_CTCR_SBURST_Pos) |
                 (dincos << MDMA_CTCR_DINCOS_Pos) |
