@@ -4,6 +4,7 @@
 #include "screen.h"
 #include "cache.h"
 #include "mdma.h"
+#include "gk_conf.h"
 
 SRAM4_DATA static BinarySemaphore gpu_ready;
 SRAM4_DATA static BinarySemaphore mdma_ready;
@@ -20,6 +21,10 @@ SRAM4_DATA static int scaling_bb_idx = 0;
 
 static constexpr const unsigned int gpu_mdma_channel = 3;
 static const auto mdma = ((MDMA_Channel_TypeDef *)(MDMA_BASE + 0x40U + 0x40U * gpu_mdma_channel));
+
+#if GK_GPU_SHOW_FPS
+SRAM4_DATA static uint64_t last_flip_time = 0ULL;
+#endif
 
 static inline void *get_scaling_bb()
 {
@@ -484,6 +489,19 @@ void *gpu_thread(void *p)
                     wait_dma2d();
                     screen_flip();
                     scr_vsync.Wait();
+
+#if GK_GPU_SHOW_FPS
+                    {
+                        auto curt = clock_cur_ms();
+                        auto cticks = curt - last_flip_time;
+                        last_flip_time = curt;
+                        {
+                            CriticalGuard cg(s_rtt);
+                            SEGGER_RTT_printf(0, "gpu: cticks: %u, fps: %u\n",
+                                (uint32_t)cticks, 1000U / (uint32_t)cticks);
+                        }
+                    }
+#endif
                     break;
 
                 case gpu_message_type::FlipScaleBuffers:
