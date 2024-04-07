@@ -54,6 +54,11 @@ class Thread
         Thread *join_thread = nullptr;
         void **join_thread_retval;
 
+        /* thread times */
+        uint64_t cur_timeslice_start = 0ULL;
+        uint64_t total_s_time = 0ULL;
+        uint64_t total_us_time = 0ULL;
+
         Thread(Process &owning_process);
 
         void Cleanup(void *tretval);

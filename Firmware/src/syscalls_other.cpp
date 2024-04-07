@@ -5,6 +5,7 @@
 #include "memblk.h"
 #include <errno.h>
 #include "gpu.h"
+#include <sys/times.h>
 
 int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 {
@@ -103,4 +104,35 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
         return -2;  // deferred return
     
     return 0;
+}
+
+clock_t syscall_times(tms *buf, int *_errno)
+{
+    if(!buf)
+    {
+        *_errno = EFAULT;
+        return (clock_t)-1;
+    }
+
+    uint64_t tot_us = 0ULL;
+    uint64_t tot_s = 0ULL;
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    {
+        CriticalGuard cg_p(p.sl);
+        for(auto pt : p.threads)
+        {
+            CriticalGuard cg_t(pt->sl);
+            tot_s += pt->total_s_time;
+            tot_us += pt->total_us_time;
+        }
+    }
+    auto tot_u = tot_us - tot_s;
+
+    buf->tms_utime = tot_u;
+    buf->tms_stime = tot_s;
+    buf->tms_cutime = tot_u;
+    buf->tms_cstime = tot_s;
+
+    return (clock_t)clock_cur_ms();
 }

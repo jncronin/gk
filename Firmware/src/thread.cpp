@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "cache.h"
 #include "gk_conf.h"
+#include "clocks.h"
 
 extern Scheduler s;
 extern Thread dt;
@@ -209,6 +210,8 @@ void SetNextThreadForCore(Thread *t, int coreid)
             CriticalGuard cg2(s.current_thread[coreid].v->sl);
             s.current_thread[coreid].v->tss.chosen_for_core = 0;
             s.current_thread[coreid].v->tss.running_on_core = 0;
+            s.current_thread[coreid].v->total_us_time += clock_cur_ms() -
+                s.current_thread[coreid].v->cur_timeslice_start;
             if(s.current_thread[coreid].v == &dt)
             {
                 flush_cache = true;
@@ -219,6 +222,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
             CriticalGuard cg2(t->sl);
             t->tss.chosen_for_core = 0;
             t->tss.running_on_core = coreid + 1;
+            t->cur_timeslice_start = clock_cur_ms();
 
             if(t->is_blocking)
             {

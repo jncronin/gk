@@ -5,6 +5,7 @@
 #include "scheduler.h"
 #include "clocks.h"
 #include "syscalls_int.h"
+#include <sys/times.h>
 
 extern Scheduler s;
 
@@ -27,6 +28,7 @@ extern "C" {
 
 void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 {
+    auto syscall_start = clock_cur_ms();
     switch(sno)
     {
         case StartFirstThread:
@@ -463,10 +465,20 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
+
+        case __syscall_times:
+            {
+                auto p = reinterpret_cast<__syscall_times_params *>(r2);
+                *p->retval = syscall_times(p->buf, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            break;
         
         default:
             __asm__ volatile ("bkpt #0\n");
             while(true);
             break;
     }
+
+    GetCurrentThreadForCore()->total_s_time += clock_cur_ms() - syscall_start;
 }
