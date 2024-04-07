@@ -487,7 +487,13 @@ void *gpu_thread(void *p)
             {
                 case gpu_message_type::FlipBuffers:
                     wait_dma2d();
-                    screen_flip();
+                    {
+                        auto new_buf = screen_flip();
+                        if(g.dest_addr)
+                        {
+                            *(void **)g.dest_addr = new_buf;
+                        }
+                    }
                     scr_vsync.Wait();
 
 #if GK_GPU_SHOW_FPS
