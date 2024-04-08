@@ -5,7 +5,7 @@
 SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_read, bool will_write)
 {
 #if GK_USE_CACHE
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     // if nothing is going to happen (used, e.g. in wifi rxtx command for either rx or tx), do nothing
     if(!_start || !_len || (!will_read && !will_write))
     {
@@ -50,7 +50,7 @@ SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_
 SharedMemoryGuard::~SharedMemoryGuard()
 {
 #if GK_USE_CACHE
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     if(!t)
         return;
     if(coreid == 0 && is_write)

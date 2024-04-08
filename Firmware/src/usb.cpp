@@ -84,13 +84,31 @@ void *usb_task(void *pvParams)
 {
     (void)pvParams;
 
+#if DEBUG_USB
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "usb: task starting\n");
+    }
+#endif
     init_usb();
+#if DEBUG_USB
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "usb: calling tusb_init\n");
+    }
+#endif
     tusb_init();
 
     NVIC_EnableIRQ(OTG_HS_IRQn);
 
     while(true)
     {
+#if DEBUG_USB
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "usb: loop\n");
+        }
+#endif
         tud_task();
     }
 }
