@@ -68,7 +68,10 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 {
     CPUAffinity OnlyMe = (ncore == 0) ? CPUAffinity::M7Only : CPUAffinity::M4Only;
     CPUAffinity PreferMe = (ncore == 0) ? CPUAffinity::PreferM7 : CPUAffinity::PreferM4;
+
+#if GK_DUAL_CORE
     CPUAffinity PreferOther = (ncore == 0) ? CPUAffinity::PreferM4 : CPUAffinity::PreferM7;
+#endif
 
     Thread *cur_t;
     int cur_prio;
@@ -129,6 +132,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
             }
         }
 
+#if GK_DUAL_CORE
         // Now try ones marked PreferOther
         for(int basei = 0; basei < vsize; basei++)
         {
@@ -159,6 +163,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
                 }
             }
         }
+#endif
     }
 
     {
