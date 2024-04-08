@@ -9,6 +9,7 @@
 #include <ext4_thread.h>
 #include "syscalls_int.h"
 #include "SEGGER_RTT.h"
+#include "zlib.h"
 
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
@@ -133,6 +134,26 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sector, UINT count)
     return RES_OK;
 }
 
+DRESULT disk_write(BYTE pdrv, const BYTE *buff, LBA_t sector, UINT count)
+{
+    if(!prep_fake_mbr())
+        return RES_NOTRDY;
+    
+    unsigned int act_lba = sector + fake_mbr_lba;
+    if(!fake_mbr_check_extents(act_lba, count))
+        return RES_PARERR;
+    
+    auto sret = sd_perform_transfer(act_lba, count, (void *)buff, false);
+    if(sret != 0)
+        return RES_ERROR;
+    return RES_OK;
+}
+
+DRESULT disk_ioctl (BYTE pdrv, BYTE cmd, void* buff)
+{
+    return RES_OK;
+}
+
 typedef size_t (*fread_func)(void *ptr, size_t size, void *f);
 typedef ssize_t (*lseek_func)(void *f, size_t offset);
 
@@ -160,6 +181,16 @@ static ssize_t direct_lseek(void *f, size_t offset)
         return -1;
     }
     return offset;
+}
+
+static size_t gz_fread(void *ptr, size_t size, void *f)
+{
+    return gzread((gzFile)f, ptr, size);
+}
+
+static ssize_t gz_lseek(void *f, size_t offset)
+{
+    return gzseek((gzFile)f, offset, SEEK_SET);
 }
 
 /* written using function pointers to allow us to easily add a gzip     
@@ -296,26 +327,6 @@ int fs_provision()
     // mount a read-only FatFS system from partition 0
     if(!prep_fake_mbr())
         return -1;
-
-    // Get the most recently provisioned file from ext4
-    unsigned long long int c_prov_tstamp = 0ULL;
-    auto er = deferred_call(syscall_open, "/provision.txt", O_RDONLY, 0);
-    if(er >= 0)
-    {
-        char buf[32];
-        memset(buf, 0, 32);
-        auto br = deferred_call(syscall_read, er, buf, 31);
-        if(br > 0)
-        {
-            c_prov_tstamp = atoll(buf);
-        }
-        close(er);
-    }
-
-    {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: c_prov_tstamp: %d\n", (int)c_prov_tstamp);
-    }
     
     FATFS fs;
     auto fr = f_mount(&fs, "", 0);
@@ -337,7 +348,6 @@ int fs_provision()
     }
 
     bool had_failure = false;
-    unsigned long long max_provisioned = 0ULL;
 
     while(true)
     {
@@ -357,57 +367,33 @@ int fs_provision()
             }
 
             // Get file type
-            [[maybe_unused]] bool is_tar = false;
-            [[maybe_unused]] bool is_targz = false;
+            bool is_tar = false;
+            bool is_targz = false;
 
             auto fnlen = strlen(fi.fname);
-            unsigned long long int tstamp = 0LL;
-            if(fnlen > 3 && !strncmp("gk-", fi.fname, 3))
+            if(fnlen > 4 && !strncmp(".tar", &fi.fname[fnlen - 4], 4))
             {
-                int tstamp_start = 0, tstamp_end = 0;
-                if(fnlen > 7 && !strncmp(".tar", &fi.fname[fnlen - 4], 4))
-                {
-                    is_tar = true;
-                    tstamp_start = 3;
-                    tstamp_end = fnlen - 4;
-                }
-                if(fnlen > 10 && !strncmp(".tar.gz", &fi.fname[fnlen - 7], 7))
-                {
-                    is_targz = true;
-                    tstamp_start = 3;
-                    tstamp_end = fnlen - 7;
-                }
-
-                if(tstamp_start)
-                {
-                    char ctstamp[32];
-                    auto tstamp_len = std::min(32, tstamp_end - tstamp_start);
-                    memcpy(ctstamp, &fi.fname[tstamp_start], tstamp_len);
-                    ctstamp[31] = 0;
-
-                    tstamp = atoll(ctstamp);
-                }
+                is_tar = true;
+            }
+            if(fnlen > 7 && !strncmp(".tar.gz", &fi.fname[fnlen - 7], 7))
+            {
+                is_targz = true;
             }
 
             {
                 CriticalGuard cg(s_rtt);
                 if(is_tar)
-                    SEGGER_RTT_printf(0, "fs_provision: is_tar tstamp: %d\n", (int)tstamp);
+                    SEGGER_RTT_printf(0, "fs_provision: is_tar\n");
                 if(is_targz)
-                    SEGGER_RTT_printf(0, "fs_provision: is_targz: %d\n", (int)tstamp);
+                    SEGGER_RTT_printf(0, "fs_provision: is_targz\n");
                 if(!is_tar && !is_targz)
                     SEGGER_RTT_printf(0, "fs_provision: unsupported file\n");
             }
 
-            // check tstamp against already installed files
-            if(tstamp <= c_prov_tstamp)
-            {
-                continue;
-            }
-
             // install files
-            if(is_tar)
+            if(is_tar || is_targz)
             {
+                int fs_p_ret = 0;
                 FIL fp;
                 fr = f_open(&fp, fi.fname, FA_READ);
                 if(fr != FR_OK)
@@ -417,23 +403,75 @@ int fs_provision()
                     had_failure = true;
                     break;
                 }
-                auto fs_p_ret = fs_provision_tarball(direct_fread, direct_lseek, &fp);
-                f_close(&fp);
 
+                if(is_tar)
+                {
+                    fs_p_ret = fs_provision_tarball(direct_fread, direct_lseek, &fp);
+                    f_close(&fp);
+                }
+                else if(is_targz)
+                {
+                    // try and get free process file handle
+                    int fd;
+
+                    {
+                        auto t = GetCurrentThreadForCore();
+                        auto &p = t->p;
+                        CriticalGuard _p(p.sl);
+                        fd = get_free_fildes(p);
+                        if(fd < 0)
+                        {
+                            CriticalGuard cg(s_rtt);
+                            SEGGER_RTT_printf(0, "fs_provision: couldn't assign fildes\n");
+                            f_close(&fp);
+                        }
+                        else
+                        {
+                            p.open_files[fd] = new FatfsFile(&fp, std::string(fi.fname));
+                        }
+                    }
+
+                    if(fd >= 0)
+                    {
+                        auto gzf = gzdopen(fd, "r");
+                        if(gzf == NULL)
+                        {
+                            CriticalGuard cg(s_rtt);
+                            SEGGER_RTT_printf(0, "fs_provision: gzdopen failed\n");
+                            close(fd);
+                        }
+                        else
+                        {
+                            // sensible buffer sizes bearing in mind it allocates 3x this and
+                            //  we use SRAM4 for malloc
+                            gzbuffer(gzf, 1024);
+
+                            fs_p_ret = fs_provision_tarball(gz_fread, gz_lseek, gzf);
+                            gzclose(gzf);
+                        }
+                    }
+                }
 
                 if(fs_p_ret == 0)
                 {
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "fs_provision: provisioned %d\n", (int)tstamp);
+                        SEGGER_RTT_printf(0, "fs_provision: provisioned %s\n", fi.fname);
                     }
-                    max_provisioned = std::max(max_provisioned, tstamp);
+
+                    // delete file
+                    if(f_unlink(fi.fname) != FR_OK)
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "fs_provision: failed to delete %s: %d\n",
+                            fi.fname, f_unlink(fi.fname));
+                    }
                 }
                 else
                 {
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "fs_provision: failed to provision %d\n", (int)tstamp);
+                        SEGGER_RTT_printf(0, "fs_provision: failed to provision %s\n", fi.fname);
                     }
                     had_failure = true;
                     break;
@@ -443,32 +481,6 @@ int fs_provision()
     }
     f_closedir(&dp);
     f_unmount("/");
-
-    // Write out provision.txt
-    if(!had_failure && max_provisioned)
-    {
-        er = deferred_call(syscall_open, "/provision.txt", O_CREAT | O_TRUNC | O_WRONLY, 0);
-        if(er >= 0)
-        {
-            char buf[32];
-            memset(buf, 0, 32);
-            sprintf(buf, "%llu", max_provisioned);
-            auto blen = (int)strlen(buf);
-            auto bw = deferred_call(syscall_write, er, buf, blen + 1);
-            if(bw == blen + 1)
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: completed provisioning\n");
-            }
-            else
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: failed to write /provision.txt : %d\n", bw);
-            }
-
-            close(er);
-        }
-    }
 
     return 0;
 }

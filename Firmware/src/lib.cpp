@@ -1,9 +1,19 @@
 /* The following are to avoid linker warnings */
 
+#include "syscalls_int.h"
+
 extern "C" {
-int _close(int file)
+int _open(const char *pathname, int flags, mode_t mode)
 {
     return -1;
+}
+
+int _close(int file)
+{
+    int ret = syscall_close1(file, &errno);
+    if(ret != 0)
+        return ret;
+    return syscall_close2(file, &errno);
 }
 
 int _fstat(int file, void *st)
@@ -28,12 +38,12 @@ int _kill(int pid, int sig)
 
 int _lseek(int file, int offset, int whence)
 {
-    return -1;
+    return syscall_lseek(file, offset, whence, &errno);
 }
 
 int _read(int file, char *ptr, int len)
 {
-    return -1;
+    return syscall_read(file, ptr, len, &errno);
 }
 
 int _write(int file, char *buf, int nbytes)
