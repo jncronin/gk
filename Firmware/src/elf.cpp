@@ -300,7 +300,7 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
     proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
     proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
-    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, true, 8, *proc,
+    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, true, GK_PRIORITY_NORMAL, *proc,
         affinity, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS));
