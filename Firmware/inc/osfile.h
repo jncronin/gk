@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <ext4.h>
 #include <string>
+#include "ff.h"
 
 enum FileType
 {
@@ -83,6 +84,22 @@ class LwextFile : public File
 
         LwextFile(ext4_file fildes, std::string fname);
         ext4_file f;
+        std::string fname;
+};
+
+class FatfsFile : public File
+{
+    public:
+        ssize_t Write(const char *buf, size_t count, int *_errno);
+        ssize_t Read(char *buf, size_t count, int *_errno);
+
+        int Fstat(struct stat *buf, int *_errno);
+        off_t Lseek(off_t offset, int whence, int *_errno);
+
+        int Close(int *_errno);
+
+        FatfsFile(FIL *file, std::string fname);
+        FIL *f;
         std::string fname;
 };
 
