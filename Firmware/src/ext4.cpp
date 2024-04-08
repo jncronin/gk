@@ -445,7 +445,7 @@ void init_ext4()
     uint32_t data_end = (uint32_t)&_eext4_data;
 
     Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
-        PreferM4, InvalidMemregion(),
+        M7Only /* may need to access dtcm */, InvalidMemregion(),
         MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, N_NC_S)));
 }
 
