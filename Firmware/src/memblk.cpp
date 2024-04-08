@@ -116,15 +116,19 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
 
     switch(affinity)
     {
+#if GK_DUAL_CORE
         case CPUAffinity::Either:
         case CPUAffinity::PreferM7:
             rtlist[nrts++] = MemRegionType::AXISRAM;
             rtlist[nrts++] = MemRegionType::SRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;
             break;
+#endif
 
         case CPUAffinity::M4Only:
+#if GK_DUAL_CORE
         case CPUAffinity::PreferM4:
+#endif
             rtlist[nrts++] = MemRegionType::SRAM;
             rtlist[nrts++] = MemRegionType::AXISRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;

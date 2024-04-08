@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include "gk_conf.h"
 
 enum MemRegionType
 {
@@ -12,13 +13,33 @@ enum MemRegionType
     SDRAM = 3
 };
 
+#if GK_DUAL_CORE_AMP
+#if GK_DUAL_CORE
+#error Cannot specify both GK_DUAL_CORE_AMP and GK_DUAL_CORE
+#endif
+#endif
+
 enum CPUAffinity
 {
+#if GK_DUAL_CORE_AMP
+    Either = 1,
+    PreferM7 = 1,
+    M7Only = 1,
+    M4Only = 2,
+    PreferM4 = 2
+#elif GK_DUAL_CORE
     Either = 3,
     M7Only = 1,
     M4Only = 2,
     PreferM7 = 7,
     PreferM4 = 11
+#else
+    Either = 1,
+    M7Only = 1,
+    M4Only = 1,
+    PreferM7 = 1,
+    PreferM4 = 1
+#endif
 };
 
 enum MemRegionAccess
