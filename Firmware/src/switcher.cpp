@@ -4,7 +4,6 @@
 #include "util.h"
 
 #include "scheduler.h"
-extern Scheduler s;
 
 #define xstr(s) str(s)
 #define str(s) #s

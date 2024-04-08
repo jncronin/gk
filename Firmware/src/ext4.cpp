@@ -31,7 +31,6 @@ static_assert(EXT4_DE_SYMLINK == DT_LNK);
 
 extern Spinlock s_rtt;
 
-extern Scheduler s;
 extern Process kernel_proc;
 extern char _sext4_data, _eext4_data;
 
@@ -445,8 +444,8 @@ void init_ext4()
     uint32_t data_start = (uint32_t)&_sext4_data;
     uint32_t data_end = (uint32_t)&_eext4_data;
 
-    s.Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
-        Either, InvalidMemregion(),
+    Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
+        PreferM4, InvalidMemregion(),
         MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, N_NC_S)));
 }
 

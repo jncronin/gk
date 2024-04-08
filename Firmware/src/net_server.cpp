@@ -88,10 +88,9 @@ void init_net()
     auto start_ptr = (uint32_t)(uintptr_t)&_slwip_data;
     auto end_ptr = (uint32_t)(uintptr_t)&_elwip_data;
 
-    extern Scheduler s;
     extern Process kernel_proc;
-    s.Schedule(Thread::Create("net", net_thread, nullptr, true, 5, kernel_proc,
-        CPUAffinity::Either, InvalidMemregion(),
+    Schedule(Thread::Create("net", net_thread, nullptr, true, 5, kernel_proc,
+        CPUAffinity::PreferM4, InvalidMemregion(),
         MPUGenerate(start_ptr, end_ptr - start_ptr, 6, false, RW, RO, WBWA_NS)));
 }
 

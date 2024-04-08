@@ -15,7 +15,6 @@
 //#define DEBUG_SD    1
 
 extern Spinlock s_rtt;
-extern Scheduler s;
 extern Process kernel_proc;
 
 #define SDCLK   192000000
@@ -332,8 +331,8 @@ void init_sd()
     uint32_t data_start = (uint32_t)&_ssdt_data;
     uint32_t data_end = (uint32_t)&_esdt_data;
 
-    s.Schedule(Thread::Create("sd", sd_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, 
-        Either, InvalidMemregion(),
+    Schedule(Thread::Create("sd", sd_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, 
+        PreferM4, InvalidMemregion(),
         MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS)));
 }
 
@@ -786,7 +785,7 @@ static inline uint32_t do_mdma_transfer(uint32_t src, uint32_t dest)
     {
         size_val = 2U;
     }
-    
+
     MDMA_Channel0->CTCR = MDMA_CTCR_SWRM |  // software trigger
         (1UL << MDMA_CTCR_TRGM_Pos) |       // block transfers
         (127UL << MDMA_CTCR_TLEN_Pos) |     // 128 bytes/buffer (max)

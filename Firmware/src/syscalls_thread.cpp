@@ -7,7 +7,6 @@
 #include "osmutex.h"
 #include "clocks.h"
 
-extern Scheduler s;
 extern Spinlock s_rtt;
 
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
@@ -72,7 +71,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 
     *thread = (pthread_t)id;
 
-    s.Schedule(t);
+    Schedule(t);
 
     return 0;
 }
@@ -191,7 +190,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     }
 
     // schedule startup thread
-    s.Schedule(startup_thread);
+    Schedule(startup_thread);
 
     return 0;
 }
