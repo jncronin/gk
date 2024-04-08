@@ -14,6 +14,9 @@ include(cmake/utils.cmake)
 add_subdirectory(lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
+set(ZLIB_BUILD_EXAMPLES OFF)
+add_subdirectory(zlib-1.3.1)
+
 project(gk C CXX ASM)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
@@ -155,6 +158,7 @@ target_link_libraries(${PROJECT_NAME}
         lwext4
         tusb
         winc
+        zlib
 )
 
 target_link_options(${PROJECT_NAME}
