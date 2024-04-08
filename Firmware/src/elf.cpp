@@ -10,8 +10,6 @@
 
 #include "cache.h"
 
-extern Scheduler s;
-
 int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size, CPUAffinity affinity,
     Thread **startup_thread_ret, Process **proc_ret)
 {
@@ -308,7 +306,7 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
     if(startup_thread_ret)
         *startup_thread_ret = startup_thread;
     else
-        s.Schedule(startup_thread);
+        Schedule(startup_thread);
     if(proc_ret)
         *proc_ret = proc;
 

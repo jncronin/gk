@@ -41,6 +41,18 @@ Scheduler::Scheduler()
     }
 }
 
+void Schedule(Thread *t)
+{
+#if GK_DUAL_CORE_AMP
+    if(t->tss.affinity == M7Only)
+        scheds[0].Schedule(t);
+    else
+        scheds[1].Schedule(t);
+#else
+    sched.Schedule(t);
+#endif
+}
+
 void Scheduler::Schedule(Thread *t)
 {
     if(!t || t == &dt)

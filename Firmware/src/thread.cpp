@@ -9,7 +9,6 @@
 #include "gk_conf.h"
 #include "clocks.h"
 
-extern Scheduler s;
 extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
@@ -151,38 +150,46 @@ Thread *Thread::Create(std::string name,
 
 Thread *GetCurrentThreadForCore(int coreid)
 {
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     if(coreid == -1)
     {
         coreid = GetCoreID();
     }
+#else
+    return sched.current_thread[0].v;
+#endif
 
+#if GK_DUAL_CORE
     {
         //CriticalGuard cg(s.current_thread[coreid].m);
-        return s.current_thread[coreid].v;  // <- should be atomic
+        return sched.current_thread[coreid].v;  // <- should be atomic
     }
 #else
-    return s.current_thread[0].v;
+    return scheds[coreid].current_thread[0].v;
 #endif
 }
 
 Thread *GetNextThreadForCore(int coreid)
 {
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     if(coreid == -1)
     {
         coreid = GetCoreID();
     }
-
-    return s.GetNextThread(coreid);
 #else
-    return s.GetNextThread(0);
+    return sched.GetNextThread(0);
+#endif
+
+#if GK_DUAL_CORE
+    return sched.GetNextThread(coreid);
+#else
+    return scheds[coreid].GetNextThread(0);
 #endif
 }
 
 int GetCoreID()
 {
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     return (*( ( volatile uint32_t * ) 0xE000ed00 ) & 0xfff0UL) == 0xc240 ? 1 : 0;
 #else
     return 0;
@@ -203,16 +210,16 @@ void SetNextThreadForCore(Thread *t, int coreid)
 #endif
 
     {
-        CriticalGuard cg(s.current_thread[coreid].m);
+        CriticalGuard cg(current_thread(coreid).m);
 
-        if(s.current_thread[coreid].v)
+        if(current_thread(coreid).v)
         {
-            CriticalGuard cg2(s.current_thread[coreid].v->sl);
-            s.current_thread[coreid].v->tss.chosen_for_core = 0;
-            s.current_thread[coreid].v->tss.running_on_core = 0;
-            s.current_thread[coreid].v->total_us_time += clock_cur_ms() -
-                s.current_thread[coreid].v->cur_timeslice_start;
-            if(s.current_thread[coreid].v == &dt)
+            CriticalGuard cg2(current_thread(coreid).v->sl);
+            current_thread(coreid).v->tss.chosen_for_core = 0;
+            current_thread(coreid).v->tss.running_on_core = 0;
+            current_thread(coreid).v->total_us_time += clock_cur_ms() -
+                current_thread(coreid).v->cur_timeslice_start;
+            if(current_thread(coreid).v == &dt)
             {
                 flush_cache = true;
             }
@@ -230,7 +237,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
             }
         }
 
-        s.current_thread[coreid].v = t;
+        current_thread(coreid).v = t;
     }
 
 #if GK_USE_CACHE

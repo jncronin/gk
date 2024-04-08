@@ -10,8 +10,6 @@
 
 extern Spinlock s_rtt;
 
-extern Scheduler s;
-
 extern "C" void SVC_Handler() __attribute__((naked));
 
 extern "C" void SVC_Handler()       /* Can we just define this with the parameters of SyscallHandler? */
@@ -38,7 +36,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             // enable systick and trigger a PendSV IRQ
             SysTick->CTRL = 7UL;
             SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
-            s.scheduler_running[GetCoreID()] = true;
+            scheduler_running() = true;
 
 #if GK_USE_CACHE
             SCB_CleanInvalidateDCache();

@@ -41,7 +41,11 @@ static void *init_thread(void *p);
 
 extern void jpeg_test();
 
-__attribute__((section(".sram4")))Scheduler s;
+#if GK_DUAL_CORE_AMP
+SRAM4_DATA Scheduler scheds[2] { Scheduler(), Scheduler() };
+#else
+SRAM4_DATA Scheduler sched;
+#endif
 __attribute__((section(".sram4")))Process kernel_proc;
 
 extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
@@ -77,21 +81,21 @@ int main()
 
     kernel_proc.name = "kernel";
 
-    s.Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
+    Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
-    s.Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M4Only,
+    Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M4Only,
         memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
 
 #if GK_ENABLE_TEST_THREADS
-    s.Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc));
-    s.Schedule(Thread::Create("b", b_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::Either, InvalidMemregion(),
+    Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc));
+    Schedule(Thread::Create("b", b_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::Either, InvalidMemregion(),
         MPUGenerate(GK_SDRAM_BASE, 0x800000, GK_PRIORITY_NORMAL, false, MemRegionAccess::RW, MemRegionAccess::NoAccess,
         WT_NS)));
-    s.Schedule(Thread::Create("c", x_thread, (void *)'C', true, GK_PRIORITY_NORMAL, kernel_proc));
-    s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, GK_PRIORITY_NORMAL, kernel_proc));
+    Schedule(Thread::Create("c", x_thread, (void *)'C', true, GK_PRIORITY_NORMAL, kernel_proc));
+    Schedule(Thread::Create("d", x_thread, (void *)'D', true, GK_PRIORITY_NORMAL, kernel_proc));
 #endif
 
-    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM7));
+    Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM7));
 
 #if GK_ENABLE_NET
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
@@ -100,10 +104,10 @@ int main()
     s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
-    s.Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7));
+    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7));
 
     // Nudge M4 to wakeup
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE || GK_DUAL_CORE_AMP
     __asm__ volatile ("sev \n" ::: "memory");
 #endif
 
@@ -112,7 +116,7 @@ int main()
     SysTick->VAL = 0;
     SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
 
-    s.StartForCurrentCore();
+    s().StartForCurrentCore();
 
     return 0;
 }
@@ -155,7 +159,7 @@ extern "C" int main_cm4()
     SysTick->VAL = 0;
     SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
 
-    s.StartForCurrentCore();
+    s().StartForCurrentCore();
 
     return 0;
 }
@@ -389,7 +393,7 @@ void *init_thread(void *p)
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
-    s.Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
+    Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
     proccreate_t pt;

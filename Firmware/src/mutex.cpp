@@ -4,8 +4,6 @@
 #include "clocks.h"
 #include "gk_conf.h"
 
-extern Scheduler s;
-
 UninterruptibleGuard::UninterruptibleGuard()
 {
     cpsr = DisableInterrupts();

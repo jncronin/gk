@@ -139,7 +139,7 @@ void nm_bsp_interrupt_ctrl(uint8 ctrl)
 
 void nm_bsp_sleep(uint32 msec)
 {
-    if(s.scheduler_running[GetCoreID()])
+    if(scheduler_running())
         Block(clock_cur_ms() + msec);
     else
         delay_ms(msec);
