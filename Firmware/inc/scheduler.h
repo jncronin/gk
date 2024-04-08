@@ -73,13 +73,14 @@ inline Scheduler::LockedThread &current_thread(int coreid) { return scheds[corei
 #else
 extern Scheduler sched;
 inline Scheduler &s() { return sched; }
+inline bool &scheduler_running() { return s().scheduler_running[GetCoreID()]; }
 inline Scheduler::LockedThread &current_thread() { return s().current_thread[GetCoreID()]; }
 inline Scheduler::LockedThread &current_thread(int coreid) { return sched.current_thread[coreid]; }
 #endif
 
 static inline void Yield()
 {
-    if(s().scheduler_running[GetCoreID()])
+    if(scheduler_running())
     {
         SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
     }

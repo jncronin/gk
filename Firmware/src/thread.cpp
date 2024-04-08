@@ -8,6 +8,7 @@
 #include "cache.h"
 #include "gk_conf.h"
 #include "clocks.h"
+#include "ossharedmem.h"
 
 extern Thread dt;
 
@@ -121,22 +122,24 @@ Thread *Thread::Create(std::string name,
     */
     auto top_stack = t->stack.length / 4;
     auto stack = reinterpret_cast<uint32_t *>(t->stack.address);
-    stack[--top_stack] = 1UL << 24; // THUMB mode
-    stack[--top_stack] = reinterpret_cast<uint32_t>(func) | 1UL;
-    stack[--top_stack] = reinterpret_cast<uint32_t>(thread_cleanup) | 1UL;
-    stack[--top_stack] = 0UL;
-    stack[--top_stack] = 0UL;
-    stack[--top_stack] = 0UL;
-    stack[--top_stack] = 0UL;
-    stack[--top_stack] = reinterpret_cast<uint32_t>(p);
+    
+    {
+        SharedMemoryGuard sg((const void *)(t->stack.address + t->stack.length - 8*4), 8*4, false, true);
+        stack[--top_stack] = 1UL << 24; // THUMB mode
+        stack[--top_stack] = reinterpret_cast<uint32_t>(func) | 1UL;
+        stack[--top_stack] = reinterpret_cast<uint32_t>(thread_cleanup) | 1UL;
+        stack[--top_stack] = 0UL;
+        stack[--top_stack] = 0UL;
+        stack[--top_stack] = 0UL;
+        stack[--top_stack] = 0UL;
+        stack[--top_stack] = reinterpret_cast<uint32_t>(p);
+    }
 
     //t->tss.psp = t->stack.address + t->stack.length;
     t->tss.psp = reinterpret_cast<uint32_t>(&stack[top_stack]);
     
     /* Create mpu regions */
     memcpy(t->tss.mpuss, mpu_default, sizeof(mpu_default));
-
-    // TODO: shared memory guards around stack
 
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
     //CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);
@@ -183,7 +186,7 @@ Thread *GetNextThreadForCore(int coreid)
 #if GK_DUAL_CORE
     return sched.GetNextThread(coreid);
 #else
-    return scheds[coreid].GetNextThread(0);
+    return scheds[coreid].GetNextThread(coreid);
 #endif
 }
 
@@ -200,7 +203,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
 {
     [[maybe_unused]] bool flush_cache = false;
 
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     if(coreid == -1)
     {
         coreid = GetCoreID();
@@ -247,13 +250,6 @@ void SetNextThreadForCore(Thread *t, int coreid)
     }
 #endif
 }
-
-/* Called from PendSV */
-void ScheduleThread(Thread *t)
-{
-    //s.Schedule(t);
-}
-
 
 std::map<uint32_t, Process::mmap_region>::iterator Process::get_mmap_region(uint32_t addr, uint32_t len)
 {

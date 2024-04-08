@@ -106,8 +106,15 @@ int main()
 
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7));
 
-    // Nudge M4 to wakeup
 #if GK_DUAL_CORE || GK_DUAL_CORE_AMP
+    // Reset M4
+    RCC->APB1LENR |= RCC_APB1LENR_WWDG2EN;
+    (void)RCC->APB1LENR;
+    WWDG2->CR = WWDG_CR_WDGA;
+
+    delay_ms(5);
+
+    // Nudge M4 to wakeup
     __asm__ volatile ("sev \n" ::: "memory");
 #endif
 
