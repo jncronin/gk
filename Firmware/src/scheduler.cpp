@@ -83,18 +83,21 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
 #if GK_DUAL_CORE
     CPUAffinity PreferOther = (ncore == 0) ? CPUAffinity::PreferM4 : CPUAffinity::PreferM7;
+    int ct_ncore = ncore;
+#else
+    int ct_ncore = 0;
 #endif
 
     Thread *cur_t;
     int cur_prio;
     {
-        CriticalGuard cg(current_thread[ncore].m);
-        cur_t = current_thread[ncore].v;
+        CriticalGuard cg(current_thread[ct_ncore].m);
+        cur_t = current_thread[ct_ncore].v;
         cur_prio = (cur_t->is_blocking || cur_t->for_deletion || 
             (cur_t->tss.running_on_core && (cur_t->tss.running_on_core != ((int)ncore + 1))) ||
             (cur_t->tss.pinned_on_core && (cur_t->tss.pinned_on_core != ((int)ncore + 1))) ||
             cur_t->tss.deschedule_from_core || cur_t->tss.chosen_for_core) ? 0 :
-            current_thread[ncore].v->base_priority;
+            current_thread[ct_ncore].v->base_priority;
         cur_t->tss.deschedule_from_core = ncore + 1;
     }
 
@@ -180,12 +183,12 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
     {
         // We didn't find any valid thread with equal or higher priority than the current one
-        CriticalGuard cg(current_thread[ncore].m);
+        CriticalGuard cg(current_thread[ct_ncore].m);
 #if DEBUG_SCHEDULER
-        report_chosen(cur_t, current_thread[ncore].v);
+        report_chosen(cur_t, current_thread[ct_ncore].v);
 #endif
-        current_thread[ncore].v->tss.deschedule_from_core = 0;
-        return current_thread[ncore].v;
+        current_thread[ct_ncore].v->tss.deschedule_from_core = 0;
+        return current_thread[ct_ncore].v;
     }
 }
 

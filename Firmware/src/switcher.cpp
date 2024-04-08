@@ -97,11 +97,6 @@ extern "C" void PendSV_Handler()
 #endif
 #endif
 
-        /* Schedule current thread */
-        "push {r0-r3}                   \n"
-        "bl ScheduleThread              \n"
-        "pop {r0-r3}                    \n"
-
         /* Set current_thread pointer to new one */
         "push {r0-r3}                   \n" /* can optimise to sp = sp - 16 */
         "mov r0, r1                     \n"
