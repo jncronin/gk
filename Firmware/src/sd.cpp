@@ -773,7 +773,20 @@ static inline uint32_t do_mdma_transfer(uint32_t src, uint32_t dest)
         size_val = 2U;
     }
     
-
+    uint32_t ctbr = 0UL;
+    if(src >= 0x20000000 && src < 0x20020000)
+    {
+        ctbr |= MDMA_CTBR_SBUS;
+    }
+    if(dest >= 0x20000000 && dest < 0x20020000)
+    {
+        ctbr |= MDMA_CTBR_DBUS;
+    }
+    if(ctbr && size_val == 3U)
+    {
+        size_val = 2U;
+    }
+    
     MDMA_Channel0->CTCR = MDMA_CTCR_SWRM |  // software trigger
         (1UL << MDMA_CTCR_TRGM_Pos) |       // block transfers
         (127UL << MDMA_CTCR_TLEN_Pos) |     // 128 bytes/buffer (max)
@@ -787,6 +800,7 @@ static inline uint32_t do_mdma_transfer(uint32_t src, uint32_t dest)
     MDMA_Channel0->CSAR = src;
     MDMA_Channel0->CDAR = dest;
     MDMA_Channel0->CMAR = 0;
+    MDMA_Channel0->CTBR = ctbr;
     MDMA_Channel0->CIFCR = 0x1f; // clear all interrupts
     uint32_t cr_val = MDMA_CCR_SWRQ | (3UL << MDMA_CCR_PL_Pos);
     MDMA_Channel0->CCR = cr_val;
