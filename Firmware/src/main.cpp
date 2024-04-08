@@ -91,7 +91,7 @@ int main()
     s.Schedule(Thread::Create("d", x_thread, (void *)'D', true, GK_PRIORITY_NORMAL, kernel_proc));
 #endif
 
-    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
+    s.Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM7));
 
 #if GK_ENABLE_NET
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
