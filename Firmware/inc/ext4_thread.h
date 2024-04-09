@@ -5,6 +5,15 @@
 #include "syscalls.h"
 #include "thread.h"
 
+static inline void check_buffer(const void *addr)
+{
+    auto paddr = (uint32_t)(uintptr_t)addr;
+    if((paddr >= 0x20000000) && (paddr < 0x20020000))
+    {
+        __asm__ volatile("bkpt \n" ::: "memory");
+    }
+}
+
 void init_ext4();
 
 struct ext4_message

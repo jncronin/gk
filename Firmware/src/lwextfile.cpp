@@ -29,6 +29,7 @@ ssize_t LwextFile::Read(char *buf, size_t count, int *_errno)
     }
     auto t = GetCurrentThreadForCore();
     auto msg = ext4_read_message(f, buf, count, t->ss, t->ss_p);
+    check_buffer(buf);
     if(!ext4_send_message(msg))
     {
         *_errno = ENOMEM;
@@ -46,6 +47,7 @@ ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
     }
     auto t = GetCurrentThreadForCore();
     auto msg = ext4_write_message(f, const_cast<char *>(buf), count, t->ss, t->ss_p);
+    check_buffer(buf);
     if(!ext4_send_message(msg))
     {
         *_errno = ENOMEM;

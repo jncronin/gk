@@ -311,6 +311,7 @@ static void handle_fstat_message(ext4_message &msg)
     uint32_t t;
     auto fname = msg.params.fstat_params.pathname;
     auto f = msg.params.fstat_params.e4f;
+    auto pstat = (uint32_t)(uintptr_t)msg.params.fstat_params.st;
 
     if((extret = ext4_atime_get(fname, &t)) != EOK)
         goto _err;
@@ -346,6 +347,32 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_blksize = 512;
     buf.st_blocks = (f->fsize + 511) / 512; // round up
 
+    // handle M4 copying to M7 DTCM
+    if((pstat >= 0x20000000) && (pstat < 0x20020000) && (GetCoreID() == 1))
+    {
+        const auto dmac = MDMA_Channel4;
+        while(dmac->CCR & MDMA_CCR_EN);
+        dmac->CTCR = MDMA_CTCR_SWRM |
+            ((sizeof(struct stat) - 1U) << MDMA_CTCR_TLEN_Pos) |
+            (2U << MDMA_CTCR_DINCOS_Pos) |
+            (2U << MDMA_CTCR_SINCOS_Pos) |
+            (2U << MDMA_CTCR_DSIZE_Pos) |
+            (2U << MDMA_CTCR_SSIZE_Pos) |
+            (2U << MDMA_CTCR_DINC_Pos) |
+            (2U << MDMA_CTCR_SINC_Pos);
+        dmac->CBNDTR = sizeof(struct stat);
+        dmac->CSAR = (uint32_t)(uintptr_t)&buf;
+        dmac->CDAR = pstat;
+        dmac->CBRUR = 0U;
+        dmac->CLAR = 0U;
+        dmac->CTBR = MDMA_CTBR_DBUS;
+        dmac->CMAR = 0U;
+        dmac->CCR = MDMA_CCR_EN;
+        dmac->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
+        while(!(dmac->CISR & MDMA_CISR_CTCIF));
+        dmac->CIFCR = 0x1fU;
+    }
+    else
     {
         SharedMemoryGuard(msg.params.fstat_params.st, sizeof(struct stat), false, true);
         *msg.params.fstat_params.st = buf;
@@ -445,7 +472,7 @@ void init_ext4()
     uint32_t data_end = (uint32_t)&_eext4_data;
 
     Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
-        M7Only /* may need to access dtcm */, InvalidMemregion(),
+        PreferM4, InvalidMemregion(),
         MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, N_NC_S)));
 }
 
