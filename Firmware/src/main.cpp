@@ -417,9 +417,10 @@ void *init_thread(void *p)
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     //pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.with_focus = 1;
-    deferred_call(syscall_proccreate, "/tglgears-0.1.1-gk/bin/tglgears", &pt);
+    //deferred_call(syscall_proccreate, "/tglgears-0.1.1-gk/bin/tglgears", &pt);
+    deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
 
-    jpeg_test();
+    //jpeg_test();
 
     return nullptr;
 }
