@@ -367,6 +367,9 @@ uint64_t prog_software_init_hook()
         {
             SharedMemoryGuard smg((const void *)lr, 4, false, true);
             *(uint32_t *)lr = 0xbf00bf00U;
+#if !GK_DUAL_CORE && !GK_DUAL_CORE_AMP
+            CleanM7Cache((uint32_t)lr, 4, CacheType_t::Data);
+#endif
         }
         InvalidateM7Cache(lr, 4, CacheType_t::Instruction);
 

@@ -426,7 +426,7 @@ void *init_thread(void *p)
         "--cpu-exact", "off",
         "--fpu", "none",
         "--mmu", "off",
-        "--memstate", "/share/hatari/games/xenon2.ram",
+        /* "--memstate", "/share/hatari/games/xenon2.ram", */
         "-d", "none",
         "--timer-d", "on",
         "/share/hatari/games/xenon2.st" };

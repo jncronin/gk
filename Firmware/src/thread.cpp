@@ -167,7 +167,7 @@ Thread *GetCurrentThreadForCore(int coreid)
         //CriticalGuard cg(s.current_thread[coreid].m);
         return sched.current_thread[coreid].v;  // <- should be atomic
     }
-#else
+#elif GK_DUAL_CORE_AMP
     return scheds[coreid].current_thread[0].v;
 #endif
 }
@@ -185,7 +185,7 @@ Thread *GetNextThreadForCore(int coreid)
 
 #if GK_DUAL_CORE
     return sched.GetNextThread(coreid);
-#else
+#elif GK_DUAL_CORE_AMP
     return scheds[coreid].GetNextThread(coreid);
 #endif
 }
