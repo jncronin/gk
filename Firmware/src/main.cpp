@@ -426,7 +426,9 @@ void *init_thread(void *p)
         "--cpu-exact", "off",
         "--fpu", "none",
         "--mmu", "off",
-        /* "--memstate", "/share/hatari/games/xenon2.ram", */
+        "--memstate", "/share/hatari/games/xenon2.ram",
+        "-d", "none",
+        "--timer-d", "on",
         "/share/hatari/games/xenon2.st" };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
