@@ -433,7 +433,13 @@ void *gpu_thread(void *p)
 
             /* get details on pixel formats, strides etc */
             uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_pf;
-            int bpp = get_bpp(dest_pf);
+            uint32_t src_pf_for_psize = g.src_pf & 0xff;
+            uint32_t src_pf_for_blend = g.src_pf >> 8;
+            uint32_t dest_pf_for_psize = dest_pf & 0xff;
+            uint32_t dest_pf_for_blend = dest_pf >> 8;
+            if(!src_pf_for_blend) src_pf_for_blend = src_pf_for_psize;
+            if(!dest_pf_for_blend) dest_pf_for_blend = dest_pf_for_psize;
+            int bpp = get_bpp(dest_pf_for_psize);
             //uint32_t scr_fbuf = (uint32_t)(uintptr_t)screen_get_frame_buffer();
             uint32_t dest_addr;
             uint32_t dest_pitch;
@@ -607,29 +613,29 @@ void *gpu_thread(void *p)
                     if(dest_w == g.w && dest_h == g.h)
                     {
                         // can do DMA2D copy
-                        DMA2D->OPFCCR = dest_pf;
+                        DMA2D->OPFCCR = dest_pf_for_psize;
                         DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
                         DMA2D->OOR = (dest_pitch / bpp) - dest_w;
                         DMA2D->NLR = (dest_w << DMA2D_NLR_PL_Pos) | (dest_h << DMA2D_NLR_NL_Pos);
 
                         // configure source, +/- pixel format correction
-                        auto src_bpp = get_bpp(g.src_pf);
+                        auto src_bpp = get_bpp(src_pf_for_psize);
                         DMA2D->FGMAR = g.src_addr_color + g.sx * src_bpp + g.sy * g.sp;
-                        DMA2D->FGPFCCR = g.src_pf;
+                        DMA2D->FGPFCCR = src_pf_for_psize;
                         DMA2D->FGOR = (g.sp / src_bpp) - dest_w;
 
                         // does it blend?
                         uint32_t mode = 0;
-                        if(g.src_pf == GK_PIXELFORMAT_ARGB8888 && g.type == BlitImage)
+                        if(src_pf_for_blend == GK_PIXELFORMAT_ARGB8888 && g.type == BlitImage)
                         {
                             mode = 2U;
                             
                             // set background as scratch to allow blend
                             DMA2D->BGMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
                             DMA2D->BGOR = (dest_pitch / bpp) - dest_w;
-                            DMA2D->BGPFCCR = dest_pf;
+                            DMA2D->BGPFCCR = dest_pf_for_psize;
                         }
-                        else if(g.src_pf != dest_pf)
+                        else if(src_pf_for_psize != dest_pf_for_psize)
                         {
                             // need pixel format conversion, but no blending
                             mode = 1U;
@@ -641,7 +647,7 @@ void *gpu_thread(void *p)
                     else
                     {
                         g.dest_addr = dest_addr;
-                        g.dest_pf = dest_pf;
+                        g.dest_pf = dest_pf_for_psize;
                         g.dp = dest_pitch;
                         g.dw = dest_w;
                         g.dh = dest_h;
