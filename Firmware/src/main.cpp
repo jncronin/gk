@@ -414,13 +414,20 @@ void *init_thread(void *p)
 
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
 
-    pt.heap_size = 8192*1024;
+    pt.heap_size = 8192*1024*2;
     pt.core_mask = M7Only;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     //pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.with_focus = 1;
     //deferred_call(syscall_proccreate, "/tglgears-0.1.1-gk/bin/tglgears", &pt);
-    const char *args[] = { "-f", "--max-width", "640", "--max-height", "480", "-z", "1.0" };
+    const char *args[] = { "-f", "--max-width", "640", "--max-height", "480", "-z", "1.0",
+        "--sound", "off", "--fast-boot", "on",
+        "--compatible", "off",
+        "--cpu-exact", "off",
+        "--fpu", "none",
+        "--mmu", "off",
+        /* "--memstate", "/share/hatari/games/xenon2.ram", */
+        "/share/hatari/games/xenon2.st" };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
