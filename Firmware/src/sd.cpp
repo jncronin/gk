@@ -113,7 +113,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
     int tcnt = 0;
     for(; tcnt < timeout_retry; tcnt++)
     {
-#ifdef DEBUG_SD
+#if DEBUG_SD
         ITM_SendChar('m');
         if(tcnt > 0)
         {
@@ -181,7 +181,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         if(rt == resp_type::None)
         {
             while(!(SDMMC1->STA & CMDSENT));      // TODO: WFI
-#ifdef DEBUG_SD
+#if DEBUG_SD
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "sd_issue_command: sent %lu no response expected\n", command);
 #endif
@@ -202,7 +202,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                     break;
                 }
 
-#ifdef DEBUG_SD
+#if DEBUG_SD
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "sd_issue_command: sent %lu invalid crc response\n", command);
 #endif
@@ -220,7 +220,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
         if(timeout)
         {
-#ifdef DEBUG_SD
+#if DEBUG_SD
             {
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "sd_issue_command: timeout, sta: %lx, cmdr: %lx, dctrl: %lx\n",
@@ -250,7 +250,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
             }
         }
 
-#ifdef DEBUG_SD
+#if DEBUG_SD
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "sd_issue_command: sent %lu received reponse", command);
@@ -263,22 +263,22 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
             for(int i = 0; i < nresp; i++)
             {
                 resp[nresp - i - 1] = (&SDMMC1->RESP1)[i];
-    #ifdef DEBUG_SD
+#if DEBUG_SD
                 {
                     CriticalGuard cg(s_rtt);
                     SEGGER_RTT_printf(0, " %lx", resp[nresp - i - 1]);
                 }
-    #endif
+#endif
             }
         }
 
         
-    #ifdef DEBUG_SD
+#if DEBUG_SD
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "\n");
         }
-    #endif
+#endif
 
         SDMMC1->ICR = CMDREND;
         return 0;
