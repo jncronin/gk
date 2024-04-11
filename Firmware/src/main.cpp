@@ -420,6 +420,9 @@ void *init_thread(void *p)
     //pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.with_focus = 1;
     //deferred_call(syscall_proccreate, "/tglgears-0.1.1-gk/bin/tglgears", &pt);
+    const char *args[] = { "-f", "--max-width", "640", "--max-height", "480", "-z", "1.0" };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
     deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
 
     //jpeg_test();
