@@ -17,7 +17,7 @@ UninterruptibleGuard::~UninterruptibleGuard()
 CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
 {
     cpsr = DisableInterrupts();
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
 #if DEBUG_SPINLOCK
     uint32_t lr;
     __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
@@ -30,7 +30,7 @@ CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
 
 CriticalGuard::~CriticalGuard()
 {
-#if GK_DUAL_CORE
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     _s.unlock();
 #endif
     RestoreInterrupts(cpsr);

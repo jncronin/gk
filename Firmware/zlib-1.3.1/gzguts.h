@@ -122,6 +122,10 @@
   extern void   free(voidpf ptr);
 #endif
 
+/* The following added for gkos */
+void *gz_malloc_buffer(size_t size);
+void gz_free_buffer(void *ptr);
+
 /* get errno and strerror definition */
 #if defined UNDER_CE
 #  include <windows.h>

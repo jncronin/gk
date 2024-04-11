@@ -3,6 +3,8 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
+/* modifications to support gkos */
+
 #include "gzguts.h"
 
 /* Initialize state for writing a gzip file.  Mark initialization by setting
@@ -13,7 +15,7 @@ local int gz_init(gz_statep state) {
     z_streamp strm = &(state->strm);
 
     /* allocate input buffer (double size for gzprintf) */
-    state->in = (unsigned char *)malloc(state->want << 1);
+    state->in = (unsigned char *)gz_malloc_buffer(state->want << 1);
     if (state->in == NULL) {
         gz_error(state, Z_MEM_ERROR, "out of memory");
         return -1;
@@ -22,9 +24,9 @@ local int gz_init(gz_statep state) {
     /* only need output buffer and deflate state if compressing */
     if (!state->direct) {
         /* allocate output buffer */
-        state->out = (unsigned char *)malloc(state->want);
+        state->out = (unsigned char *)gz_malloc_buffer(state->want);
         if (state->out == NULL) {
-            free(state->in);
+            gz_free_buffer(state->in);
             gz_error(state, Z_MEM_ERROR, "out of memory");
             return -1;
         }
@@ -36,8 +38,8 @@ local int gz_init(gz_statep state) {
         ret = deflateInit2(strm, state->level, Z_DEFLATED,
                            MAX_WBITS + 16, DEF_MEM_LEVEL, state->strategy);
         if (ret != Z_OK) {
-            free(state->out);
-            free(state->in);
+            gz_free_buffer(state->out);
+            gz_free_buffer(state->in);
             gz_error(state, Z_MEM_ERROR, "out of memory");
             return -1;
         }
@@ -618,9 +620,9 @@ int ZEXPORT gzclose_w(gzFile file) {
     if (state->size) {
         if (!state->direct) {
             (void)deflateEnd(&(state->strm));
-            free(state->out);
+            gz_free_buffer(state->out);
         }
-        free(state->in);
+        gz_free_buffer(state->in);
     }
     gz_error(state, Z_OK, NULL);
     free(state->path);

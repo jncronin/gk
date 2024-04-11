@@ -60,7 +60,14 @@ extern "C" void *ext4_user_buf_alloc(size_t n)
 {
     auto reg = memblk_allocate(n, AXISRAM);
     if(!reg.valid)
+        reg = memblk_allocate(n, SDRAM);
+    if(!reg.valid)
         return nullptr;
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "ext4: user_buf_alloc %x bytes @%x\n", n, reg.address);
+    }
 
     return (void*)reg.address;
 }
@@ -70,8 +77,14 @@ extern "C" void ext4_user_buf_free(void *ptr, size_t n)
     MemRegion reg;
     reg.address = (uint32_t)(uintptr_t)ptr;
     reg.length = n;
-    reg.rt = MemRegionType::AXISRAM;
-    reg.valid = false;
+    reg.rt = reg.address >= 0x60000000 ? MemRegionType::SDRAM : MemRegionType::AXISRAM;
+    reg.valid = true;
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "ext4: user_buf_free %x bytes @%x\n", n, reg.address);
+    }
+
     memblk_deallocate(reg);
 }
 

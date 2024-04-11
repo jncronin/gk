@@ -442,9 +442,8 @@ int fs_provision()
                         }
                         else
                         {
-                            // sensible buffer sizes bearing in mind it allocates 3x this and
-                            //  we use SRAM4 for malloc
-                            gzbuffer(gzf, 1024);
+                            // sensible buffer sizes bearing in mind it allocates 3x this
+                            gzbuffer(gzf, 8192);
 
                             fs_p_ret = fs_provision_tarball(gz_fread, gz_lseek, gzf);
                             gzclose(gzf);
@@ -483,4 +482,32 @@ int fs_provision()
     f_unmount("/");
 
     return 0;
+}
+
+/* We implement these as wrappers for zlib gz_* interface to allocate buffers suitable
+    for SDMMC DMA access */
+#include <map>
+SRAM4_DATA static std::map<uint32_t, MemRegion> gz_malloc_regions;
+
+extern "C" void *gz_malloc_buffer(size_t n)
+{
+    auto mr = memblk_allocate(n, MemRegionType::AXISRAM);
+    if(!mr.valid)
+        mr = memblk_allocate(n, MemRegionType::SDRAM);
+    if(!mr.valid)
+        return nullptr;
+    
+    gz_malloc_regions[mr.address] = mr;
+    return (void *)mr.address;
+}
+
+extern "C" void gz_free_buffer(void *address)
+{
+    auto iter = gz_malloc_regions.find((uint32_t)(uintptr_t)address);
+    if(iter != gz_malloc_regions.end())
+    {
+        auto mr = iter->second;
+        memblk_deallocate(mr);
+        gz_malloc_regions.erase(iter);
+    }
 }
