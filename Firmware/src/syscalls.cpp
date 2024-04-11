@@ -6,6 +6,7 @@
 #include "clocks.h"
 #include "syscalls_int.h"
 #include <sys/times.h>
+#include <cstring>
 #include "SEGGER_RTT.h"
 
 extern Spinlock s_rtt;
@@ -490,6 +491,23 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 auto p = reinterpret_cast<__syscall_kill_params *>(r2);
                 int ret = syscall_kill(p->pid, p->sig, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_getcwd:
+            {
+                auto buf = reinterpret_cast<char *>(r1);
+                auto bufsize = reinterpret_cast<size_t>(r2);
+                auto &p = GetCurrentThreadForCore()->p;
+                if(p.cwd.length() > (bufsize - 1U))
+                {
+                    *reinterpret_cast<int *>(r3) = ERANGE;
+                }
+                else
+                {
+                    strcpy(buf, p.cwd.c_str());
+                    *reinterpret_cast<int *>(r3) = 0;
+                }
             }
             break;
         

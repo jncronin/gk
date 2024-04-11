@@ -5,7 +5,11 @@
 #include "ostypes.h"
 #include "process.h"
 
-int elf_load_memory(const void *elf, const std::string &procname, uint32_t heap_size = 8192,
+extern std::vector<std::string> empty_string_vector;
+
+int elf_load_memory(const void *elf, const std::string &procname,
+	const std::vector<std::string> &params = empty_string_vector,
+	uint32_t heap_size = 8192,
 	CPUAffinity def_affinity = Either,
 	Thread **startup_thread_ret = nullptr,
 	Process **proc_ret = nullptr);

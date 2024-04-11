@@ -47,6 +47,11 @@ class Process
 
         /* current working directory */
         std::string cwd = "/";
+
+        /* parameters passed to program */
+        MemRegion mr_params;
+        int argc;
+        char **argv;
 };
 
 extern Process *focus_process;

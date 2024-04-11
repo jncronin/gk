@@ -9,8 +9,16 @@
 #include "region_allocator.h"
 
 #include "cache.h"
+#include "ossharedmem.h"
 
-int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size, CPUAffinity affinity,
+static uint64_t prog_software_init_hook();
+static size_t get_arg_length(const std::string &pname, const std::vector<std::string> &params);
+static void init_args(const std::string &pname, const std::vector<std::string> &params,
+    void *buf);
+
+int elf_load_memory(const void *e, const std::string &pname,
+    const std::vector<std::string> &params,
+    uint32_t heap_size, CPUAffinity affinity,
     Thread **startup_thread_ret, Process **proc_ret)
 {
     // pointer
@@ -89,6 +97,15 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
     // Create a stack for thread0
     auto stack = memblk_allocate_for_stack(4096, affinity);
     auto stack_end = stack.address + stack.length;
+
+    // Create region for arguments
+    auto arg_length = get_arg_length(pname, params);
+    auto arg_reg = memblk_allocate_for_stack(arg_length, affinity);
+    if(!arg_reg.valid)
+    {
+        __asm__ volatile("bkpt \n" ::: "memory");
+        return -1;
+    }
 
     // Load segments
     auto base_ptr = memblk.address;
@@ -179,10 +196,11 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
                         uint32_t value = 0;
 
                         bool is_stack = false;
+                        bool is_software_init_hook = false;
 
                         if(r_sym->st_shndx == SHN_UNDEF)
                         {
-                            // need to special-case "_stack" label
+                            // need to special-case "_stack" and "software_init_hook" labels
                             auto strtab_idx = symtab->sh_link;
                             auto strtab = reinterpret_cast<const Elf32_Shdr *>(shdrs + strtab_idx * ehdr->e_shentsize);
                             if(r_sym->st_name)
@@ -191,9 +209,13 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
                                 {
                                     is_stack = true;
                                 }
+                                if(strcmp("software_init_hook", &p[strtab->sh_offset + r_sym->st_name]) == 0)
+                                {
+                                    is_software_init_hook = true;
+                                }
                             }
 
-                            if(!is_stack)
+                            if(!is_stack && !is_software_init_hook)
                             {
                                 break;      // leave as zero
                             }
@@ -206,6 +228,11 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
                         if(is_stack)
                         {
                             value = stack_end;
+                        }
+                        else if(is_software_init_hook)
+                        {
+                            value = (uint32_t)(uintptr_t)prog_software_init_hook;
+                            value |= 0x1;
                         }
 
                         {
@@ -298,6 +325,11 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
     proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
     proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
+    init_args(pname, params, (void *)arg_reg.address);
+    proc->mr_params = arg_reg;
+    proc->argc = *(int *)arg_reg.address;
+    proc->argv = (char **)(arg_reg.address + 4);
+
     auto startup_thread = Thread::Create(pname + "_0", start, nullptr, true, GK_PRIORITY_NORMAL, *proc,
         affinity, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
@@ -315,4 +347,119 @@ int elf_load_memory(const void *e, const std::string &pname, uint32_t heap_size,
         pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
 
     return 0;
+}
+
+uint64_t prog_software_init_hook()
+{
+    uint32_t lr;
+    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
+    lr &= ~01U;
+
+    uint32_t clr_value;
+    {
+        SharedMemoryGuard smg((const void *)lr, 4, true, false);
+        clr_value = *(uint32_t *)lr;
+    }
+    if(clr_value == 0x21002000U)
+    {
+        // we are being called by a newlib _mainCRTStartup which explicitly sets argc/arvg to zero
+        //  fix this
+        {
+            SharedMemoryGuard smg((const void *)lr, 4, false, true);
+            *(uint32_t *)lr = 0xbf00bf00U;
+        }
+        InvalidateM7Cache(lr, 4, CacheType_t::Instruction);
+
+        // now return argc:arvg as r1:r0
+        auto &p = GetCurrentThreadForCore()->p;
+        uint32_t argc = (uint32_t)p.argc;
+        uint32_t argv = (uint32_t)p.argv;
+        return (uint64_t)argc | (((uint64_t)argv) << 32);
+    }
+
+    return 0ULL;
+}
+
+/* Determine how much space we need to store the arguments to this program.
+    Argument layout is:
+        0                       - argc
+        4                       - argv[][argc]
+        4 + argc * 4            - argv[0]
+        alignup(4)              - argv[1] 
+            etc
+*/
+
+size_t get_arg_length(const std::string &pname, const std::vector<std::string> &params)
+{
+    size_t cur_size = 0;
+
+    // argc
+    cur_size += 4;
+
+    // argv * 4
+    cur_size += (params.size() + 1U) * 4;
+
+    // pname
+    {
+        auto clen = pname.size() + 1U;   // null terminator
+        clen = (clen + 3) & ~3U;
+        cur_size += clen;
+    }
+
+    // each argv
+    for(const auto &p : params)
+    {
+        auto clen = p.size() + 1U;   // null terminator
+        clen = (clen + 3) & ~3U;
+        cur_size += clen;
+    }
+
+    return cur_size;
+}
+
+void init_args(const std::string &pname, const std::vector<std::string> &params, void *buf)
+{
+    uint32_t addr = (uint32_t)(uintptr_t)buf;
+    auto len = get_arg_length(pname, params);
+
+    {
+        SharedMemoryGuard smg(buf, len, false, true);
+
+        // argc
+        *(uint32_t *)addr = params.size() + 1U;
+        addr += 4;
+
+        // argv array - just reserve space, fill in later
+        auto argv_array_addr = addr;
+        addr += (params.size() + 1U) * 4;
+        std::vector<uint32_t> argv_addresses;
+
+        // pname
+        {
+            argv_addresses.push_back(addr); // store current address for later
+
+            strcpy((char *)addr, pname.c_str());
+            addr += pname.size() + 1U;
+            addr = (addr + 3U) & ~3U;
+        }
+
+
+        // each argv
+        for(const auto &p : params)
+        {
+            argv_addresses.push_back(addr); // store current address for later
+
+            strcpy((char *)addr, p.c_str());
+            addr += p.size() + 1U;
+            addr = (addr + 3U) & ~3U;
+        }
+
+        // argv array
+        addr = argv_array_addr;
+        for(auto paddr : argv_addresses)
+        {
+            *(uint32_t *)addr = paddr;
+            addr += 4;
+        }
+    }
 }

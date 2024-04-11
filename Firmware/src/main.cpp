@@ -53,6 +53,8 @@ extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 SRAM4_DATA static volatile uint32_t m4_wakeup = 0;
 #define M4_MAGIC 0xa1b2c3d4
 
+SRAM4_DATA std::vector<std::string> empty_string_vector;
+
 int main()
 {
     EXTI->C2IMR3 |= EXTI_IMR3_IM79;
