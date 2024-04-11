@@ -12,7 +12,7 @@
 #include "ext4_thread.h"
 #include "gk_conf.h"
 
-#define DEBUG_SD    1
+#define DEBUG_SD    0
 
 extern Spinlock s_rtt;
 extern Process kernel_proc;
