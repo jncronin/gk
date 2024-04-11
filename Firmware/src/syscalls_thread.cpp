@@ -171,6 +171,41 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
         return -1;
     }
 
+    // See if we can allocate a larger heap now we have closed the file
+    if(proc->heap.length < heap_size)
+    {
+        memblk_deallocate(proc->heap);
+
+        uint32_t act_heap_size = heap_size;
+        while(true)
+        {
+            proc->heap = memblk_allocate(act_heap_size, MemRegionType::AXISRAM);
+            if(!proc->heap.valid)
+            {
+                proc->heap = memblk_allocate(act_heap_size, MemRegionType::SDRAM);
+            }
+            if(!proc->heap.valid)
+            {
+                act_heap_size /= 2;
+
+                if(act_heap_size < 8192)
+                {
+                    __BKPT();
+                    while(true);
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+        if(act_heap_size != heap_size)
+        {
+            SEGGER_RTT_printf(0, "proccreate: couldn't allocate heap size of %u, only %u available\n",
+                heap_size, act_heap_size);
+        }
+    }
+
     // TODO: inherit fds
 
     // Set default pixel mode
