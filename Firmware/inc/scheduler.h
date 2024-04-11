@@ -64,7 +64,7 @@ class Scheduler
 
 void Schedule(Thread *t);
 
-#ifdef GK_DUAL_CORE_AMP
+#if GK_DUAL_CORE_AMP
 extern Scheduler scheds[2];
 inline Scheduler &s() { return scheds[GetCoreID()]; }
 inline bool &scheduler_running() { return s().scheduler_running[0]; }

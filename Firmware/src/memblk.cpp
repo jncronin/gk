@@ -125,6 +125,7 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
             break;
 #endif
 
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
         case CPUAffinity::M4Only:
 #if GK_DUAL_CORE
         case CPUAffinity::PreferM4:
@@ -133,6 +134,7 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
             rtlist[nrts++] = MemRegionType::AXISRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;
             break;
+#endif
 
         case CPUAffinity::M7Only:
             rtlist[nrts++] = MemRegionType::DTCM;
