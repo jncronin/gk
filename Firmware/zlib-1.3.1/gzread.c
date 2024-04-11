@@ -3,6 +3,8 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
+/* modifications to support gkos */
+
 #include "gzguts.h"
 
 /* Use read() to load a buffer -- return -1 on error, otherwise 0.  Read from
@@ -79,11 +81,11 @@ local int gz_look(gz_statep state) {
     /* allocate read buffers and inflate memory */
     if (state->size == 0) {
         /* allocate buffers */
-        state->in = (unsigned char *)malloc(state->want);
-        state->out = (unsigned char *)malloc(state->want << 1);
+        state->in = (unsigned char *)gz_malloc_buffer(state->want);
+        state->out = (unsigned char *)gz_malloc_buffer(state->want << 1);
         if (state->in == NULL || state->out == NULL) {
-            free(state->out);
-            free(state->in);
+            gz_free_buffer(state->out);
+            gz_free_buffer(state->in);
             gz_error(state, Z_MEM_ERROR, "out of memory");
             return -1;
         }
@@ -96,8 +98,8 @@ local int gz_look(gz_statep state) {
         state->strm.avail_in = 0;
         state->strm.next_in = Z_NULL;
         if (inflateInit2(&(state->strm), 15 + 16) != Z_OK) {    /* gunzip */
-            free(state->out);
-            free(state->in);
+            gz_free_buffer(state->out);
+            gz_free_buffer(state->in);
             state->size = 0;
             gz_error(state, Z_MEM_ERROR, "out of memory");
             return -1;
@@ -590,8 +592,8 @@ int ZEXPORT gzclose_r(gzFile file) {
     /* free memory and close file */
     if (state->size) {
         inflateEnd(&(state->strm));
-        free(state->out);
-        free(state->in);
+        gz_free_buffer(state->out);
+        gz_free_buffer(state->in);
     }
     err = state->err == Z_BUF_ERROR ? Z_BUF_ERROR : Z_OK;
     gz_error(state, Z_OK, NULL);
