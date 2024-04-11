@@ -70,7 +70,9 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp",
-        "gzguts.h": "c"
+        "gzguts.h": "c",
+        "iostream": "cpp",
+        "istream": "cpp"
     },
     "cortex-debug.variableUseNaturalFormat": false,
 }

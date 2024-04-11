@@ -152,9 +152,16 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     if(core_affinity == 0) core_affinity = Either;
     core_affinity |= (pcinfo->prefer_core_mask & 0x3) << 2;
 
+    // create argc/argv vector
+    std::vector<std::string> params;
+    for(int i = 0; i < pcinfo->argc; i++)
+    {
+        params.push_back(std::string(pcinfo->argv[i]));
+    }
+
     Thread *startup_thread;
     Process *proc;
-    eret = elf_load_memory((const void *)fbuf.address, cpname, heap_size, (CPUAffinity)core_affinity,
+    eret = elf_load_memory((const void *)fbuf.address, cpname, params, heap_size, (CPUAffinity)core_affinity,
         &startup_thread, &proc);
     ext4_fclose(&f);
     memblk_deallocate(fbuf);
