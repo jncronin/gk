@@ -10,6 +10,7 @@
 #include "SEGGER_RTT.h"
 
 extern Spinlock s_rtt;
+extern Process kernel_proc;
 
 extern "C" void SVC_Handler() __attribute__((naked));
 
@@ -517,7 +518,29 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 SEGGER_RTT_printf(0, "syscall: unhandled syscall %d\n", (int)sno);
             }
             __asm__ volatile ("bkpt #0\n");
-            while(true);
+
+            {
+                auto t = GetCurrentThreadForCore();
+                auto &p = t->p;
+                SEGGER_RTT_printf(0, "panic: process %s thread %s unhandled syscall\n",
+                    p.name.c_str(), t->name.c_str());
+                if(&p != &kernel_proc)
+                {
+                    CriticalGuard cg_p(p.sl);
+                    for(auto thr : p.threads)
+                    {
+                        CriticalGuard cg_t(thr->sl);
+                        thr->for_deletion = true;
+                    }
+                    p.for_deletion = true;
+                    Yield();
+                }
+                else
+                {
+                    while(true);
+                }
+            }
+
             break;
     }
 
