@@ -264,7 +264,14 @@ function update()
         for(var i = 0; i < ncores; i++)
         {
             var curtaddr = Debug.evaluate("&((Scheduler *)" + saddr + ")->current_thread[" + i + "]");
-            curt[i] = TargetInterface.peekWord(curtaddr);
+            if(curtaddr == undefined)
+            {
+                curt[i] = 0;
+            }
+            else
+            {
+                curt[i] = TargetInterface.peekWord(curtaddr);
+            }
             //TargetInterface.message("curt[" + i + "] = " + curt[i]);
         }
     }
