@@ -490,11 +490,12 @@ void init_screen()
         0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa,
         0x555555, 0x5555ff, 0x55ff55, 0x55ffff,
         0xff5555, 0xff55ff, 0xffff55, 0xffffff };
-    LTDC_Layer2->CR = LTDC_LxCR_CLUTEN;
     for(unsigned int i = 0; i < sizeof(palette) / sizeof(uint32_t); i++)
     {
-        LTDC_Layer2->CLUTWR = (i << 24) | palette[i];
+        // for al44 replicate clut idx to top two nibbles (rm p. 1242)
+        LTDC_Layer2->CLUTWR = (i << 24) | (i << 28) | palette[i];
     }
+    LTDC_Layer2->CR = LTDC_LxCR_CLUTEN;
     
     scr_bufs[0] = 0;
     scr_bufs[1] = 0;
