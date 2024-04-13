@@ -2,6 +2,7 @@
 #include "osfile.h"
 #include <sys/stat.h>
 #include "thread.h"
+#include "scheduler.h"
 
 ssize_t USBTTYFile::Write(const char *buf, size_t count, int *_errno)
 {

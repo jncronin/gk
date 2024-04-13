@@ -15,6 +15,7 @@
 #include "cache.h"
 #include "gk_conf.h"
 #include "ossharedmem.h"
+#include "process.h"
 
 #include <sys/stat.h>
 #include <_sys_dirent.h>

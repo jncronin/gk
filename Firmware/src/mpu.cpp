@@ -2,6 +2,7 @@
 #include "stm32h7xx.h"
 #include "thread.h"
 #include "gk_conf.h"
+#include "scheduler.h"
 
 __attribute__((section(".sram4"))) volatile Thread *last_thread;
 

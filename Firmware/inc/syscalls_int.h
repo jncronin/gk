@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include "thread.h"
+#include "scheduler.h"
 #include "_netinet_in.h"
 
 int get_free_fildes(Process &p);
@@ -85,7 +86,7 @@ static inline int deferred_return(int ret, int _errno)
 
 template<typename Func, class... Args> int deferred_call(Func f, Args... a)
 {
-    int _errno = EOK;
+    int _errno = 0;
     int ret = f(a..., &_errno);
     return deferred_return(ret, _errno);
 }

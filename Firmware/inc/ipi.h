@@ -3,8 +3,8 @@
 
 #include "osmutex.h"
 #include "osringbuffer.h"
-#include "thread.h"
 #include "gk_conf.h"
+#include "scheduler.h"
 
 /* Interface for passing messages between cores using SEV interrupts */
 struct ipi_message

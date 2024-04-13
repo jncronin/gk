@@ -10,6 +10,7 @@
 #include "syscalls_int.h"
 #include "SEGGER_RTT.h"
 #include "zlib.h"
+#include "process.h"
 
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.

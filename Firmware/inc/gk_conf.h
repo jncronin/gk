@@ -18,6 +18,19 @@
 
 #define GK_SDRAM_BASE               0x60000000
 
+#define GK_NUM_EVENTS_PER_PROCESS   32
+#define GK_PRIORITY_IDLE    0
+#define GK_PRIORITY_LOW     1
+#define GK_PRIORITY_NORMAL  2
+#define GK_PRIORITY_GAME    GK_PRIORITY_NORMAL
+#define GK_PRIORITY_APP     GK_PRIORITY_NORMAL
+#define GK_PRIORITY_HIGH    3
+#define GK_PRIORITY_VHIGH   4
+#define GK_PRIORITY_VERYHIGH    GK_PRIORITY_VHIGH
+
+#define GK_NPRIORITIES      (GK_PRIORITY_VHIGH + 1)
+
+
 #define SRAM4_DATA __attribute__((section(".sram4")))
 
 #endif

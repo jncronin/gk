@@ -1,6 +1,7 @@
 #include <stm32h7xx.h>
 #include "syscalls.h"
 #include "thread.h"
+#include "process.h"
 #include "screen.h"
 #include "scheduler.h"
 #include "clocks.h"

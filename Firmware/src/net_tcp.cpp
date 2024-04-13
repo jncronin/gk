@@ -6,6 +6,7 @@
 #include "clocks.h"
 #include "syscalls_int.h"
 #include "ossharedmem.h"
+#include "process.h"
 
 extern Spinlock s_rtt;
 

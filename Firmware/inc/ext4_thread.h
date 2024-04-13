@@ -4,6 +4,7 @@
 #include "osmutex.h"
 #include "syscalls.h"
 #include "thread.h"
+#include "ext4.h"
 
 static inline void check_buffer(const void *addr)
 {

@@ -267,3 +267,15 @@ void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
         old_t->name.c_str(), old_t->base_priority,
         new_t->name.c_str(), new_t->base_priority);
 }
+
+void Block(uint64_t until, Thread *block_on)
+{
+    auto t = GetCurrentThreadForCore();
+    {
+        CriticalGuard cg(t->sl);
+        t->is_blocking = true;
+        t->blocking_on = block_on;
+        t->block_until = until;
+    }
+    Yield();
+}
