@@ -1,5 +1,6 @@
 #include "ossharedmem.h"
 #include "cache.h"
+#include "scheduler.h"
 #include "gk_conf.h"
 
 SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_read, bool will_write)

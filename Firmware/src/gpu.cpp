@@ -4,6 +4,7 @@
 #include "screen.h"
 #include "cache.h"
 #include "mdma.h"
+#include "process.h"
 #include "gk_conf.h"
 
 SRAM4_DATA static BinarySemaphore gpu_ready;

@@ -1,6 +1,7 @@
 #include <osnet.h>
 #include <osqueue.h>
 #include <thread.h>
+#include "process.h"
 
 __attribute__((section(".sram4"))) static FixedQueue<net_msg, 32> msgs;
 

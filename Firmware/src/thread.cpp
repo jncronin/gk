@@ -9,6 +9,7 @@
 #include "gk_conf.h"
 #include "clocks.h"
 #include "ossharedmem.h"
+#include "process.h"
 
 extern Thread dt;
 

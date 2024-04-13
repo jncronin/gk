@@ -1,5 +1,6 @@
 #include "osnet.h"
 #include "syscalls_int.h"
+#include "process.h"
 
 int Socket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
 {

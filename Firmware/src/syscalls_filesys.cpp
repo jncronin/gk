@@ -2,6 +2,7 @@
 #include "osmutex.h"
 #include "SEGGER_RTT.h"
 #include "thread.h"
+#include "process.h"
 
 #include <cstring>
 #include <fcntl.h>

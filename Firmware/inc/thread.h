@@ -12,7 +12,6 @@
 
 #include "mpuregions.h"
 
-#include "process.h"
 #include "syscalls.h"
 
 static constexpr uint32_t thread_signal_lwext = 0x1;
@@ -27,6 +26,8 @@ static constexpr uint32_t thread_signal_lwext = 0x1;
 #define GK_PRIORITY_VERYHIGH    GK_PRIORITY_VHIGH
 
 #define GK_NPRIORITIES      (GK_PRIORITY_VHIGH + 1)
+
+class Process;
 
 class Thread
 {
@@ -84,14 +85,5 @@ class Thread
             mpu_saved_state extra_permissions = MPUGenerateNonValid(6),
             mpu_saved_state extra_permissions2 = MPUGenerateNonValid(7));
 };
-
-// Called from PendSV therefore not mangled
-extern "C" {
-    Thread *GetCurrentThreadForCore(int coreid = -1);
-    Thread *GetNextThreadForCore(int coreid = -1);
-    int GetCoreID();
-    void SetNextThreadForCore(Thread *t, int coreid = -1);
-    void ScheduleThread(Thread *t);
-}
 
 #endif

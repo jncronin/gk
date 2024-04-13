@@ -5,6 +5,7 @@
 #include "memblk.h"
 #include "gpu.h"
 #include "cache.h"
+#include "process.h"
 #include <cstring>
 
 extern Spinlock s_rtt;

@@ -64,6 +64,15 @@ class Scheduler
 
 void Schedule(Thread *t);
 
+// Called from PendSV therefore not mangled
+extern "C" {
+    Thread *GetCurrentThreadForCore(int coreid = -1);
+    Thread *GetNextThreadForCore(int coreid = -1);
+    int GetCoreID();
+    void SetNextThreadForCore(Thread *t, int coreid = -1);
+    void ScheduleThread(Thread *t);
+}
+
 #if GK_DUAL_CORE_AMP
 extern Scheduler scheds[2];
 inline Scheduler &s() { return scheds[GetCoreID()]; }
@@ -86,16 +95,6 @@ static inline void Yield()
     }
 }
 
-[[maybe_unused]] static /*inline*/ void Block(uint64_t until = UINT64_MAX, Thread *block_on = nullptr)
-{
-    auto t = GetCurrentThreadForCore();
-    {
-        CriticalGuard cg(t->sl);
-        t->is_blocking = true;
-        t->blocking_on = block_on;
-        t->block_until = until;
-    }
-    Yield();
-}
+void Block(uint64_t until = UINT64_MAX, Thread *block_on = nullptr);
 
 #endif

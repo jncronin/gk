@@ -8,8 +8,11 @@ class Thread;
 #include <string>
 #include <map>
 #include "osmutex.h"
+#include "osqueue.h"
 #include "osfile.h"
+#include "osevent.h"
 #include "_gk_proccreate.h"
+#include "gk_conf.h"
 
 class Process
 {
@@ -52,6 +55,9 @@ class Process
         MemRegion mr_params;
         int argc;
         char **argv;
+
+        /* Events */
+        FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
 };
 
 extern Process *focus_process;

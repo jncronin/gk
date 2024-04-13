@@ -22,6 +22,7 @@
 #include "fs_provision.h"
 #include "mdma.h"
 #include "ipi.h"
+#include "supervisor.h"
 #include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -396,6 +397,8 @@ void *init_thread(void *p)
 {
     clock_set_cpu(clock_cpu_speed::cpu_384_192);
 
+    init_supervisor();
+
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
@@ -430,42 +433,6 @@ void *init_thread(void *p)
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
-
-    // overlay test - bottom half of screen with alternating semi-transparent red squares
-    auto overlay = (char *)screen_get_overlay_frame_buffer();
-    for(int y = 0; y < 240; y++)
-    {
-        for(int x = 0; x < 640; x++)
-        {
-            overlay[y * 640 + x] = 0;
-        }
-    }
-    for(int y = 240; y < 480; y++)
-    {
-        for(int x = 0; x < 640; x++)
-        {
-            auto ysqid = y / 8;
-            auto xsqid = x / 8;
-            auto col = ((ysqid & 0x1) ^ (xsqid & 0x1)) ? 0x84U : 0x00U;
-            overlay[y * 640 + x] = col;
-        }
-    }
-    screen_flip_overlay(true);
-
-    static volatile unsigned int alpha = 0;
-    static volatile unsigned int act_alpha = 0;
-    while(true)
-    {
-        Block(clock_cur_ms() + 20ULL);
-        alpha += 0x10;
-        auto _act_alpha = alpha % 512;
-        if(_act_alpha < 256)
-            _act_alpha = 255 - _act_alpha;
-        else
-            _act_alpha = _act_alpha - 256;
-        act_alpha = _act_alpha;
-        screen_set_overlay_alpha(act_alpha);
-    }
 
     //jpeg_test();
 
