@@ -61,5 +61,6 @@ class Process
 };
 
 extern Process *focus_process;
+extern Process kernel_proc;
 
 #endif
