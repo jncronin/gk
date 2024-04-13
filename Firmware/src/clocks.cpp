@@ -42,7 +42,7 @@ void init_clocks()
     RCC->CR = cr;
     while(!(RCC->CR & RCC_CR_HSERDY));
 
-    /* Configure PLLs
+    /* Configure PLLs - TODO: these have been changed - all "M"s are /2 (PLL3 has been fixed)
         PLL1 = HSE16 / M8 * N384
             /P2 = 384 MHz -> SYSCLK 
             /Q4 = 192 MHz -> SDMMC1, SPI1, FMC, RNG
@@ -53,10 +53,10 @@ void init_clocks()
             /Q2 = 172 MHz -> unused
             /R8 = 43 MHz -> unused
             
-        PLL3 = HSE16 / M8 * N384
+        PLL3 = HSE16 / M2 * N96 = 768
             /P7 = 109 MHz -> unused
             /Q16 = 48 MHz -> USB and SPI5
-            /R64 = 12 MHz -> LTDC (30 Hz refresh) and I2C4
+            /R32 = 24 MHz -> LTDC (60 Hz refresh) and I2C4
 
         Peripheral clock PER_CLK is HSI16
             => LPTIM1
