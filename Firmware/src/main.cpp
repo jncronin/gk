@@ -21,6 +21,7 @@
 #include "syscalls_int.h"
 #include "fs_provision.h"
 #include "mdma.h"
+#include "ipi.h"
 #include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -50,8 +51,7 @@ __attribute__((section(".sram4")))Process kernel_proc;
 
 extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 
-SRAM4_DATA static volatile uint32_t m4_wakeup = 0;
-#define M4_MAGIC 0xa1b2c3d4
+extern uint32_t m4_wakeup;
 
 SRAM4_DATA std::vector<std::string> empty_string_vector;
 
@@ -108,7 +108,7 @@ int main()
 
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7));
 
-#if GK_DUAL_CORE || GK_DUAL_CORE_AMP
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     // Reset M4
     RCC->APB1LENR |= RCC_APB1LENR_WWDG2EN;
     (void)RCC->APB1LENR;
@@ -117,7 +117,8 @@ int main()
     delay_ms(5);
 
     // Nudge M4 to wakeup
-    __asm__ volatile ("sev \n" ::: "memory");
+    ipi_messages[1].Write( { ipi_message::M4Wakeup, nullptr });
+    __SEV();
 #endif
 
     // Prepare systick
@@ -128,11 +129,6 @@ int main()
     s().StartForCurrentCore();
 
     return 0;
-}
-
-extern "C" void CM7_SEV_IRQHandler()
-{
-    m4_wakeup = M4_MAGIC;
 }
 
 extern "C" int main_cm4()
