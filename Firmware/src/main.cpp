@@ -123,7 +123,7 @@ int main()
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
-    SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
+    SysTick->LOAD = 7680000UL - 1UL;    // 20 ms tick at 384 MHz    
 
     s().StartForCurrentCore();
 
@@ -166,7 +166,8 @@ extern "C" int main_cm4()
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
-    SysTick->LOAD = 4799999;      // 10 ms tick at 48 MHz
+    SysTick->LOAD = 3764705U;      // 19.6 ms tick at 192 MHz 
+        // (so we don't always try and switch tasks on both cores at the same time)
 
     s().StartForCurrentCore();
 
