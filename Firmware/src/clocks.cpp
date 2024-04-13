@@ -3,6 +3,7 @@
 #include "clocks.h"
 #include <ctime>
 #include "osmutex.h"
+#include "gk_conf.h"
 
 __attribute__((section(".sram4"))) uint32_t SystemCoreClock;
 __attribute__((section(".sram4"))) struct timespec toffset;
@@ -150,9 +151,12 @@ void init_clocks()
     LPTIM1->CR = LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
 }
 
+SRAM4_DATA Spinlock sl_timer;
+
 __attribute__((section(".sram4"))) static volatile uint64_t _cur_ms = 0;
 extern "C" void LPTIM1_IRQHandler()
 {
+    CriticalGuard cg(sl_timer);
     // do it this way round or the IRQ is still active on IRQ return
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
     _cur_ms++;
@@ -161,7 +165,27 @@ extern "C" void LPTIM1_IRQHandler()
 
 uint64_t clock_cur_ms()
 {
-    return _cur_ms;
+    CriticalGuard cg(sl_timer);
+    return _cur_ms + ((LPTIM1->ISR & LPTIM_ISR_ARRM) ? 1ULL : 0ULL);
+}
+
+uint64_t clock_cur_us()
+{
+    CriticalGuard cg(sl_timer);
+    uint32_t cnt = 0U;
+    uint32_t isr_1;
+    while(true)
+    {
+        isr_1 = LPTIM1->ISR;
+        cnt = LPTIM1->CNT;
+        if(LPTIM1->ISR == isr_1)
+            break;
+    }
+
+    auto ret = _cur_ms + ((isr_1 & LPTIM_ISR_ARRM) ? 1ULL : 0ULL);
+    ret *= 1000ULL;
+    ret += cnt;
+    return ret;
 }
 
 void delay_ms(uint64_t nms)
