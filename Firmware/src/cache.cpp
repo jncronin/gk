@@ -2,21 +2,7 @@
 #include "osnet.h"
 #include "thread.h"
 #include "gk_conf.h"
-
-struct cache_req
-{
-    uint32_t base_addr;
-    uint32_t len;
-};
-
-SRAM4_DATA static RingBuffer<cache_req, 8> data_cache_inv_req;
-SRAM4_DATA static RingBuffer<cache_req, 8> inst_cache_inv_req;
-SRAM4_DATA static RingBuffer<cache_req, 8> data_cache_clean_req;
-
-/* M4 asking M7 to clean cache may mean the M4 needs the data in in,
-    therefore need to wait until the cleaning is done in order to proceed */
-SRAM4_DATA static Spinlock m4_await_m7_sl;
-SRAM4_DATA static volatile bool m4_await_m7_completion;
+#include "ipi.h"
 
 void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
@@ -44,18 +30,18 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
         switch(ctype)
         {
             case CacheType_t::Instruction:
-                inst_cache_inv_req.Write({ base, length });
+                ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } });
                 __SEV();
                 break;
 
             case CacheType_t::Data:
-                data_cache_inv_req.Write({ base, length });
+                ipi_messages[0].Write({ ipi_message::M7DataCacheInv, nullptr, .cache_req = { base, length } });
                 __SEV();
                 break;
 
             case CacheType_t::Both:
-                inst_cache_inv_req.Write({ base, length });
-                data_cache_inv_req.Write({ base, length });
+                ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } });
+                ipi_messages[0].Write({ ipi_message::M7DataCacheInv, nullptr, .cache_req = { base, length } });
                 __SEV();
                 break;
         }
@@ -65,6 +51,8 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
 void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
+    volatile bool m4_await_m7_completion = false;
+
 #if GK_USE_CACHE
     if(GetCoreID() == 0)
     {
@@ -90,23 +78,15 @@ void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
                 break;
 
             case CacheType_t::Data:
-                {
-                    CriticalGuard cg(m4_await_m7_sl);
-                    m4_await_m7_completion = false;
-                    data_cache_clean_req.Write({ base, length });
-                    __SEV();
-                    while(!m4_await_m7_completion);
-                }
+                ipi_messages[0].Write({ ipi_message::M7DataCacheClean, &m4_await_m7_completion, .cache_req = { base, length } });
+                __SEV();
+                while(!m4_await_m7_completion);
                 break;
 
             case CacheType_t::Both:
-                {
-                    CriticalGuard cg(m4_await_m7_sl);
-                    m4_await_m7_completion = false;
-                    data_cache_clean_req.Write({ base, length });
-                    __SEV();
-                    while(!m4_await_m7_completion);
-                }
+                ipi_messages[0].Write({ ipi_message::M7DataCacheClean, &m4_await_m7_completion, .cache_req = { base, length } });
+                __SEV();
+                while(!m4_await_m7_completion);
                 break;
         }
     }
@@ -124,6 +104,8 @@ void CleanOrInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
 void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
+    volatile bool m4_await_m7_completion = false;
+
 #if GK_USE_CACHE
     if(GetCoreID() == 0)
     {
@@ -148,54 +130,23 @@ void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype
         switch(ctype)
         {
             case CacheType_t::Instruction:
-                inst_cache_inv_req.Write({ base, length });
+                ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } });
                 __SEV();
                 break;
 
             case CacheType_t::Data:
-                {
-                    CriticalGuard cg(m4_await_m7_sl);
-                    m4_await_m7_completion = false;
-                    data_cache_inv_req.Write({ base, length });
-                    data_cache_clean_req.Write({ base, length });
-                    __SEV();
-                    while(!m4_await_m7_completion);
-                }
+                ipi_messages[0].Write({ ipi_message::M7DataCacheCleanInv, &m4_await_m7_completion, .cache_req = { base, length } });
+                __SEV();
+                while(!m4_await_m7_completion);
                 break;
 
             case CacheType_t::Both:
-                {
-                    CriticalGuard cg(m4_await_m7_sl);
-                    m4_await_m7_completion = false;
-                    inst_cache_inv_req.Write({ base, length });
-                    data_cache_inv_req.Write({ base, length });
-                    data_cache_clean_req.Write({ base, length });
-                    __SEV();
-                    while(!m4_await_m7_completion);
-                }
+                ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } });
+                ipi_messages[0].Write({ ipi_message::M7DataCacheCleanInv, &m4_await_m7_completion, .cache_req = { base, length } });
+                __SEV();
+                while(!m4_await_m7_completion);
                 break;
         }
     }
 #endif
-}
-
-extern "C" void CM4_SEV_IRQHandler()
-{
-    // This is a signal from M4 that we need to do something to the cache
-#if GK_USE_CACHE
-    cache_req cr;
-    while(data_cache_inv_req.Read(&cr))
-    {
-        SCB_InvalidateDCache_by_Addr((void *)cr.base_addr, cr.len);
-    }
-    while(inst_cache_inv_req.Read(&cr))
-    {
-        SCB_InvalidateICache_by_Addr((void *)cr.base_addr, cr.len);
-    }
-    while(data_cache_clean_req.Read(&cr))
-    {
-        SCB_CleanDCache_by_Addr((uint32_t *)cr.base_addr, cr.len);
-    }
-#endif
-    m4_await_m7_completion = true;
 }

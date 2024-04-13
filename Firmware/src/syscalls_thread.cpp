@@ -97,7 +97,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     
     // load up the file
     ext4_file f;
-    int eret = ext4_fopen(&f, fname, "rb");
+    int eret = ext4_fopen(&f, fname, "rb");     // TODO: shouldn't call this
     if(eret != EOK)
     {
         CriticalGuard cg(s_rtt);

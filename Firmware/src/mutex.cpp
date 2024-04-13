@@ -2,6 +2,7 @@
 #include "thread.h"
 #include "scheduler.h"
 #include "clocks.h"
+#include "ipi.h"
 #include "gk_conf.h"
 
 UninterruptibleGuard::UninterruptibleGuard()
@@ -81,6 +82,15 @@ void Spinlock::unlock()
     __DMB();
 }
 
+static inline void signal_thread_woken(Thread *t)
+{
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
+    auto other_core = 1U - GetCoreID();
+    ipi_messages[other_core].Write({ ipi_message::ThreadUnblocked, nullptr, .t = t });
+    __SEV();
+#endif
+}
+
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 {}
 
@@ -127,14 +137,15 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     bool hpt = false;
+    do_op(op, val);
     if(waiting_thread)
     {
         waiting_thread->is_blocking = false;
         if(waiting_thread->base_priority > t->base_priority)
             hpt = true;
+        signal_thread_woken(waiting_thread);
         waiting_thread = nullptr;
     }
-    do_op(op, val);
     if(hpt)
     {
         Yield();
@@ -229,6 +240,7 @@ Condition::~Condition()
         bt.first->block_until = 0;
         if(bt.first->base_priority > t->base_priority)
             hpt = true;
+        signal_thread_woken(bt.first);
     }
 
     if(hpt)
@@ -264,6 +276,7 @@ void Condition::Signal(bool signal_all)
                 bt.first->block_until = 0;
                 if(bt.first->base_priority > t->base_priority)
                     hpt = true;
+                signal_thread_woken(bt.first);
             }
         }
         waiting_threads.clear();
@@ -291,6 +304,7 @@ void Condition::Signal(bool signal_all)
                 iter->first->block_until = 0;
                 if(iter->first->base_priority > t->base_priority)
                     hpt = true;
+                signal_thread_woken(iter->first);
                 waiting_threads.erase(iter);
                 break;
             }
@@ -343,6 +357,7 @@ bool Mutex::unlock()
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
+    bool hpt = false;
     if(owner != t)
     {
         return false;
@@ -354,10 +369,18 @@ bool Mutex::unlock()
             wt->is_blocking = false;
             wt->block_until = 0;
             wt->blocking_on = nullptr;
+
+            if(wt->base_priority > t->base_priority)
+                hpt = true;
+            signal_thread_woken(wt);
         }
         waiting_threads.clear();
         owner = nullptr;
     }
+
+    if(hpt)
+        Yield();
+    
     return true;
 }
 
