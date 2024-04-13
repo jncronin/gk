@@ -452,36 +452,19 @@ void *init_thread(void *p)
     }
     screen_flip_overlay(true);
 
-    unsigned int alpha = 0xff;
-    bool alpha_up = false;
+    static volatile unsigned int alpha = 0;
+    static volatile unsigned int act_alpha = 0;
     while(true)
     {
         Block(clock_cur_ms() + 20ULL);
-        if(alpha_up)
-        {
-            if(alpha == 0xff)
-            {
-                alpha = 0xfe;
-                alpha_up = false;
-            }
-            else
-            {
-                alpha++;
-            }
-        }
+        alpha += 0x10;
+        auto _act_alpha = alpha % 512;
+        if(_act_alpha < 256)
+            _act_alpha = 255 - _act_alpha;
         else
-        {
-            if(alpha == 0)
-            {
-                alpha = 0x1;
-                alpha_up = true;
-            }
-            else
-            {
-                alpha--;
-            }
-        }
-        screen_set_overlay_alpha(alpha);
+            _act_alpha = _act_alpha - 256;
+        act_alpha = _act_alpha;
+        screen_set_overlay_alpha(act_alpha);
     }
 
     //jpeg_test();
