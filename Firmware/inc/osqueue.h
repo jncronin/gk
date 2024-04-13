@@ -9,6 +9,7 @@
 #include <cstring>
 #include <clocks.h>
 #include <unordered_set>
+#include "ipi.h"
 
 template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
 
@@ -45,6 +46,7 @@ class BaseQueue
                 bt->block_until = 0;
                 if(bt->base_priority > t->base_priority)
                     hpt = true;
+                signal_thread_woken(bt);
             }
             waiting_threads.clear();
             if(hpt)
