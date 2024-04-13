@@ -49,7 +49,7 @@ void *supervisor_thread(void *p)
     {
         for(int x = 0; x < 640; x++)
         {
-            overlay[y * 640 + x] = 0xd4;        // nearly opaque red
+            overlay[y * 640 + x] = 0xd4;       // nearly opaque red
         }
     }
     screen_flip_overlay();

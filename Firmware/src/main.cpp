@@ -23,6 +23,7 @@
 #include "mdma.h"
 #include "ipi.h"
 #include "supervisor.h"
+#include "buttons.h"
 #include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -70,6 +71,7 @@ int main()
     init_sd();
     init_ext4();
     init_mdma();
+    init_buttons();
 
 #if GK_ENABLE_NETWORK
     init_net();
