@@ -82,15 +82,6 @@ void Spinlock::unlock()
     __DMB();
 }
 
-static inline void signal_thread_woken(Thread *t)
-{
-#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-    auto other_core = 1U - GetCoreID();
-    ipi_messages[other_core].Write({ ipi_message::ThreadUnblocked, nullptr, .t = t });
-    __SEV();
-#endif
-}
-
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 {}
 
