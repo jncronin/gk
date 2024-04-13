@@ -7,16 +7,48 @@
 #include "scheduler.h"
 
 #include "osmutex.h"
-__attribute__((section(".sram4"))) static Spinlock s_scrbuf;
-__attribute__((section(".sram4"))) static void *scr_bufs[2] = { 0, 0 };
-__attribute__((section(".sram4"))) static int scr_cbuf = 0;
+#include "gk_conf.h"
 
-__attribute__((section(".sram4"))) Condition scr_vsync;
+SRAM4_DATA static Spinlock s_scrbuf;
+SRAM4_DATA static void *scr_bufs[2] = { 0, 0 };
+SRAM4_DATA static int scr_cbuf = 0;
+
+SRAM4_DATA static Spinlock s_scrbuf_overlay;
+SRAM4_DATA static void *scr_bufs_overlay[2] = { 0, 0 };
+SRAM4_DATA static int scr_cbuf_overlay = 0;
+
+
+SRAM4_DATA Condition scr_vsync;
 
 void *screen_get_frame_buffer()
 {
     CriticalGuard cg(s_scrbuf);
     return scr_bufs[scr_cbuf & 0x1];
+}
+
+void *screen_get_overlay_frame_buffer()
+{
+    CriticalGuard cg(s_scrbuf_overlay);
+    return scr_bufs_overlay[scr_cbuf_overlay & 0x1];
+}
+
+void *screen_flip_overlay(bool visible)
+{
+    CriticalGuard cg(s_scrbuf_overlay);
+    scr_cbuf_overlay++;
+    int wbuf = scr_cbuf_overlay & 0x1;
+    int rbuf = wbuf ? 0 : 1;
+    LTDC_Layer2->CFBAR = (uint32_t)(uintptr_t)scr_bufs_overlay[rbuf];
+    if(visible)
+    {
+        LTDC_Layer2->CR |= LTDC_LxCR_LEN;
+    }
+    else
+    {
+        LTDC_Layer2->CR &= ~LTDC_LxCR_LEN;
+    }
+    LTDC->SRCR = LTDC_SRCR_VBR;
+    return scr_bufs_overlay[wbuf];
 }
 
 void *screen_flip()
@@ -70,6 +102,21 @@ void screen_set_frame_buffer(void *b0, void *b1)
         scr_bufs[0] = b0;
     if(b1)
         scr_bufs[1] = b1;
+}
+
+void screen_set_overlay_frame_buffer(void *b0, void *b1)
+{
+    CriticalGuard cg(s_scrbuf_overlay);
+    if(b0)
+        scr_bufs_overlay[0] = b0;
+    if(b1)
+        scr_bufs_overlay[1] = b1;
+}
+
+void screen_set_overlay_alpha(unsigned int alpha)
+{
+    LTDC_Layer2->CACR = alpha;
+    LTDC->SRCR = LTDC_SRCR_VBR;
 }
 
 static constexpr pin lcd_pins[] = {
@@ -410,11 +457,32 @@ void init_screen()
     LTDC_Layer1->CFBLNR = 480UL;
     LTDC_Layer1->CR = 0;
 
+    LTDC_Layer2->WHPCR =
+        ((((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL) << LTDC_LxWHPCR_WHSTPOS_Pos) |
+        ((((LTDC->AWCR & LTDC_AWCR_AAW_Msk) >> LTDC_AWCR_AAW_Pos)) << LTDC_LxWHPCR_WHSPPOS_Pos);
+    LTDC_Layer2->WVPCR =
+        ((((LTDC->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL) << LTDC_LxWVPCR_WVSTPOS_Pos) |
+        ((((LTDC->AWCR & LTDC_AWCR_AAH_Msk) >> LTDC_AWCR_AAH_Pos)) << LTDC_LxWVPCR_WVSPPOS_Pos);
     LTDC_Layer2->DCCR = 0UL;
-    LTDC_Layer2->CACR = 0UL;
-    LTDC_Layer2->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
-        (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now
-    LTDC_Layer2->CR = 0;
+    LTDC_Layer2->CACR = 0xffUL;
+    LTDC_Layer2->BFCR = (6UL << LTDC_LxBFCR_BF1_Pos) |
+        (7UL << LTDC_LxBFCR_BF2_Pos);
+    LTDC_Layer2->PFCR = 6U; // AL44
+    LTDC_Layer2->CFBLR = (640UL << LTDC_LxCFBLR_CFBP_Pos) |
+        (647UL << LTDC_LxCFBLR_CFBLL_Pos);
+    LTDC_Layer2->CFBLNR = 480UL;
+    
+    // Load lookup table for AL44 CGA text mode colors https://en.wikipedia.org/wiki/Color_Graphics_Adapter
+    constexpr uint32_t palette[] = {
+        0x000000, 0x0000aa, 0x00aa00, 0x00aaaa,
+        0xaa0000, 0xaa00aa, 0xaa5500, 0xaaaaaa,
+        0x555555, 0x5555ff, 0x55ff55, 0x55ffff,
+        0xff5555, 0xff55ff, 0xffff55, 0xffffff };
+    LTDC_Layer2->CR = LTDC_LxCR_CLUTEN;
+    for(unsigned int i = 0; i < sizeof(palette) / sizeof(uint32_t); i++)
+    {
+        LTDC_Layer2->CLUTWR = (i << 24) | palette[i];
+    }
     
     scr_bufs[0] = 0;
     scr_bufs[1] = 0;
