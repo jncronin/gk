@@ -431,6 +431,59 @@ void *init_thread(void *p)
     pt.argc = sizeof(args) / sizeof(char *);
     deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
 
+    // overlay test - bottom half of screen with alternating semi-transparent red squares
+    auto overlay = (char *)screen_get_overlay_frame_buffer();
+    for(int y = 0; y < 240; y++)
+    {
+        for(int x = 0; x < 640; x++)
+        {
+            overlay[y * 640 + x] = 0;
+        }
+    }
+    for(int y = 240; y < 480; y++)
+    {
+        for(int x = 0; x < 640; x++)
+        {
+            auto ysqid = y / 8;
+            auto xsqid = x / 8;
+            auto col = ((ysqid & 0x1) ^ (xsqid & 0x1)) ? 0x84U : 0x00U;
+            overlay[y * 640 + x] = col;
+        }
+    }
+    screen_flip_overlay(true);
+
+    unsigned int alpha = 0xff;
+    bool alpha_up = false;
+    while(true)
+    {
+        Block(clock_cur_ms() + 20ULL);
+        if(alpha_up)
+        {
+            if(alpha == 0xff)
+            {
+                alpha = 0xfe;
+                alpha_up = false;
+            }
+            else
+            {
+                alpha++;
+            }
+        }
+        else
+        {
+            if(alpha == 0)
+            {
+                alpha = 0x1;
+                alpha_up = true;
+            }
+            else
+            {
+                alpha--;
+            }
+        }
+        screen_set_overlay_alpha(alpha);
+    }
+
     //jpeg_test();
 
     return nullptr;

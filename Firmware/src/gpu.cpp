@@ -371,14 +371,17 @@ void *gpu_thread(void *p)
 {
     (void)p;
 
-    // Init framebuffer
+    // Init framebuffer - 640x480 x 32bpp
     auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
     screen_set_frame_buffer((void *)fb.address, (void *)(fb.address + 0x200000));
 
-    // Set up our scaling backbuffers (for 320x240 screen and 160x120 screen)
+    // Set up our scaling backbuffers (for 320x240 screen and 160x120 screen) - 32bpp
     scaling_bb[0] = (void *)(fb.address + 0x12c000);
     scaling_bb[1] = (void *)(fb.address + 0x32c000);
     scaling_bb_idx = 0;
+
+    // Set up overlay frame buffers (640x480 x 8bpp)
+    screen_set_overlay_frame_buffer((void *)(fb.address + 0x180000), (void *)(fb.address + 0x380000));
 
     RCC->AHB3ENR |= (RCC_AHB3ENR_DMA2DEN | RCC_AHB3ENR_MDMAEN);
     (void)RCC->AHB3ENR;
