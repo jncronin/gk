@@ -6,24 +6,24 @@
 #include "osmutex.h"
 #include "gk_conf.h"
 
-/* The I2C4 bus runs at 400 kHz and contains:
+/* The I2C1 bus runs at 400 kHz and contains:
         LSM6DSL gyro/accelerometer:         Address
         CST340 touch screen controller:     Address 0x1a (see https://sbexr.rabexc.org/latest/sources/b1/4dc8ab017aac8c.html)
         MAX17048 battery charge monitor:    Address
 
-    I2C4 clock is 24 MHz - we can use the 8MHz examples from RM with a /3 prescaler
+    I2C1 clock is 24 MHz - we can use the 8MHz examples from RM with a /3 prescaler
 
     The CST340 chip is complex - see https://git.zx2c4.com/linux/plain/drivers/input/touchscreen/hynitron_cstxxx.c
 
 */
 
-#define i2c I2C4
+#define i2c I2C1
 
 constexpr const pin CTP_NRESET { GPIOC, 13 };
 constexpr const pin CTP_INT { GPIOC, 14 };
 constexpr const pin LSM_INT { GPIOI, 0 };
-constexpr const pin I2C4_SDA { GPIOB, 7, 6 };
-constexpr const pin I2C4_SCL { GPIOB, 6, 6 };
+constexpr const pin I2C1_SDA { GPIOB, 7, 4 };
+constexpr const pin I2C1_SCL { GPIOB, 6, 4 };
 
 static void *i2c_thread(void *p);
 static void *lsm_thread(void *p);
@@ -37,7 +37,7 @@ SRAM4_DATA static BinarySemaphore sem_ctp;
 struct i2c_msg
 {
     bool is_read;
-    unsigned char address;
+    unsigned char i2c_address;
     void *buf;
     size_t nbytes;
 };
@@ -46,27 +46,27 @@ SRAM4_DATA FixedQueue<i2c_msg, 32> i2c_msgs;
 
 static void reset_i2c()
 {
-    RCC->APB4ENR &= ~RCC_APB4ENR_I2C4EN;
-    (void)RCC->APB4ENR;
-    RCC->APB4RSTR = RCC_APB4RSTR_I2C4RST;
-    (void)RCC->APB4RSTR;
-    RCC->APB4RSTR = 0;
-    (void)RCC->APB4RSTR;
-    RCC->APB4ENR |= RCC_APB4ENR_I2C4EN;
-    (void)RCC->APB4ENR;
+    RCC->APB1LENR &= ~RCC_APB1LENR_I2C1EN;
+    (void)RCC->APB1LENR;
+    RCC->APB1LRSTR = RCC_APB1LRSTR_I2C1RST;
+    (void)RCC->APB1LRSTR;
+    RCC->APB1LRSTR = 0;
+    (void)RCC->APB1LRSTR;
+    RCC->APB1LENR |= RCC_APB1LENR_I2C1EN;
+    (void)RCC->APB1LENR;
 
     // Toggle pins to reset digital filter
-    I2C4_SDA.set_as_output(pin::OpenDrain);
-    I2C4_SCL.set_as_output(pin::OpenDrain);
-    I2C4_SDA.clear();
-    I2C4_SCL.clear();
+    I2C1_SDA.set_as_output(pin::OpenDrain);
+    I2C1_SCL.set_as_output(pin::OpenDrain);
+    I2C1_SDA.clear();
+    I2C1_SCL.clear();
     Block(clock_cur_ms() + 1ULL);
-    I2C4_SDA.set();
-    I2C4_SCL.set();
+    I2C1_SDA.set();
+    I2C1_SCL.set();
     Block(clock_cur_ms() + 1ULL);
 
-    I2C4_SDA.set_as_af(pin::OpenDrain);
-    I2C4_SCL.set_as_af(pin::OpenDrain);
+    I2C1_SDA.set_as_af(pin::OpenDrain);
+    I2C1_SCL.set_as_af(pin::OpenDrain);
 
     i2c->CR1 = 0U;
 
