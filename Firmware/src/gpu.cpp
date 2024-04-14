@@ -180,8 +180,11 @@ static void handle_scale_blit_cpu(const gpu_message &g)
     // slow implementation on CPU - manages ~20fps for 160x120 -> 640x480 without PFC
     auto sbpp = get_bpp(g.src_pf);
     auto dbpp = get_bpp(g.dest_pf);
-    CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * sbpp,
-        g.h * g.sp, CacheType_t::Data);
+    if(g.src_addr_color < 0x60000000 || g.src_addr_color >= 0x60400000)
+    {
+        CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * sbpp,
+            g.h * g.sp, CacheType_t::Data);
+    }
 
     for(unsigned int y = 0; y < g.dh; y++)
     {
@@ -217,7 +220,10 @@ static void handle_scale_blit_cpu(const gpu_message &g)
         }
     }
 
-    CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * dbpp, g.dh * g.dp, CacheType_t::Data);
+    if(g.dest_addr < 0x60000000 || g.dest_addr >= 0x60400000)
+    {
+        CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * dbpp, g.dh * g.dp, CacheType_t::Data);
+    }
 }
 
 uint32_t mdma_ll[16*16] __attribute__((aligned(32)));
@@ -578,7 +584,10 @@ void *gpu_thread(void *p)
                     {
                         auto start_addr = dest_addr + g.dx * bpp + g.dy * dest_pitch;
                         auto len = g.h * dest_pitch + g.w * bpp;
-                        CleanM7Cache(start_addr, len, CacheType_t::Data);
+                        if(start_addr < 0x60000000 || start_addr >= 0x60400000)
+                        {
+                            CleanM7Cache(start_addr, len, CacheType_t::Data);
+                        }
                     }
                     break;
 
