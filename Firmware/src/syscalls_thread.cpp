@@ -513,3 +513,25 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
         }
     }
 }
+
+int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
+{
+    if(!name)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(strlen(name) > 64)
+    {
+        *_errno = ERANGE;
+        return -1;
+    }
+    if(thread > 64*1024U)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    auto t = reinterpret_cast<Thread *>(0x38000000U + thread);
+    t->name = std::string(name);
+    return 0;
+}

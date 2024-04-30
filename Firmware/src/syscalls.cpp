@@ -267,6 +267,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_setname_np:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_setname_np_params *>(r2);
+                int ret = syscall_pthread_setname_np(p->thread, p->name,
+                    reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         case __syscall_proccreate:
             {
                 auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
