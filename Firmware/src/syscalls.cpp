@@ -276,6 +276,17 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_sigmask:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_sigmask_params *>(r2);
+                if(p->old)
+                {
+                    p->old = 0;
+                }
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            break;
+
         case __syscall_proccreate:
             {
                 auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
