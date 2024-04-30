@@ -171,3 +171,38 @@ int syscall_close2(int file, int *_errno)
 
     return ret;
 }
+
+int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
+{
+    if(!pathname)
+    {
+        *_errno = EFAULT;
+        return -1;
+    }
+
+    // check len as malloc'ing in sram4
+    auto pnlen = strlen(pathname);
+    if(pnlen > 4096)
+    {
+        *_errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    auto npname = (char *)malloc(pnlen + 1);
+    if(!npname)
+    {
+        *_errno = ENAMETOOLONG;
+        return -1;
+    }
+    strcpy(npname, pathname);
+
+    auto t = GetCurrentThreadForCore();
+    auto msg = ext4_mkdir_message(npname, mode, t->ss, t->ss_p);
+    if(ext4_send_message(msg))
+        return -2;  // deferred return
+    else
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+}

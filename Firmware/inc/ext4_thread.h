@@ -27,6 +27,7 @@ struct ext4_message
         Write,
         Lseek,
         Fstat,
+        Mkdir,
     };
 
     msg_type type;
@@ -70,6 +71,27 @@ struct ext4_message
 };
 
 bool ext4_send_message(ext4_message &msg);
+
+static constexpr ext4_message ext4_mkdir_message(const char *pathname, int mode,
+    SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+{
+    ext4_message::params_t::open_params_t _p {
+        .pathname = pathname,
+        .mode = mode
+    };
+
+    ext4_message::params_t __p {
+        .open_params = _p
+    };
+
+    ext4_message ret {
+        .type = ext4_message::msg_type::Mkdir,
+        .params = __p,
+        .ss = &ss,
+        .ss_p = &ss_p
+    };
+    return ret;
+}
 
 static constexpr ext4_message ext4_open_message(const char *pathname, int flags, int mode,
     Process &p, int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
