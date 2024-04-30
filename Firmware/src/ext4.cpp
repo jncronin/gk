@@ -442,6 +442,23 @@ void handle_close_message(ext4_message &msg)
     }
 }
 
+void handle_mkdir_message(ext4_message &msg)
+{
+    auto extret = ext4_dir_mk(msg.params.open_params.pathname);
+    free((void *)msg.params.open_params.pathname);
+    if(extret == EOK)
+    {
+        msg.ss_p->ival1 = 0;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+}
+
 void *ext4_thread(void *_p)
 {
     (void)_p;
@@ -479,6 +496,10 @@ void *ext4_thread(void *_p)
 
             case ext4_message::msg_type::Close:
                 handle_close_message(msg);
+                break;
+
+            case ext4_message::msg_type::Mkdir:
+                handle_mkdir_message(msg);
                 break;
         }
     }
