@@ -43,6 +43,7 @@ struct i2c_msg
 };
 
 SRAM4_DATA FixedQueue<i2c_msg, 32> i2c_msgs;
+SRAM4_DATA static volatile i2c_msg cur_i2c_msg;
 
 static void reset_i2c()
 {
@@ -79,13 +80,6 @@ static void reset_i2c()
 
     i2c->CR1 = I2C_CR1_PE;
 
-    // reset devices on this bus
-    CTP_NRESET.set_as_output();
-    CTP_NRESET.clear();
-    Block(clock_cur_ms() + 50ULL);
-    CTP_NRESET.set();
-    Block(clock_cur_ms() + 300ULL);
-
     i2c_init = true;
 }
 
@@ -105,8 +99,7 @@ void *i2c_thread(void *params)
 {
     while(true)
     {
-        i2c_msg msg;
-        if(i2c_msgs.Pop(&msg))
+        if(i2c_msgs.Pop(const_cast<i2c_msg *>(&cur_i2c_msg)))
         {
             if(!i2c_init)
             {
@@ -124,6 +117,12 @@ void *cst_thread(void *param)
     {
         if(!ctp_init)
         {
+            CTP_NRESET.set_as_output();
+            CTP_NRESET.clear();
+            Block(clock_cur_ms() + 50ULL);
+            CTP_NRESET.set();
+            Block(clock_cur_ms() + 300ULL);
+            
             // TODO init CTP
         }
 
