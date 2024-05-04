@@ -64,6 +64,8 @@ class Process
         unsigned int gamepad_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed);
 
+        unsigned short int gamepad_to_scancode[8] = { 80, 79, 82, 81, 224, 226, 225, 'z' };
+
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
 };
