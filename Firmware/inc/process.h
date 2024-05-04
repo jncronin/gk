@@ -10,7 +10,7 @@ class Thread;
 #include "osmutex.h"
 #include "osqueue.h"
 #include "osfile.h"
-#include "osevent.h"
+#include "_gk_event.h"
 #include "_gk_proccreate.h"
 #include "gk_conf.h"
 
@@ -55,6 +55,14 @@ class Process
         MemRegion mr_params;
         int argc;
         char **argv;
+
+        /* gamepad mapping */
+        bool gamepad_is_joystick = true;
+        bool gamepad_is_keyboard = true;
+
+        enum GamepadKey { Left, Right, Up, Down, A, B, X, Y };
+        unsigned int gamepad_buttons = 0;
+        void HandleGamepadEvent(GamepadKey key, bool pressed);
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;

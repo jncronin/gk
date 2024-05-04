@@ -3,11 +3,12 @@
 #include "scheduler.h"
 #include "screen.h"
 #include "cache.h"
-#include "osevent.h"
+#include "_gk_event.h"
 
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
+SRAM4_DATA static bool overlay_visible = false;
 
 static void *supervisor_thread(void *p);
 
@@ -53,7 +54,6 @@ void *supervisor_thread(void *p)
         }
     }
     screen_flip_overlay();
-    bool overlay_visible = false;
 
     // process messages
     while(true)
@@ -78,4 +78,16 @@ void *supervisor_thread(void *p)
     }
 
     return nullptr;
+}
+
+bool supervisor_is_active(unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h)
+{
+    if(overlay_visible)
+    {
+        if(x) *x = 0;
+        if(y) *y = 240;
+        if(w) *w = 640;
+        if(h) *h = 240;
+    }
+    return overlay_visible; 
 }
