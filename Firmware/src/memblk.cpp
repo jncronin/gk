@@ -3,12 +3,15 @@
 #include "buddy.h"
 #include "SEGGER_RTT.h"
 #include "gk_conf.h"
+#include "scheduler.h"
+#include "thread.h"
+
+#define DEBUG_MEMBLK        0
 
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_axisram;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x30000000> b_sram;
 __attribute__((section(".sram4"))) BuddyAllocator<512*1024, 65536*1024, GK_SDRAM_BASE> b_sdram;
-
 
 // The following are the ends of all the input sections in the
 //  relevant memory region.  We choose the highest to init the
@@ -193,10 +196,13 @@ void memblk_deallocate(MemRegion &r)
             break;
     }
 
+#if DEBUG_MEMBLK
     if(!r.valid)
     {
-        SEGGER_RTT_printf(0, "memblk deallocate: %x - %x\n", r.address, r.address + r.length);
+        SEGGER_RTT_printf(0, "memblk deallocate: %x - %x by %x\n", r.address, r.address + r.length,
+            (uint32_t)(uintptr_t)GetCurrentThreadForCore());
     }
+#endif
 }
 
 MemRegion memblk_allocate(size_t n, MemRegionType rtype)
@@ -238,7 +244,10 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
     {
         mr.address = ret.base;
         mr.length = ret.length;
-        SEGGER_RTT_printf(0, "memblk allocate: %x - %x\n", mr.address, mr.address + mr.length);
+#if DEBUG_MEMBLK
+        SEGGER_RTT_printf(0, "memblk allocate: %x - %x from %x\n", mr.address, mr.address + mr.length,
+            (uint32_t)(uintptr_t)GetCurrentThreadForCore());
+#endif
     }
     else
     {
