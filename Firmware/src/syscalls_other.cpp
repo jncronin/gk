@@ -112,6 +112,20 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
     return 0;
 }
 
+int syscall_peekevent(Event *ev, int *_errno)
+{
+    auto &p = GetCurrentThreadForCore()->p;
+    CriticalGuard cg(p.sl);
+    if(p.events.TryPop(ev))
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 clock_t syscall_times(tms *buf, int *_errno)
 {
     if(!buf)

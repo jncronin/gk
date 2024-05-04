@@ -7,6 +7,7 @@
 #include "thread.h"
 #include "scheduler.h"
 #include "_netinet_in.h"
+#include "_gk_event.h"
 
 int get_free_fildes(Process &p);
 
@@ -61,6 +62,8 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
 clock_t syscall_times(struct tms *buf, int *_errno);
 int syscall_kill(pid_t pid, int sig, int *_errno);
 int syscall_mkdir(const char *pathname, mode_t mode, int *_errno);
+
+int syscall_peekevent(Event *ev, int *_errno);
 
 static inline int deferred_return(int ret, int _errno)
 {
