@@ -555,6 +555,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
+
+        case __syscall_peekevent:
+            {
+                auto ev = reinterpret_cast<Event *>(r2);
+                int ret = syscall_peekevent(ev, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
         
         default:
             {
