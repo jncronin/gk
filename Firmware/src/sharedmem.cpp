@@ -20,7 +20,7 @@ SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_
         t = curt;
         old_core_pin = curt->tss.pinned_on_core;
         coreid = GetCoreID();
-        curt->tss.pinned_on_core = coreid;
+        curt->tss.pinned_on_core = coreid + 1;
     }
 
     start = (uint32_t)(uintptr_t)_start;
