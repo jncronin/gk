@@ -10,6 +10,8 @@
 #include <cstring>
 #include "SEGGER_RTT.h"
 
+#define DEBUG_SYSCALLS  0
+
 extern Spinlock s_rtt;
 extern Process kernel_proc;
 
@@ -32,6 +34,11 @@ extern "C" {
 
 void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 {
+#if DEBUG_SYSCALLS
+    uint32_t dr1 = (uint32_t)(uintptr_t)r1;
+    uint32_t dr2 = (uint32_t)(uintptr_t)r2;
+    uint32_t dr3 = (uint32_t)(uintptr_t)r3;
+#endif
     auto syscall_start = clock_cur_ms();
     switch(sno)
     {
@@ -128,6 +135,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
                 int ret = syscall_read(p->file, p->ptr, p->len, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
+
+#if DEBUG_SYSCALLS
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "syscall_read: file %d addr: %x, len: %d, ret: %d\n",
+                        p->file, (uint32_t)(uintptr_t)p->ptr, p->len, ret);
+                }
+#endif
             }
             break;
 
@@ -574,4 +589,11 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
     }
 
     GetCurrentThreadForCore()->total_s_time += clock_cur_ms() - syscall_start;
+
+#if DEBUG_SYSCALLS
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "syscalls: %d (%x, %x, %x)\n", (int)sno, dr1, dr2, dr3);
+    }
+#endif
 }
