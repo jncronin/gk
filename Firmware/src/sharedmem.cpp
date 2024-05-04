@@ -32,7 +32,7 @@ SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_
     {
         /* if we are reading from the memory, and we are core 1, and we are unaligned, we need to
             save what is in the cache _to_ memory first, and then invalidate */
-        if((start & 0x1f) || (_len & 0x1f))
+        if((start & 0x1f) || ((start + _len) & 0x1f))
         {
             SCB_CleanDCache_by_Addr((uint32_t *)_start, _len);
         }
@@ -57,6 +57,10 @@ SharedMemoryGuard::~SharedMemoryGuard()
     if(coreid == 0 && is_write)
     {
         SCB_CleanDCache_by_Addr((uint32_t *)start, len);
+    }
+    if(coreid == 1 && is_write)
+    {
+        InvalidateM7Cache(start, len, CacheType_t::Data);
     }
 
     {

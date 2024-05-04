@@ -996,7 +996,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
         To avoid this, if we are unaligned then also clean the cache here so that the memory
         has the correct data once we invalidate it again later (after a read). */
-    if(!is_read || (uint32_t)mem_address & 0x1f)    
+    if(!is_read || (uint32_t)mem_address & 0x1f || ((uint32_t)mem_address + block_count * 512U) & 0x1f)    
     {
         CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
     }
@@ -1063,7 +1063,7 @@ static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t bloc
 
         To avoid this, if we are unaligned then also clean the cache here so that the memory
         has the correct data once we invalidate it again later (after a read). */
-    if(!is_read || (uint32_t)mem_address & 0x1f)    
+    if(!is_read || (uint32_t)mem_address & 0x1f || ((uint32_t)mem_address + block_count * 512U) & 0x1f)    
     {
         CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
     }
