@@ -41,6 +41,7 @@ void *x_thread(void *p);
 void *net_telnet_thread(void *p);
 
 static void *init_thread(void *p);
+static void *init_m4_thread(void *p);
 
 extern void jpeg_test();
 
@@ -71,7 +72,6 @@ int main()
     init_sd();
     init_ext4();
     init_mdma();
-    init_buttons();
 
 #if GK_ENABLE_NETWORK
     init_net();
@@ -112,6 +112,8 @@ int main()
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7));
 
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
+    Schedule(Thread::Create("init_m4", init_m4_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::M4Only));
+
     // Reset M4
     RCC->APB1LENR |= RCC_APB1LENR_WWDG2EN;
     (void)RCC->APB1LENR;
@@ -394,6 +396,14 @@ void *x_thread(void *p)
     }
 }
 
+/* M4 init thread - starts services on M4 */
+void *init_m4_thread(void *p)
+{
+    init_buttons();
+
+    return nullptr;
+}
+
 /* Init thread - loads services from sdcard */
 void *init_thread(void *p)
 {
@@ -448,6 +458,10 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 41;  // ESCAPE
 
     //jpeg_test();
+
+#if !GK_DUAL_CORE && !GK_DUAL_CORE_AMP
+    init_m4_thread(p);
+#endif
 
     return nullptr;
 }
