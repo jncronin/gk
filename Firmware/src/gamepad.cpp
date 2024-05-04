@@ -13,32 +13,6 @@ static inline short int get_axis_value(unsigned int btns, Process::GamepadKey po
         return INT16_MIN;
 }
 
-static inline unsigned short int btn_to_scancode(Process::GamepadKey btn)
-{
-    // Use SDL_SCANCODEs here
-
-    switch(btn)
-    {
-        case Process::GamepadKey::Up:
-            return 82;
-        case Process::GamepadKey::Down:
-            return 81;
-        case Process::GamepadKey::Left:
-            return 80;
-        case Process::GamepadKey::Right:
-            return 79;
-        case Process::GamepadKey::A:
-            return 224; // SDL_SCANCODE_LCTRL
-        case Process::GamepadKey::B:
-            return 226; // SDL_SCANCODE_LALT
-        case Process::GamepadKey::X:
-            return 225; // SDL_SCANCODE_LSHIFT
-        case Process::GamepadKey::Y:
-            return 'z';
-    }
-    return 0;
-}
-
 void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed)
 {
     CriticalGuard cg(sl);
@@ -95,11 +69,11 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed)
     {
         if(pressed)
         {
-            events.Push({ Event::event_type_t::KeyDown, .key = btn_to_scancode(key) });
+            events.Push({ Event::event_type_t::KeyDown, .key = gamepad_to_scancode[(int)key] });
         }
         else
         {
-            events.Push({ Event::event_type_t::KeyUp, .key = btn_to_scancode(key) });
+            events.Push({ Event::event_type_t::KeyUp, .key = gamepad_to_scancode[(int)key] });
         }
     }
 }

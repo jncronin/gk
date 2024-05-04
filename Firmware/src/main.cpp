@@ -442,6 +442,10 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
     focus_process->screen_w = 320;
     focus_process->screen_h = 240;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 224; // LCTRL
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 44;  // SPACE
+    focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;  // RETURN
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 41;  // ESCAPE
 
     //jpeg_test();
 
