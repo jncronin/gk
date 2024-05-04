@@ -422,6 +422,7 @@ void *init_thread(void *p)
     //pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.with_focus = 1;
     //deferred_call(syscall_proccreate, "/tglgears-0.1.1-gk/bin/tglgears", &pt);
+#if 0
     const char *args[] = { "-f", "--max-width", "640", "--max-height", "480", "-z", "1.0",
         "--sound", "off", "--fast-boot", "on",
         "--compatible", "off",
@@ -432,9 +433,15 @@ void *init_thread(void *p)
         "-d", "none",
         "--timer-d", "on",
         "/share/hatari/games/xenon2.st" };
+#endif
+    const char *args[] = { "-nosound", "-nomusic", "-nosfx", "-iwad", "/share/doom/doom1.wad" };
+
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
-    deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
+    //deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
+    deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
+    focus_process->screen_w = 320;
+    focus_process->screen_h = 240;
 
     //jpeg_test();
 
