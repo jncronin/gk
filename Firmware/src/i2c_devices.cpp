@@ -133,6 +133,8 @@ static void reset_i2c()
     i2c->CR1 = I2C_CR1_PE;
 
     i2c_init = true;
+
+    Block(clock_cur_ms() + 5ULL);
 }
 
 void init_i2c()
