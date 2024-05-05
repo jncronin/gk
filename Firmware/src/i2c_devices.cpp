@@ -5,6 +5,11 @@
 #include "process.h"
 #include "osmutex.h"
 #include "gk_conf.h"
+#include "ossharedmem.h"
+#include "i2c.h"
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
 
 /* The I2C1 bus runs at 400 kHz and contains:
         LSM6DSL gyro/accelerometer:         Address
@@ -37,13 +42,60 @@ SRAM4_DATA static BinarySemaphore sem_ctp;
 struct i2c_msg
 {
     bool is_read;
+    bool restart_after_read;
     unsigned char i2c_address;
-    void *buf;
+    char *buf;
     size_t nbytes;
+    SimpleSignal *ss;
 };
 
 SRAM4_DATA FixedQueue<i2c_msg, 32> i2c_msgs;
 SRAM4_DATA static volatile i2c_msg cur_i2c_msg;
+SRAM4_DATA static volatile unsigned int n_xmit;
+SRAM4_DATA static volatile unsigned int n_tc_end;
+
+int i2c_xmit(unsigned int addr, void *buf, size_t nbytes, bool is_read)
+{
+    auto ss = new SimpleSignal();
+    if(!ss)
+        return -1;
+    
+    i2c_msg msg;
+    msg.i2c_address = addr;
+    msg.buf = (char *)buf;
+    msg.is_read = is_read;
+    msg.nbytes = nbytes;
+    msg.restart_after_read = false;
+    msg.ss = ss;
+
+    if(!i2c_msgs.Push(msg))
+    {
+        delete ss;
+        return -1;
+    }
+
+    auto ret = ss->Wait();
+    delete ss;
+    if(ret & 0x80000000U)
+    {
+        ret &= ~0x80000000U;
+        return -((int)ret);
+    }
+    else
+    {
+        return ret;
+    }
+}
+
+int i2c_read(unsigned int addr, const void *buf, size_t nbytes)
+{
+    return i2c_xmit(addr, (void *)buf, nbytes, true);
+}
+
+int i2c_send(unsigned int addr, void *buf, size_t nbytes)
+{
+    return i2c_xmit(addr, buf, nbytes, false);
+}
 
 static void reset_i2c()
 {
@@ -95,6 +147,29 @@ void init_i2c()
     Schedule(t_max);
 }
 
+static uint32_t calc_cr2(unsigned int i2c_address, bool is_read,
+    unsigned int nbytes, unsigned int n_transmitted,
+    bool restart_after_read, unsigned int *n_after_current_tc)
+{
+    uint32_t ret = (cur_i2c_msg.i2c_address << 1) |
+                (cur_i2c_msg.is_read ? I2C_CR2_RD_WRN : 0U);
+    auto to_xmit = nbytes - n_transmitted;
+    if(to_xmit < 256)
+    {
+        ret |= (to_xmit << I2C_CR2_NBYTES_Pos);
+        if(!restart_after_read)
+            ret |= I2C_CR2_AUTOEND;
+    }
+    else
+    {
+        ret |= (0xffU << I2C_CR2_NBYTES_Pos) |
+            I2C_CR2_RELOAD;
+    }
+    if(n_after_current_tc)
+        *n_after_current_tc = n_transmitted + to_xmit;
+    return ret;
+}
+
 void *i2c_thread(void *params)
 {
     while(true)
@@ -106,7 +181,116 @@ void *i2c_thread(void *params)
                 reset_i2c();
             }
 
-            // TODO handle message
+            i2c->ICR = 0x3f38U;
+
+            // handle message
+            n_xmit = 0;
+
+            auto cr2 = calc_cr2(cur_i2c_msg.i2c_address, cur_i2c_msg.is_read,
+                cur_i2c_msg.nbytes, n_xmit, cur_i2c_msg.restart_after_read,
+                (unsigned int *)&n_tc_end);
+            i2c->CR2 = cr2;
+
+            i2c->CR2 = cr2 | I2C_CR2_START;
+
+            unsigned int wait_flag = cur_i2c_msg.is_read ? I2C_ISR_RXNE : I2C_ISR_TXIS;
+
+            // synchronous for now
+            while(!(i2c->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)));
+            if(i2c->ISR & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO))
+            {
+                // fail
+                if(cur_i2c_msg.ss)
+                {
+                    cur_i2c_msg.ss->Signal(SimpleSignal::Set, 0x80000000UL | i2c->ISR);
+                }
+                if(i2c->ISR & (I2C_ISR_BERR | I2C_ISR_ARLO))
+                {
+                    i2c_init = false;
+                }
+                else
+                {
+                    i2c->ICR = I2C_ICR_NACKCF;
+                }
+            }
+            else if(cur_i2c_msg.is_read)
+            {
+                SharedMemoryGuard(cur_i2c_msg.buf, cur_i2c_msg.nbytes, false, true);
+                bool cont = true;
+                while(cont)
+                {
+                    while(!(i2c->ISR & wait_flag));
+                    auto d = i2c->RXDR;
+                    cur_i2c_msg.buf[n_xmit++] = d;
+                    if(n_xmit == n_tc_end)
+                    {
+                        if(i2c->ISR & I2C_ISR_TC)
+                        {
+                            // finished
+                            cont = false;
+                            if(cur_i2c_msg.ss)
+                            {
+                                cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                            }
+                        }
+                        else if(i2c->ISR & I2C_ISR_TCR)
+                        {
+                            // reload
+                            i2c->CR2 = calc_cr2(cur_i2c_msg.i2c_address, cur_i2c_msg.is_read,
+                                cur_i2c_msg.nbytes, n_xmit, cur_i2c_msg.restart_after_read,
+                                (unsigned int *)&n_tc_end);
+                        }
+                        else
+                        {
+                            // early finish
+                            cont = false;
+                            if(cur_i2c_msg.ss)
+                            {
+                                cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                            }
+                        }
+                    }
+                }
+            }
+            else    // is write
+            {
+                SharedMemoryGuard(cur_i2c_msg.buf, cur_i2c_msg.nbytes, true, false);
+                bool cont = true;
+                while(cont)
+                {
+                    while(!(i2c->ISR & wait_flag));
+                    auto d = cur_i2c_msg.buf[n_xmit++];
+                    i2c->TXDR = d;
+                    if(n_xmit == n_tc_end)
+                    {
+                        if(i2c->ISR & I2C_ISR_TC)
+                        {
+                            // finished
+                            cont = false;
+                            if(cur_i2c_msg.ss)
+                            {
+                                cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                            }
+                        }
+                        else if(i2c->ISR & I2C_ISR_TCR)
+                        {
+                            // reload
+                            i2c->CR2 = calc_cr2(cur_i2c_msg.i2c_address, cur_i2c_msg.is_read,
+                                cur_i2c_msg.nbytes, n_xmit, cur_i2c_msg.restart_after_read,
+                                (unsigned int *)&n_tc_end);
+                        }
+                        else
+                        {
+                            // early finish
+                            cont = false;
+                            if(cur_i2c_msg.ss)
+                            {
+                                cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -122,6 +306,15 @@ void *cst_thread(void *param)
             Block(clock_cur_ms() + 50ULL);
             CTP_NRESET.set();
             Block(clock_cur_ms() + 300ULL);
+
+            // check read
+            char buf[4];
+            auto ret = i2c_read(0x1a, buf, 4);
+
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "cst: read returned %d\n", ret);
+            }
             
             // TODO init CTP
         }
