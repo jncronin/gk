@@ -6,6 +6,7 @@
 #include "_gk_event.h"
 #include "widgets/widget.h"
 #include "btnled.h"
+#include "brightness.h"
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
@@ -17,6 +18,7 @@ extern Condition scr_vsync;
 static void *supervisor_thread(void *p);
 
 ButtonWidget rw_test, rw_test2;
+ImageButtonWidget imb_bright;
 GridWidget scr_test;
 static unsigned int scr_alpha = 0;
 
@@ -112,13 +114,31 @@ void *supervisor_thread(void *p)
     rw_test2.h = 100;
     rw_test2.text = "Eh?";
 
+    imb_bright.x = 496;
+    imb_bright.w = 80;
+    imb_bright.y = 32;
+    imb_bright.h = 80;
+    imb_bright.image = brightness;
+    imb_bright.img_w = 64;
+    imb_bright.img_h = 64;
+
     scr_test.x = 0;
     scr_test.y = 240;
     scr_test.w = 640;
     scr_test.h = 240;
 
-    scr_test.AddChild(rw_test);
-    scr_test.AddChild(rw_test2);
+    RectangleWidget rw;
+    rw.x = 0;
+    rw.y = 0;
+    rw.w = fb_w;
+    rw.h = fb_h/2;
+    rw.bg_inactive_color = 0x87;
+    rw.border_width = 0;
+
+    scr_test.AddChild(rw);
+    scr_test.AddChildOnGrid(rw_test);
+    scr_test.AddChildOnGrid(rw_test2);
+    scr_test.AddChildOnGrid(imb_bright);
 
     Widget *cur_scr = &scr_test;
 
