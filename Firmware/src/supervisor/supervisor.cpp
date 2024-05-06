@@ -18,7 +18,7 @@ extern Condition scr_vsync;
 static void *supervisor_thread(void *p);
 
 ButtonWidget rw_test, rw_test2;
-ImageButtonWidget imb_bright;
+ImageButtonWidget imb_bright_up, imb_bright_down;
 GridWidget scr_test;
 static unsigned int scr_alpha = 0;
 
@@ -47,7 +47,7 @@ void init_supervisor()
     Schedule(t);
 }
 
-void test_onclick(coord_t x, coord_t y)
+void test_onclick(Widget *w, coord_t x, coord_t y)
 {
     static int col = 0;
     
@@ -99,6 +99,18 @@ bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
     return false;
 }
 
+void imb_brightness_click(Widget *w, coord_t x, coord_t y)
+{
+    if(w == &imb_bright_down)
+    {
+        screen_set_brightness(screen_get_brightness() - 10);
+    }
+    else
+    {
+        screen_set_brightness(screen_get_brightness() + 10);
+    }
+}
+
 void *supervisor_thread(void *p)
 {
     rw_test.x = 32;
@@ -114,13 +126,23 @@ void *supervisor_thread(void *p)
     rw_test2.h = 100;
     rw_test2.text = "Eh?";
 
-    imb_bright.x = 496;
-    imb_bright.w = 80;
-    imb_bright.y = 32;
-    imb_bright.h = 80;
-    imb_bright.image = brightness_up;
-    imb_bright.img_w = 64;
-    imb_bright.img_h = 64;
+    imb_bright_down.x = 640-80-16-80-16;
+    imb_bright_down.w = 80;
+    imb_bright_down.y = 32;
+    imb_bright_down.h = 80;
+    imb_bright_down.image = brightness_down;
+    imb_bright_down.img_w = 64;
+    imb_bright_down.img_h = 64;
+    imb_bright_down.OnClick = imb_brightness_click;
+
+    imb_bright_up.x = 640-80-16;
+    imb_bright_up.w = 80;
+    imb_bright_up.y = 32;
+    imb_bright_up.h = 80;
+    imb_bright_up.image = brightness_up;
+    imb_bright_up.img_w = 64;
+    imb_bright_up.img_h = 64;
+    imb_bright_up.OnClick = imb_brightness_click;
 
     scr_test.x = 0;
     scr_test.y = 240;
@@ -137,8 +159,9 @@ void *supervisor_thread(void *p)
 
     scr_test.AddChild(rw);
     scr_test.AddChildOnGrid(rw_test);
-    scr_test.AddChildOnGrid(rw_test2);
-    scr_test.AddChildOnGrid(imb_bright);
+    //scr_test.AddChildOnGrid(rw_test2);
+    scr_test.AddChildOnGrid(imb_bright_down);
+    scr_test.AddChildOnGrid(imb_bright_up);
 
     Widget *cur_scr = &scr_test;
 

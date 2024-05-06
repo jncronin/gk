@@ -111,7 +111,7 @@ void ClickableWidget::KeyPressUp(Scancodes key)
             is_clicked = false;
             if(OnClick)
             {
-                OnClick(0, 0);
+                OnClick(this, 0, 0);
             }
         }
     }

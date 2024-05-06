@@ -17,6 +17,7 @@ SRAM4_DATA static Spinlock s_scrbuf_overlay;
 SRAM4_DATA static void *scr_bufs_overlay[2] = { 0, 0 };
 SRAM4_DATA static int scr_cbuf_overlay = 0;
 
+SRAM4_DATA static int scr_brightness = 0;
 
 SRAM4_DATA Condition scr_vsync;
 
@@ -507,10 +508,38 @@ void init_screen()
     LTDC->SRCR = LTDC_SRCR_IMR;
     LTDC->GCR |= LTDC_GCR_LTDCEN;
 
-    // switch on backlight
-    pin LED_BACKLIGHT { GPIOA, 11 };
-    LED_BACKLIGHT.set_as_output();
-    LED_BACKLIGHT.set();
+    // switch on backlight - TIM1 CH4 GPIOA11
+    constexpr const pin LED_BACKLIGHT { GPIOA, 11, 1 };
+    LED_BACKLIGHT.set_as_af();
+
+    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;
+    (void)RCC->APB2ENR;
+    /* Timer clocks on APB2 run between 48 and 192 MHz depending on M4 CPU speed
+        We want something in the 5-20 kHz range
+        For ARR = 4096, we need a prescaler of 2 to give 5.8 kHz to 23.4 kHz */
+    TIM1->CCMR1 = (0UL << TIM_CCMR1_CC1S_Pos) |
+        TIM_CCMR1_OC1PE |
+        (6UL << TIM_CCMR1_OC1M_Pos) |
+        (0UL << TIM_CCMR1_CC2S_Pos) |
+        TIM_CCMR1_OC2PE |
+        (6UL << TIM_CCMR1_OC2M_Pos);
+    TIM1->CCMR2 = (0UL << TIM_CCMR2_CC3S_Pos) |
+        TIM_CCMR2_OC3PE |
+        (6UL << TIM_CCMR2_OC3M_Pos) |
+        (0UL << TIM_CCMR2_CC4S_Pos) |
+        TIM_CCMR2_OC4PE |
+        (6UL << TIM_CCMR2_OC4M_Pos);
+    TIM1->CCER = TIM_CCER_CC4E;
+    TIM1->PSC = 1UL;    // (ck = ck/(1 + PSC))
+    TIM1->ARR = 4096;
+    TIM1->CCR1 = 0UL;
+    TIM1->CCR2 = 0UL;
+    TIM1->CCR3 = 0UL;
+    TIM1->CCR4 = 0UL;
+    TIM1->BDTR = TIM_BDTR_MOE;
+    TIM1->CR1 = TIM_CR1_CEN;
+
+    screen_set_brightness(100);
 }
 
 //__attribute__((section(".sram4"))) static bool led_set = false;
@@ -524,4 +553,25 @@ extern "C" void LTDC_IRQHandler()
     }
 
     LTDC->ICR = 0xf;
+}
+
+static unsigned int pct_to_arr(int pct, unsigned int arr)
+{
+    // linear for now
+    return pct * (arr - 1) / 100;
+}
+
+void screen_set_brightness(int pct)
+{
+    if(pct < 0) pct = 0;
+    if(pct > 100) pct = 100;
+    
+    auto arr = pct_to_arr(pct, TIM1->ARR);
+    TIM1->CCR4 = arr;
+    scr_brightness = pct;
+}
+
+int screen_get_brightness()
+{
+    return scr_brightness;
 }
