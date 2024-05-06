@@ -11,4 +11,7 @@ void *screen_get_overlay_frame_buffer();
 void *screen_flip_overlay(bool visible = false, int alpha = -1);
 void screen_set_overlay_alpha(unsigned int alpha);
 
+void screen_set_brightness(int pct);
+int screen_get_brightness();
+
 #endif
