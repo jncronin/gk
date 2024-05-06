@@ -14,7 +14,7 @@ void ContainerWidget::AddChild(Widget &child)
     child.parent = this;
 }
 
-void GridWidget::AddChild(Widget &child, int xpos, int ypos)
+void GridWidget::AddChildOnGrid(Widget &child, int xpos, int ypos)
 {
     if(ypos == -1)
         ypos = 0;

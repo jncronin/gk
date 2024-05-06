@@ -40,6 +40,9 @@ enum Scancodes
     KeyLCtrl = 224,
 };
 
+/* blending */
+color_t DoBlend(color_t fg, color_t bg);
+
 enum HOffset { Left, Centre, Right };
 enum VOffset { Top, Middle, Bottom };
 
@@ -149,6 +152,15 @@ class BackgroundRenderer
             color_t bg_color);
 };
 
+class ImageRenderer
+{
+    protected:
+        void RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
+            coord_t img_w, coord_t img_h,
+            HOffset hoffset, VOffset voffset,
+            const color_t *img, color_t bg_color);
+};
+
 class DynamicTextProvider
 {
     public:
@@ -184,6 +196,15 @@ class StaticTextProvider
         int Font = TextRenderer::FONT_LARGE;
 };
 
+class StaticImageProvider
+{
+    public:
+        const color_t *image;
+        coord_t img_w, img_h;
+        HOffset img_hoffset = HOffset::Centre;
+        VOffset img_voffset = VOffset::Middle;
+};
+
 class RectangleWidget : public NonactivatableWidget, public BorderRenderer, public BackgroundRenderer,
     public StaticBorderProvider, public StaticBackgroundProvider
 {
@@ -207,23 +228,31 @@ class ButtonWidget : public ClickableWidget, public BorderRenderer, public Backg
         void Update();
 };
 
+class ImageButtonWidget : public ClickableWidget, public BorderRenderer, public BackgroundRenderer,
+    public ImageRenderer,
+    public StaticBorderProvider, public StaticBackgroundProvider, public StaticImageProvider
+{
+    public:
+        void Update();
+};
+
 class ContainerWidget : public NonactivatableWidget
 {
     public:
         void Update();
         virtual Widget *GetHighlightedChild() = 0;
         virtual bool CanHighlight();
+        void AddChild(Widget &child);
     
     protected:
         std::vector<Widget *> children;
-        void AddChild(Widget &child);
         ContainerWidget() {}
 };
 
 class GridWidget : public ContainerWidget
 {
     public:
-        void AddChild(Widget &child, int x = -1, int y = -1);
+        void AddChildOnGrid(Widget &child, int x = -1, int y = -1);
         virtual bool IsChildHighlighted(const Widget &child);
         virtual Widget *GetHighlightedChild();
         virtual void KeyPressDown(Scancodes scancode);
