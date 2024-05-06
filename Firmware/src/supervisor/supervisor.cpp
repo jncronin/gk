@@ -10,11 +10,15 @@
 
 SRAM4_DATA Process p_supervisor;
 SRAM4_DATA static bool overlay_visible = false;
+SRAM4_DATA static WidgetAnimationList wl;
+
+extern Condition scr_vsync;
 
 static void *supervisor_thread(void *p);
 
 ButtonWidget rw_test, rw_test2;
 GridWidget scr_test;
+static unsigned int scr_alpha = 0;
 
 void init_supervisor()
 {
@@ -50,6 +54,49 @@ void test_onclick(coord_t x, coord_t y)
     if(col >= 3) col = 0;
 }
 
+bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
+{
+    bool is_show = p != nullptr;
+    if(is_show)
+    {
+        overlay_visible = true;
+    }
+    
+    const unsigned long long tot_time = 150ULL;
+    if(t >= tot_time)
+    {
+        // final position
+        if(is_show)
+        {
+            wdg->y = 240;
+            scr_alpha = 0xffU;
+        }
+        else
+        {
+            screen_set_overlay_alpha(0x0U);
+            overlay_visible = false;
+        }
+        return true;
+    }
+
+    coord_t yadj = 240ULL * t / tot_time;
+    unsigned long aadj = 0x100UL * t / tot_time;
+    if(aadj > 0xffU) aadj = 0xffU;
+
+    if(is_show)
+    {
+        yadj = 480 - yadj;
+    }
+    else
+    {
+        yadj = 240 + yadj;
+        aadj = 0xffU - aadj;
+    }
+    wdg->y = yadj;
+    scr_alpha = aadj;
+    return false;
+}
+
 void *supervisor_thread(void *p)
 {
     rw_test.x = 32;
@@ -80,86 +127,101 @@ void *supervisor_thread(void *p)
     {
         Event e;
         bool do_update = false;
-        while(!p_supervisor.events.Pop(&e));
-
-        switch(e.type)
+        bool has_event = p_supervisor.events.Pop(&e, 1000ULL / 60ULL);
+        if(RunAnimations(wl, clock_cur_ms()))
         {
-            case Event::KeyDown:
-                switch(e.key)
-                {
-                    case ' ':
+            do_update = true;
+        }
+
+        if(has_event)
+        {
+            switch(e.type)
+            {
+                case Event::KeyDown:
+                    switch(e.key)
                     {
-                        overlay_visible = !overlay_visible;
-                        if(overlay_visible)
+                        case ' ':
                         {
-                            do_update = true;
+                            if(overlay_visible)
+                            {
+                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)0);
+                            }
+                            else
+                            {
+                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)1);
+                            }
+                            /*overlay_visible = !overlay_visible;
+                            if(overlay_visible)
+                            {
+                                do_update = true;
+                            }
+                            else
+                            {
+                                screen_set_overlay_alpha(0x0U);
+                            }*/
                         }
-                        else
+                        break;
+
+                        case (unsigned short)Scancodes::KeyUp:
+                        case (unsigned short)Scancodes::KeyDown:
+                        case (unsigned short)Scancodes::KeyLeft:
+                        case (unsigned short)Scancodes::KeyRight:
+                        case (unsigned short)Scancodes::KeyA:
+                        case (unsigned short)Scancodes::KeyLCtrl:
                         {
-                            screen_set_overlay_alpha(0x0U);
+                            auto ck = (Scancodes)e.key;
+                            if(ck == Scancodes::KeyA || ck == Scancodes::KeyLCtrl)
+                            {
+                                ck = Scancodes::KeyEnter;
+                            }
+                            cur_scr->KeyPressDown(ck);
+                            do_update = true;
                         }
                     }
                     break;
 
-                    case (unsigned short)Scancodes::KeyUp:
-                    case (unsigned short)Scancodes::KeyDown:
-                    case (unsigned short)Scancodes::KeyLeft:
-                    case (unsigned short)Scancodes::KeyRight:
-                    case (unsigned short)Scancodes::KeyA:
-                    case (unsigned short)Scancodes::KeyLCtrl:
+                case Event::KeyUp:
+                    switch(e.key)
                     {
-                        auto ck = (Scancodes)e.key;
-                        if(ck == Scancodes::KeyA || ck == Scancodes::KeyLCtrl)
+                        case (unsigned short)Scancodes::KeyUp:
+                        case (unsigned short)Scancodes::KeyDown:
+                        case (unsigned short)Scancodes::KeyLeft:
+                        case (unsigned short)Scancodes::KeyRight:
+                        case (unsigned short)Scancodes::KeyA:
+                        case (unsigned short)Scancodes::KeyLCtrl:
                         {
-                            ck = Scancodes::KeyEnter;
+                            auto ck = (Scancodes)e.key;
+                            if(ck == Scancodes::KeyA || ck == Scancodes::KeyLCtrl)
+                            {
+                                ck = Scancodes::KeyEnter;
+                            }
+                            cur_scr->KeyPressUp(ck);
+                            do_update = true;
                         }
-                        cur_scr->KeyPressDown(ck);
-                        do_update = true;
                     }
-                }
-                break;
+                    break;
 
-            case Event::KeyUp:
-                switch(e.key)
-                {
-                    case (unsigned short)Scancodes::KeyUp:
-                    case (unsigned short)Scancodes::KeyDown:
-                    case (unsigned short)Scancodes::KeyLeft:
-                    case (unsigned short)Scancodes::KeyRight:
-                    case (unsigned short)Scancodes::KeyA:
-                    case (unsigned short)Scancodes::KeyLCtrl:
-                    {
-                        auto ck = (Scancodes)e.key;
-                        if(ck == Scancodes::KeyA || ck == Scancodes::KeyLCtrl)
-                        {
-                            ck = Scancodes::KeyEnter;
-                        }
-                        cur_scr->KeyPressUp(ck);
-                        do_update = true;
-                    }
-                }
-                break;
-
-            default:
-                // ignore
-                break;
+                default:
+                    // ignore
+                    break;
+            }
         }
 
         if(overlay_visible && do_update)
         {
             auto fb = (color_t *)screen_get_overlay_frame_buffer();
             // clear screen
-            for(coord_t cy = 0; cy < 480; cy++)
+            for(coord_t cy = 0; cy < fb_h; cy++)
             {
-                for(coord_t cx = 0; cx < 640; cx++)
+                for(coord_t cx = 0; cx < fb_w; cx++)
                 {
                     fb[cx + cy * fb_stride] = 0;
                 }
             }
 
             cur_scr->Update();
-            screen_flip_overlay();
-            screen_set_overlay_alpha(0xffU);
+            screen_flip_overlay(true, scr_alpha);
+            scr_vsync.Wait();
         }
     }
 

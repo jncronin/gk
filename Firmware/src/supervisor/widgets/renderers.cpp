@@ -14,6 +14,8 @@ void BorderRenderer::RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
     {
         for(coord_t cx = x; cx < x + w; cx++)
         {
+            if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
+                continue;
             fb[cx + cy * fb_stride] = border_color;
         }
     }
@@ -23,6 +25,8 @@ void BorderRenderer::RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
     {
         for(coord_t cx = x; cx < x + w; cx++)
         {
+            if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
+                continue;
             fb[cx + cy * fb_stride] = border_color;
         }
     }
@@ -32,6 +36,8 @@ void BorderRenderer::RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
     {
         for(coord_t cx = x; cx < x + border_width; cx++)
         {
+            if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
+                continue;
             fb[cx + cy * fb_stride] = border_color;
         }
     }
@@ -41,6 +47,8 @@ void BorderRenderer::RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
     {
         for(coord_t cx = x + w - border_width; cx < x + w; cx++)
         {
+            if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
+                continue;
             fb[cx + cy * fb_stride] = border_color;
         }
     }
@@ -55,6 +63,8 @@ void BackgroundRenderer::RenderBackground(coord_t x, coord_t y, coord_t w, coord
     {
         for(coord_t cx = x; cx < x + w; cx++)
         {
+            if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
+                continue;
             fb[cx + cy * fb_stride] = bg_color;
         }
     }

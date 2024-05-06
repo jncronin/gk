@@ -71,10 +71,15 @@ void TextRenderer::RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
         {
             for(int fx = fo; fx < fbw; fx++)
             {
+                auto cx = x + fx - fo;
+                auto cy = y + fy;
+                if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
+                    continue;
+
                 char f = fnt[fy * fs + fx / 8];
                 if(f & (1UL << fx % 8))
                 {
-                    fb[x + fx - fo + (y + fy) * fb_stride] = fg_color;
+                    fb[cx + cy * fb_stride] = fg_color;
                 }
             }
         }
