@@ -2,8 +2,9 @@
 
 import PIL
 import PIL.Image
+import sys
 
-img = PIL.Image.open("/users/jncro/Documents/bright.png")
+img = PIL.Image.open(sys.argv[1])
 pix = img.load()
 
 w = img.size[0]

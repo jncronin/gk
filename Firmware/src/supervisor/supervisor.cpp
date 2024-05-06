@@ -118,7 +118,7 @@ void *supervisor_thread(void *p)
     imb_bright.w = 80;
     imb_bright.y = 32;
     imb_bright.h = 80;
-    imb_bright.image = brightness;
+    imb_bright.image = brightness_up;
     imb_bright.img_w = 64;
     imb_bright.img_h = 64;
 
