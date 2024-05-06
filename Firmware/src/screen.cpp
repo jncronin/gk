@@ -558,6 +558,7 @@ extern "C" void LTDC_IRQHandler()
 static unsigned int pct_to_arr(int pct, unsigned int arr)
 {
     // linear for now
+    pct = (pct * 90) / 100 + 10;
     return pct * (arr - 1) / 100;
 }
 
