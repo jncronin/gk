@@ -3,10 +3,13 @@
 
 #include <string>
 #include <vector>
+#include <list>
 
 typedef unsigned char color_t;
-typedef unsigned short int coord_t;
-constexpr const unsigned int fb_stride = 640;
+typedef short int coord_t;
+constexpr const coord_t fb_w = 640;
+constexpr const coord_t fb_h = 480;
+constexpr const unsigned int fb_stride = fb_w * sizeof(color_t);
 
 constexpr const color_t default_inactive_bg_color = 0xd4;
 constexpr const color_t default_clicked_bg_color = 0xd1;
@@ -21,7 +24,6 @@ constexpr const color_t default_clicked_border_color = 0xff;
 constexpr const color_t default_highlight_border_color = 0xff;
 
 constexpr const coord_t default_border_width = 8;
-
 
 /* key scancodes */
 enum Scancodes
@@ -79,6 +81,24 @@ class Widget
         bool new_hover = false;
         bool new_activated = false;
 };
+
+// Animations
+typedef bool (*WidgetAnimation)(Widget *wdg, void *p, unsigned long long int ms_since_start);
+struct WidgetAnimation_t
+{
+    WidgetAnimation anim;
+    Widget *w;
+    void *p;
+    unsigned long long int start_time;
+};
+using WidgetAnimationList = std::list<WidgetAnimation_t>;
+
+bool RunAnimations(WidgetAnimationList &wl, unsigned long int cur_ms);
+void AddAnimation(WidgetAnimationList &wl, unsigned long int cur_ms,
+    WidgetAnimation anim, Widget *wdg, void *p);
+
+
+// Derived widget classes
 
 class ActivatableWidget : public Widget
 {
