@@ -5,6 +5,7 @@
 #include "cache.h"
 #include "_gk_event.h"
 #include "widgets/widget.h"
+#include "btnled.h"
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
@@ -40,6 +41,15 @@ void init_supervisor()
     Schedule(t);
 }
 
+void test_onclick(coord_t x, coord_t y)
+{
+    static int col = 0;
+    
+    btnled_setcolor(0x0fU << (col * 8));
+    col++;
+    if(col >= 3) col = 0;
+}
+
 void *supervisor_thread(void *p)
 {
     rw_test.x = 32;
@@ -47,6 +57,7 @@ void *supervisor_thread(void *p)
     rw_test.y = 32;
     rw_test.h = 100;
     rw_test.text = "Hi there";
+    rw_test.OnClick = test_onclick;
 
     rw_test2.x = 264;
     rw_test2.w = 200;
