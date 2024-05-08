@@ -446,12 +446,16 @@ void *init_thread(void *p)
         "--timer-d", "on",
         "/share/hatari/games/xenon2.st" };
 #endif
+#if 0
     const char *args[] = { "-nosound", "-nomusic", "-nosfx", "-iwad", "/share/doom/doom1.wad" };
+#endif
+    const char *args[] = { };
 
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     //deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
-    deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
+    //deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
+    deferred_call(syscall_proccreate, "/DOSBOX-0.74-gk/bin/dosbox", &pt);
     focus_process->screen_w = 320;
     focus_process->screen_h = 240;
     focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 224; // LCTRL
