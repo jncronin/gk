@@ -161,9 +161,18 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
 
     Thread *startup_thread;
     Process *proc;
-    eret = elf_load_memory((const void *)fbuf.address, cpname, params, heap_size, (CPUAffinity)core_affinity,
-        &startup_thread, &proc);
     ext4_fclose(&f);
+
+    auto stack_size = pcinfo->stack_size;
+    if(!stack_size)
+        stack_size = 4096;
+    auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity);
+    bool is_priv = pcinfo->is_priv != 0;
+    if(!GetCurrentThreadForCore()->is_privileged)
+        is_priv = false;    // unprivileged task cannot create a privileged one
+
+    eret = elf_load_memory((const void *)fbuf.address, cpname, params, heap_size, (CPUAffinity)core_affinity,
+        &startup_thread, &proc, stack, is_priv);
     memblk_deallocate(fbuf);
     if(eret != 0)
     {

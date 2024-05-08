@@ -19,7 +19,8 @@ static void init_args(const std::string &pname, const std::vector<std::string> &
 int elf_load_memory(const void *e, const std::string &pname,
     const std::vector<std::string> &params,
     uint32_t heap_size, CPUAffinity affinity,
-    Thread **startup_thread_ret, Process **proc_ret)
+    Thread **startup_thread_ret, Process **proc_ret,
+    MemRegion stack, bool is_priv)
 {
     // pointer
     auto p = reinterpret_cast<const char *>(e);
@@ -95,7 +96,8 @@ int elf_load_memory(const void *e, const std::string &pname,
     SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
 
     // Create a stack for thread0
-    auto stack = memblk_allocate_for_stack(4096, affinity);
+    if(!stack.valid)
+        stack = memblk_allocate_for_stack(4096, affinity);
     auto stack_end = stack.address + stack.length;
 
     // Create region for arguments
@@ -335,7 +337,7 @@ int elf_load_memory(const void *e, const std::string &pname,
     proc->argc = *(int *)arg_reg.address;
     proc->argv = (char **)(arg_reg.address + 4);
 
-    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, true, GK_PRIORITY_NORMAL, *proc,
+    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, is_priv, GK_PRIORITY_NORMAL, *proc,
         affinity, stack,
         MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
         MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS));
@@ -352,6 +354,42 @@ int elf_load_memory(const void *e, const std::string &pname,
         pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
 
     return 0;
+}
+
+void handle_newlibinithook(uint32_t lr, uint32_t *retaddr)
+{
+    lr &= ~01U;
+
+    uint32_t clr_value;
+    {
+        SharedMemoryGuard smg((const void *)lr, 4, true, false);
+        clr_value = *(uint32_t *)lr;
+    }
+    if(clr_value == 0x21002000U)
+    {
+        // we are being called by a newlib _mainCRTStartup which explicitly sets argc/arvg to zero
+        //  fix this
+        {
+            SharedMemoryGuard smg((const void *)lr, 4, false, true);
+            *(uint32_t *)lr = 0xbf00bf00U;
+#if !GK_DUAL_CORE && !GK_DUAL_CORE_AMP
+            CleanM7Cache((uint32_t)lr, 4, CacheType_t::Data);
+#endif
+        }
+        InvalidateM7Cache(lr, 4, CacheType_t::Instruction);
+
+        // now return argc:arvg as r1:r0
+        auto &p = GetCurrentThreadForCore()->p;
+        uint32_t argc = (uint32_t)p.argc;
+        uint32_t argv = (uint32_t)p.argv;
+        retaddr[0] = argc;
+        retaddr[1] = argv;
+    }
+    else
+    {
+        retaddr[0] = 0;
+        retaddr[1] = 0;
+    }
 }
 
 uint64_t prog_software_init_hook()

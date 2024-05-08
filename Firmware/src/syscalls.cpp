@@ -9,6 +9,7 @@
 #include <sys/times.h>
 #include <cstring>
 #include "SEGGER_RTT.h"
+#include "elf.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -561,6 +562,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 auto ev = reinterpret_cast<Event *>(r2);
                 int ret = syscall_peekevent(ev, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_newlibinithook:
+            {
+                auto lr = reinterpret_cast<uint32_t>(r1);
+                auto retaddr = reinterpret_cast<uint32_t *>(r2);
+                handle_newlibinithook(lr, retaddr);
             }
             break;
         
