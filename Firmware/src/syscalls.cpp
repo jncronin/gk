@@ -572,6 +572,17 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 handle_newlibinithook(lr, retaddr);
             }
             break;
+
+        case __syscall_getscreenmode:
+            {
+                auto p = reinterpret_cast<__syscall_getscreenmode_params *>(r2);
+                auto &proc = GetCurrentThreadForCore()->p;
+                if(p->x) *p->x = proc.screen_w;
+                if(p->y) *p->y = proc.screen_h;
+                if(p->pf) *p->pf = proc.screen_pf;
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            break;
         
         default:
             {
