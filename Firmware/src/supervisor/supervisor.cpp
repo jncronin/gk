@@ -32,7 +32,6 @@ void init_supervisor()
     p_supervisor.default_affinity = M7Only;
     p_supervisor.for_deletion = false;
     p_supervisor.heap = InvalidMemregion();
-    p_supervisor.mr_params = InvalidMemregion();
     p_supervisor.name = "supervisor";
     p_supervisor.next_key = 0;
     for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
