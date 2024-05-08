@@ -449,10 +449,11 @@ void *init_thread(void *p)
 #if 0
     const char *args[] = { "-nosound", "-nomusic", "-nosfx", "-iwad", "/share/doom/doom1.wad" };
 #endif
-    const char *args[] = { };
+    const char *args[] = { "--help" };
 
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
+    pt.stack_size = 16 * 1024;
     //deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
     //deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
     deferred_call(syscall_proccreate, "/DOSBOX-0.74-gk/bin/dosbox", &pt);
