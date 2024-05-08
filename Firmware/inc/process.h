@@ -52,7 +52,6 @@ class Process
         std::string cwd = "/";
 
         /* parameters passed to program */
-        MemRegion mr_params;
         int argc;
         char **argv;
 

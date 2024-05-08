@@ -80,6 +80,11 @@ int elf_load_memory(const void *e, const std::string &pname,
         }
     }
 
+    // Create region for arguments
+    auto arg_length = get_arg_length(pname, params);
+    auto arg_offset = max_size;
+    max_size += arg_length;
+
     SEGGER_RTT_printf(0, "need %d bytes\n", max_size);
 
     // get a relevant memory block AXISRAM > SDRAM
@@ -94,20 +99,12 @@ int elf_load_memory(const void *e, const std::string &pname,
         return -1;
     }
     SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
+    auto arg_base = memblk.address + arg_offset;
 
     // Create a stack for thread0
     if(!stack.valid)
         stack = memblk_allocate_for_stack(4096, affinity);
     auto stack_end = stack.address + stack.length;
-
-    // Create region for arguments
-    auto arg_length = get_arg_length(pname, params);
-    auto arg_reg = memblk_allocate_for_stack(arg_length, affinity);
-    if(!arg_reg.valid)
-    {
-        __asm__ volatile("bkpt \n" ::: "memory");
-        return -1;
-    }
 
     // Load segments
     auto base_ptr = memblk.address;
@@ -332,10 +329,9 @@ int elf_load_memory(const void *e, const std::string &pname,
     proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
     proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
 
-    init_args(pname, params, (void *)arg_reg.address);
-    proc->mr_params = arg_reg;
-    proc->argc = *(int *)arg_reg.address;
-    proc->argv = (char **)(arg_reg.address + 4);
+    init_args(pname, params, (void *)arg_base);
+    proc->argc = *(int *)arg_base;
+    proc->argv = (char **)(arg_base + 4);
 
     auto startup_thread = Thread::Create(pname + "_0", start, nullptr, is_priv, GK_PRIORITY_NORMAL, *proc,
         affinity, stack);
