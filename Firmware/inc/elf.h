@@ -12,7 +12,11 @@ int elf_load_memory(const void *elf, const std::string &procname,
 	uint32_t heap_size = 8192,
 	CPUAffinity def_affinity = Either,
 	Thread **startup_thread_ret = nullptr,
-	Process **proc_ret = nullptr);
+	Process **proc_ret = nullptr,
+	MemRegion thread0_stack = InvalidMemregion(),
+	bool is_priv = true);
+
+void handle_newlibinithook(uint32_t lr, uint32_t *retaddr);
 
 /* Copyright (C) 2013 by John Cronin <jncronin@tysos.org>
  *

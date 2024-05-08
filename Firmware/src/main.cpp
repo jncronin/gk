@@ -422,11 +422,11 @@ void *init_thread(void *p)
     proccreate_t pt;
     memset(&pt, 0, sizeof(pt));
     pt.core_mask = M4Only;
+    pt.is_priv = 0;
 #if GK_ENABLE_NET
-    syscall_proccreate("/bin/tftpd", &pt, &errno);
-#endif
-
+    deferred_call(syscall_proccreate, "/bin/tftpd", &pt, &errno);
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
+#endif
 
     pt.heap_size = 8192*1024*2;
     pt.core_mask = M7Only;
@@ -529,8 +529,26 @@ extern "C" void HardFault_Handler()
 
 extern "C" void MemManage_Handler()
 {
-    HardFault_Handler();
-    while(true);
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    SEGGER_RTT_printf(0, "panic: process %s thread %s caused memmanage fault\n",
+        p.name.c_str(), t->name.c_str());
+    if(&p != &kernel_proc)
+    {
+        CriticalGuard cg_p(p.sl);
+        for(auto thr : p.threads)
+        {
+            CriticalGuard cg_t(thr->sl);
+            thr->for_deletion = true;
+        }
+        p.for_deletion = true;
+        Yield();
+    }
+    else
+    {
+        HardFault_Handler();
+        while(true);
+    }
 }
 
 extern "C" void BusFault_Handler()
