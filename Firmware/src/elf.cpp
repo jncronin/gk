@@ -338,9 +338,7 @@ int elf_load_memory(const void *e, const std::string &pname,
     proc->argv = (char **)(arg_reg.address + 4);
 
     auto startup_thread = Thread::Create(pname + "_0", start, nullptr, is_priv, GK_PRIORITY_NORMAL, *proc,
-        affinity, stack,
-        MPUGenerate(base_ptr, max_size, 6, true, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS),
-        MPUGenerate(proc->heap.address, proc->heap.length, 7, false, MemRegionAccess::RW, MemRegionAccess::RW, WBWA_NS));
+        affinity, stack);
 
     if(startup_thread_ret)
         *startup_thread_ret = startup_thread;

@@ -328,12 +328,8 @@ static void SDMMC_set_clock(int freq)
 
 void init_sd()
 {
-    uint32_t data_start = (uint32_t)&_ssdt_data;
-    uint32_t data_end = (uint32_t)&_esdt_data;
-
     Schedule(Thread::Create("sd", sd_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, 
-        PreferM4, InvalidMemregion(),
-        MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS)));
+        PreferM4));
 }
 
 void sd_reset()

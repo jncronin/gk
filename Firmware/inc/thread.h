@@ -82,8 +82,7 @@ class Thread
             Process &owning_process,
             CPUAffinity affinity = CPUAffinity::Either,
             MemRegion stack = InvalidMemregion(),
-            mpu_saved_state extra_permissions = MPUGenerateNonValid(6),
-            mpu_saved_state extra_permissions2 = MPUGenerateNonValid(7));
+            const mpu_saved_state *mpu_setup = mpu_default);
 };
 
 #endif

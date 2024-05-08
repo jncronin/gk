@@ -4,14 +4,14 @@
 /* 
     Revision of MPU allocations:
     We allow privileged code to use the default map, so it already has access to FLASH and peripherals
-    General map is to first allow access to most things, then restrict
-        0 - SRAM            Normal      0x20000000 - 0x3fffffff     RWX/RWX
-        1 - External RAM    Normal      0x60000000 - 0x7fffffff     RWX/RWX
-        2 - SRAM4           UC          0x38000000 - 0x3800ffff     RW/RW
-        3 - MSP-CM4         Normal      0x30001000 - 0x30001fff     RW/N        // can use a single entry here, but optimise later
-        4 - MSP-CM7         Normal      0x20001000 - 0x20001fff     RW/N
-        5 - Framebuffer 0   WT          0x60000000 - 0x601fffff     RW/RW
-        6 - Framebuffer 1   WT          0x61000000 - 0x611fffff     RW/RW
+
+    Then:
+        0: SRAM4
+        1: Framebuffer
+        2: Code/data
+        3: Heap
+        4: Stack
+        5: 3x mmap regions
 */
 
 #include <cstdint>
@@ -116,21 +116,17 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
     return ret;
 }
 
-constexpr mpu_saved_state mpu_sram = MPUGenerate(0x20000000, 0x20000000, 0, true, RW, RW, WBWA_NS);
-constexpr mpu_saved_state mpu_extram = MPUGenerate(GK_SDRAM_BASE, 0x20000000, 1, true, RW, RW, WBWA_NS);
-constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 2, false, RW, RO, N_NC_S);
-constexpr mpu_saved_state mpu_msp_cm4 = MPUGenerate(0x30001000, 4096, 3, false, RW, NoAccess, WBWA_NS);
-constexpr mpu_saved_state mpu_msp_cm7 = MPUGenerate(0x20001000, 4096, 4, false, RW, NoAccess, WBWA_NS);
-constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 5, false, RW, RW, WT_NS);
+constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 0, false, RW, RO, N_NC_S);
+constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 1, false, RW, RW, WT_NS);
 
 constexpr mpu_saved_state mpu_default[8] =
 {
-    mpu_sram,
-    mpu_extram,
     mpu_sram4,
-    mpu_msp_cm4,
-    mpu_msp_cm7,
     mpu_fb0,
+    MPUGenerateNonValid(2),
+    MPUGenerateNonValid(3),
+    MPUGenerateNonValid(4),
+    MPUGenerateNonValid(5),
     MPUGenerateNonValid(6),
     MPUGenerateNonValid(7)
 };

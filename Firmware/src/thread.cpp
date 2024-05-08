@@ -79,8 +79,7 @@ Thread *Thread::Create(std::string name,
             Process &owning_process,
             CPUAffinity affinity,
             MemRegion stackblk,
-            mpu_saved_state extra_permissions,
-            mpu_saved_state extra_permissions2)
+            const mpu_saved_state *defmpu)
 {
     SRAM4RegionAllocator<Thread> alloc;
     auto tloc = alloc.allocate(1);
@@ -140,7 +139,16 @@ Thread *Thread::Create(std::string name,
     t->tss.psp = reinterpret_cast<uint32_t>(&stack[top_stack]);
     
     /* Create mpu regions */
-    memcpy(t->tss.mpuss, mpu_default, sizeof(mpu_default));
+    memcpy(t->tss.mpuss, defmpu, sizeof(mpu_default));
+    t->tss.mpuss[2] = MPUGenerate(owning_process.code_data.address,
+        owning_process.code_data.length, 2, true,
+        RW, RW, WBWA_NS);
+    t->tss.mpuss[3] = MPUGenerate(owning_process.heap.address,
+        owning_process.heap.length, 3, false,
+        RW, RW, WBWA_NS);
+    t->tss.mpuss[4] = MPUGenerate(stackblk.address,
+        stackblk.length, 4, false,
+        RW, RW, WBWA_NS);
 
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
     //CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);

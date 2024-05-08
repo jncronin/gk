@@ -54,7 +54,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     auto &p = curt->p;
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
-        curt->base_priority, p, p.default_affinity, stack, curt->tss.mpuss[5], curt->tss.mpuss[6]);
+        curt->base_priority, p, p.default_affinity, stack, curt->tss.mpuss);
     if(!t)
     {
         memblk_deallocate(stack);
