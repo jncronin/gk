@@ -12,6 +12,11 @@ void AddAnimation(WidgetAnimationList &wl, unsigned long int cur_ms,
     wl.push_back(wa);
 }
 
+bool HasAnimations(WidgetAnimationList &wl)
+{
+    return wl.size() != 0;
+}
+
 bool RunAnimations(WidgetAnimationList &wl, unsigned long int cur_ms)
 {
     if(wl.size() == 0)
