@@ -34,7 +34,7 @@ static inline void *get_scaling_bb()
 
 static void mdma_handler();
 
-#define GPU_DEBUG 0
+#define GPU_DEBUG 1
 
 static inline void wait_dma2d()
 {

@@ -8,6 +8,7 @@
 #include <sys/times.h>
 #include "process.h"
 #include "scheduler.h"
+#include "cache.h"
 #include "SEGGER_RTT.h"
 
 extern Spinlock s_rtt;
@@ -86,6 +87,12 @@ int syscall_memalloc(size_t len, void **retaddr, int *_errno)
         {
             CriticalGuard cg_t(curt->sl);
             curt->tss.mpuss[mpu_slot] = mpur;
+
+            // Invalidate here on the off-chance the M7 cache has entries for the 0x38000000 range
+            // When MPU is disabled in task switch, cache may be re-enabled for reads from this
+            //  region
+            InvalidateM7Cache((uint32_t)(uintptr_t)&curt->tss.mpuss[0],
+                8 * sizeof(mpu_saved_state), CacheType_t::Data);
         }
 
         // and for this thread

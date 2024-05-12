@@ -534,6 +534,40 @@ extern "C" void MemManage_Handler()
     auto &p = t->p;
     SEGGER_RTT_printf(0, "panic: process %s thread %s caused memmanage fault\n",
         p.name.c_str(), t->name.c_str());
+    {
+        for(int i = 0; i < 8; i++)
+        {
+            auto cmpu = t->tss.mpuss[i];
+            if(cmpu.rasr & 0x1U)
+            {
+                auto cstart = cmpu.rbar & ~0x1fU;
+                auto clen = 2U << ((cmpu.rasr >> 1) & 0x1fU);
+                SEGGER_RTT_printf(0, "panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
+            }
+            else
+            {
+                SEGGER_RTT_printf(0, "panic: mpu %d: disabled\n", i);
+            }
+        }
+
+        for(int i = 0; i < 8; i++)
+        {
+            mpu_saved_state cmpu;
+            MPU->RNR = i;
+            cmpu.rbar = MPU->RBAR;
+            cmpu.rasr = MPU->RASR;
+            if(cmpu.rasr & 0x1U)
+            {
+                auto cstart = cmpu.rbar & ~0x1fU;
+                auto clen = 2U << ((cmpu.rasr >> 1) & 0x1fU);
+                SEGGER_RTT_printf(0, "panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
+            }
+            else
+            {
+                SEGGER_RTT_printf(0, "panic: mpu %d: disabled\n", i);
+            }
+        }
+    }
     if(&p != &kernel_proc)
     {
         CriticalGuard cg_p(p.sl);
