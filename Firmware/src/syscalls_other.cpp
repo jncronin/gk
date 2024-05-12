@@ -44,6 +44,24 @@ int syscall_memalloc(size_t len, void **retaddr, int *_errno)
         return -1;
     }
 
+    // get free mpu slot
+    auto t = GetCurrentThreadForCore();
+    int mpu_slot = -1;
+    for(int i = 0; i < 8; i++)
+    {
+        if(!(t->tss.mpuss[i].rasr & 0x1U))
+        {
+            mpu_slot = i;
+            break;
+        }
+    }
+
+    if(mpu_slot == -1)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
     auto mr = memblk_allocate(len, MemRegionType::AXISRAM);
     if(!mr.valid)
     {
@@ -56,13 +74,31 @@ int syscall_memalloc(size_t len, void **retaddr, int *_errno)
     }
 
     {
-        auto t = GetCurrentThreadForCore();
         auto &p = t->p;
 
         CriticalGuard cg_p(p.sl);
         p.mmap_regions[mr.address] = Process::mmap_region { mr, -1, 1, 1, 0 };
 
-        // we can't really do any protection here because all MPU slots are full...
+        // set mpu region for this thread and all others
+        auto mpur = MPUGenerate(mr.address, mr.length, mpu_slot, false,
+            RW, RW, WBWA_NS);
+        for(auto curt : p.threads)
+        {
+            CriticalGuard cg_t(curt->sl);
+            curt->tss.mpuss[mpu_slot] = mpur;
+        }
+
+        // and for this thread
+        {
+            CriticalGuard cg_t(t->sl);
+            auto ctrl = MPU->CTRL;
+            MPU->CTRL = 0;
+            MPU->RBAR = mpur.rbar;
+            MPU->RASR = mpur.rasr;
+            MPU->CTRL = ctrl;
+            __DSB();
+            __ISB();
+        }
     }
 
     *retaddr = (void *)mr.address;

@@ -19,7 +19,7 @@ bool SetMPUForCurrentThread(mpu_saved_state const &mpu_reg)
     {
         CriticalGuard cg(t->sl);
         last_thread = t;
-        t->tss.mpuss[reg_id - 1] = mpu_reg;
+        t->tss.mpuss[reg_id] = mpu_reg;
         auto ctrl = MPU->CTRL;
         MPU->CTRL = 0;
         MPU->RBAR = mpu_reg.rbar;
