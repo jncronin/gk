@@ -97,6 +97,7 @@ struct WidgetAnimation_t
 using WidgetAnimationList = std::list<WidgetAnimation_t>;
 
 bool RunAnimations(WidgetAnimationList &wl, unsigned long int cur_ms);
+bool HasAnimations(WidgetAnimationList &wl);
 void AddAnimation(WidgetAnimationList &wl, unsigned long int cur_ms,
     WidgetAnimation anim, Widget *wdg, void *p);
 
