@@ -975,16 +975,9 @@ int sd_perform_transfer_async(const sd_request &req)
 static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read)
 {
-    SRAM4RegionAllocator<SimpleSignal> ralloc;
-    auto cond = ralloc.allocate(1);
-    if(!cond)
-        return -3;
-    new(cond) SimpleSignal();
-
-    SRAM4RegionAllocator<int> ialloc;
-    auto ret = ialloc.allocate(1);
-    if(!ret)
-        return -5;
+    auto t = GetCurrentThreadForCore();
+    auto cond = &t->ss;
+    auto ret = (int *)&t->ss_p.ival1;
     *ret = -4;
 
     sd_request req;
@@ -1009,13 +1002,10 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     auto send_ret = sd_perform_transfer_async(req);
     if(send_ret)
     {
-        cond->~SimpleSignal();
-        ralloc.deallocate(cond, 1);
-        ialloc.deallocate(ret, 1);
         return send_ret;
     }
     
-    cond->Wait();
+    cond->Wait(SimpleSignal::Set, 0UL);
 
     if(is_read)
     {
@@ -1023,10 +1013,6 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     }
 
     int cret = *ret;
-
-    cond->~SimpleSignal();
-    ralloc.deallocate(cond, 1);
-    ialloc.deallocate(ret, 1);
 
     if(cret != 0)
     {
@@ -1042,16 +1028,9 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read)
 {
-    SRAM4RegionAllocator<SimpleSignal> ralloc;
-    auto cond = ralloc.allocate(1);
-    if(!cond)
-        return -3;
-    new(cond) SimpleSignal();
-
-    SRAM4RegionAllocator<int> ialloc;
-    auto ret = ialloc.allocate(1);
-    if(!ret)
-        return -5;
+    auto t = GetCurrentThreadForCore();
+    auto cond = &t->ss;
+    auto ret = (int *)&t->ss_p.ival1;
     *ret = -4;
 
     sd_request req;
@@ -1076,13 +1055,10 @@ static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t bloc
     auto send_ret = sd_perform_transfer_async(req);
     if(send_ret)
     {
-        cond->~SimpleSignal();
-        ralloc.deallocate(cond, 1);
-        ialloc.deallocate(ret, 1);
         return send_ret;
     }
     
-    cond->Wait();
+    cond->Wait(SimpleSignal::Set, 0UL);
 
     if(is_read)
     {
@@ -1090,10 +1066,6 @@ static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t bloc
     }
 
     int cret = *ret;
-
-    cond->~SimpleSignal();
-    ralloc.deallocate(cond, 1);
-    ialloc.deallocate(ret, 1);
 
     if(cret != 0)
     {
