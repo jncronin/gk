@@ -65,11 +65,11 @@ class Condition
 class SimpleSignal
 {
     protected:
-        Thread *waiting_thread = nullptr;
         uint32_t signal_value = 0;
         Spinlock sl;
 
     public:
+        Thread *waiting_thread = nullptr;
         enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
         uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
         uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
