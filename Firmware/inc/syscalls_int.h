@@ -53,7 +53,7 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno);
 
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno);
 
-int syscall_memalloc(size_t len, void **retaddr, int *_errno);
+int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno);
 int syscall_memdealloc(size_t len, const void *addr, int *_errno);
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno);
 

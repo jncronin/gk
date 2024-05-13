@@ -37,7 +37,7 @@ int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
     return 0;
 }
 
-int syscall_memalloc(size_t len, void **retaddr, int *_errno)
+int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
 {
     if(!retaddr)
     {
@@ -82,7 +82,7 @@ int syscall_memalloc(size_t len, void **retaddr, int *_errno)
 
         // set mpu region for this thread and all others
         auto mpur = MPUGenerate(mr.address, mr.length, mpu_slot, false,
-            RW, RW, WBWA_NS);
+            RW, RW, is_sync ? WT_NS : WBWA_NS);
         for(auto curt : p.threads)
         {
             CriticalGuard cg_t(curt->sl);

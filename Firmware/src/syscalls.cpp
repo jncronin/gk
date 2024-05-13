@@ -478,7 +478,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_memalloc:
             {
                 auto p = reinterpret_cast<__syscall_memalloc_params *>(r2);
-                int ret = syscall_memalloc(p->len, p->retaddr, reinterpret_cast<int *>(r3));
+                int ret = syscall_memalloc(p->len, p->retaddr, p->is_sync, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
