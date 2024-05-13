@@ -84,6 +84,9 @@ class LwextFile : public File
 
         LwextFile(ext4_file fildes, std::string fname);
         ext4_file f;
+        ext4_dir d;
+
+        bool is_dir = false;
         std::string fname;
 };
 
