@@ -57,6 +57,7 @@ struct ext4_message
         struct fstat_params_t
         {
             ext4_file *e4f;
+            ext4_dir *e4d;
             struct stat *st;
             const char *pathname;
         } fstat_params;
@@ -179,12 +180,14 @@ static constexpr ext4_message ext4_lseek_message(ext4_file &e4f, off_t offset, i
     return ret;
 }
 
-static constexpr ext4_message ext4_fstat_message(ext4_file &e4f, struct stat *st,
+static constexpr ext4_message ext4_fstat_message(ext4_file &e4f, ext4_dir &e4d, bool is_dir,
+    struct stat *st,
     const char *pathname,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::fstat_params_t _p {
-        .e4f = &e4f,
+        .e4f = is_dir ? nullptr : &e4f,
+        .e4d = is_dir ? &e4d : nullptr,
         .st = st,
         .pathname = pathname
     };
@@ -205,7 +208,7 @@ static constexpr ext4_message ext4_close_message(ext4_file &e4f,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::close_params_t _p {
-        .e4f = e4f,
+        .e4f = e4f
     };
 
     ext4_message::params_t __p {

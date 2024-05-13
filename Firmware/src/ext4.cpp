@@ -202,6 +202,7 @@ static void handle_open_message(ext4_message &msg)
 {
     // try and load in file system
     ext4_file f;
+    ext4_dir d;
     char fmode[8];
 
     // convert newlib flags to lwext4 flags
@@ -253,12 +254,34 @@ static void handle_open_message(ext4_message &msg)
         }
         else
         {
-            delete msg.params.open_params.p->open_files[msg.params.open_params.f];
-            msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
+            if(extret == ENOENT)
+            {
+                // try and open as directory
+                extret = ext4_dir_open(&d, msg.params.open_params.pathname);
+            }
+            if(extret == EOK)
+            {
+                auto lwfile = reinterpret_cast<LwextFile *>(
+                    msg.params.open_params.p->open_files[msg.params.open_params.f]);
+                lwfile->d = d;
+                lwfile->is_dir = true;
+                msg.ss_p->ival1 = msg.params.open_params.f;
+                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+            }
+            else
+            {
+                {
+                    CriticalGuard cg_rtt(s_rtt);
+                    SEGGER_RTT_printf(0, "ext4_fopen: open(%s) failing with %d\n",
+                        msg.params.open_params.pathname, extret);
+                }
+                delete msg.params.open_params.p->open_files[msg.params.open_params.f];
+                msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
 
-            msg.ss_p->ival1 = -1;
-            msg.ss_p->ival2 = extret;
-            msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                msg.ss_p->ival1 = -1;
+                msg.ss_p->ival2 = extret;
+                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+            }
         }
     }
 }
@@ -329,6 +352,7 @@ static void handle_fstat_message(ext4_message &msg)
     uint32_t t;
     auto fname = msg.params.fstat_params.pathname;
     auto f = msg.params.fstat_params.e4f;
+    auto d = msg.params.fstat_params.e4d;
     auto pstat = (uint32_t)(uintptr_t)msg.params.fstat_params.st;
 
     if((extret = ext4_atime_get(fname, &t)) != EOK)
@@ -344,8 +368,8 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_mtim = lwext_time_to_timespec(t);
 
     buf.st_dev = 0;
-    buf.st_ino = f->inode;
-    buf.st_mode = _IFREG;
+    buf.st_ino = f ? f->inode : d->f.inode;
+    buf.st_mode = f ? _IFREG : _IFDIR;
     
     uint32_t mode;
     if((extret = ext4_mode_get(fname, &mode)) != EOK)
@@ -361,9 +385,9 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_gid = static_cast<gid_t>(gid);
 
     buf.st_rdev = 0;
-    buf.st_size = f->fsize;
+    buf.st_size = f ? f->fsize : 0;
     buf.st_blksize = 512;
-    buf.st_blocks = (f->fsize + 511) / 512; // round up
+    buf.st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
 
     // handle M4 copying to M7 DTCM
     if((pstat >= 0x20000000) && (pstat < 0x20020000) && (GetCoreID() == 1))
@@ -401,6 +425,10 @@ static void handle_fstat_message(ext4_message &msg)
     return;
 
 _err:
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "ext4_fstat: fstat(%s) failing\n", msg.params.fstat_params.pathname);
+    }
     msg.ss_p->ival1 = -1;
     msg.ss_p->ival2 = extret;
     msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);

@@ -22,6 +22,11 @@ LwextFile::LwextFile(ext4_file fildes, std::string _fname) : f(fildes)
 
 ssize_t LwextFile::Read(char *buf, size_t count, int *_errno)
 {
+    if(is_dir)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
     if(!f.mp)
     {
         *_errno = EBADF;
@@ -40,6 +45,11 @@ ssize_t LwextFile::Read(char *buf, size_t count, int *_errno)
 
 ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
 {
+    if(is_dir)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
     if(!f.mp)
     {
         *_errno = EBADF;
@@ -58,13 +68,13 @@ ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
 
 int LwextFile::Fstat(struct stat *buf, int *_errno)
 {
-    if(!f.mp)
+    if((is_dir && !d.f.mp) || (!is_dir && !f.mp))
     {
         *_errno = EBADF;
         return -1;
     }
     auto t = GetCurrentThreadForCore();
-    auto msg = ext4_fstat_message(f, buf, fname.c_str(), t->ss, t->ss_p);
+    auto msg = ext4_fstat_message(f, d, is_dir, buf, fname.c_str(), t->ss, t->ss_p);
     if(!ext4_send_message(msg))
     {
         *_errno = ENOMEM;
@@ -75,6 +85,11 @@ int LwextFile::Fstat(struct stat *buf, int *_errno)
 
 off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
 {
+    if(is_dir)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
     if(!f.mp)
     {
         *_errno = EBADF;
@@ -92,13 +107,13 @@ off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
 
 int LwextFile::Close(int *_errno)
 {
-    if(!f.mp)
+    if((is_dir && !d.f.mp) || (!is_dir && !f.mp))
     {
         *_errno = EBADF;
         return -1;
     }
     auto t = GetCurrentThreadForCore();
-    auto msg = ext4_close_message(f, t->ss, t->ss_p);
+    auto msg = ext4_close_message(is_dir ? d.f : f, t->ss, t->ss_p);
     if(!ext4_send_message(msg))
     {
         *_errno = ENOMEM;

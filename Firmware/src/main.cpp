@@ -453,7 +453,7 @@ void *init_thread(void *p)
 
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
-    pt.stack_size = 16 * 1024;
+    pt.stack_size = 32 * 1024;
     //deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
     //deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
     deferred_call(syscall_proccreate, "/DOSBOX-0.74-gk/bin/dosbox", &pt);

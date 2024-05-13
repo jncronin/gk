@@ -583,7 +583,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = 0;
             }
             break;
-        
+
         default:
             {
                 CriticalGuard cg(s_rtt);
