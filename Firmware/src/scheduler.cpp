@@ -229,7 +229,7 @@ Thread *Scheduler::get_blocker(Thread *t)
         {
             CriticalGuard cg(t->sl);
             unblock_delayer(t);
-            if(t->blocking_on == nullptr)
+            if(t->blocking_on == nullptr || ((uint32_t)(uintptr_t)t->blocking_on) & 0x3U)
                 return t;
             t = t->blocking_on;
         }

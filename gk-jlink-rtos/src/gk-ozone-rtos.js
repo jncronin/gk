@@ -62,11 +62,28 @@ function blocking_on(t)
             var ret = "";
             if(t_block)
             {
-                ret += task_get_name(t_block);
-                var t_block_str = blocking_on(t_block);
-                if(t_block_str != "")
+                switch(t_block & 0x3)
                 {
-                    ret += "(" + t_block_str + ")";
+                    case 0:
+                        ret += task_get_name(t_block);
+                        var t_block_str = blocking_on(t_block);
+                        if(t_block_str != "")
+                        {
+                            ret += "(" + t_block_str + ")";
+                        }
+                        break;
+
+                    case 1:
+                        ret += "Signal @" + (t_block & ~3).toString(16);
+                        break;
+
+                    case 2:
+                        ret += "Queue @" + (t_block & ~3).toString(16);
+                        break;
+
+                    case 3:
+                        ret += "Condition @" + (t_block & ~3).toString(16);
+                        break;
                 }
             }
             if(t_block && t_block_until != 0)
