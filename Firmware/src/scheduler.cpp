@@ -258,6 +258,18 @@ void Scheduler::unblock_delayer(Thread *t)
         t->block_until = 0;
         t->blocking_on = nullptr;
     }
+    if(t->is_blocking && (((uint32_t)(uintptr_t)t->blocking_on) & 0x3U) == 0x1U &&
+        ((SimpleSignal *)(((uint32_t)(uintptr_t)t->blocking_on) & ~0x3U))->waiting_thread != t)
+    {
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "scheduler: spurious blocking on already triggered SimpleSignal for thread %s\n",
+                t->name.c_str());
+        }
+        t->is_blocking = false;
+        t->block_until = 0;
+        t->blocking_on = nullptr;
+    }
 }
 
 void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
