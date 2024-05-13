@@ -52,3 +52,9 @@ FileType File::GetType() const
 {
     return type;
 }
+
+int File::ReadDir(dirent *de, int *_errno)
+{
+    *_errno = EBADF;
+    return -1;
+}

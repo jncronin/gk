@@ -5,6 +5,7 @@
 #include <ext4.h>
 #include <string>
 #include "ff.h"
+#include "_sys_dirent.h"
 
 enum FileType
 {
@@ -22,6 +23,7 @@ class File
     public:
         virtual ssize_t Write(const char *buf, size_t count, int *_errno) = 0;
         virtual ssize_t Read(char *buf, size_t count, int *_errno) = 0;
+        virtual int ReadDir(dirent *de, int *_errno);
 
         virtual int Fstat(struct stat *buf, int *_errno);
         virtual off_t Lseek(off_t offset, int whence, int *_errno);
@@ -76,6 +78,7 @@ class LwextFile : public File
     public:
         ssize_t Write(const char *buf, size_t count, int *_errno);
         ssize_t Read(char *buf, size_t count, int *_errno);
+        int ReadDir(dirent *de, int *_errno);
 
         int Fstat(struct stat *buf, int *_errno);
         off_t Lseek(off_t offset, int whence, int *_errno);

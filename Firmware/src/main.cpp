@@ -449,7 +449,7 @@ void *init_thread(void *p)
 #if 0
     const char *args[] = { "-nosound", "-nomusic", "-nosfx", "-iwad", "/share/doom/doom1.wad" };
 #endif
-    const char *args[] = { "--help" };
+    const char *args[] = { "/share/dosbox/TIE/TIE.EXE" };
 
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);

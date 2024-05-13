@@ -311,12 +311,14 @@ void *cst_thread(void *param)
 
             // check read
             char buf[4];
-            auto ret = i2c_read(0x1a, buf, 4);
+            [[maybe_unused]] auto ret = i2c_read(0x1a, buf, 4);
 
+#if DEBUG_I2C
             {
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "cst: read returned %d\n", ret);
             }
+#endif
             
             // TODO init CTP
         }
