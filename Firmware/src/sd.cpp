@@ -13,6 +13,7 @@
 #include "gk_conf.h"
 
 #define DEBUG_SD    0
+#define PROFILE_SDT 1
 
 extern Spinlock s_rtt;
 extern Process kernel_proc;
@@ -839,6 +840,14 @@ void *sd_thread(void *param)
                 }
                 continue;
             }
+
+#if PROFILE_SDT
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "sdt: %s block %d, block_len %d\n",
+                    sdr.is_read ? "read " : "write", sdr.block_start, sdr.block_count);
+            }
+#endif
 
             bool is_valid = is_valid_dma(sdr.mem_address, sdr.block_count);
             uint32_t mem_len = sdr.block_count * 512U;

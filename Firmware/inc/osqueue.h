@@ -124,6 +124,7 @@ class BaseQueue
                         auto t = GetCurrentThreadForCore();
                         waiting_threads.insert(t);
                         t->is_blocking = true;
+                        t->blocking_on = BLOCKING_ON_QUEUE(this);
                         if(timeout)
                             t->block_until = timeout;
                         Yield();

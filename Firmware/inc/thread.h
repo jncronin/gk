@@ -29,6 +29,12 @@ static constexpr uint32_t thread_signal_lwext = 0x1;
 
 class Process;
 
+#define BLOCKING_ON_THREAD(x)       ((Thread *)(x))
+#define BLOCKING_ON_SS(x)           ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x1U))
+#define BLOCKING_ON_QUEUE(x)        ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x2U))
+#define BLOCKING_ON_CONDITION(x)    ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x3U))
+
+
 class Thread
 {
     public:

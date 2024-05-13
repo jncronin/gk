@@ -460,7 +460,8 @@ static void handle_fstat_message(ext4_message &msg)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fstat: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
+        SEGGER_RTT_printf(0, "fstat: %s: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
+            msg.params.fstat_params.pathname,
             buf.st_blksize,
             buf.st_blocks,
             buf.st_ino,
