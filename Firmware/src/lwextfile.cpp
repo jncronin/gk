@@ -121,3 +121,25 @@ int LwextFile::Close(int *_errno)
     }
     return -2;  // deferred return
 }
+
+int LwextFile::ReadDir(dirent *de, int *_errno)
+{
+    if(!is_dir)
+    {
+        *_errno = ENOTDIR;
+        return -1;
+    }
+    if(!de)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    auto t = GetCurrentThreadForCore();
+    auto msg = ext4_readdir_message(d, de, t->ss, t->ss_p);
+    if(!ext4_send_message(msg))
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+    return -2;  // deferred return
+}

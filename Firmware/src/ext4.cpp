@@ -206,38 +206,43 @@ static void handle_open_message(ext4_message &msg)
     char fmode[8];
 
     // convert newlib flags to lwext4 flags
-    auto pflags = msg.params.open_params.flags & (O_RDONLY | O_WRONLY | O_CREAT | O_TRUNC | O_APPEND | O_RDWR);
-    switch(pflags)
+    bool is_opendir = (msg.params.open_params.mode == S_IFDIR) && (msg.params.open_params.f == O_RDONLY);
+
+    if(!is_opendir)
     {
-        case O_RDONLY:
-            strcpy(fmode, "r");
-            break;
+        auto pflags = msg.params.open_params.flags & (O_RDONLY | O_WRONLY | O_CREAT | O_TRUNC | O_APPEND | O_RDWR);
+        switch(pflags)
+        {
+            case O_RDONLY:
+                strcpy(fmode, "r");
+                break;
 
-        case O_WRONLY | O_CREAT | O_TRUNC:
-            strcpy(fmode, "w");
-            break;
+            case O_WRONLY | O_CREAT | O_TRUNC:
+                strcpy(fmode, "w");
+                break;
 
-        case O_WRONLY | O_CREAT | O_APPEND:
-            strcpy(fmode, "a");
-            break;
+            case O_WRONLY | O_CREAT | O_APPEND:
+                strcpy(fmode, "a");
+                break;
 
-        case O_RDWR:
-            strcpy(fmode, "r+");
-            break;
+            case O_RDWR:
+                strcpy(fmode, "r+");
+                break;
 
-        case O_RDWR | O_CREAT | O_TRUNC:
-            strcpy(fmode, "w+");
-            break;
+            case O_RDWR | O_CREAT | O_TRUNC:
+                strcpy(fmode, "w+");
+                break;
 
-        case O_RDWR | O_CREAT | O_APPEND:
-            strcpy(fmode, "a+");
-            break;
+            case O_RDWR | O_CREAT | O_APPEND:
+                strcpy(fmode, "a+");
+                break;
 
-        default:
-            msg.ss_p->ival1 = -1;
-            msg.ss_p->ival2 = EINVAL;
-            msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
-            return;
+            default:
+                msg.ss_p->ival1 = -1;
+                msg.ss_p->ival2 = EINVAL;
+                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                return;
+        }
     }
 
     auto extret = ext4_fopen(&f, msg.params.open_params.pathname, fmode);
@@ -246,6 +251,15 @@ static void handle_open_message(ext4_message &msg)
 
         if(extret == EOK)
         {
+            if(is_opendir)
+            {
+                delete msg.params.open_params.p->open_files[msg.params.open_params.f];
+                msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
+
+                msg.ss_p->ival1 = -1;
+                msg.ss_p->ival2 = ENOTDIR;
+                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+            }
             auto lwfile = reinterpret_cast<LwextFile *>(
                 msg.params.open_params.p->open_files[msg.params.open_params.f]);
             lwfile->f = f;
@@ -343,6 +357,53 @@ struct timespec lwext_time_to_timespec(uint32_t t)
     return ret;
 }
 
+static inline void copy_dmaaware(void *dest, const void *src, size_t n)
+{
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "copy_dmaaware: dest: %x, src: %x, len %d, coreid: %d\n",
+            (uint32_t)(uintptr_t)dest, (uint32_t)(uintptr_t)src, n, GetCoreID());
+    }
+    // handle M4 copying to M7 DTCM
+    auto pstat = (uint32_t)(uintptr_t)dest;
+    if((pstat >= 0x20000000) && (pstat < 0x20020000) && (GetCoreID() == 1))
+    {
+        SharedMemoryGuard smg(dest, n, false, true, true);
+        const auto dmac = MDMA_Channel4;
+        while(dmac->CCR & MDMA_CCR_EN);
+        dmac->CTCR = MDMA_CTCR_SWRM |
+            ((n - 1U) << MDMA_CTCR_TLEN_Pos) |
+            (2U << MDMA_CTCR_DINCOS_Pos) |
+            (2U << MDMA_CTCR_SINCOS_Pos) |
+            (2U << MDMA_CTCR_DSIZE_Pos) |
+            (2U << MDMA_CTCR_SSIZE_Pos) |
+            (2U << MDMA_CTCR_DINC_Pos) |
+            (2U << MDMA_CTCR_SINC_Pos);
+        dmac->CBNDTR = n;
+        dmac->CSAR = (uint32_t)(uintptr_t)&src;
+        dmac->CDAR = pstat;
+        dmac->CBRUR = 0U;
+        dmac->CLAR = 0U;
+        dmac->CTBR = MDMA_CTBR_DBUS;
+        dmac->CMAR = 0U;
+        dmac->CCR = MDMA_CCR_EN;
+        dmac->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
+        while(!(dmac->CISR & MDMA_CISR_CTCIF)) {}
+
+        // debug
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "copy_dmaaware: cisr: %x\n", dmac->CISR);
+        }
+        dmac->CIFCR = 0x1fU;
+    }
+    else
+    {
+        SharedMemoryGuard smg(dest, n, false, true);
+        memcpy(dest, src, n);
+    }
+}
+
 static void handle_fstat_message(ext4_message &msg)
 {
     struct stat buf = { 0 };
@@ -353,7 +414,6 @@ static void handle_fstat_message(ext4_message &msg)
     auto fname = msg.params.fstat_params.pathname;
     auto f = msg.params.fstat_params.e4f;
     auto d = msg.params.fstat_params.e4d;
-    auto pstat = (uint32_t)(uintptr_t)msg.params.fstat_params.st;
 
     if((extret = ext4_atime_get(fname, &t)) != EOK)
         goto _err;
@@ -390,37 +450,23 @@ static void handle_fstat_message(ext4_message &msg)
     buf.st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
 
     // handle M4 copying to M7 DTCM
-    if((pstat >= 0x20000000) && (pstat < 0x20020000) && (GetCoreID() == 1))
     {
-        const auto dmac = MDMA_Channel4;
-        while(dmac->CCR & MDMA_CCR_EN);
-        dmac->CTCR = MDMA_CTCR_SWRM |
-            ((sizeof(struct stat) - 1U) << MDMA_CTCR_TLEN_Pos) |
-            (2U << MDMA_CTCR_DINCOS_Pos) |
-            (2U << MDMA_CTCR_SINCOS_Pos) |
-            (2U << MDMA_CTCR_DSIZE_Pos) |
-            (2U << MDMA_CTCR_SSIZE_Pos) |
-            (2U << MDMA_CTCR_DINC_Pos) |
-            (2U << MDMA_CTCR_SINC_Pos);
-        dmac->CBNDTR = sizeof(struct stat);
-        dmac->CSAR = (uint32_t)(uintptr_t)&buf;
-        dmac->CDAR = pstat;
-        dmac->CBRUR = 0U;
-        dmac->CLAR = 0U;
-        dmac->CTBR = MDMA_CTBR_DBUS;
-        dmac->CMAR = 0U;
-        dmac->CCR = MDMA_CCR_EN;
-        dmac->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
-        while(!(dmac->CISR & MDMA_CISR_CTCIF));
-        dmac->CIFCR = 0x1fU;
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fstat: precopy\n");
     }
-    else
-    {
-        SharedMemoryGuard(msg.params.fstat_params.st, sizeof(struct stat), false, true);
-        *msg.params.fstat_params.st = buf;
-    }
+    copy_dmaaware(msg.params.fstat_params.st, &buf, sizeof(struct stat));
     msg.ss_p->ival1 = 0;
     msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fstat: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
+            buf.st_blksize,
+            buf.st_blocks,
+            buf.st_ino,
+            buf.st_mode,
+            buf.st_size);
+    }
     
     return;
 
@@ -487,6 +533,29 @@ void handle_mkdir_message(ext4_message &msg)
     }
 }
 
+void handle_readdir_message(ext4_message &msg)
+{
+    auto extret = ext4_dir_entry_next(msg.params.readdir_params.e4d);
+    if(extret == nullptr)
+    {
+        msg.ss_p->ival1 = 0;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+    else
+    {
+        dirent nde = { 0 };
+        nde.d_ino = extret->inode;
+        nde.d_off = 0;
+        nde.d_reclen = sizeof(dirent);
+        nde.d_type = extret->inode_type;
+        strncpy(nde.d_name, (const char *)extret->name, 255);
+        nde.d_name[255] = 0;
+        copy_dmaaware(msg.params.readdir_params.de, &nde, sizeof(dirent));
+        msg.ss_p->ival1 = 1;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+}
+
 void *ext4_thread(void *_p)
 {
     (void)_p;
@@ -529,6 +598,10 @@ void *ext4_thread(void *_p)
             case ext4_message::msg_type::Mkdir:
                 handle_mkdir_message(msg);
                 break;
+
+            case ext4_message::msg_type::ReadDir:
+                handle_readdir_message(msg);
+                break;
         }
     }
 }
@@ -536,7 +609,7 @@ void *ext4_thread(void *_p)
 void init_ext4()
 {
     Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
-        PreferM4));
+        PreferM7));
 }
 
 int sd_open(ext4_blockdev *bdev)

@@ -5,6 +5,7 @@
 #include "syscalls.h"
 #include "thread.h"
 #include "ext4.h"
+#include "_sys_dirent.h"
 
 static inline void check_buffer(const void *addr)
 {
@@ -28,6 +29,7 @@ struct ext4_message
         Lseek,
         Fstat,
         Mkdir,
+        ReadDir
     };
 
     msg_type type;
@@ -65,6 +67,11 @@ struct ext4_message
         {
             ext4_file e4f;      // copy here because LwextFile object is already deleted
         } close_params;
+        struct readdir_params_t
+        {
+            ext4_dir *e4d;
+            struct dirent *de;
+        } readdir_params;
     } params;
 
     SimpleSignal *ss;
@@ -220,6 +227,28 @@ static constexpr ext4_message ext4_close_message(ext4_file &e4f,
         .params = __p,
         .ss = &ss,
         .ss_p = &ss_p };
+    return ret;
+}
+
+static constexpr ext4_message ext4_readdir_message(ext4_dir &e4d,
+    struct dirent *de,
+    SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+{
+    ext4_message::params_t::readdir_params_t _p {
+        .e4d = &e4d,
+        .de = de
+    };
+
+    ext4_message::params_t __p {
+        .readdir_params = _p
+    };
+
+    ext4_message ret {
+        .type = ext4_message::msg_type::ReadDir,
+        .params = __p,
+        .ss = &ss,
+        .ss_p = &ss_p
+    };
     return ret;
 }
 

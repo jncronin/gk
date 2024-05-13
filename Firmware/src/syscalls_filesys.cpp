@@ -97,6 +97,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     // try and get free process file handle
     auto t = GetCurrentThreadForCore();
     auto &p = t->p;
+    bool is_opendir = (mode == S_IFDIR) && (flags == O_RDONLY);
     CriticalGuard cg(p.sl);
     int fd = get_free_fildes(p);
     if(fd == -1)
@@ -108,21 +109,41 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     // special case /dev files
     if(strcmp("/dev/stdin", pathname) == 0)
     {
+        if(is_opendir)
+        {
+            *_errno = ENOTDIR;
+            return -1;
+        }
         p.open_files[fd] = new SeggerRTTFile(0, true, false);
         return fd;
     }
     if(strcmp("/dev/stdout", pathname) == 0)
     {
+        if(is_opendir)
+        {
+            *_errno = ENOTDIR;
+            return -1;
+        }
         p.open_files[fd] = new SeggerRTTFile(0, false, true);
         return fd;
     }
     if(strcmp("/dev/stderr", pathname) == 0)
     {
+        if(is_opendir)
+        {
+            *_errno = ENOTDIR;
+            return -1;
+        }
         p.open_files[fd] = new SeggerRTTFile(0, false, true);
         return fd;
     }
     if(strcmp("/dev/ttyUSB0", pathname) == 0)
     {
+        if(is_opendir)
+        {
+            *_errno = ENOTDIR;
+            return -1;
+        }
         p.open_files[fd] = new USBTTYFile();
         return fd;
     }
@@ -137,9 +158,16 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         return -2;  // deferred return
     else
     {
+        delete p.open_files[fd];
+        p.open_files[fd] = nullptr;
         *_errno = ENOMEM;
         return -1;
     }
+}
+
+int syscall_opendir(const char *pathname, int *_errno)
+{
+    return syscall_open(pathname, O_RDONLY, S_IFDIR, _errno);
 }
 
 int syscall_close1(int file, int *_errno)
@@ -205,4 +233,17 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
+}
+
+int syscall_readdir(int file, dirent *de, int *_errno)
+{
+    auto &p = GetCurrentThreadForCore()->p;
+    CriticalGuard(p.sl);
+    if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    return p.open_files[file]->ReadDir(de, _errno);
 }
