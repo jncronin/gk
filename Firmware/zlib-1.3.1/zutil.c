@@ -274,6 +274,10 @@ void ZLIB_INTERNAL zcfree(voidpf opaque, voidpf ptr) {
 
 #endif /* SYS16BIT */
 
+#ifdef __GAMEKID__
+#define MY_ZCALLOC
+#endif
+
 
 #ifndef MY_ZCALLOC /* Any system without a special alloc function */
 
