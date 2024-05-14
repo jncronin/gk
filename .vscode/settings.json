@@ -72,7 +72,9 @@
         "xutility": "cpp",
         "gzguts.h": "c",
         "iostream": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "fstream": "cpp",
+        "sstream": "cpp"
     },
     "cortex-debug.variableUseNaturalFormat": false,
 }
