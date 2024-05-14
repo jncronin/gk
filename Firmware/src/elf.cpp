@@ -11,6 +11,9 @@
 #include "cache.h"
 #include "ossharedmem.h"
 
+#include "syscalls.h"
+#include "syscalls_int.h"
+
 static uint64_t prog_software_init_hook();
 static size_t get_arg_length(const std::string &pname, const std::vector<std::string> &params);
 static void init_args(const std::string &pname, const std::vector<std::string> &params,
@@ -344,6 +347,394 @@ int elf_load_memory(const void *e, const std::string &pname,
         *proc_ret = proc;
 
     SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
+    SEGGER_RTT_printf(0, "%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
+        pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
+
+    return 0;
+}
+
+static int load_from(int fd, unsigned int offset,
+    void *buf, unsigned int len)
+{
+    if(deferred_call(syscall_lseek, fd, offset, SEEK_SET) == (off_t)-1)
+    {
+        return -1;
+    }
+    return deferred_call(syscall_read, fd, (char *)buf, len);
+}
+
+template<typename T> static int load_from(int fd, unsigned int offset, T* buf)
+{
+    return load_from(fd, offset, (void *)buf, sizeof(T));
+}
+
+static MemRegion memblk_allocate_for_elf(size_t nbytes)
+{
+    auto mr = memblk_allocate(nbytes, MemRegionType::AXISRAM);
+    if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SRAM);
+    if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SDRAM);
+    return mr;
+}
+
+int elf_load_fildes(int fd,
+	Process &p,
+	uint32_t *epoint,
+    const std::string &pname,
+	uint32_t stack_end,
+	const std::vector<std::string> &params)
+{
+    // load and check header
+    Elf32_Ehdr ehdr;
+    if(deferred_call(syscall_read, fd, (char *)&ehdr, sizeof(ehdr)) != sizeof(ehdr))
+    {
+        return -1;
+    }
+
+    if(ehdr.e_ident[0] != 0x7f ||
+        ehdr.e_ident[1] != 'E' ||
+        ehdr.e_ident[2] != 'L' ||
+        ehdr.e_ident[3] != 'F')
+    {
+        SEGGER_RTT_printf(0, "invalid magic\n");
+        return -1;
+    }
+
+	// Confirm its a 32 bit file
+	if(ehdr.e_ident[EI_CLASS] != ELFCLASS32)
+	{
+        SEGGER_RTT_printf(0, "invalid elf class\n");
+        return -1;
+	}
+
+	// Confirm its a little-endian file
+	if(ehdr.e_ident[EI_DATA] != ELFDATA2LSB)
+	{
+        SEGGER_RTT_printf(0, "not lsb\n");
+        return -1;
+	}
+
+	// Confirm its an executable file
+	if(ehdr.e_type != ET_EXEC)
+	{
+        SEGGER_RTT_printf(0, "not exec\n");
+        return -1;
+	}
+
+	// Confirm its for the ARM architecture
+	if(ehdr.e_machine != EM_ARM)
+	{
+        SEGGER_RTT_printf(0, "not arm\n");
+        return -1;
+	}
+
+
+    // Iterate through program headers to determine the absolute size required to load
+    uintptr_t max_size = 0;
+    for(unsigned int i = 0; i < ehdr.e_phnum; i++)
+    {
+        Elf32_Phdr phdr;
+
+        if(deferred_call(syscall_lseek, fd, ehdr.e_phoff + i * ehdr.e_phentsize, SEEK_SET) == (off_t)-1)
+        {
+            return -1;
+        }
+        if(deferred_call(syscall_read, fd, (char *)&phdr, sizeof(phdr)) != sizeof(phdr))
+        {
+            return -1;
+        }
+
+        if(phdr.p_type == PT_LOAD ||
+            phdr.p_type == PT_ARM_EXIDX)
+        {
+            auto cur_max = phdr.p_vaddr + phdr.p_memsz;
+            if(cur_max > max_size)
+                max_size = cur_max;
+        }
+    }
+
+    // Create region for arguments
+    auto arg_length = get_arg_length(pname, params);
+    auto arg_offset = max_size;
+    max_size += arg_length;
+
+    SEGGER_RTT_printf(0, "need %d bytes\n", max_size);
+
+    // get a relevant memory block AXISRAM > SDRAM
+    auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM);
+    if(!memblk.valid)
+    {
+        memblk = memblk_allocate(max_size, MemRegionType::SDRAM);
+    }
+    if(!memblk.valid)
+    {
+        SEGGER_RTT_printf(0, "failed to allocate memory\n");
+        return -1;
+    }
+    SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
+    [[maybe_unused]] auto arg_base = memblk.address + arg_offset;
+    p.code_data = memblk;
+
+    // Load segments
+    auto base_ptr = memblk.address;
+    for(unsigned int i = 0; i < ehdr.e_phnum; i++)
+    {
+        Elf32_Phdr phdr;
+
+        if(deferred_call(syscall_lseek, fd, ehdr.e_phoff + i * ehdr.e_phentsize, SEEK_SET) == (off_t)-1)
+        {
+            return -1;
+        }
+        if(deferred_call(syscall_read, fd, (char *)&phdr, sizeof(phdr)) != sizeof(phdr))
+        {
+            return -1;
+        }
+
+        if(phdr.p_type == PT_LOAD ||
+            phdr.p_type == PT_ARM_EXIDX)
+        {
+            if(phdr.p_filesz)
+            {
+                if(deferred_call(syscall_lseek, fd, phdr.p_offset, SEEK_SET) == (off_t)-1)
+                {
+                    return -1;
+                }
+                if(deferred_call(syscall_read, fd, (char *)(base_ptr + phdr.p_vaddr), phdr.p_filesz) != (int)phdr.p_filesz)
+                {
+                    return -1;
+                }
+            }
+            if(phdr.p_filesz != phdr.p_memsz)
+            {
+                SharedMemoryGuard smg((const void *)(base_ptr + phdr.p_vaddr + phdr.p_filesz),
+                    phdr.p_memsz - phdr.p_filesz, false, true);
+                memset((void *)(base_ptr + phdr.p_vaddr + phdr.p_filesz),
+                    0, phdr.p_memsz - phdr.p_filesz);
+            }
+        }
+    }
+
+    // provide entry point
+    if(epoint)
+    {
+        *epoint = base_ptr + ehdr.e_entry;
+    }
+
+    // perform relocations
+    for(unsigned int i = 0; i < ehdr.e_shnum; i++)
+    {
+        Elf32_Shdr shdr;
+        if(load_from(fd, ehdr.e_shoff + i * ehdr.e_shentsize, &shdr) != sizeof(shdr))
+        {
+            return -1;
+        }
+        if(shdr.sh_type != SHT_REL)
+            continue;
+        SEGGER_RTT_printf(0, "reloc section %d\n", i);
+
+        auto symtab_idx = shdr.sh_link;
+        auto relsect_idx = shdr.sh_info;
+        auto entsize = shdr.sh_entsize;
+        auto nentries = shdr.sh_size / entsize;
+
+        Elf32_Shdr symtab;
+        if(load_from(fd, ehdr.e_shoff + symtab_idx * ehdr.e_shentsize, &symtab) != sizeof(symtab))
+        {
+            return -1;
+        }
+
+        Elf32_Shdr relsect;
+        if(load_from(fd, ehdr.e_shoff + relsect_idx * ehdr.e_shentsize, &relsect) != sizeof(relsect))
+        {
+            return -1;
+        }
+
+        if(!(relsect.sh_flags & SHF_ALLOC))
+        {
+            continue;
+        }
+
+        // load shdr and symtab in full
+        auto mr_shdr = memblk_allocate_for_elf(shdr.sh_size);
+        if(!mr_shdr.valid)
+        {
+            return -1;
+        }
+        auto mr_symtab = memblk_allocate_for_elf(symtab.sh_size);
+        if(!mr_symtab.valid)
+        {
+            return -1;
+        }
+        if(load_from(fd, shdr.sh_offset, (void *)mr_shdr.address, shdr.sh_size) != (int)shdr.sh_size)
+        {
+            memblk_deallocate(mr_shdr);
+            memblk_deallocate(mr_symtab);
+            return -1;
+        }
+        if(load_from(fd, symtab.sh_offset, (void *)mr_symtab.address, symtab.sh_size) != (int)symtab.sh_size)
+        {
+            memblk_deallocate(mr_shdr);
+            memblk_deallocate(mr_symtab);
+            return -1;
+        }
+
+        for(unsigned int j = 0; j < nentries; j++)
+        {
+            auto rel = reinterpret_cast<const Elf32_Rel *>(mr_shdr.address + j * entsize);
+
+            auto r_sym_idx = rel->r_info >> 8;
+            auto r_type = rel->r_info & 0xff;
+
+            auto r_sym = reinterpret_cast<const Elf32_Sym *>(mr_symtab.address + r_sym_idx *
+                symtab.sh_entsize);
+
+            /*if((uint32_t)dest >= 0x240020d4 && (uint32_t)dest <= 0x240020d8)
+            {
+                __asm volatile
+                (
+                    "bkpt  \n"
+                    ::: "memory"
+                );
+            }*/
+
+            /* We generate executables with the -q option, therefore relocations are already applied
+                The only changes we need to make are to absolute relocations where we add base_ptr */
+
+            switch(r_type)
+            {
+                case R_ARM_TARGET1:
+                case R_ARM_TARGET2:
+                case R_ARM_ABS32:
+                    {
+                        if((base_ptr + rel->r_offset) & 0x3)
+                        {
+                            SEGGER_RTT_printf(0, "unaligned reloc at %x\n", base_ptr + rel->r_offset);
+                            __asm__ volatile ("bkpt \n" ::: "memory");
+                        }
+
+                        void *dest = (void *)(base_ptr + rel->r_offset);
+                        uint32_t A = *(uint32_t *)dest;
+                        uint32_t P = (uint32_t)dest;
+                        [[maybe_unused]] uint32_t Pa = P & 0xfffffffc;
+                        [[maybe_unused]] uint32_t T = ((r_sym->st_info & 0xf) == STT_FUNC) ? 1 : 0;
+                        [[maybe_unused]] uint32_t S = base_ptr + r_sym->st_value;
+                        uint32_t mask = 0xffffffff;
+                        uint32_t value = 0;
+
+                        bool is_stack = false;
+                        bool is_software_init_hook = false;
+
+                        if(r_sym->st_shndx == SHN_UNDEF && r_sym->st_name)
+                        {
+                            // need to special-case "_stack" and "software_init_hook" labels
+                            auto strtab_idx = symtab.sh_link;
+                            Elf32_Shdr strtab;
+                            if(load_from(fd, ehdr.e_shoff + strtab_idx * ehdr.e_shentsize, &strtab) != sizeof(shdr))
+                            {
+                                memblk_deallocate(mr_shdr);
+                                memblk_deallocate(mr_symtab);
+                                return -1;
+                            }
+
+                            // get a short name (just enough for comparison purposes)
+                            char cname[32];
+                            if(load_from(fd, strtab.sh_offset + r_sym->st_name, cname, 32) < 0)
+                            {
+                                memblk_deallocate(mr_shdr);
+                                memblk_deallocate(mr_symtab);
+                                return -1;
+                            }
+                            cname[31] = 0;
+
+                            if(strcmp("__stack", cname) == 0)
+                            {
+                                is_stack = true;
+                            }
+                            if(strcmp("software_init_hook", cname) == 0)
+                            {
+                                is_software_init_hook = true;
+                            }
+
+                            if(!is_stack && !is_software_init_hook)
+                            {
+                                break;      // leave as zero
+                            }
+                        }
+                    
+                        mask = 0xffffffffUL;
+                        A &= mask;
+                        value = A + base_ptr;
+
+                        if(is_stack)
+                        {
+                            value = stack_end;
+                        }
+                        else if(is_software_init_hook)
+                        {
+                            value = (uint32_t)(uintptr_t)prog_software_init_hook;
+                            value |= 0x1;
+                        }
+
+                        {
+                            auto cval = *(uint32_t *)dest;
+                            cval &= ~mask;
+                            cval |= (value & mask);
+                            *(uint32_t *)dest = cval;
+                        }
+                    }
+
+                    break;
+
+                case R_ARM_THM_JUMP24:
+                case R_ARM_THM_CALL:
+                case R_ARM_PREL31:
+                    /* relative reloc, do nothing */
+                    break;
+
+                case R_ARM_NONE:
+                    /* do nothing */
+                    break;
+
+                default:
+                    SEGGER_RTT_printf(0, "unknown rel type %d\n", r_type);
+                    return -1;
+            }
+        }
+
+        memblk_deallocate(mr_shdr);
+        memblk_deallocate(mr_symtab);
+    }
+
+    // Invalidate I-Cache for the appropriate region(s)
+    for(unsigned int i = 0; i < ehdr.e_phnum; i++)
+    {
+        Elf32_Phdr phdr;
+
+        if(deferred_call(syscall_lseek, fd, ehdr.e_phoff + i * ehdr.e_phentsize, SEEK_SET) == (off_t)-1)
+        {
+            return -1;
+        }
+        if(deferred_call(syscall_read, fd, (char *)&phdr, sizeof(phdr)) != sizeof(phdr))
+        {
+            return -1;
+        }
+
+        if(phdr.p_flags & PF_X)
+        {
+            CleanOrInvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Data);
+            InvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Instruction);
+        }
+        else if(phdr.p_flags & (PF_R | PF_W))
+        {
+            CleanOrInvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Data);
+        }
+    }
+
+    // setup args
+    init_args(pname, params, (void *)arg_base);
+    p.argc = *(int *)arg_base;
+    p.argv = (char **)(arg_base + 4);
+
+    SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)base_ptr + ehdr.e_entry);
     SEGGER_RTT_printf(0, "%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
         pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
 

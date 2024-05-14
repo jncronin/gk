@@ -632,7 +632,7 @@ void *ext4_thread(void *_p)
 void init_ext4()
 {
     Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, kernel_proc, 
-        PreferM4));
+        PreferM7));
 }
 
 int sd_open(ext4_blockdev *bdev)
