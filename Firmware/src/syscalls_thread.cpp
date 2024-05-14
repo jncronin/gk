@@ -183,6 +183,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     // See if we can allocate a larger heap now we have closed the file
     if(proc->heap.length < heap_size)
     {
+        auto old_heap = proc->heap;
         memblk_deallocate(proc->heap);
 
         uint32_t act_heap_size = heap_size;
@@ -212,6 +213,15 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
         {
             SEGGER_RTT_printf(0, "proccreate: couldn't allocate heap size of %u, only %u available\n",
                 heap_size, act_heap_size);
+        }
+
+        auto new_heap = proc->heap;
+        if(new_heap != old_heap)
+        {
+            // update MPU
+            startup_thread->tss.mpuss[3] = MPUGenerate(proc->heap.address,
+                proc->heap.length, 3, false,
+                RW, RW, WBWA_NS);
         }
     }
 

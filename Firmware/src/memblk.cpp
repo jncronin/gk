@@ -258,3 +258,18 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
 
     return mr;
 }
+
+bool operator==(const MemRegion &a, const MemRegion &b)
+{
+    if(!a.valid && !b.valid) return true;
+    if(a.address != b.address) return false;
+    if(a.length != b.length) return false;
+    if(a.rt != b.rt) return false;
+    if(a.valid != b.valid) return false;
+    return true;
+}
+
+bool operator!=(const MemRegion &a, const MemRegion &b)
+{
+    return !(a == b);
+}
