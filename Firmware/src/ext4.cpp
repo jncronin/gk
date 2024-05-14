@@ -57,6 +57,14 @@ EXT4_DATA static ext4_blockdev sd_part;
 /* message queue */
 __attribute__((section(".sram4"))) static FixedQueue<ext4_message, 8> ext4_queue;
 
+/* Implements a LRU cache for fstat calls */
+
+#include "lru_cache.h"
+#include <sys/stat.h>
+
+SRAM4_DATA static LRUCacheRegion<unsigned int, struct stat, 0> fstat_cache(4096/sizeof(struct stat));
+
+
 extern "C" void *ext4_user_buf_alloc(size_t n)
 {
     auto reg = memblk_allocate(n, AXISRAM);
@@ -338,6 +346,7 @@ static void handle_write_message(ext4_message &msg)
 
     if(extret == EOK)
     {
+        fstat_cache.clear();
         msg.ss_p->ival1 = static_cast<int>(bw);
         msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
@@ -415,39 +424,51 @@ static void handle_fstat_message(ext4_message &msg)
     auto f = msg.params.fstat_params.e4f;
     auto d = msg.params.fstat_params.e4d;
 
-    if((extret = ext4_atime_get(fname, &t)) != EOK)
-        goto _err;
-    buf.st_atim = lwext_time_to_timespec(t);
+    auto ino = f ? f->inode : d->f.inode;
+    if(fstat_cache.try_get(ino, &buf))
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fstat: %s obtained from cache\n", msg.params.fstat_params.pathname);
+    }
+    else
+    {
+        if((extret = ext4_atime_get(fname, &t)) != EOK)
+            goto _err;
+        buf.st_atim = lwext_time_to_timespec(t);
 
-    if((extret = ext4_ctime_get(fname, &t)) != EOK)
-        goto _err;
-    buf.st_ctim = lwext_time_to_timespec(t);
+        if((extret = ext4_ctime_get(fname, &t)) != EOK)
+            goto _err;
+        buf.st_ctim = lwext_time_to_timespec(t);
 
-    if((extret = ext4_mtime_get(fname, &t)) != EOK)
-        goto _err;
-    buf.st_mtim = lwext_time_to_timespec(t);
+        if((extret = ext4_mtime_get(fname, &t)) != EOK)
+            goto _err;
+        buf.st_mtim = lwext_time_to_timespec(t);
 
-    buf.st_dev = 0;
-    buf.st_ino = f ? f->inode : d->f.inode;
-    buf.st_mode = f ? _IFREG : _IFDIR;
-    
-    uint32_t mode;
-    if((extret = ext4_mode_get(fname, &mode)) != EOK)
-        goto _err;
-    buf.st_mode |= mode;
-    buf.st_nlink = 1;
-    
-    uint32_t uid;
-    uint32_t gid;
-    if((extret = ext4_owner_get(fname, &uid, &gid)) != EOK)
-        goto _err;
-    buf.st_uid = static_cast<uid_t>(uid);
-    buf.st_gid = static_cast<gid_t>(gid);
+        buf.st_dev = 0;
+        buf.st_ino = f ? f->inode : d->f.inode;
+        buf.st_mode = f ? _IFREG : _IFDIR;
+        
+        uint32_t mode;
+        if((extret = ext4_mode_get(fname, &mode)) != EOK)
+            goto _err;
+        buf.st_mode |= mode;
+        buf.st_nlink = 1;
+        
+        uint32_t uid;
+        uint32_t gid;
+        if((extret = ext4_owner_get(fname, &uid, &gid)) != EOK)
+            goto _err;
+        buf.st_uid = static_cast<uid_t>(uid);
+        buf.st_gid = static_cast<gid_t>(gid);
 
-    buf.st_rdev = 0;
-    buf.st_size = f ? f->fsize : 0;
-    buf.st_blksize = 512;
-    buf.st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
+        buf.st_rdev = 0;
+        buf.st_size = f ? f->fsize : 0;
+        buf.st_blksize = 512;
+        buf.st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
+
+        // add to cache
+        fstat_cache.push(ino, buf);
+    }
 
     // handle M4 copying to M7 DTCM
     {
@@ -523,6 +544,7 @@ void handle_mkdir_message(ext4_message &msg)
     free((void *)msg.params.open_params.pathname);
     if(extret == EOK)
     {
+        fstat_cache.clear();
         msg.ss_p->ival1 = 0;
         msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
     }
