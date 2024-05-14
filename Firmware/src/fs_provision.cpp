@@ -496,7 +496,10 @@ extern "C" void *gz_malloc_buffer(size_t n)
     if(!mr.valid)
         mr = memblk_allocate(n, MemRegionType::SDRAM);
     if(!mr.valid)
+    {
+        __asm__ volatile ("bkpt \n" ::: "memory");
         return nullptr;
+    }
     
     gz_malloc_regions[mr.address] = mr;
     return (void *)mr.address;
@@ -511,4 +514,20 @@ extern "C" void gz_free_buffer(void *address)
         memblk_deallocate(mr);
         gz_malloc_regions.erase(iter);
     }
+}
+
+extern "C" void *zcalloc(void *opaque, unsigned items, unsigned size)
+{
+    auto len = items * size;
+    auto ret = gz_malloc_buffer(len);
+    if(ret)
+    {
+        memset(ret, 0, len);
+    }
+    return ret;
+}
+
+extern "C" void zcfree(void *opaque, void *ptr)
+{
+    gz_free_buffer(ptr);
 }
