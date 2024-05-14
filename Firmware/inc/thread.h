@@ -43,7 +43,7 @@ class Thread
         thread_saved_state tss;         /* always first member */
 
         bool is_privileged;
-        SRAM4String name;
+        std::string name;
 
         int base_priority;
 

@@ -13,7 +13,7 @@
 #include "gk_conf.h"
 
 #define DEBUG_SD    0
-#define PROFILE_SDT 1
+#define PROFILE_SDT 0
 
 extern Spinlock s_rtt;
 extern Process kernel_proc;

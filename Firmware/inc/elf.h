@@ -16,6 +16,14 @@ int elf_load_memory(const void *elf, const std::string &procname,
 	MemRegion thread0_stack = InvalidMemregion(),
 	bool is_priv = true);
 
+int elf_load_fildes(int fd,
+	Process &p,
+	uint32_t *epoint,
+	const std::string &pname,
+	uint32_t stack_end,
+	const std::vector<std::string> &params = empty_string_vector);
+
+
 void handle_newlibinithook(uint32_t lr, uint32_t *retaddr);
 
 /* Copyright (C) 2013 by John Cronin <jncronin@tysos.org>
