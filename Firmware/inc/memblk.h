@@ -13,6 +13,9 @@ struct MemRegion
     bool valid;
 };
 
+bool operator==(const MemRegion &a, const MemRegion &b);
+bool operator!=(const MemRegion &a, const MemRegion &b);
+
 static constexpr MemRegion InvalidMemregion()
 {
     MemRegion ret = {};
