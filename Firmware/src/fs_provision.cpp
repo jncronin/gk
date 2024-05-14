@@ -214,15 +214,28 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
 
     int n_zero_sectors = 0;
 
+    // Get scratch region for transferring data
+    auto mem = memblk_allocate(4*1024*1024, MemRegionType::SDRAM);
+    if(!mem.valid)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision: couldn't allocate buffer\n");
+        return -1;
+    }
+
     while(true)
     {
         auto ffret = ff(tar_header, 512, f);
         if(ffret == 0)
+        {
+            memblk_deallocate(mem);
             return 0;   // EOF
+        }
         if(ffret != 512)
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "fs_provision: tar header read failed\n");
+            memblk_deallocate(mem);
             return -1;
         }
 
@@ -231,7 +244,10 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         {
             n_zero_sectors++;
             if(n_zero_sectors >= 2)
+            {
+                memblk_deallocate(mem);
                 return 0;       // EOF
+            }
             continue;
         }
         else
@@ -244,6 +260,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "fs_provision: tar not ustar\n");
+            memblk_deallocate(mem);
             return -1;
         }
 
@@ -279,28 +296,9 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             // regular file
 
             // get total to read
-            uint64_t fsize_to_read = (fsize + 511ULL) & ~511ULL;
+            uint64_t total_fsize_to_read = (fsize + 511ULL) & ~511ULL;
 
-            auto mem = memblk_allocate(fsize_to_read, MemRegionType::AXISRAM);
-            if(!mem.valid)
-                mem = memblk_allocate(fsize_to_read, MemRegionType::SDRAM);
-            if(!mem.valid)
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: couldn't allocate buffer\n");
-                return -1;
-            }
-
-            ffret = ff((void *)mem.address, fsize_to_read, f);
-            if(ffret != fsize_to_read)
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: failed to read file: %d\n", ffret);
-                memblk_deallocate(mem);
-                return -1;
-            }
-
-            // write to ext4
+            // open ext4 file
             int fd = deferred_call(syscall_open, fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0);
             if(fd < 0)
             {
@@ -309,16 +307,46 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 memblk_deallocate(mem);
                 return -1;
             }
-            auto bw = deferred_call(syscall_write, fd, (char *)mem.address, (int)fsize);
-            close(fd);            
-            memblk_deallocate(mem);
-            if(bw != (int)fsize)
+
+            // load in 4 MiB increments
+            uint64_t offset = 0;
+
+            while(true)
             {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: fwrite failed: %d, expected %d\n",
-                    bw, (int)fsize);
-                return -1;
+                auto fsize_to_read = total_fsize_to_read - offset;
+                if(fsize_to_read == 0U)
+                    break;
+                if(fsize_to_read > mem.length)
+                    fsize_to_read = mem.length;
+                
+                ffret = ff((void *)mem.address, fsize_to_read, f);
+                if(ffret != fsize_to_read)
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "fs_provision: failed to read file: %d\n", ffret);
+                    memblk_deallocate(mem);
+                    return -1;
+                }
+
+                auto fsize_to_write = fsize - offset;
+                if(fsize_to_write == 0U)
+                    break;
+                if(fsize_to_write > mem.length)
+                    fsize_to_write = mem.length;
+
+                auto bw = deferred_call(syscall_write, fd, (char *)mem.address, (int)fsize_to_write);
+                if(bw != (int)fsize_to_write)
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "fs_provision: fwrite failed: %d, expected %d\n",
+                        bw, (int)fsize);
+                    memblk_deallocate(mem);
+                    return -1;
+                }
+
+                offset += fsize_to_read;
             }
+            close(fd);            
         }
     }
 }
