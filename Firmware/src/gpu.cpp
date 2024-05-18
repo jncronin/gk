@@ -27,8 +27,12 @@ static const auto mdma = ((MDMA_Channel_TypeDef *)(MDMA_BASE + 0x40U + 0x40U * g
 SRAM4_DATA static uint64_t last_flip_time = 0ULL;
 #endif
 
-static inline void *get_scaling_bb()
+static inline void *get_scaling_bb(void **old_buf = nullptr)
 {
+    if(old_buf)
+    {
+        *old_buf = scaling_bb[(scaling_bb_idx + 1) & 1];
+    }
     return scaling_bb[scaling_bb_idx & 1];
 }
 
@@ -509,10 +513,15 @@ void *gpu_thread(void *p)
                 case gpu_message_type::FlipBuffers:
                     wait_dma2d();
                     {
-                        auto new_buf = screen_flip();
+                        void *old_buf;
+                        auto new_buf = screen_flip(&old_buf);
                         if(g.dest_addr)
                         {
                             *(void **)g.dest_addr = new_buf;
+                        }
+                        if(g.src_addr_color)
+                        {
+                            *(void **)g.src_addr_color = old_buf;
                         }
                     }
                     scr_vsync.Wait();
@@ -535,9 +544,14 @@ void *gpu_thread(void *p)
                     wait_dma2d();
                     scaling_bb_idx++;
                     {
+                        void *old_buf;
                         if(g.dest_addr)
                         {
-                            *(void **)g.dest_addr = get_scaling_bb();
+                            *(void **)g.dest_addr = get_scaling_bb(&old_buf);
+                            if(g.src_addr_color)
+                            {
+                                *(void **)g.src_addr_color = old_buf;
+                            }
                         }
                     }
                     break;
