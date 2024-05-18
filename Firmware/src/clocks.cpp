@@ -42,10 +42,10 @@ void init_clocks()
     RCC->CR = cr;
     while(!(RCC->CR & RCC_CR_HSERDY));
 
-    /* Configure PLLs - TODO: these have been changed - all "M"s are /2 (PLL3 has been fixed)
-        PLL1 = HSE16 / M8 * N384
-            /P2 = 384 MHz -> SYSCLK 
-            /Q4 = 192 MHz -> SDMMC1, SPI1, FMC, RNG
+    /* Configure PLLs - TODO: these have been changed - all "M"s are /2 (PLL1 + 3 has been fixed)
+        PLL1 = HSE16 / M2 * N96 = 768                   (overclock *120 = 960)
+            /P2 = 384 MHz -> SYSCLK                     (overclock = 480)
+            /Q4 = 192 MHz -> SDMMC1, SPI1, FMC, RNG     (overclock = 240)
             /R80 = 9.6 MHz -> unused (only able to use for TRACECLK)
             
         PLL2 = HSE16 / M8 * N172 . frac263
@@ -97,7 +97,13 @@ void init_clocks()
     RCC->PLL1DIVR = (1UL << RCC_PLL1DIVR_R1_Pos) |
         (3UL << RCC_PLL1DIVR_Q1_Pos) |
         (1UL << RCC_PLL1DIVR_P1_Pos) |
-        (95UL << RCC_PLL1DIVR_N1_Pos);
+        (
+#if GK_OVERCLOCK
+            119UL
+#else
+            95UL
+#endif
+            << RCC_PLL1DIVR_N1_Pos);
     RCC->PLL2DIVR = (1UL << RCC_PLL2DIVR_R2_Pos) |
         (0UL << RCC_PLL2DIVR_Q2_Pos) |
         (6UL << RCC_PLL2DIVR_P2_Pos) |
@@ -213,7 +219,11 @@ bool clock_set_cpu(clock_cpu_speed speed)
             RCC->D1CFGR = (0UL << RCC_D1CFGR_D1CPRE_Pos) |
                 (4UL << RCC_D1CFGR_D1PPRE_Pos) |
                 (8UL << RCC_D1CFGR_HPRE_Pos);
+#if GK_OVERCLOCK
+            SystemCoreClock = 480000000;
+#else
             SystemCoreClock = 384000000;
+#endif
             break;
             
         case clock_cpu_speed::cpu_192_192:
