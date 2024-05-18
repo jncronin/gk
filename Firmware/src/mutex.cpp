@@ -95,6 +95,7 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
     {
         auto ret = signal_value;
         do_op(op, vop);
+        waiting_thread = nullptr;
         return ret;
     }
     waiting_thread = t;
@@ -107,6 +108,7 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
     {
         auto ret = signal_value;
         do_op(op, vop);
+        waiting_thread = nullptr;
         return ret;
     }
     return signal_value;    

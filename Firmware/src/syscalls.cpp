@@ -213,7 +213,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             {
                 auto t = GetCurrentThreadForCore();
                 CriticalGuard cg(t->sl);
-                auto wss_ret = t->ss.WaitOnce();
+                auto wss_ret = t->ss.WaitOnce(SimpleSignal::Set, 0U);
                 if(wss_ret)
                 {
                     auto p = reinterpret_cast<WaitSimpleSignal_params *>(r2);
