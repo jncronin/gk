@@ -56,7 +56,7 @@ void *screen_flip_overlay(bool visible, int alpha)
     return scr_bufs_overlay[wbuf];
 }
 
-void *screen_flip()
+void *screen_flip(void **old_buf)
 {
     CriticalGuard cg(s_scrbuf);
     scr_cbuf++;
@@ -97,6 +97,10 @@ void *screen_flip()
         LTDC_Layer1->CR &= ~LTDC_LxCR_LEN;
     }
     LTDC->SRCR = LTDC_SRCR_VBR;
+    if(old_buf)
+    {
+        *old_buf = scr_bufs[rbuf];
+    }
     return scr_bufs[wbuf];
 }
 
