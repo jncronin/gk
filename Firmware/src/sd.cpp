@@ -903,7 +903,6 @@ void *sd_thread(void *param)
             }
 #endif
 
-            sdt_ready.Reset();
             auto ret = sd_issue_command(cmd_id, resp_type::R1, sdr.block_start * (is_hc ? 1U : 512U), nullptr, true);
 
             if(ret != 0)
@@ -915,7 +914,7 @@ void *sd_thread(void *param)
                 }
             }
 
-            sdt_ready.Wait();
+            sdt_ready.Wait(SimpleSignal::Set, 0U);
             if(sdr.res_out)
             {
                 *sdr.res_out = sd_status;
