@@ -368,11 +368,14 @@ struct timespec lwext_time_to_timespec(uint32_t t)
 
 static inline void copy_dmaaware(void *dest, const void *src, size_t n)
 {
+#if DEBUG_EXT
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "copy_dmaaware: dest: %x, src: %x, len %d, coreid: %d\n",
             (uint32_t)(uintptr_t)dest, (uint32_t)(uintptr_t)src, n, GetCoreID());
     }
+#endif
+
     // handle M4 copying to M7 DTCM
     auto pstat = (uint32_t)(uintptr_t)dest;
     if((pstat >= 0x20000000) && (pstat < 0x20020000) && (GetCoreID() == 1))
@@ -400,10 +403,12 @@ static inline void copy_dmaaware(void *dest, const void *src, size_t n)
         while(!(dmac->CISR & MDMA_CISR_CTCIF)) {}
 
         // debug
+#if DEBUG_EXT
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "copy_dmaaware: cisr: %x\n", dmac->CISR);
         }
+#endif
         dmac->CIFCR = 0x1fU;
     }
     else
@@ -427,8 +432,10 @@ static void handle_fstat_message(ext4_message &msg)
     auto ino = f ? f->inode : d->f.inode;
     if(fstat_cache.try_get(ino, &buf))
     {
+#if DEBUG_EXT
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "fstat: %s obtained from cache\n", msg.params.fstat_params.pathname);
+#endif
     }
     else
     {
@@ -471,14 +478,17 @@ static void handle_fstat_message(ext4_message &msg)
     }
 
     // handle M4 copying to M7 DTCM
+#if DEBUG_EXT
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "fstat: precopy\n");
     }
+#endif
     copy_dmaaware(msg.params.fstat_params.st, &buf, sizeof(struct stat));
     msg.ss_p->ival1 = 0;
     msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
 
+#if DEBUG_EXT
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "fstat: %s: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
@@ -489,6 +499,7 @@ static void handle_fstat_message(ext4_message &msg)
             buf.st_mode,
             buf.st_size);
     }
+#endif
     
     return;
 
