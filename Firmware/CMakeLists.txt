@@ -11,6 +11,7 @@ message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 
 include(cmake/utils.cmake)
 
+add_definitions(-DCONFIG_BLOCK_DEV_CACHE_SIZE=32)
 add_subdirectory(lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
