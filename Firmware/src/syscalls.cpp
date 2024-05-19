@@ -218,7 +218,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 {
                     auto p = reinterpret_cast<WaitSimpleSignal_params *>(r2);
                     *p = t->ss_p;
-                    t->ss.Reset();
                 }
                 *reinterpret_cast<uint32_t *>(r1) = wss_ret;
             }

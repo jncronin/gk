@@ -138,7 +138,6 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
         if(waiting_thread->base_priority > t->base_priority)
             hpt = true;
         signal_thread_woken(waiting_thread);
-        waiting_thread = nullptr;
     }
     if(hpt)
     {
@@ -171,13 +170,6 @@ void SimpleSignal::do_op(SignalOperation op, uint32_t vop)
             signal_value ^= vop;
             break;
     }
-}
-
-void SimpleSignal::Reset()
-{
-    CriticalGuard cg(sl);
-    waiting_thread = nullptr;
-    signal_value = 0;
 }
 
 void Condition::Wait(uint64_t tout, int *signalled_ret)
