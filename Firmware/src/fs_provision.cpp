@@ -223,6 +223,14 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         return -1;
     }
 
+#if 1
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision: scratch @ %x, length %d\n",
+            mem.address, mem.length);
+    }
+#endif
+
     while(true)
     {
         auto ffret = ff(tar_header, 512, f);
@@ -342,6 +350,12 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                         bw, (int)fsize);
                     memblk_deallocate(mem);
                     return -1;
+                }
+
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "fs_provision: read %d, wrote %d at offset %d\n",
+                        (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                 }
 
                 offset += fsize_to_read;
@@ -487,6 +501,7 @@ int fs_provision()
                         SEGGER_RTT_printf(0, "fs_provision: provisioned %s\n", fi.fname);
                     }
 
+#if 0
                     // delete file
                     if(f_unlink(fi.fname) != FR_OK)
                     {
@@ -494,6 +509,7 @@ int fs_provision()
                         SEGGER_RTT_printf(0, "fs_provision: failed to delete %s: %d\n",
                             fi.fname, f_unlink(fi.fname));
                     }
+#endif
                 }
                 else
                 {

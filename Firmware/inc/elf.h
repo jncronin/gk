@@ -90,6 +90,8 @@ typedef struct {
 	Elf32_Word			sh_entsize;
 } Elf32_Shdr;
 
+static_assert(sizeof(Elf32_Shdr) == 40);
+
 #define SHT_NULL		0
 #define SHT_PROGBITS		1
 #define SHT_SYMTAB		2
