@@ -69,6 +69,8 @@ int syscall_closedir(int dirfd, int *_errno);
 
 int syscall_peekevent(Event *ev, int *_errno);
 
+int syscall_setwindowtitle(const char *title, int *_errno);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
