@@ -20,6 +20,7 @@ static void *supervisor_thread(void *p);
 ButtonWidget rw_test, rw_test2;
 ImageButtonWidget imb_bright_up, imb_bright_down;
 GridWidget scr_test;
+LabelWidget lab_caption;
 static unsigned int scr_alpha = 0;
 
 void init_supervisor()
@@ -114,20 +115,20 @@ void *supervisor_thread(void *p)
 {
     rw_test.x = 32;
     rw_test.w = 200;
-    rw_test.y = 32;
+    rw_test.y = 64;
     rw_test.h = 100;
     rw_test.text = "Hi there";
     rw_test.OnClick = test_onclick;
 
     rw_test2.x = 264;
     rw_test2.w = 200;
-    rw_test2.y = 32;
+    rw_test2.y = 64;
     rw_test2.h = 100;
     rw_test2.text = "Eh?";
 
     imb_bright_down.x = 640-80-16-80-16;
     imb_bright_down.w = 80;
-    imb_bright_down.y = 32;
+    imb_bright_down.y = 64;
     imb_bright_down.h = 80;
     imb_bright_down.image = brightness_down;
     imb_bright_down.img_w = 64;
@@ -136,12 +137,18 @@ void *supervisor_thread(void *p)
 
     imb_bright_up.x = 640-80-16;
     imb_bright_up.w = 80;
-    imb_bright_up.y = 32;
+    imb_bright_up.y = 64;
     imb_bright_up.h = 80;
     imb_bright_up.image = brightness_up;
     imb_bright_up.img_w = 64;
     imb_bright_up.img_h = 64;
     imb_bright_up.OnClick = imb_brightness_click;
+
+    lab_caption.x = 16;
+    lab_caption.y = 16;
+    lab_caption.w = 640 - 32;
+    lab_caption.h = 32;
+    lab_caption.text = "GK";
 
     scr_test.x = 0;
     scr_test.y = 240;
@@ -161,6 +168,7 @@ void *supervisor_thread(void *p)
     //scr_test.AddChildOnGrid(rw_test2);
     scr_test.AddChildOnGrid(imb_bright_down);
     scr_test.AddChildOnGrid(imb_bright_up);
+    scr_test.AddChild(lab_caption);
 
     Widget *cur_scr = &scr_test;
 
@@ -241,6 +249,15 @@ void *supervisor_thread(void *p)
                             do_update = true;
                         }
                     }
+                    break;
+
+                case Event::CaptionChange:
+                    lab_caption.text = focus_process ? 
+                        (focus_process->window_title.empty() ?
+                            focus_process->name :
+                            focus_process->window_title) :
+                        "GK";
+                    do_update = true;
                     break;
 
                 default:

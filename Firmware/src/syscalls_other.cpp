@@ -238,3 +238,22 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
     }
     return 0;
 }
+
+int syscall_setwindowtitle(const char *title, int *_errno)
+{
+    if(!title)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto &p = GetCurrentThreadForCore()->p;
+    {
+        CriticalGuard c_p(p.sl);
+        p.window_title = std::string(title, GK_MAX_WINDOW_TITLE);
+        p.events.Push({ .type = Event::CaptionChange });
+    }
+    extern Process p_supervisor;
+    p_supervisor.events.Push({ .type = Event::CaptionChange });
+    return 0;
+}

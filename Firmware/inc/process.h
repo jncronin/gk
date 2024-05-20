@@ -19,7 +19,8 @@ class Process
     public:
         Spinlock sl;
         
-        SRAM4String name;
+        std::string name;
+        std::string window_title;
         SRAM4Vector<Thread *> threads;
 
         MemRegion heap;

@@ -31,6 +31,8 @@
 
 #define GK_NPRIORITIES      (GK_PRIORITY_VHIGH + 1)
 
+#define GK_MAX_WINDOW_TITLE 32
+
 
 #define SRAM4_DATA __attribute__((section(".sram4")))
 
