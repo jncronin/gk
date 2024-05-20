@@ -940,6 +940,30 @@ void *sd_thread(void *param)
 #endif
             if(sd_multi)
             {
+                if(!sdr.is_read)
+                {
+                    // poll status register until write done
+                    while(true)
+                    {
+                        uint32_t resp;
+                        int sr_ret = sd_issue_command(13, resp_type::R1, rca, &resp);
+                        if(sr_ret != 0)
+                        {
+                            sd_ready = false;
+                            break;
+                        }
+                        if(resp != 0xd00)
+                        {
+                            CriticalGuard cg(s_rtt);
+                            SEGGER_RTT_printf(0, "sd: not in rcv state: %x\n", resp);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+
                 // send stop command
                 [[maybe_unused]] int stop_ret = sd_issue_command(12, resp_type::R1b);
 #if DEBUG_SD
