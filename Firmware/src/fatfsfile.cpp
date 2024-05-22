@@ -56,7 +56,7 @@ off_t FatfsFile::Lseek(off_t offset, int whence, int *_errno)
     auto fr = f_lseek(f, loc);
     if(fr == FR_OK)
     {
-        return 0;
+        return f_tell(f);
     }
     else
     {

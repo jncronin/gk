@@ -13,7 +13,8 @@ struct ipi_message
         M4Wakeup,
         ThreadUnblocked };
     ipi_message_type_t type;
-    volatile bool *complete;
+    
+    SimpleSignal *ss;
 
     union
     {

@@ -111,7 +111,8 @@ int main()
     s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
-    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7));
+    auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM);
+    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
 
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     Schedule(Thread::Create("init_m4", init_m4_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::M4Only));

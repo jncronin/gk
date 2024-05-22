@@ -18,7 +18,11 @@
 extern Spinlock s_rtt;
 extern Process kernel_proc;
 
+#if GK_OVERCLOCK
+#define SDCLK   240000000
+#else
 #define SDCLK   192000000
+#endif
 
 #define SDCLK_IDENT     200000
 #define SDCLK_DS        25000000
@@ -303,6 +307,10 @@ static void SDMMC_set_clock(int freq)
     if(div == 1)
     {
         div = 0;
+    }
+    else if(div & 0x1)
+    {
+        div = (div / 2) + 1;
     }
     else
     {
@@ -721,7 +729,7 @@ void sd_reset()
 #if GK_SD_USE_HS_MODE
             if(fg1_setting == 1)
             {
-                SDMMC_set_clock(48000000);
+                SDMMC_set_clock(SDCLK_HS);
                 SDMMC1->DTIMER = timeout_ns / clock_period_ns;
                 {
                     CriticalGuard cg(s_rtt);
@@ -1017,9 +1025,16 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
         To avoid this, if we are unaligned then also clean the cache here so that the memory
         has the correct data once we invalidate it again later (after a read). */
-    if(!is_read || (uint32_t)mem_address & 0x1f || ((uint32_t)mem_address + block_count * 512U) & 0x1f)    
+    auto cache_start = (uint32_t)mem_address;
+    auto cache_end = cache_start + block_count * 512U;
+    if(!is_read || cache_start & 0x1f || cache_end & 0x1f)    
     {
-        CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
+        cache_start &= ~0x1fU;
+        if(cache_end & 0x1fU)
+        {
+            cache_end = (cache_end + 0x1fU) & ~0x1fU;
+        }
+        CleanM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
 
     auto send_ret = sd_perform_transfer_async(req);
@@ -1032,7 +1047,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
     if(is_read)
     {
-        InvalidateM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
+        InvalidateM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
 
     int cret = *ret;
@@ -1070,9 +1085,16 @@ static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t bloc
 
         To avoid this, if we are unaligned then also clean the cache here so that the memory
         has the correct data once we invalidate it again later (after a read). */
-    if(!is_read || (uint32_t)mem_address & 0x1f || ((uint32_t)mem_address + block_count * 512U) & 0x1f)    
+    auto cache_start = (uint32_t)mem_address;
+    auto cache_end = cache_start + block_count * 512U;
+    if(!is_read || cache_start & 0x1f || cache_end & 0x1f)    
     {
-        CleanM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
+        cache_start &= ~0x1fU;
+        if(cache_end & 0x1fU)
+        {
+            cache_end = (cache_end + 0x1fU) & ~0x1fU;
+        }
+        CleanM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
 
     auto send_ret = sd_perform_transfer_async(req);
@@ -1085,7 +1107,7 @@ static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t bloc
 
     if(is_read)
     {
-        InvalidateM7Cache((uint32_t)mem_address, block_count * 512U, CacheType_t::Data);
+        InvalidateM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
 
     int cret = *ret;
