@@ -12,9 +12,7 @@
 #include "zlib.h"
 #include "process.h"
 
-#define DEBUG_FS_PROVISION      1
-
-#define FS_PROVISION_BLOCK_SIZE     (8*1024*1024)
+#define FS_PROVISION_BLOCK_SIZE     (4*1024*1024)
 
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
@@ -39,12 +37,7 @@ SRAM4_DATA static volatile unsigned int fake_mbr_sector_count = 0;
 SRAM4_DATA static volatile unsigned int fake_mbr_lba = 0;
 static FATFS fs;
 static FIL fp;
-
 extern Spinlock s_rtt;
-
-#if DEBUG_FS_PROVISION
-SRAM4_DATA MemRegion mr_known_good;
-#endif
 
 /* Generates a fake MBR which is exported whenever USB MSC asks to read
     sector 0 */
@@ -138,24 +131,6 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sector, UINT count)
     unsigned int act_lba = sector + fake_mbr_lba;
     if(!fake_mbr_check_extents(act_lba, count))
         return RES_PARERR;
-
-#if DEBUG_FS_PROVISION
-    {
-        auto ptr = (uint32_t)(uintptr_t)buff;
-        if(ptr >= 0x20000000 && ptr < 0x24000000)
-        {
-            __asm__ volatile ("bkpt \n" ::: "memory");
-        }
-    }
-#endif
-
-#if 0
-    {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: disk_read, buff: %x, act_lba: %u, count: %u\n",
-            (uint32_t)(uintptr_t)buff, act_lba, count);
-    }
-#endif
     
     auto sret = sd_perform_transfer(act_lba, count, buff, true);
     if(sret != 0)
@@ -171,14 +146,6 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buff, LBA_t sector, UINT count)
     unsigned int act_lba = sector + fake_mbr_lba;
     if(!fake_mbr_check_extents(act_lba, count))
         return RES_PARERR;
-
-#if 0
-    {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: disk_write, buff: %x, act_lba: %u, count: %u\n",
-            (uint32_t)(uintptr_t)buff, act_lba, count);
-    }
-#endif
 
     auto sret = sd_perform_transfer(act_lba, count, (void *)buff, false);
     if(sret != 0)
@@ -245,11 +212,7 @@ static bool is_zero_sector(const char *hdr)
     return true;
 }
 
-static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
-#if DEBUG_FS_PROVISION
-    , bool is_known_good = false
-#endif
-)
+static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
 {
     lf(f, 0);
 
@@ -264,14 +227,6 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
         return -1;
     }
     memset((void *)mem.address, 0, mem.length);
-
-#if 1
-    {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: scratch @ %x, length %d\n",
-            mem.address, mem.length);
-    }
-#endif
 
     while(true)
     {
@@ -361,11 +316,6 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
             // load in 4 MiB increments
             uint64_t offset = 0;
 
-#if DEBUG_FS_PROVISION
-            uint32_t csum = 0;
-            uint32_t csum_pre = 0;
-#endif
-
             while(true)
             {
                 auto fsize_to_read = total_fsize_to_read - offset;
@@ -389,20 +339,6 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
                 if(fsize_to_write > mem.length)
                     fsize_to_write = mem.length;
 
-#if 0
-                for(unsigned int i = 0; i < fsize_to_write; i += 4)
-                {
-                    auto cval = *(uint32_t *)(mem.address + i);
-                    csum_pre += cval;
-                }
-
-                {
-                    CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "fs_provision: current csum_pre: %x\n", csum_pre);
-                }
-#endif
-
-#if 1
                 auto bw = deferred_call(syscall_write, fd, (char *)mem.address, (int)fsize_to_write);
                 if(bw != (int)fsize_to_write)
                 {
@@ -412,7 +348,6 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
                     memblk_deallocate(mem);
                     return -1;
                 }
-#endif
 
                 {
                     CriticalGuard cg(s_rtt);
@@ -420,68 +355,12 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
                         (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                 }
 
-#if DEBUG_FS_PROVISION
-                if(offset == 0)
-                {
-                    if(is_known_good)
-                    {
-                        memcpy((void *)mr_known_good.address, (void *)mem.address, fsize_to_read);
-                    }
-                    else
-                    {
-                        for(unsigned int i = 0; i < fsize_to_read; i++)
-                        {
-                            if(*(unsigned char *)(mr_known_good.address + i) !=
-                                *(unsigned char *)(mem.address + i))
-                            {
-                                // discrepancy
-                                CriticalGuard cg(s_rtt);
-                                SEGGER_RTT_printf(0, "fs_provision: discrepancy at %x vs %x\n",
-                                    mr_known_good.address + i, mem.address + i);
-                            }
-                        }
-                    }
-                }
-#endif
-
                 offset += fsize_to_read;
-
-#if DEBUG_FS_PROVISION
-                for(unsigned int i = 0; i < fsize_to_write; i += 4)
-                {
-                    auto cval = *(uint32_t *)(mem.address + i);
-                    csum += cval;
-                }
-
-                {
-                    CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "fs_provision: current csum: %x\n", csum);
-                }
-#endif
             }
             close(fd);
-#if DEBUG_FS_PROVISION
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: csum %x, csum_pre: %x\n", csum, csum_pre);
-            }
-#endif
         }
     }
 }
-
-#if DEBUG_FS_PROVISION
-static void load_known_good()
-{
-    mr_known_good = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM);
-    auto fr = f_open(&fp, "/DOSBOX-0.74-gk2.tar", FA_READ);
-    if(fr == FR_OK)
-    {
-        fs_provision_tarball(direct_fread, direct_lseek, &fp, true);
-        f_close(&fp);
-    }
-}
-#endif
 
 int fs_provision()
 {
@@ -497,10 +376,6 @@ int fs_provision()
         SEGGER_RTT_printf(0, "fs_provision: f_mount failed %d\n", fr);
         return fr;
     }
-
-#if DEBUG_FS_PROVISION
-    load_known_good();
-#endif
 
     // List root directory
     DIR dp;
@@ -569,46 +444,6 @@ int fs_provision()
                     break;
                 }
 
-#if DEBUG_FS_PROVISION
-                {
-                    auto mem = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM);
-                    uint32_t csum = 0;
-                    unsigned int offset = 0;
-                    auto fsz = f_size(&fp);
-
-                    while(true)
-                    {
-                        auto to_read = fsz - offset;
-                        if(!to_read) break;
-
-                        unsigned int br;
-                        if(to_read > mem.length) to_read = mem.length;
-                        if(f_read(&fp, (void*)mem.address, to_read, &br) != FR_OK || to_read != br)
-                        {
-                            CriticalGuard cg(s_rtt);
-                            SEGGER_RTT_printf(0, "fs_provision: f_read failed\n");
-                            break;
-                        }
-
-                        for(unsigned int i = 0; i < to_read; i += 4)
-                        {
-                            csum += *(uint32_t *)(mem.address + i);
-                        }
-
-                        offset += br;
-                    }
-
-                    f_lseek(&fp, 0);
-                    memblk_deallocate(mem);
-
-                    {
-                        CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "fs_provision: tarball csum: %x\n", csum);
-                    }
-                }
-
-#endif
-
                 if(is_tar)
                 {
                     fs_p_ret = fs_provision_tarball(direct_fread, direct_lseek, &fp);
@@ -663,7 +498,6 @@ int fs_provision()
                         SEGGER_RTT_printf(0, "fs_provision: provisioned %s\n", fi.fname);
                     }
 
-#if 0
                     // delete file
                     if(f_unlink(fi.fname) != FR_OK)
                     {
@@ -671,7 +505,6 @@ int fs_provision()
                         SEGGER_RTT_printf(0, "fs_provision: failed to delete %s: %d\n",
                             fi.fname, f_unlink(fi.fname));
                     }
-#endif
                 }
                 else
                 {
