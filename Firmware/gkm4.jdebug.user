@@ -1,14 +1,14 @@
 
 
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/switcher.cpp:26, State=BP_STATE_ON
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/thread.cpp:187:5, State=BP_STATE_DISABLED
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/usb.cpp:93:5, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/clocks.cpp:195, State=BP_STATE_ON
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/clocks.cpp:200:5, State=BP_STATE_ON
 Breakpoint=0x080056C6, State=BP_STATE_ON
 Breakpoint=0x0801095E, State=BP_STATE_DISABLED
 Breakpoint=0x0801096A, State=BP_STATE_DISABLED
 Breakpoint=0x08012FCC, State=BP_STATE_DISABLED
 Breakpoint=0x08012FD6, State=BP_STATE_DISABLED
+OpenDocument="cache.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/cache.cpp", Line=59
 OpenDocument="elf.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/elf.cpp", Line=0
 OpenDocument="switcher.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/switcher.cpp", Line=16
 OpenDocument="hashtable.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable.h", Line=893
@@ -70,22 +70,22 @@ OpenDocument="usbd.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/tinyusb
 OpenDocument="ext4_super.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/include/ext4_super.h", Line=85
 OpenDocument="gk.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware/gk.jdebug", Line=15
 OpenToolbar="Debug", Floating=0, x=0, y=0
-OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=5, w=1469, h=211, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=1, w=1469, h=208, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=5, w=1469, h=212, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=1, w=1469, h=210, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Break & Tracepoints", DockArea=BOTTOM, x=0, y=0, w=371, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=254
 OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=1307, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x30005F80
-OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1469, h=190, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1469, h=194, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1469, h=212, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1469, h=175, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1469, h=183, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=371, h=1316, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Terminal", DockArea=BOTTOM, x=2, y=0, w=779, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=740, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="gkos", DockArea=RIGHT, x=0, y=0, w=1469, h=315, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing="Task List"
+OpenWindow="gkos", DockArea=RIGHT, x=0, y=0, w=1469, h=300, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing="Task List"
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
 TableHeader="Global Data", SortCol="Name", SortOrder="DESCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[123;118;157;101;109;27;800]
 TableHeader="Vector Catches", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;500]
-TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;109;990;3294]
-TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;172]
+TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;109;990;894]
+TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;462]
 TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[3111;131;100;110;773;510]
 TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Frame";"Source";"Return Address";"Stack Used";"PC"], ColWidths=[273;196;168;387;280;165]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]

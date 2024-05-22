@@ -20,6 +20,8 @@
 #include <sys/stat.h>
 #include <_sys_dirent.h>
 
+#define EXT4_DEBUG      1
+
 // checks lwext remains in sync with our exported dir types
 static_assert(EXT4_DE_UNKNOWN == DT_UNKNOWN);
 static_assert(EXT4_DE_REG_FILE == DT_REG);
@@ -667,7 +669,7 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
         return EOK;
 
     auto sdr = sd_perform_transfer(blk_id, blk_cnt, buf, true);
-    InvalidateM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
+    //InvalidateM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
     if(sdr)
     {
         return EIO;
@@ -685,7 +687,7 @@ int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     if(!blk_cnt)
         return EOK;
 
-    CleanM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
+    //CleanM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
     auto sdr = sd_perform_transfer(blk_id, blk_cnt, (void *)buf, false);
     if(sdr)
     {

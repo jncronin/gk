@@ -48,8 +48,8 @@ extern "C" void CM4_SEV_IRQHandler()
             default:
                 break;
         }
-        if(msg.complete)
-            *msg.complete = true;
+        if(msg.ss)
+            msg.ss->Signal();
     }
 }
 
@@ -74,7 +74,7 @@ extern "C" void CM7_SEV_IRQHandler()
             default:
                 break;
         }
-        if(msg.complete)
-            *msg.complete = true;
+        if(msg.ss)
+            msg.ss->Signal();
     }
 }

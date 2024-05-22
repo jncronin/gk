@@ -12,6 +12,10 @@
 #include "zlib.h"
 #include "process.h"
 
+#define DEBUG_FS_PROVISION      1
+
+#define FS_PROVISION_BLOCK_SIZE     (1*1024*1024)
+
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
     
@@ -33,8 +37,14 @@ char fake_usb_mbr[512];
 SRAM4_DATA static volatile bool fake_mbr_prepped = false;
 SRAM4_DATA static volatile unsigned int fake_mbr_sector_count = 0;
 SRAM4_DATA static volatile unsigned int fake_mbr_lba = 0;
+static FATFS fs;
+static FIL fp;
 
 extern Spinlock s_rtt;
+
+#if DEBUG_FS_PROVISION
+SRAM4_DATA MemRegion mr_known_good;
+#endif
 
 /* Generates a fake MBR which is exported whenever USB MSC asks to read
     sector 0 */
@@ -128,6 +138,24 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sector, UINT count)
     unsigned int act_lba = sector + fake_mbr_lba;
     if(!fake_mbr_check_extents(act_lba, count))
         return RES_PARERR;
+
+#if DEBUG_FS_PROVISION
+    {
+        auto ptr = (uint32_t)(uintptr_t)buff;
+        if(ptr >= 0x20000000 && ptr < 0x24000000)
+        {
+            __asm__ volatile ("bkpt \n" ::: "memory");
+        }
+    }
+#endif
+
+#if 0
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision: disk_read, buff: %x, act_lba: %u, count: %u\n",
+            (uint32_t)(uintptr_t)buff, act_lba, count);
+    }
+#endif
     
     auto sret = sd_perform_transfer(act_lba, count, buff, true);
     if(sret != 0)
@@ -143,7 +171,15 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buff, LBA_t sector, UINT count)
     unsigned int act_lba = sector + fake_mbr_lba;
     if(!fake_mbr_check_extents(act_lba, count))
         return RES_PARERR;
-    
+
+#if 0
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision: disk_write, buff: %x, act_lba: %u, count: %u\n",
+            (uint32_t)(uintptr_t)buff, act_lba, count);
+    }
+#endif
+
     auto sret = sd_perform_transfer(act_lba, count, (void *)buff, false);
     if(sret != 0)
         return RES_ERROR;
@@ -208,20 +244,25 @@ static bool is_zero_sector(const char *hdr)
     return true;
 }
 
-static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
+static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
+#if DEBUG_FS_PROVISION
+    , bool is_known_good = false
+#endif
+)
 {
     lf(f, 0);
 
     int n_zero_sectors = 0;
 
     // Get scratch region for transferring data
-    auto mem = memblk_allocate(4*1024*1024, MemRegionType::SDRAM);
+    auto mem = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM);
     if(!mem.valid)
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "fs_provision: couldn't allocate buffer\n");
         return -1;
     }
+    memset((void *)mem.address, 0, mem.length);
 
 #if 1
     {
@@ -319,6 +360,10 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             // load in 4 MiB increments
             uint64_t offset = 0;
 
+#if DEBUG_FS_PROVISION
+            uint32_t csum = 0;
+#endif
+
             while(true)
             {
                 auto fsize_to_read = total_fsize_to_read - offset;
@@ -358,12 +403,67 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                         (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                 }
 
+#if DEBUG_FS_PROVISION
+                if(offset == 0)
+                {
+                    if(is_known_good)
+                    {
+                        memcpy((void *)mr_known_good.address, (void *)mem.address, fsize_to_read);
+                    }
+                    else
+                    {
+                        for(unsigned int i = 0; i < fsize_to_read; i++)
+                        {
+                            if(*(unsigned char *)(mr_known_good.address + i) !=
+                                *(unsigned char *)(mem.address + i))
+                            {
+                                // discrepancy
+                                CriticalGuard cg(s_rtt);
+                                SEGGER_RTT_printf(0, "fs_provision: discrepancy at %x\n", i);
+                            }
+                        }
+                    }
+                }
+#endif
+
                 offset += fsize_to_read;
+
+#if DEBUG_FS_PROVISION
+                for(unsigned int i = 0; i < fsize_to_write; i += 4)
+                {
+                    auto cval = *(uint32_t *)(mem.address + i);
+                    csum += cval;
+                }
+
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "fs_provision: current csum: %x\n", csum);
+                }
+#endif
             }
-            close(fd);            
+            close(fd);
+#if DEBUG_FS_PROVISION
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "fs_provision: csum %x\n", csum);
+            }
+#endif
         }
     }
 }
+
+#if DEBUG_FS_PROVISION
+static void load_known_good()
+{
+    mr_known_good = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM);
+    auto fr = f_open(&fp, "/DOSBOX-0.74-gk2.tar", FA_READ);
+    if(fr == FR_OK)
+    {
+        fs_provision_tarball(direct_fread, direct_lseek, &fp, true);
+        f_close(&fp);
+    }
+}
+#endif
 
 int fs_provision()
 {
@@ -371,7 +471,7 @@ int fs_provision()
     if(!prep_fake_mbr())
         return -1;
     
-    FATFS fs;
+    //FATFS fs;
     auto fr = f_mount(&fs, "", 0);
     if(fr != FR_OK)
     {
@@ -379,6 +479,10 @@ int fs_provision()
         SEGGER_RTT_printf(0, "fs_provision: f_mount failed %d\n", fr);
         return fr;
     }
+
+#if DEBUG_FS_PROVISION
+    load_known_good();
+#endif
 
     // List root directory
     DIR dp;
@@ -437,7 +541,7 @@ int fs_provision()
             if(is_tar || is_targz)
             {
                 int fs_p_ret = 0;
-                FIL fp;
+                //FIL fp;
                 fr = f_open(&fp, fi.fname, FA_READ);
                 if(fr != FR_OK)
                 {
@@ -446,6 +550,46 @@ int fs_provision()
                     had_failure = true;
                     break;
                 }
+
+#if DEBUG_FS_PROVISION
+                {
+                    auto mem = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM);
+                    uint32_t csum = 0;
+                    unsigned int offset = 0;
+                    auto fsz = f_size(&fp);
+
+                    while(true)
+                    {
+                        auto to_read = fsz - offset;
+                        if(!to_read) break;
+
+                        unsigned int br;
+                        if(to_read > mem.length) to_read = mem.length;
+                        if(f_read(&fp, (void*)mem.address, to_read, &br) != FR_OK || to_read != br)
+                        {
+                            CriticalGuard cg(s_rtt);
+                            SEGGER_RTT_printf(0, "fs_provision: f_read failed\n");
+                            break;
+                        }
+
+                        for(unsigned int i = 0; i < to_read; i += 4)
+                        {
+                            csum += *(uint32_t *)(mem.address + i);
+                        }
+
+                        offset += br;
+                    }
+
+                    f_lseek(&fp, 0);
+                    memblk_deallocate(mem);
+
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "fs_provision: tarball csum: %x\n", csum);
+                    }
+                }
+
+#endif
 
                 if(is_tar)
                 {
@@ -486,7 +630,7 @@ int fs_provision()
                         else
                         {
                             // sensible buffer sizes bearing in mind it allocates 3x this
-                            gzbuffer(gzf, 8192);
+                            gzbuffer(gzf, 8192*4);
 
                             fs_p_ret = fs_provision_tarball(gz_fread, gz_lseek, gzf);
                             gzclose(gzf);
@@ -536,7 +680,7 @@ SRAM4_DATA static std::map<uint32_t, MemRegion> gz_malloc_regions;
 
 extern "C" void *gz_malloc_buffer(size_t n)
 {
-    auto mr = memblk_allocate(n, MemRegionType::AXISRAM);
+    auto mr = memblk_allocate(n, MemRegionType::SDRAM);
     if(!mr.valid)
         mr = memblk_allocate(n, MemRegionType::SDRAM);
     if(!mr.valid)
@@ -544,6 +688,8 @@ extern "C" void *gz_malloc_buffer(size_t n)
         __asm__ volatile ("bkpt \n" ::: "memory");
         return nullptr;
     }
+
+    memset((void *)mr.address, 0, mr.length);
     
     gz_malloc_regions[mr.address] = mr;
     return (void *)mr.address;
@@ -557,6 +703,10 @@ extern "C" void gz_free_buffer(void *address)
         auto mr = iter->second;
         memblk_deallocate(mr);
         gz_malloc_regions.erase(iter);
+    }
+    else
+    {
+        __asm__ volatile ("bkpt \n" ::: "memory");
     }
 }
 
