@@ -14,7 +14,7 @@
 
 #define DEBUG_FS_PROVISION      1
 
-#define FS_PROVISION_BLOCK_SIZE     (1*1024*1024)
+#define FS_PROVISION_BLOCK_SIZE     (8*1024*1024)
 
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
@@ -222,7 +222,8 @@ static ssize_t direct_lseek(void *f, size_t offset)
 
 static size_t gz_fread(void *ptr, size_t size, void *f)
 {
-    return gzread((gzFile)f, ptr, size);
+    auto ret = gzread((gzFile)f, ptr, size);
+    return ret;
 }
 
 static ssize_t gz_lseek(void *f, size_t offset)
@@ -362,6 +363,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
 
 #if DEBUG_FS_PROVISION
             uint32_t csum = 0;
+            uint32_t csum_pre = 0;
 #endif
 
             while(true)
@@ -387,6 +389,20 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
                 if(fsize_to_write > mem.length)
                     fsize_to_write = mem.length;
 
+#if 0
+                for(unsigned int i = 0; i < fsize_to_write; i += 4)
+                {
+                    auto cval = *(uint32_t *)(mem.address + i);
+                    csum_pre += cval;
+                }
+
+                {
+                    CriticalGuard cg(s_rtt);
+                    SEGGER_RTT_printf(0, "fs_provision: current csum_pre: %x\n", csum_pre);
+                }
+#endif
+
+#if 1
                 auto bw = deferred_call(syscall_write, fd, (char *)mem.address, (int)fsize_to_write);
                 if(bw != (int)fsize_to_write)
                 {
@@ -396,6 +412,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
                     memblk_deallocate(mem);
                     return -1;
                 }
+#endif
 
                 {
                     CriticalGuard cg(s_rtt);
@@ -419,7 +436,8 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
                             {
                                 // discrepancy
                                 CriticalGuard cg(s_rtt);
-                                SEGGER_RTT_printf(0, "fs_provision: discrepancy at %x\n", i);
+                                SEGGER_RTT_printf(0, "fs_provision: discrepancy at %x vs %x\n",
+                                    mr_known_good.address + i, mem.address + i);
                             }
                         }
                     }
@@ -445,7 +463,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f
 #if DEBUG_FS_PROVISION
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: csum %x\n", csum);
+                SEGGER_RTT_printf(0, "fs_provision: csum %x, csum_pre: %x\n", csum, csum_pre);
             }
 #endif
         }

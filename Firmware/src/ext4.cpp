@@ -316,7 +316,7 @@ static void handle_read_message(ext4_message &msg)
     int extret;
 
     {
-        SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, false, true);
+        //SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, false, true);
         extret = ext4_fread(msg.params.rw_params.e4f,
             msg.params.rw_params.buf, msg.params.rw_params.nbytes,
             &br);
@@ -340,7 +340,7 @@ static void handle_write_message(ext4_message &msg)
     int extret;
 
     {
-        SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, true, false);
+        //SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, true, false);
         extret = ext4_fwrite(msg.params.rw_params.e4f,
             msg.params.rw_params.buf, msg.params.rw_params.nbytes,
             &bw);
