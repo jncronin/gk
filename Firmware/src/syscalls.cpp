@@ -604,6 +604,13 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_exit:
+            {
+                auto p = reinterpret_cast<void **>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_exit(p, reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 CriticalGuard cg(s_rtt);
