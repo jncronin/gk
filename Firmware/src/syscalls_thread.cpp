@@ -354,6 +354,32 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
     }
 }
 
+int syscall_pthread_exit(void **retval, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    {
+        CriticalGuard cg(t->sl);
+
+        t->retval = *retval;
+
+        if(t->join_thread)
+        {
+            CriticalGuard cg2(t->join_thread->sl);
+            if(t->join_thread_retval)
+            {
+                *t->join_thread_retval = *retval;
+            }
+            t->join_thread->blocking_on = nullptr;
+            t->join_thread->is_blocking = false;
+            if(t->join_thread->base_priority > t->base_priority) Yield();
+            t->join_thread = nullptr;
+        }
+
+        t->for_deletion = true;
+    }
+    return 0;
+}
+
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
 {
     if(!name)

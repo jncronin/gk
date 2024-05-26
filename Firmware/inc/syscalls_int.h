@@ -51,6 +51,7 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno);
 
 int syscall_pthread_join(Thread *thread, void **retval, int *_errno);
+int syscall_pthread_exit(void **retval, int *_errno);
 
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno);
 
