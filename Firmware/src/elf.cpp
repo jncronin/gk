@@ -602,7 +602,6 @@ int elf_load_fildes(int fd,
             switch(r_type)
             {
                 case R_ARM_TARGET1:
-                case R_ARM_TARGET2:
                 case R_ARM_ABS32:
                     {
                         if((base_ptr + rel->r_offset) & 0x3)
@@ -687,6 +686,7 @@ int elf_load_fildes(int fd,
                 case R_ARM_THM_JUMP24:
                 case R_ARM_THM_CALL:
                 case R_ARM_PREL31:
+                case R_ARM_TARGET2:
                     /* relative reloc, do nothing */
                     break;
 
