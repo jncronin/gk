@@ -72,6 +72,8 @@ int syscall_peekevent(Event *ev, int *_errno);
 
 int syscall_setwindowtitle(const char *title, int *_errno);
 
+int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
