@@ -30,6 +30,11 @@ class WincNetInterface : public NetInterface
     protected:
         HwAddr hwaddr;
 
+        std::vector<std::string> good_net_list, cur_net_list;
+        void begin_scan();
+        bool scan_in_progress = false;
+        friend void *wifi_task(void *);
+
     public:
         const HwAddr &GetHwAddr() const;
         bool GetLinkActive() const;
@@ -39,7 +44,8 @@ class WincNetInterface : public NetInterface
         enum state { WIFI_UNINIT = 0, WIFI_DISCONNECTED, WIFI_CONNECTING, WIFI_AWAIT_IP, WIFI_CONNECTED };
         state         connected = WIFI_UNINIT;
 
-        friend void *wifi_task(void *);
+
+        std::vector<std::string> ListNetworks() const;
 };
 
 NET_BSS WincNetInterface wifi_if;
@@ -503,6 +509,21 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
             }
             break;
 
+        case M2M_WIFI_RESP_SCAN_RESULT:
+            {
+                auto sr = reinterpret_cast<tstrM2mWifiscanResult *>(p_eventData);
+                auto ssid = std::string(sr->au8SSID);
+                wifi_if.cur_net_list.push_back(ssid);
+            }
+            break;
+
+        case M2M_WIFI_RESP_SCAN_DONE:
+            {
+                wifi_if.good_net_list = wifi_if.cur_net_list;
+                wifi_if.scan_in_progress = false;
+            }
+            break;
+
         default:
             // TODO
             printf("WIFI unhandled event %i\n", eventCode);
@@ -517,6 +538,8 @@ void *wifi_task(void *p)
 {
     (void)p;
 
+    uint64_t last_scan_time = 0ULL;
+
     while(true)
     {
         wifi_irq.Wait(clock_cur_ms() + 200ULL);
@@ -524,6 +547,13 @@ void *wifi_task(void *p)
             //rtt_printf_wrapper("wifi: event\n");
             static WincNetInterface::state old_state = WincNetInterface::WIFI_UNINIT;
             WincNetInterface::state ws = wifi_if.connected;
+
+            if(!wifi_if.scan_in_progress && (!last_scan_time || clock_cur_ms() >= last_scan_time + 5000ULL))
+            {
+                m2m_wifi_request_scan(M2M_WIFI_CH_ALL);
+                wifi_if.scan_in_progress = true;
+                last_scan_time = clock_cur_ms();
+            }
 
             if(ws != old_state)
             {
@@ -634,4 +664,9 @@ bool WincNetInterface::GetLinkActive() const
 {
     return connected == WincNetInterface::WIFI_CONNECTED ||
         connected == WincNetInterface::WIFI_AWAIT_IP;
+}
+
+std::vector<std::string> WincNetInterface::ListNetworks() const
+{
+    return wifi_if.good_net_list;
 }

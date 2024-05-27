@@ -6,6 +6,7 @@
 #include <string>
 #include <queue>
 #include <map>
+#include <vector>
 
 #include "osmutex.h"
 #include "osringbuffer.h"
@@ -88,6 +89,8 @@ class NetInterface
 
         virtual int GetHeaderSize() const;
         virtual int GetFooterSize() const;
+
+        virtual std::vector<std::string> ListNetworks() const;
 };
 
 class TUSBNetInterface : public NetInterface
