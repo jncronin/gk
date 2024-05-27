@@ -25,6 +25,8 @@ SRAM4_DATA tstrNmBusCapabilities egstrNmBusCapabilities =
 	UINT16_MAX
 };
 
+static void wifi_handler(uint8 eventCode, void *p_eventData);
+
 class WincNetInterface : public NetInterface
 {
     protected:
@@ -34,6 +36,7 @@ class WincNetInterface : public NetInterface
         void begin_scan();
         bool scan_in_progress = false;
         friend void *wifi_task(void *);
+        friend void wifi_handler(uint8 eventCode, void *p_eventData);
 
     public:
         const HwAddr &GetHwAddr() const;
@@ -43,7 +46,6 @@ class WincNetInterface : public NetInterface
 
         enum state { WIFI_UNINIT = 0, WIFI_DISCONNECTED, WIFI_CONNECTING, WIFI_AWAIT_IP, WIFI_CONNECTED };
         state         connected = WIFI_UNINIT;
-
 
         std::vector<std::string> ListNetworks() const;
 };
@@ -113,20 +115,24 @@ void init_wifi()
 
 void wifi_connect()
 {
-    wifi_if.connected = WincNetInterface::WIFI_CONNECTING;
-    #include "wifipasswd.h"
-    const char SSID[] = WIFI_SSID;
-    const char password[] = WIFI_PASSWD;
+    auto cur_nets = net_get_known_networks();
 
-    auto ret = m2m_wifi_connect(const_cast<char *>(SSID), strlen(SSID),
-        M2M_WIFI_SEC_WPA_PSK,
-        const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(password)), M2M_WIFI_CH_ALL);
-
-    if(ret != M2M_SUCCESS)
+    for(const auto &cur_net : cur_nets)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "wifi: m2m_wifi_connect_psk failed %i\n", ret);
-        wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
+        wifi_if.connected = WincNetInterface::WIFI_CONNECTING;
+        const auto &ssid = cur_net.first;
+        const auto &pwd = cur_net.second;
+
+        auto ret = m2m_wifi_connect(const_cast<char *>(ssid.c_str()), ssid.length(),
+            M2M_WIFI_SEC_WPA_PSK,
+            const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(pwd.c_str())), M2M_WIFI_CH_ALL);
+
+        if(ret != M2M_SUCCESS)
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "wifi: m2m_wifi_connect_psk failed %i\n", ret);
+            wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
+        }
     }
 }
 
@@ -512,7 +518,7 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
         case M2M_WIFI_RESP_SCAN_RESULT:
             {
                 auto sr = reinterpret_cast<tstrM2mWifiscanResult *>(p_eventData);
-                auto ssid = std::string(sr->au8SSID);
+                auto ssid = std::string((char *)sr->au8SSID);
                 wifi_if.cur_net_list.push_back(ssid);
             }
             break;

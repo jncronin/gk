@@ -609,4 +609,6 @@ void net_tcp_handle_sendto(const net_msg &m);
 
 int net_dhcpc_begin_for_iface(NetInterface *iface);
 
+std::vector<std::pair<std::string, std::string>> net_get_known_networks();
+
 #endif
