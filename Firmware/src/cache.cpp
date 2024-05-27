@@ -54,7 +54,7 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
         {
             case CacheType_t::Instruction:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -62,7 +62,7 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
             case CacheType_t::Data:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7DataCacheInv, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7DataCacheInv, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -70,8 +70,8 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
             case CacheType_t::Both:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } });
-                    ipi_messages[0].Write({ ipi_message::M7DataCacheInv, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } }, true);
+                    ipi_messages[0].Write({ ipi_message::M7DataCacheInv, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -112,7 +112,7 @@ void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
             case CacheType_t::Data:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7DataCacheClean, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7DataCacheClean, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -120,7 +120,7 @@ void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
             case CacheType_t::Both:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7DataCacheClean, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7DataCacheClean, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -169,7 +169,7 @@ void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype
         {
             case CacheType_t::Instruction:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -177,7 +177,7 @@ void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype
 
             case CacheType_t::Data:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7DataCacheCleanInv, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7DataCacheCleanInv, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
@@ -185,8 +185,8 @@ void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype
 
             case CacheType_t::Both:
                 {
-                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } });
-                    ipi_messages[0].Write({ ipi_message::M7DataCacheCleanInv, get_ss(), .cache_req = { base, length } });
+                    ipi_messages[0].Write({ ipi_message::M7InstCacheInv, nullptr, .cache_req = { base, length } }, true);
+                    ipi_messages[0].Write({ ipi_message::M7DataCacheCleanInv, get_ss(), .cache_req = { base, length } }, true);
                     __SEV();
                     get_ss()->Wait(SimpleSignal::Set, 0U);
                 }
