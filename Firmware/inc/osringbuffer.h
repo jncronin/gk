@@ -51,9 +51,19 @@ template<typename T, unsigned int nitems> class RingBuffer<T, nitems, true>
             return nwritten;
         }
 
-        int Write(const T &d)
+        int Write(const T &d, bool retry = false)
         {
-            return Write(&d);
+            if(retry)
+            {
+                while(true)
+                {
+                    auto ret = Write(&d);
+                    if(ret)
+                        return ret;
+                }
+            }
+            else
+                return Write(&d);
         }
 
         int Read(T* d, int n = 1)
