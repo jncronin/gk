@@ -51,3 +51,8 @@ int NetInterface::GetHeaderSize() const
 {
     return 0;
 }
+
+std::vector<std::string> NetInterface::ListNetworks() const
+{
+    return std::vector<std::string>();
+}
