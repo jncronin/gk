@@ -429,7 +429,7 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/bin/echo", &pt);
 #endif
 
-    pt.heap_size = 8192*1024*2;
+    pt.heap_size = 8192*1024*4;
     pt.core_mask = M7Only;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     //pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
