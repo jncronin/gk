@@ -28,6 +28,10 @@ static constexpr uint32_t thread_signal_lwext = 0x1;
 #define GK_NPRIORITIES      (GK_PRIORITY_VHIGH + 1)
 
 class Process;
+class Thread;
+
+using PThread = std::shared_ptr<Thread>;
+using PProcess = std::shared_ptr<Process>;
 
 #define BLOCKING_ON_THREAD(x)       ((Thread *)(x))
 #define BLOCKING_ON_SS(x)           ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x1U))
@@ -53,12 +57,12 @@ class Thread
         MemRegion stack;
 
         bool is_blocking = false;
-        Thread *blocking_on = nullptr;
+        PThread blocking_on = nullptr;
         uint64_t block_until = 0;
 
         Spinlock sl;
 
-        Process &p;
+        PProcess p;
 
         /* Used for waiting on inter-process RPC returns */
         SimpleSignal ss;
@@ -68,7 +72,7 @@ class Thread
         std::map<pthread_key_t, void *> tls_data;
 
         /* pthread_join waiting thread */
-        Thread *join_thread = nullptr;
+        PThread join_thread = nullptr;
         void **join_thread_retval;
 
         /* thread times */
@@ -81,11 +85,11 @@ class Thread
         void Cleanup(void *tretval);
 
         typedef void *(*threadstart_t)(void *p);
-        static Thread *Create(std::string name,
+        static PThread Create(std::string name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
-            Process &owning_process,
+            PProcess owning_process,
             CPUAffinity affinity = CPUAffinity::Either,
             MemRegion stack = InvalidMemregion(),
             const mpu_saved_state *mpu_setup = mpu_default);
