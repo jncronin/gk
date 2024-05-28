@@ -5,6 +5,11 @@
 #include <cstring>
 #include <utility>
 #include <type_traits>
+#include "gk_conf.h"
+#include "osmutex.h"
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
 
 size_t memcpy_split_src(void *dst, const void *src, size_t n, size_t src_ptr, size_t split_ptr);
 size_t memcpy_split_dest(void *dst, const void *src, size_t n, size_t dest_ptr, size_t split_ptr);
@@ -48,6 +53,13 @@ template<typename T, unsigned int nitems> class RingBuffer<T, nitems, true>
                 b[_wptr] = d[i];
                 _wptr = ptr_plus_one(_wptr);
             }
+#if DEBUG_FULLQUEUE
+            if(nwritten != n)
+            {
+                CriticalGuard cg(s_rtt);
+                SEGGER_RTT_printf(0, "ringbuffer: write fail\n");
+            }
+#endif
             return nwritten;
         }
 
