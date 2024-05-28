@@ -571,26 +571,29 @@ void *gpu_thread(void *p)
                         }
                         if(g.w == 0 || g.h == 0)
                         {
-                            //focus_process->screen_pf = g.dest_pf;
+                            focus_process->screen_pf = g.dest_pf;
                         }
                         else if(g.w <= 160 && g.h <= 120)
                         {
                             focus_process->screen_w = 160;
                             focus_process->screen_h = 120;
-                            //focus_process->screen_pf = g.dest_pf;                            
+                            focus_process->screen_pf = g.dest_pf;                            
                         }
                         else if(g.w <= 320 && g.h <= 240)
                         {
                             focus_process->screen_w = 320;
                             focus_process->screen_h = 240;
-                            //focus_process->screen_pf = g.dest_pf;
+                            focus_process->screen_pf = g.dest_pf;
                         }
                         else if(g.w <= 640 && g.h <= 480)
                         {
                             focus_process->screen_w = 640;
                             focus_process->screen_h = 480;
-                            //focus_process->screen_pf = g.dest_pf;
+                            focus_process->screen_pf = g.dest_pf;
                         }
+
+                        extern Process p_supervisor;
+                        p_supervisor.events.Push({ .type = Event::CaptionChange });
                     }
                     break;
 

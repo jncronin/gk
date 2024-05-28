@@ -465,6 +465,8 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 44;  // SPACE
     focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;  // RETURN
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 41;  // ESCAPE
+    extern Process p_supervisor;
+    p_supervisor.events.Push({ .type = Event::CaptionChange });
 
     //jpeg_test();
 
