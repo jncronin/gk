@@ -4,8 +4,6 @@
 #include "gk_conf.h"
 #include "scheduler.h"
 
-__attribute__((section(".sram4"))) volatile Thread *last_thread;
-
 bool SetMPUForCurrentThread(mpu_saved_state const &mpu_reg)
 {
 #if GK_USE_MPU
@@ -18,7 +16,6 @@ bool SetMPUForCurrentThread(mpu_saved_state const &mpu_reg)
     auto t = GetCurrentThreadForCore();
     {
         CriticalGuard cg(t->sl);
-        last_thread = t;
         t->tss.mpuss[reg_id] = mpu_reg;
         auto ctrl = MPU->CTRL;
         MPU->CTRL = 0;

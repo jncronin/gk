@@ -9,8 +9,10 @@
 extern Spinlock s_rtt;
 
 extern Process kernel_proc;
+extern PProcess p_kernel_proc;
 Process *focus_process = &kernel_proc;     // which process has access to screen and inputs
-__attribute__((section(".sram4"))) Thread dt(kernel_proc);
+__attribute__((section(".sram4"))) Thread dt(p_kernel_proc);
+SRAM4_DATA std::shared_ptr<Thread> p_dt(&dt);
 
 Scheduler::Scheduler()
 {
@@ -36,12 +38,12 @@ Scheduler::Scheduler()
     for(int i = 0; i < ncores; i++)
     {
         CriticalGuard cg(current_thread[i].m);
-        current_thread[i].v = &dt;
+        current_thread[i].v = p_dt;
         scheduler_running[i] = false;
     }
 }
 
-void Schedule(Thread *t)
+void Schedule(PThread t)
 {
 #if GK_DUAL_CORE_AMP
     if(t->tss.affinity == M7Only)
@@ -53,9 +55,9 @@ void Schedule(Thread *t)
 #endif
 }
 
-void Scheduler::Schedule(Thread *t)
+void Scheduler::Schedule(PThread t)
 {
-    if(!t || t == &dt)
+    if(!t || t == p_dt)
     {
         return;
     }
@@ -76,7 +78,7 @@ void Scheduler::Schedule(Thread *t)
     }
 }
 
-Thread *Scheduler::GetNextThread(uint32_t ncore)
+PThread Scheduler::GetNextThread(uint32_t ncore)
 {
     CPUAffinity OnlyMe = (ncore == 0) ? CPUAffinity::M7Only : CPUAffinity::M4Only;
     CPUAffinity PreferMe = (ncore == 0) ? CPUAffinity::PreferM7 : CPUAffinity::PreferM4;
@@ -88,7 +90,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     int ct_ncore = 0;
 #endif
 
-    Thread *cur_t;
+    PThread cur_t;
     int cur_prio;
     {
         CriticalGuard cg(current_thread[ct_ncore].m);
@@ -220,7 +222,7 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
     while(true);
 }
 
-Thread *Scheduler::get_blocker(Thread *t)
+PThread Scheduler::get_blocker(PThread t)
 {
     int iter = 0;
 
@@ -229,7 +231,7 @@ Thread *Scheduler::get_blocker(Thread *t)
         {
             CriticalGuard cg(t->sl);
             unblock_delayer(t);
-            if(t->blocking_on == nullptr || ((uint32_t)(uintptr_t)t->blocking_on) & 0x3U)
+            if(t->blocking_on == nullptr)
                 return t;
             t = t->blocking_on;
         }
@@ -242,7 +244,7 @@ Thread *Scheduler::get_blocker(Thread *t)
 
 extern Spinlock s_rtt;
 
-void Scheduler::unblock_delayer(Thread *t)
+void Scheduler::unblock_delayer(PThread t)
 {
     if(t->is_blocking && t->block_until && clock_cur_ms() >= t->block_until)
     {
@@ -258,8 +260,8 @@ void Scheduler::unblock_delayer(Thread *t)
         t->block_until = 0;
         t->blocking_on = nullptr;
     }
-    if(t->is_blocking && (((uint32_t)(uintptr_t)t->blocking_on) & 0x3U) == 0x1U &&
-        ((SimpleSignal *)(((uint32_t)(uintptr_t)t->blocking_on) & ~0x3U))->waiting_thread != t)
+    if(t->is_blocking && (((uint32_t)(uintptr_t)t->blocking_on_primitive) & 0x3U) == 0x1U &&
+        ((SimpleSignal *)(((uint32_t)(uintptr_t)t->blocking_on_primitive) & ~0x3U))->waiting_thread != t)
     {
         {
             CriticalGuard cg(s_rtt);
@@ -272,7 +274,7 @@ void Scheduler::unblock_delayer(Thread *t)
     }
 }
 
-void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
+void Scheduler::report_chosen(PThread &old_t, PThread &new_t)
 {
     CriticalGuard cg(s_rtt);
     SEGGER_RTT_printf(0, "%d: sched: %s (%d) to %s (%d)\n", (uint32_t)clock_cur_ms(),
@@ -280,13 +282,14 @@ void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
         new_t->name.c_str(), new_t->base_priority);
 }
 
-void Block(uint64_t until, Thread *block_on)
+void Block(uint64_t until, PThread block_on)
 {
     auto t = GetCurrentThreadForCore();
     {
         CriticalGuard cg(t->sl);
         t->is_blocking = true;
         t->blocking_on = block_on;
+        t->blocking_on_primitive = nullptr;
         t->block_until = until;
     }
     Yield();

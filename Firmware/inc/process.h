@@ -4,7 +4,6 @@
 class Thread;
 
 #include "memblk.h"
-#include "region_allocator.h"
 #include <string>
 #include <map>
 #include "osmutex.h"
@@ -21,7 +20,7 @@ class Process
         
         std::string name;
         std::string window_title;
-        SRAM4Vector<Thread *> threads;
+        std::vector<PThread> threads;
 
         MemRegion heap;
         MemRegion code_data;
@@ -73,5 +72,6 @@ class Process
 
 extern Process *focus_process;
 extern Process kernel_proc;
+extern PProcess p_kernel_proc;
 
 #endif

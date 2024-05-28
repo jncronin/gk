@@ -86,7 +86,7 @@ int net_ret_to_errno(int ret)
 void init_net()
 {
     extern Process kernel_proc;
-    Schedule(Thread::Create("net", net_thread, nullptr, true, 5, kernel_proc,
+    Schedule(Thread::Create("net", net_thread, nullptr, true, 5, p_kernel_proc,
         CPUAffinity::PreferM4));
 }
 

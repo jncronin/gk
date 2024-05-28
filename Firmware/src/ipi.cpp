@@ -6,7 +6,7 @@ SRAM4_DATA RingBuffer<ipi_message, n_ipi_messages> ipi_messages[2];
 SRAM4_DATA volatile uint32_t m4_wakeup = 0;
 
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-static inline void handle_thread_unblocked(int coreid, Thread *t)
+static inline void handle_thread_unblocked(int coreid, PThread t)
 {
     auto taff = t->tss.affinity;
     if((unsigned int)taff & (1U << coreid))

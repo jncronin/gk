@@ -457,7 +457,7 @@ int fs_provision()
                     {
                         auto t = GetCurrentThreadForCore();
                         auto &p = t->p;
-                        CriticalGuard _p(p.sl);
+                        CriticalGuard _p(p->sl);
                         fd = get_free_fildes(p);
                         if(fd < 0)
                         {

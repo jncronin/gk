@@ -17,7 +17,7 @@ ssize_t USBTTYFile::Write(const char *buf, size_t count, int *_errno)
 // USB TTY is not thread-safe
 SRAM4_DATA static char *rbuf;
 SRAM4_DATA static size_t rcount;
-SRAM4_DATA static Thread *rt = nullptr;
+SRAM4_DATA static PThread rt = nullptr;
 
 ssize_t USBTTYFile::Read(char *buf, size_t count, int *_errno)
 {

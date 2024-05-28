@@ -1,9 +1,9 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include "region_allocator.h"
 #include "thread.h"
 #include "osmutex.h"
+#include <vector>
 
 class Scheduler
 {
@@ -23,55 +23,57 @@ class Scheduler
         };
         struct IndexedThreadVector
         {
-            SRAM4Vector<Thread *> v;
+            std::vector<PThread> v;
             int index = -1;
         };
         using LockedIndexedThreadVector = locked_val<IndexedThreadVector>;
-        using LockedThreadVector = locked_val<SRAM4Vector<Thread *>>;
+        using LockedThreadVector = locked_val<std::vector<PThread>>;
 
         LockedIndexedThreadVector tlist[npriorities];
         LockedThreadVector sleeping_tasks;
         LockedThreadVector blocking_tasks;
 
         /* Follows the chain of 'blocking_on' to allow priority escalation */
-        Thread *get_blocker(Thread *t);
+        PThread get_blocker(PThread t);
 
         /* Unblocks threads waiting on a certain delay */
-        void unblock_delayer(Thread *t);
+        void unblock_delayer(PThread t);
 
         /* Report chosen thread */
-        void report_chosen(Thread *old_t, Thread *new_t);
+        void report_chosen(PThread &old_t, PThread &new_t);
 
     public:
         Scheduler();
         Scheduler(const Scheduler &) = delete;
 
-        void Schedule(Thread *t);
+        void Schedule(PThread t);
         void TimerTick(uint32_t nticks);
-        void Unsleep(Thread *t);
-        void Unblock(Thread *t);
-        void Block(Thread *t);
-        void Sleep(Thread *t, uint32_t nticks);
-        Thread *GetNextThread(uint32_t ncore);
+        void Unsleep(PThread t);
+        void Unblock(PThread t);
+        void Block(PThread t);
+        void Sleep(PThread t, uint32_t nticks);
+        PThread GetNextThread(uint32_t ncore);
 
         void StartForCurrentCore [[noreturn]] ();
 
-        using LockedThread = locked_val<Thread *>;
+        using LockedThread = locked_val<PThread>;
         LockedThread current_thread[ncores];
 
         bool scheduler_running[ncores];
 };
 
-void Schedule(Thread *t);
-
 // Called from PendSV therefore not mangled
 extern "C" {
-    Thread *GetCurrentThreadForCore(int coreid = -1);
+    Thread *GetCurrentThreadForCore_int(int coreid = -1);
     Thread *GetNextThreadForCore(int coreid = -1);
     int GetCoreID();
     void SetNextThreadForCore(Thread *t, int coreid = -1);
     void ScheduleThread(Thread *t);
 }
+
+PThread GetCurrentThreadForCore(int coreid = -1);
+
+void Schedule(PThread t);
 
 #if GK_DUAL_CORE_AMP
 extern Scheduler scheds[2];
@@ -95,6 +97,6 @@ static inline void Yield()
     }
 }
 
-void Block(uint64_t until = UINT64_MAX, Thread *block_on = nullptr);
+void Block(uint64_t until = UINT64_MAX, PThread block_on = nullptr);
 
 #endif

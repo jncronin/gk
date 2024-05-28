@@ -6,7 +6,6 @@
 
 #include "thread.h"
 #include "scheduler.h"
-#include "region_allocator.h"
 
 #include "cache.h"
 #include "ossharedmem.h"
@@ -22,7 +21,7 @@ static void init_args(const std::string &pname, const std::vector<std::string> &
 int elf_load_memory(const void *e, const std::string &pname,
     const std::vector<std::string> &params,
     uint32_t heap_size, CPUAffinity affinity,
-    Thread **startup_thread_ret, Process **proc_ret,
+    PThread *startup_thread_ret, PProcess *proc_ret,
     MemRegion stack, bool is_priv)
 {
     // pointer
@@ -285,16 +284,7 @@ int elf_load_memory(const void *e, const std::string &pname,
     auto start = (void *(*)(void *))(base_ptr + ehdr->e_entry);
 
     // Create process and the first thread
-    SRAM4RegionAllocator<Process> alloc;
-    auto ploc = alloc.allocate(1);
-    if(!ploc)
-    {
-        __BKPT();
-        while(true);
-        return -1;
-    }
-
-    auto proc = new(ploc) Process();
+    auto proc = std::make_shared<Process>();
     proc->name = pname;
     proc->brk = 0;
     proc->code_data = memblk;
@@ -336,7 +326,7 @@ int elf_load_memory(const void *e, const std::string &pname,
     proc->argc = *(int *)arg_base;
     proc->argv = (char **)(arg_base + 4);
 
-    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, is_priv, GK_PRIORITY_NORMAL, *proc,
+    auto startup_thread = Thread::Create(pname + "_0", start, nullptr, is_priv, GK_PRIORITY_NORMAL, proc,
         affinity, stack);
 
     if(startup_thread_ret)
@@ -764,9 +754,9 @@ void handle_newlibinithook(uint32_t lr, uint32_t *retaddr)
         InvalidateM7Cache(lr, 4, CacheType_t::Instruction);
 
         // now return argc:arvg as r1:r0
-        auto &p = GetCurrentThreadForCore()->p;
-        uint32_t argc = (uint32_t)p.argc;
-        uint32_t argv = (uint32_t)p.argv;
+        auto p = GetCurrentThreadForCore()->p;
+        uint32_t argc = (uint32_t)p->argc;
+        uint32_t argv = (uint32_t)p->argv;
         retaddr[0] = argc;
         retaddr[1] = argv;
     }
@@ -802,9 +792,9 @@ uint64_t prog_software_init_hook()
         InvalidateM7Cache(lr, 4, CacheType_t::Instruction);
 
         // now return argc:arvg as r1:r0
-        auto &p = GetCurrentThreadForCore()->p;
-        uint32_t argc = (uint32_t)p.argc;
-        uint32_t argv = (uint32_t)p.argv;
+        auto p = GetCurrentThreadForCore()->p;
+        uint32_t argc = (uint32_t)p->argc;
+        uint32_t argv = (uint32_t)p->argv;
         return (uint64_t)argc | (((uint64_t)argv) << 32);
     }
 

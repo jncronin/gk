@@ -100,7 +100,8 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
     }
     waiting_thread = t;
     t->is_blocking = true;
-    t->blocking_on = BLOCKING_ON_SS(this);   
+    t->blocking_on = nullptr;
+    t->blocking_on_primitive = BLOCKING_ON_SS(this);   
     if(tout != UINT64_MAX)
         t->block_until = tout;
     Yield();
@@ -179,7 +180,8 @@ void Condition::Wait(uint64_t tout, int *signalled_ret)
     timeout to { tout, signalled_ret };
     waiting_threads.insert_or_assign(t, to);
     t->is_blocking = true;
-    t->blocking_on = BLOCKING_ON_CONDITION(this);
+    t->blocking_on = nullptr;
+    t->blocking_on_primitive = BLOCKING_ON_CONDITION(this);
     if(tout != UINT64_MAX)
         t->block_until = tout;
     Yield();

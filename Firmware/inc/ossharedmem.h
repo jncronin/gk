@@ -20,7 +20,7 @@ class SharedMemoryGuard
 
     protected:
         int old_core_pin, coreid;
-        Thread *t;
+        PThread t;
         uint32_t start;
         uint32_t len;
         bool is_read, is_write, is_dma;

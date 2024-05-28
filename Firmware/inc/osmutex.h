@@ -3,7 +3,6 @@
 
 #include <memory>
 #include <util.h>
-#include <region_allocator.h>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -11,12 +10,14 @@
 
 
 class Thread;
+using PThread = std::shared_ptr<Thread>;
+
 class Spinlock
 {
     protected:
         volatile uint32_t _lock_val = 0;
 #if DEBUG_SPINLOCK
-        volatile Thread *locked_by = nullptr;
+        PThread locked_by = nullptr;
         volatile int locking_core = 0;
         volatile uint32_t locking_pc;
 #endif
@@ -34,9 +35,9 @@ class Spinlock
 class Mutex
 {
     protected:
-        Thread *owner = nullptr;
+        PThread owner = nullptr;
         Spinlock sl;
-        std::unordered_set<Thread *> waiting_threads;
+        std::unordered_set<PThread> waiting_threads;
         bool is_recursive = false;
         int lockcount = 0;
 
@@ -53,7 +54,7 @@ class Condition
 {
     protected:
         struct timeout { uint64_t tout; int *signalled; };
-        std::unordered_map<Thread *, timeout> waiting_threads;
+        std::unordered_map<PThread, timeout> waiting_threads;
         Spinlock sl;
 
     public:
@@ -69,7 +70,7 @@ class SimpleSignal
         Spinlock sl;
 
     public:
-        Thread *waiting_thread = nullptr;
+        PThread waiting_thread = nullptr;
         enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
         uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
         uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);

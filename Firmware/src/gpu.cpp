@@ -9,7 +9,14 @@
 
 SRAM4_DATA static BinarySemaphore gpu_ready;
 SRAM4_DATA static BinarySemaphore mdma_ready;
-SRAM4_DATA static FixedQueue<gpu_message, 64> gpu_msg_list;
+
+struct gpu_message_t
+{
+    gpu_message m;
+    PThread t;
+};
+
+SRAM4_DATA static FixedQueue<gpu_message_t, 64> gpu_msg_list;
 
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
@@ -718,7 +725,10 @@ void GPUEnqueueFlip()
 
 void GPUEnqueueMessage(const gpu_message &g)
 {
-    gpu_msg_list.Push(g);
+    gpu_message_t msg { .m = g };
+    if(g.type == gpu_message_type::SignalThread)
+        msg.t = GetCurrentThreadForCore();
+    gpu_msg_list.Push(msg);
 }
 
 bool GPUBusy()
@@ -734,12 +744,13 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
     for(size_t i = 0; i < nmsg; i++)
     {
         gpu_message msg = msgs[i];
+        gpu_message_t msg2 { .m = msg };
         if(msg.type == gpu_message_type::SignalThread)
         {
-            msg.dest_addr = (uint32_t)(uintptr_t)GetCurrentThreadForCore();
+            msg2.t = GetCurrentThreadForCore();
         }
         // TODO check sending thread has focus
-        if(!gpu_msg_list.Push(msg))
+        if(!gpu_msg_list.Push(msg2))
         {
             RestoreInterrupts(cpsr);
             return nsent;

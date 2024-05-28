@@ -13,7 +13,7 @@
 
 extern Thread dt;
 
-Thread::Thread(Process &owning_process) : p(owning_process) {}
+Thread::Thread(PProcess owning_process) : p(owning_process) {}
 
 void Thread::Cleanup(void *tretval)
 {
@@ -36,8 +36,8 @@ void Thread::Cleanup(void *tretval)
         bool has_nonnull = false;
 
         {
-            CriticalGuard cg_p(p.sl);
-            for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
+            CriticalGuard cg_p(p->sl);
+            for(auto iter = p->tls_data.begin(); iter != p->tls_data.end(); ++iter)
             {
                 auto k = iter->first;
                 auto d = iter->second;
@@ -72,7 +72,7 @@ static void thread_cleanup(void *tretval)   // both return value and first param
     }
 }
 
-Thread *Thread::Create(std::string name,
+PThread Thread::Create(std::string name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
@@ -81,11 +81,7 @@ Thread *Thread::Create(std::string name,
             MemRegion stackblk,
             const mpu_saved_state *defmpu)
 {
-    SRAM4RegionAllocator<Thread> alloc;
-    auto tloc = alloc.allocate(1);
-    if(!tloc)
-        return nullptr;
-    auto t = new(tloc) Thread(owning_process);
+    auto t = std::make_shared<Thread>(owning_process);
     memset(&t->tss, 0, sizeof(thread_saved_state));
 
     t->tss.affinity = affinity;
@@ -160,7 +156,12 @@ Thread *Thread::Create(std::string name,
     return t;
 }
 
-Thread *GetCurrentThreadForCore(int coreid)
+Thread *GetCurrentThreadForCore_int(int coreid)
+{
+    return GetCurrentThreadForCore(coreid).get();
+}
+
+PThread GetCurrentThreadForCore(int coreid)
 {
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     if(coreid == -1)

@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <cstddef>
 #include <map>
+#include <string>
 #include <osmutex.h>
-#include "region_allocator.h"
 #include "memblk.h"
 #include "ostypes.h"
 #include "osmutex.h"
@@ -33,10 +33,9 @@ class Thread;
 using PThread = std::shared_ptr<Thread>;
 using PProcess = std::shared_ptr<Process>;
 
-#define BLOCKING_ON_THREAD(x)       ((Thread *)(x))
-#define BLOCKING_ON_SS(x)           ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x1U))
-#define BLOCKING_ON_QUEUE(x)        ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x2U))
-#define BLOCKING_ON_CONDITION(x)    ((Thread *)(((uint32_t)(uintptr_t)(x)) | 0x3U))
+#define BLOCKING_ON_SS(x)           ((void *)(((uint32_t)(uintptr_t)(x)) | 0x1U))
+#define BLOCKING_ON_QUEUE(x)        ((void *)(((uint32_t)(uintptr_t)(x)) | 0x2U))
+#define BLOCKING_ON_CONDITION(x)    ((void *)(((uint32_t)(uintptr_t)(x)) | 0x3U))
 
 
 class Thread
@@ -58,6 +57,7 @@ class Thread
 
         bool is_blocking = false;
         PThread blocking_on = nullptr;
+        void *blocking_on_primitive = nullptr;
         uint64_t block_until = 0;
 
         Spinlock sl;
@@ -80,7 +80,8 @@ class Thread
         uint64_t total_s_time = 0ULL;
         uint64_t total_us_time = 0ULL;
 
-        Thread(Process &owning_process);
+        Thread(PProcess owning_process);
+        ~Thread();
 
         void Cleanup(void *tretval);
 

@@ -1,3 +1,5 @@
+#if 0
+
 /* malloc interface */
 #include "osmutex.h"
 #include "region_allocator.h"
@@ -91,3 +93,5 @@ extern "C" void *sbrksram4(int n)
 
     return (void *)(uintptr_t)old_brk;
 }
+
+#endif

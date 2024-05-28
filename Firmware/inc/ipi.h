@@ -16,23 +16,19 @@ struct ipi_message
     
     SimpleSignal *ss;
 
-    union
+    PThread t;
+    struct
     {
-        struct
-        {
-            uint32_t base_addr;
-            uint32_t len;
-        } cache_req;
-
-        Thread *t;
-    };
+        uint32_t base_addr;
+        uint32_t len;
+    } cache_req;
 };
 
 constexpr const unsigned int n_ipi_messages = 32;
 extern RingBuffer<ipi_message, n_ipi_messages> ipi_messages[2];
 #define M4_MAGIC 0xa1b2c3d4
 
-static inline void signal_thread_woken(Thread *t)
+static inline void signal_thread_woken(PThread t)
 {
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     auto other_core = 1U - GetCoreID();

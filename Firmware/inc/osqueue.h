@@ -1,7 +1,6 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
-#include "region_allocator.h"
 #include "scheduler.h"
 #include "osmutex.h"
 #include "thread.h"
@@ -16,8 +15,6 @@
 
 extern Spinlock s_rtt;
 
-template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
-
 class BaseQueue
 {
     public:
@@ -31,7 +28,7 @@ class BaseQueue
         Spinlock sl;
         int _wptr = 0;
         int _rptr = 0;
-        std::unordered_set<Thread *> waiting_threads;
+        std::unordered_set<PThread> waiting_threads;
 
         constexpr inline int ptr_plus_one(int p)
         {
@@ -135,7 +132,8 @@ class BaseQueue
                         auto t = GetCurrentThreadForCore();
                         waiting_threads.insert(t);
                         t->is_blocking = true;
-                        t->blocking_on = BLOCKING_ON_QUEUE(this);
+                        t->blocking_on = nullptr;
+                        t->blocking_on_primitive = BLOCKING_ON_QUEUE(this);
                         if(timeout)
                             t->block_until = timeout;
                         Yield();
@@ -164,6 +162,8 @@ template <typename T, int _nitems> class FixedQueue : public BaseQueue
 
         bool Push(const T& v)
         {
+            // TODO: need to specialise to use assignment operator to correctly handle shared_ptr in messages
+            __asm__ volatile("bkpt \n" ::: "memory");
             return BaseQueue::Push(&v);
         }
 
@@ -176,13 +176,13 @@ class Queue : public BaseQueue
     public:
         Queue(int _nitems, size_t item_size) : BaseQueue(nullptr, _nitems, item_size)
         {
-            _b = malloc_region(_nitems * item_size, REG_ID_SRAM4);
+            _b = malloc(_nitems * item_size);
         }
 
         ~Queue()
         {
             if(_b)
-                free_region(_b, REG_ID_SRAM4);
+                free(_b);
         }
 };
 

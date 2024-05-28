@@ -34,12 +34,12 @@ struct ext4_message
     };
 
     msg_type type;
+    PProcess p;
 
     union params_t
     {
         struct open_params_t
         {
-            Process *p;
             const char *pathname;
             int flags;
             int mode;
@@ -85,7 +85,7 @@ struct ext4_message
 
 bool ext4_send_message(ext4_message &msg);
 
-static constexpr ext4_message ext4_mkdir_message(const char *pathname, int mode,
+[[maybe_unused]] static ext4_message ext4_mkdir_message(const char *pathname, int mode,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::open_params_t _p {
@@ -106,11 +106,10 @@ static constexpr ext4_message ext4_mkdir_message(const char *pathname, int mode,
     return ret;
 }
 
-static constexpr ext4_message ext4_open_message(const char *pathname, int flags, int mode,
-    Process &p, int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+[[maybe_unused]] static ext4_message ext4_open_message(const char *pathname, int flags, int mode,
+    PProcess p, int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::open_params_t _p {
-        .p = &p,
         .pathname = pathname,
         .flags = flags,
         .mode = mode,
@@ -123,13 +122,15 @@ static constexpr ext4_message ext4_open_message(const char *pathname, int flags,
 
     ext4_message ret {
         .type = ext4_message::msg_type::Open,
+        .p = p,
         .params = __p,
         .ss = &ss,
-        .ss_p = &ss_p };
+        .ss_p = &ss_p,
+    };
     return ret;
 }
 
-static constexpr ext4_message ext4_read_message(ext4_file &e4f, char *buf, int nbytes,
+[[maybe_unused]] static ext4_message ext4_read_message(ext4_file &e4f, char *buf, int nbytes,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::rw_params_t _p {
@@ -150,7 +151,7 @@ static constexpr ext4_message ext4_read_message(ext4_file &e4f, char *buf, int n
     return ret;
 }
 
-static constexpr ext4_message ext4_write_message(ext4_file &e4f, char *buf, int nbytes,
+[[maybe_unused]] static ext4_message ext4_write_message(ext4_file &e4f, char *buf, int nbytes,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::rw_params_t _p {
@@ -171,7 +172,7 @@ static constexpr ext4_message ext4_write_message(ext4_file &e4f, char *buf, int 
     return ret;
 }
 
-static constexpr ext4_message ext4_lseek_message(ext4_file &e4f, off_t offset, int whence,
+[[maybe_unused]] static ext4_message ext4_lseek_message(ext4_file &e4f, off_t offset, int whence,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::lseek_params_t _p {
@@ -192,7 +193,7 @@ static constexpr ext4_message ext4_lseek_message(ext4_file &e4f, off_t offset, i
     return ret;
 }
 
-static constexpr ext4_message ext4_fstat_message(ext4_file &e4f, ext4_dir &e4d, bool is_dir,
+[[maybe_unused]] static ext4_message ext4_fstat_message(ext4_file &e4f, ext4_dir &e4d, bool is_dir,
     struct stat *st,
     const char *pathname,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
@@ -216,7 +217,7 @@ static constexpr ext4_message ext4_fstat_message(ext4_file &e4f, ext4_dir &e4d, 
     return ret;
 }
 
-static constexpr ext4_message ext4_close_message(ext4_file &e4f,
+[[maybe_unused]] static ext4_message ext4_close_message(ext4_file &e4f,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::close_params_t _p {
@@ -235,7 +236,7 @@ static constexpr ext4_message ext4_close_message(ext4_file &e4f,
     return ret;
 }
 
-static constexpr ext4_message ext4_readdir_message(ext4_dir &e4d,
+[[maybe_unused]] static ext4_message ext4_readdir_message(ext4_dir &e4d,
     struct dirent *de,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
@@ -257,7 +258,7 @@ static constexpr ext4_message ext4_readdir_message(ext4_dir &e4d,
     return ret;
 }
 
-static constexpr ext4_message ext4_unlink_message(const char *pathname,
+[[maybe_unused]] static ext4_message ext4_unlink_message(const char *pathname,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::unlink_params_t _p {
