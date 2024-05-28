@@ -9,6 +9,7 @@
 #include "elf.h"
 
 extern Spinlock s_rtt;
+extern Process p_supervisor;
 
 struct pct_params
 {
@@ -206,6 +207,8 @@ void *proccreate_thread(void *ptr)
     if(pcinfo->with_focus)
     {
         focus_process = proc;
+
+        p_supervisor.events.Push( { .type = Event::CaptionChange });
     }
 
     // schedule startup thread

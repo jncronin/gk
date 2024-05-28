@@ -252,12 +252,20 @@ void *supervisor_thread(void *p)
                     break;
 
                 case Event::CaptionChange:
-                    lab_caption.text = focus_process ? 
-                        (focus_process->window_title.empty() ?
-                            focus_process->name :
-                            focus_process->window_title) :
-                        "GK";
-                    do_update = true;
+                    {
+                        const auto &capt = focus_process ? 
+                            (focus_process->window_title.empty() ?
+                                focus_process->name :
+                                focus_process->window_title) :
+                            "GK";
+
+                        const auto &scr_capt = focus_process ?
+                            (" (" + std::to_string(focus_process->screen_w) + "x" +
+                            std::to_string(focus_process->screen_h) + ")") : "";
+
+                        lab_caption.text = capt + scr_capt;
+                        do_update = true;
+                    }
                     break;
 
                 default:
