@@ -247,3 +247,38 @@ int syscall_readdir(int file, dirent *de, int *_errno)
 
     return p.open_files[file]->ReadDir(de, _errno);
 }
+
+int syscall_unlink(const char *pathname, int *_errno)
+{
+    if(!pathname)
+    {
+        *_errno = EFAULT;
+        return -1;
+    }
+
+    // check len as malloc'ing in sram4
+    auto pnlen = strlen(pathname);
+    if(pnlen > 4096)
+    {
+        *_errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    auto npname = (char *)malloc(pnlen + 1);
+    if(!npname)
+    {
+        *_errno = ENAMETOOLONG;
+        return -1;
+    }
+    strcpy(npname, pathname);
+
+    auto t = GetCurrentThreadForCore();
+    auto msg = ext4_unlink_message(npname, t->ss, t->ss_p);
+    if(ext4_send_message(msg))
+        return -2;  // deferred return
+    else
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+}

@@ -29,7 +29,8 @@ struct ext4_message
         Lseek,
         Fstat,
         Mkdir,
-        ReadDir
+        ReadDir,
+        Unlink
     };
 
     msg_type type;
@@ -72,6 +73,10 @@ struct ext4_message
             ext4_dir *e4d;
             struct dirent *de;
         } readdir_params;
+        struct unlink_params_t
+        {
+            const char *pathname;
+        } unlink_params;
     } params;
 
     SimpleSignal *ss;
@@ -245,6 +250,26 @@ static constexpr ext4_message ext4_readdir_message(ext4_dir &e4d,
 
     ext4_message ret {
         .type = ext4_message::msg_type::ReadDir,
+        .params = __p,
+        .ss = &ss,
+        .ss_p = &ss_p
+    };
+    return ret;
+}
+
+static constexpr ext4_message ext4_unlink_message(const char *pathname,
+    SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+{
+    ext4_message::params_t::unlink_params_t _p {
+        .pathname = pathname
+    };
+
+    ext4_message::params_t __p {
+        .unlink_params = _p
+    };
+
+    ext4_message ret {
+        .type = ext4_message::msg_type::Unlink,
         .params = __p,
         .ss = &ss,
         .ss_p = &ss_p
