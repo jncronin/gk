@@ -592,6 +592,24 @@ void handle_readdir_message(ext4_message &msg)
     }
 }
 
+void handle_unlink_message(ext4_message &msg)
+{
+    auto extret = ext4_fremove(msg.params.unlink_params.pathname);
+    free((void *)msg.params.unlink_params.pathname);
+    if(extret == EOK)
+    {
+        fstat_cache.clear();
+        msg.ss_p->ival1 = 0;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+}
+
 void *ext4_thread(void *_p)
 {
     (void)_p;
@@ -637,6 +655,10 @@ void *ext4_thread(void *_p)
 
             case ext4_message::msg_type::ReadDir:
                 handle_readdir_message(msg);
+                break;
+
+            case ext4_message::msg_type::Unlink:
+                handle_unlink_message(msg);
                 break;
         }
     }
