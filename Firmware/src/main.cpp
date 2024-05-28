@@ -455,6 +455,7 @@ void *init_thread(void *p)
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.stack_size = 32 * 1024;
+    pt.heap_is_exec = 1;
     //deferred_call(syscall_proccreate, "/Hatari-0.1.1-gk/bin/hatari", &pt);
     //deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
     deferred_call(syscall_proccreate, "/DOSBOX-0.74-gk/bin/dosbox", &pt);
@@ -464,6 +465,8 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 44;  // SPACE
     focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;  // RETURN
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 41;  // ESCAPE
+    extern Process p_supervisor;
+    p_supervisor.events.Push({ .type = Event::CaptionChange });
 
     //jpeg_test();
 

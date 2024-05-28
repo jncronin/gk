@@ -18,6 +18,7 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno);
 int syscall_isatty(int file, int *_errno);
 off_t syscall_lseek(int file, off_t offset, int whence, int *_errno);
 int syscall_open(const char *pathname, int flags, int mode, int *_errno);
+int syscall_unlink(const char *pathname, int *_errno);
 int syscall_close1(int file, int *_errno);
 int syscall_close2(int file, int *_errno);
 int syscall_socket(int domain, int type, int protocol, int *_errno);
@@ -71,6 +72,8 @@ int syscall_closedir(int dirfd, int *_errno);
 int syscall_peekevent(Event *ev, int *_errno);
 
 int syscall_setwindowtitle(const char *title, int *_errno);
+
+int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno);
 
 static inline int deferred_return(int ret, int _errno)
 {

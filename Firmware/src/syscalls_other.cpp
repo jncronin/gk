@@ -257,3 +257,20 @@ int syscall_setwindowtitle(const char *title, int *_errno)
     p_supervisor.events.Push({ .type = Event::CaptionChange });
     return 0;
 }
+
+int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
+{
+#if 1
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "cacheflush: %x, %x, %d\n", (uint32_t)addr, len, is_exec);
+    }
+#endif
+    CleanOrInvalidateM7Cache((uint32_t)addr, len, CacheType_t::Data);
+    if(is_exec)
+    {
+        InvalidateM7Cache((uint32_t)addr, len, CacheType_t::Instruction);
+    }
+
+    return 0;
+}

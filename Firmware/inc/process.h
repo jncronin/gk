@@ -25,6 +25,7 @@ class Process
 
         MemRegion heap;
         MemRegion code_data;
+        bool heap_is_exec = false;
 
         uint32_t brk = 0;
 
