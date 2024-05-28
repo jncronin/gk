@@ -11,6 +11,11 @@
 #include <unordered_set>
 #include "ipi.h"
 
+#include "gk_conf.h"
+#include "SEGGER_RTT.h"
+
+extern Spinlock s_rtt;
+
 template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
 
 class BaseQueue
@@ -70,7 +75,13 @@ class BaseQueue
         {
             CriticalGuard cg(sl);
             if(full())
+            {
+#if DEBUG_FULLQUEUE
+                CriticalGuard cg2(s_rtt);
+                SEGGER_RTT_printf(0, "queue: write fail\n");
+#endif
                 return false;
+            }
 
             memcpy(&(reinterpret_cast<char *>(_b)[_wptr * sz]), v, sz);
             //_b[_wptr] = v;

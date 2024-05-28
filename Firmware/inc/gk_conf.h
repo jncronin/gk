@@ -36,4 +36,6 @@
 
 #define SRAM4_DATA __attribute__((section(".sram4")))
 
+#define DEBUG_FULLQUEUE     1
+
 #endif
