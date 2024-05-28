@@ -144,7 +144,7 @@ Thread *Thread::Create(std::string name,
         owning_process.code_data.length, 2, true,
         RW, RW, WBWA_NS);
     t->tss.mpuss[3] = MPUGenerate(owning_process.heap.address,
-        owning_process.heap.length, 3, false,
+        owning_process.heap.length, 3, owning_process.heap_is_exec,
         RW, RW, WBWA_NS);
     t->tss.mpuss[4] = MPUGenerate(stackblk.address,
         stackblk.length, 4, false,
