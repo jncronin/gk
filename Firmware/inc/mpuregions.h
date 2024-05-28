@@ -103,7 +103,7 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
         }
     }
 
-    ret.rasr = 1UL | (cur_i << 1UL) | ((tex_scb & 0x3f) << 16) | (ap << 24);
+    ret.rasr = 1UL | (cur_i << 1UL) | ((tex_scb & 0x3f) << 16) | (ap << 24) | (executable ? 0UL : (1UL << 28));
 
     return ret;
 }
