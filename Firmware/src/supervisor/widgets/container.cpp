@@ -87,9 +87,9 @@ void GridWidget::KeyPressUp(Scancodes key)
 
 void GridWidget::KeyPressDown(Scancodes key)
 {
+    auto child = GetHighlightedChild();
     if(key == Scancodes::KeyEnter)
     {
-        auto child = GetHighlightedChild();
         if(child)
         {
             child->KeyPressDown(key);
@@ -101,16 +101,16 @@ void GridWidget::KeyPressDown(Scancodes key)
         switch(key)
         {
             case Scancodes::KeyLeft:
-                move_succeed = TryMoveHoriz(-1);
+                move_succeed = child->HandleMove(-1, 0) || TryMoveHoriz(-1);
                 break;
             case Scancodes::KeyRight:
-                move_succeed = TryMoveHoriz(1);
+                move_succeed = child->HandleMove(1, 0) || TryMoveHoriz(1);
                 break;
             case Scancodes::KeyUp:
-                move_succeed = TryMoveVert(-1);
+                move_succeed = child->HandleMove(0, -1) || TryMoveVert(-1);
                 break;
             case Scancodes::KeyDown:
-                move_succeed = TryMoveVert(1);
+                move_succeed = child->HandleMove(0, 1) || TryMoveVert(1);
                 break;
             default:
                 break;
@@ -159,14 +159,14 @@ bool GridWidget::TryMoveVert(int dir)
             return false;
         auto newrow = GetRow(newy);
 
-        // first try matching same x value, then check left, finally right
-        auto newx = (int)curx;
-        if(GetIndex(newrow, newx) != nullptr && GetIndex(newrow, newx)->CanHighlight())
+        // first try matching same x value, then get nearest of leftwards or rightwards scan
+        if(GetIndex(newrow, curx) != nullptr && GetIndex(newrow, curx)->CanHighlight())
         {
             cury = newy;
-            curx = newx;
             return true;
         }
+        int nearest_left = -1, nearest_right = -1;
+        auto newx = (int)curx;
         while(true)
         {
             newx--;
@@ -174,9 +174,8 @@ bool GridWidget::TryMoveVert(int dir)
                 break;
             if(GetIndex(newrow, newx) != nullptr && GetIndex(newrow, newx)->CanHighlight())
             {
-                cury = newy;
-                curx = newx;
-                return true;
+                nearest_left = newx;
+                break;
             }
         }
         newx = (int)curx;
@@ -187,10 +186,37 @@ bool GridWidget::TryMoveVert(int dir)
                 break;
             if(GetIndex(newrow, newx) != nullptr && GetIndex(newrow, newx)->CanHighlight())
             {
-                cury = newy;
-                curx = newx;
-                return true;
+                nearest_right = newx;
+                break;
             }           
+        }
+
+        if(nearest_left == -1 && nearest_right != -1)
+        {
+            // something to right, nothing to left
+            curx = nearest_right;
+            cury = newy;
+            return true;
+        }
+        if(nearest_right == -1 && nearest_left != -1)
+        {
+            // something to left, nothing to right
+            curx = nearest_left;
+            cury = newy;
+            return true;
+        }
+        if(nearest_left != -1 && nearest_right != -1)
+        {
+            // something to both left and right - get closest
+            int left_dist = curx - nearest_left;
+            int right_dist = nearest_right - curx;
+
+            if(right_dist < left_dist)
+                curx = nearest_right;
+            else
+                curx = nearest_left;
+            cury = newy;
+            return true;
         }
     }
 }

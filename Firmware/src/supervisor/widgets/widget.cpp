@@ -89,6 +89,11 @@ bool Widget::CanHighlight()
     return false;
 }
 
+bool Widget::HandleMove(int _x, int _y)
+{
+    return false;
+}
+
 bool ClickableWidget::CanHighlight()
 {
     return true;
