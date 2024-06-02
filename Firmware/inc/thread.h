@@ -64,6 +64,8 @@ class Thread
 
         PProcess p;
 
+        int handle;
+
         /* Used for waiting on inter-process RPC returns */
         SimpleSignal ss;
         WaitSimpleSignal_params ss_p;

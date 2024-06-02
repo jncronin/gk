@@ -13,6 +13,10 @@
 
 extern Thread dt;
 
+SRAM4_DATA int next_handle = 0;
+SRAM4_DATA Spinlock s_handle;
+SRAM4_DATA std::map<int, PThread> handle_map;
+
 Thread::Thread(PProcess owning_process) : p(owning_process) {}
 
 void Thread::Cleanup(void *tretval)
@@ -76,13 +80,19 @@ PThread Thread::Create(std::string name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
-            Process &owning_process,
+            PProcess owning_process,
             CPUAffinity affinity,
             MemRegion stackblk,
             const mpu_saved_state *defmpu)
 {
     auto t = std::make_shared<Thread>(owning_process);
     memset(&t->tss, 0, sizeof(thread_saved_state));
+
+    {
+        CriticalGuard cg(s_handle);
+        t->handle = next_handle++;
+        handle_map[t->handle] = t;
+    }
 
     t->tss.affinity = affinity;
     t->base_priority = priority;
@@ -136,11 +146,11 @@ PThread Thread::Create(std::string name,
     
     /* Create mpu regions */
     memcpy(t->tss.mpuss, defmpu, sizeof(mpu_default));
-    t->tss.mpuss[2] = MPUGenerate(owning_process.code_data.address,
-        owning_process.code_data.length, 2, true,
+    t->tss.mpuss[2] = MPUGenerate(owning_process->code_data.address,
+        owning_process->code_data.length, 2, true,
         RW, RW, WBWA_NS);
-    t->tss.mpuss[3] = MPUGenerate(owning_process.heap.address,
-        owning_process.heap.length, 3, owning_process.heap_is_exec,
+    t->tss.mpuss[3] = MPUGenerate(owning_process->heap.address,
+        owning_process->heap.length, 3, owning_process->heap_is_exec,
         RW, RW, WBWA_NS);
     t->tss.mpuss[4] = MPUGenerate(stackblk.address,
         stackblk.length, 4, false,
@@ -149,8 +159,8 @@ PThread Thread::Create(std::string name,
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
     //CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);
     {
-        CriticalGuard cg(owning_process.sl);
-        owning_process.threads.push_back(t);
+        CriticalGuard cg(owning_process->sl);
+        owning_process->threads.push_back(t);
     }
 
     return t;
@@ -190,13 +200,13 @@ Thread *GetNextThreadForCore(int coreid)
         coreid = GetCoreID();
     }
 #else
-    return sched.GetNextThread(0);
+    return sched.GetNextThread(0).get();
 #endif
 
 #if GK_DUAL_CORE
-    return sched.GetNextThread(coreid);
+    return sched.GetNextThread(coreid).get();
 #elif GK_DUAL_CORE_AMP
-    return scheds[coreid].GetNextThread(coreid);
+    return scheds[coreid].GetNextThread(coreid).get();
 #endif
 }
 
@@ -232,7 +242,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
             current_thread(coreid).v->tss.running_on_core = 0;
             current_thread(coreid).v->total_us_time += clock_cur_ms() -
                 current_thread(coreid).v->cur_timeslice_start;
-            if(current_thread(coreid).v == &dt)
+            if(current_thread(coreid).v.get() == &dt)
             {
                 flush_cache = true;
             }

@@ -56,7 +56,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             break;
 
         case GetThreadHandle:
-            *reinterpret_cast<Thread**>(r1) = GetCurrentThreadForCore();
+            *reinterpret_cast<int *>(r1) = GetCurrentThreadForCore()->handle;
             break;
 
         case FlipFrameBuffer:
@@ -69,30 +69,30 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_sbrk:
             {
                 auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
+                auto p = t->p;
 
-                CriticalGuard cg(p.sl);
-                if(p.heap.valid)
+                CriticalGuard cg(p->sl);
+                if(p->heap.valid)
                 {
                     auto nbytes = (int)r2;
 
                     if(nbytes == 0)
                     {
-                        *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
+                        *reinterpret_cast<uint32_t *>(r1) = p->heap.address + p->brk;
                     }
                     else if(nbytes > 0)
                     {
                         auto unbytes = static_cast<uint32_t>(nbytes);
 
-                        if((p.heap.length - p.brk) < unbytes)
+                        if((p->heap.length - p->brk) < unbytes)
                         {
                             *reinterpret_cast<int *>(r1) = -1;
                             *reinterpret_cast<int *>(r3) = ENOMEM;
                         }
                         else
                         {
-                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
-                            p.brk += unbytes;
+                            *reinterpret_cast<uint32_t *>(r1) = p->heap.address + p->brk;
+                            p->brk += unbytes;
                         }
                     }
                     else
@@ -100,15 +100,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         // nbytes < 0
                         auto unbytes = static_cast<uint32_t>(-nbytes);
 
-                        if(p.brk < unbytes)
+                        if(p->brk < unbytes)
                         {
                             *reinterpret_cast<int *>(r1) = -1;
                             *reinterpret_cast<int *>(r3) = ENOMEM;
                         }
                         else
                         {
-                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
-                            p.brk -= unbytes;
+                            *reinterpret_cast<uint32_t *>(r1) = p->heap.address + p->brk;
+                            p->brk -= unbytes;
                         }
                     }
                 }
@@ -192,18 +192,18 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 auto rc = reinterpret_cast<int>(r1);
 
                 auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
+                auto p = t->p;
 
-                CriticalGuard cg(p.sl);
-                for(auto pt : p.threads)
+                CriticalGuard cg(p->sl);
+                for(auto pt : p->threads)
                 {
                     CriticalGuard cg2(pt->sl);
                     pt->for_deletion = true;
                     pt->is_blocking = true;
                 }
 
-                p.rc = rc;
-                p.for_deletion = true;
+                p->rc = rc;
+                p->for_deletion = true;
 
                 Yield();
             }
@@ -535,14 +535,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             {
                 auto buf = reinterpret_cast<char *>(r1);
                 auto bufsize = reinterpret_cast<size_t>(r2);
-                auto &p = GetCurrentThreadForCore()->p;
-                if(p.cwd.length() > (bufsize - 1U))
+                auto p = GetCurrentThreadForCore()->p;
+                if(p->cwd.length() > (bufsize - 1U))
                 {
                     *reinterpret_cast<int *>(r3) = ERANGE;
                 }
                 else
                 {
-                    strcpy(buf, p.cwd.c_str());
+                    strcpy(buf, p->cwd.c_str());
                     *reinterpret_cast<int *>(r3) = 0;
                 }
             }
@@ -575,10 +575,10 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_getscreenmode:
             {
                 auto p = reinterpret_cast<__syscall_getscreenmode_params *>(r2);
-                auto &proc = GetCurrentThreadForCore()->p;
-                if(p->x) *p->x = proc.screen_w;
-                if(p->y) *p->y = proc.screen_h;
-                if(p->pf) *p->pf = proc.screen_pf;
+                auto proc = GetCurrentThreadForCore()->p;
+                if(p->x) *p->x = proc->screen_w;
+                if(p->y) *p->y = proc->screen_h;
+                if(p->pf) *p->pf = proc->screen_pf;
                 *reinterpret_cast<int *>(r1) = 0;
             }
             break;
@@ -634,18 +634,18 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
             {
                 auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
+                auto p = t->p;
                 SEGGER_RTT_printf(0, "panic: process %s thread %s unhandled syscall\n",
-                    p.name.c_str(), t->name.c_str());
-                if(&p != &kernel_proc)
+                    p->name.c_str(), t->name.c_str());
+                if(p != p_kernel_proc)
                 {
-                    CriticalGuard cg_p(p.sl);
-                    for(auto thr : p.threads)
+                    CriticalGuard cg_p(p->sl);
+                    for(auto thr : p->threads)
                     {
                         CriticalGuard cg_t(thr->sl);
                         thr->for_deletion = true;
                     }
-                    p.for_deletion = true;
+                    p->for_deletion = true;
                     Yield();
                 }
                 else

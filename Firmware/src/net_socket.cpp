@@ -157,9 +157,9 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
 
     // get available sockfd
     auto t = GetCurrentThreadForCore();
-    auto &p = t->p;
+    auto p = t->p;
     {
-        CriticalGuard cg(p.sl);
+        CriticalGuard cg(p->sl);
 
         int fildes = get_free_fildes(p);
         if(fildes == -1)
