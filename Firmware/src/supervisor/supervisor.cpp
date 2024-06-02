@@ -21,6 +21,7 @@ ButtonWidget rw_test, rw_test2;
 ImageButtonWidget imb_bright_up, imb_bright_down;
 GridWidget scr_test;
 LabelWidget lab_caption;
+KeyboardWidget kw;
 static unsigned int scr_alpha = 0;
 
 void init_supervisor()
@@ -111,6 +112,12 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
     }
 }
 
+void kbd_test_click(Widget *w, coord_t x, coord_t y, int key)
+{
+    CriticalGuard cg(s_rtt);
+    SEGGER_RTT_printf(0, "kbd: %d\n", key);
+}
+
 void *supervisor_thread(void *p)
 {
     rw_test.x = 32;
@@ -164,11 +171,16 @@ void *supervisor_thread(void *p)
     rw.border_width = 0;
 
     scr_test.AddChild(rw);
-    scr_test.AddChildOnGrid(rw_test);
+    //scr_test.AddChildOnGrid(rw_test);
     //scr_test.AddChildOnGrid(rw_test2);
-    scr_test.AddChildOnGrid(imb_bright_down);
-    scr_test.AddChildOnGrid(imb_bright_up);
-    scr_test.AddChild(lab_caption);
+    //scr_test.AddChildOnGrid(imb_bright_down);
+    //scr_test.AddChildOnGrid(imb_bright_up);
+    //scr_test.AddChild(lab_caption);
+
+    kw.x = (640 - kw.w) / 2;
+    kw.y = 8;
+    kw.OnKeyboardButtonClick = kbd_test_click;
+    scr_test.AddChildOnGrid(kw);
 
     Widget *cur_scr = &scr_test;
 

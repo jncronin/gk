@@ -63,6 +63,8 @@ class Widget
 
         virtual bool IsActivated();
 
+        virtual bool HandleMove(int x, int y);
+
         int x, y, w, h;
         int ctrl_id;
 
@@ -273,5 +275,7 @@ class GridWidget : public ContainerWidget
         bool TryMoveVert(int change);
         bool TryMoveHoriz(int change);
 };
+
+#include "widget_keyboard.h"
 
 #endif
