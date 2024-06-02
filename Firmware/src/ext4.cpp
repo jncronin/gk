@@ -420,6 +420,23 @@ static inline void copy_dmaaware(void *dest, const void *src, size_t n)
     }
 }
 
+static void handle_ftruncate_message(ext4_message &msg)
+{
+    auto extret = ext4_ftruncate(msg.params.ftruncate_params.e4f,
+        msg.params.ftruncate_params.length);
+    if(extret == EOK)
+    {
+        msg.ss_p->ival1 = 0;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+}
+
 static void handle_fstat_message(ext4_message &msg)
 {
     struct stat buf = { 0 };
@@ -639,6 +656,10 @@ void *ext4_thread(void *_p)
 
             case ext4_message::msg_type::Fstat:
                 handle_fstat_message(msg);
+                break;
+
+            case ext4_message::msg_type::Ftruncate:
+                handle_ftruncate_message(msg);
                 break;
 
             case ext4_message::msg_type::Lseek:

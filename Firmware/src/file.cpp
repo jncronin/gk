@@ -58,3 +58,9 @@ int File::ReadDir(dirent *de, int *_errno)
     *_errno = EBADF;
     return -1;
 }
+
+int File::Ftruncate(off_t length, int *_errno)
+{
+    *_errno = EROFS;
+    return -1;
+}

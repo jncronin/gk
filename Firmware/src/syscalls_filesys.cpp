@@ -77,6 +77,19 @@ off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
     return p.open_files[file]->Lseek(offset, whence, _errno);
 }
 
+int syscall_ftruncate(int file, off_t length, int *_errno)
+{
+    auto &p = GetCurrentThreadForCore()->p;
+    CriticalGuard(p.sl);
+    if(file < 0 || file >= GK_MAX_OPEN_FILES || !p.open_files[file])
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    return p.open_files[file]->Ftruncate(length, _errno);
+}
+
 int get_free_fildes(Process &p)
 {
     // try and get free process file handle

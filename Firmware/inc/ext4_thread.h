@@ -30,7 +30,8 @@ struct ext4_message
         Fstat,
         Mkdir,
         ReadDir,
-        Unlink
+        Unlink,
+        Ftruncate
     };
 
     msg_type type;
@@ -77,6 +78,11 @@ struct ext4_message
         {
             const char *pathname;
         } unlink_params;
+        struct ftruncate_params_t
+        {
+            ext4_file *e4f;
+            off_t length;
+        } ftruncate_params;
     } params;
 
     SimpleSignal *ss;
@@ -186,6 +192,26 @@ static constexpr ext4_message ext4_lseek_message(ext4_file &e4f, off_t offset, i
 
     ext4_message ret {
         .type = ext4_message::msg_type::Lseek,
+        .params = __p,
+        .ss = &ss,
+        .ss_p = &ss_p };
+    return ret;
+}
+
+static constexpr ext4_message ext4_ftruncate_message(ext4_file &e4f, off_t length,
+    SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+{
+    ext4_message::params_t::ftruncate_params_t _p {
+        .e4f = &e4f,
+        .length = length
+    };
+
+    ext4_message::params_t __p {
+        .ftruncate_params = _p
+    };
+
+    ext4_message ret {
+        .type = ext4_message::msg_type::Ftruncate,
         .params = __p,
         .ss = &ss,
         .ss_p = &ss_p };
