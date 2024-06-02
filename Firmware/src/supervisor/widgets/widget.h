@@ -71,6 +71,7 @@ class Widget
         Widget *parent;
 
         void (*OnClick)(Widget *w, coord_t x, coord_t y);
+        void (*OnClickBegin)(Widget *w, coord_t x, coord_t y);
 
         void GetAbsolutePosition(coord_t *x, coord_t *y);
 

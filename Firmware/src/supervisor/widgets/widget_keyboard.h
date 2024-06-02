@@ -15,6 +15,7 @@ class KeyboardWidget : public GridWidget
                 KeyboardWidget *kbd;
 
                 static void _OnClick(Widget *w, coord_t x, coord_t y);
+                static void _OnClickBegin(Widget *w, coord_t x, coord_t y);
 
             public:
                 Keybutton(int _key, std::string text, float _x, float _y, float _w = 1.0f, float _h = 1.0f);
@@ -129,6 +130,7 @@ class KeyboardWidget : public GridWidget
     public:
         KeyboardWidget();
         void (*OnKeyboardButtonClick)(Widget *w, coord_t x, coord_t y, int key);
+        void (*OnKeyboardButtonClickBegin)(Widget *w, coord_t x, coord_t y, int key);
 
         bool HandleMove(int x, int y);
 };
