@@ -104,6 +104,10 @@ void ClickableWidget::KeyPressDown(Scancodes key)
     if(key == Scancodes::KeyEnter)
     {
         is_clicked = true;
+        if(OnClickBegin)
+        {
+            OnClickBegin(this, 0, 0);
+        }
     }
 }
 

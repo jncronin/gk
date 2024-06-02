@@ -112,10 +112,14 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
     }
 }
 
-void kbd_test_click(Widget *w, coord_t x, coord_t y, int key)
+void kbd_click_up(Widget *w, coord_t x, coord_t y, int key)
 {
-    CriticalGuard cg(s_rtt);
-    SEGGER_RTT_printf(0, "kbd: %d\n", key);
+    focus_process->events.Push({ .type = Event::KeyUp, .key = (unsigned short)key });
+}
+
+void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
+{
+    focus_process->events.Push({ .type = Event::KeyDown, .key = (unsigned short)key });
 }
 
 void *supervisor_thread(void *p)
@@ -179,7 +183,8 @@ void *supervisor_thread(void *p)
 
     kw.x = (640 - kw.w) / 2;
     kw.y = 8;
-    kw.OnKeyboardButtonClick = kbd_test_click;
+    kw.OnKeyboardButtonClick = kbd_click_up;
+    kw.OnKeyboardButtonClickBegin = kbd_click_down;
     scr_test.AddChildOnGrid(kw);
 
     Widget *cur_scr = &scr_test;
