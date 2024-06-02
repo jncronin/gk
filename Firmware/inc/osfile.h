@@ -27,6 +27,7 @@ class File
 
         virtual int Fstat(struct stat *buf, int *_errno);
         virtual off_t Lseek(off_t offset, int whence, int *_errno);
+        virtual int Ftruncate(off_t length, int *_errno);
 
         virtual int Isatty(int *_errno);
         virtual int Close(int *_errno);
@@ -82,6 +83,7 @@ class LwextFile : public File
 
         int Fstat(struct stat *buf, int *_errno);
         off_t Lseek(off_t offset, int whence, int *_errno);
+        int Ftruncate(off_t length, int *_errno);
 
         int Close(int *_errno);
 

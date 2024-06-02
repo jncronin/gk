@@ -105,6 +105,28 @@ off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
     return -2;  // deferred return
 }
 
+int LwextFile::Ftruncate(off_t length, int *_errno)
+{
+    if(is_dir)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    if(!f.mp)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    auto t = GetCurrentThreadForCore();
+    auto msg = ext4_ftruncate_message(f, length, t->ss, t->ss_p);
+    if(!ext4_send_message(msg))
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+    return -2;  // deferred return
+}
+
 int LwextFile::Close(int *_errno)
 {
     if((is_dir && !d.f.mp) || (!is_dir && !f.mp))
