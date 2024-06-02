@@ -232,7 +232,7 @@ static void handle_scale_blit_cpu(const gpu_message &g)
 
 uint32_t mdma_ll[16*16] __attribute__((aligned(32)));
 
-static bool handle_scale_blit_dma(const gpu_message &g)
+[[maybe_unused]] static bool handle_scale_blit_dma(const gpu_message &g)
 {
     auto bpp = get_bpp(g.src_pf);
 
@@ -273,6 +273,14 @@ static bool handle_scale_blit_dma(const gpu_message &g)
             break;
     }
 
+#if GPU_DEBUG
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "gpu: mdma scale: dest: %x, src: %x, sx: %d, sy: %d, destx: %d, desty: %d, srcx: %d, srcy: %d, dincos: %d, sincos: %d, bpp: %d\n",
+            (uint32_t)g.dest_addr, (uint32_t)g.src_addr_color, sx, sy, g.dx, g.dy, g.sx, g.sy, dincos, sincos, bpp);
+    }
+#endif
+
     // build linked lists for MDMA
     int mdma_ll_idx = 0;
 
@@ -291,9 +299,9 @@ static bool handle_scale_blit_dma(const gpu_message &g)
             cll[0] = MDMA_CTCR_SWRM |
                 MDMA_CTCR_BWM |
                 (3U << MDMA_CTCR_TRGM_Pos) |            // repeated block transfer, follow linked list
-                (127U << MDMA_CTCR_TLEN_Pos) |
-                (7U << MDMA_CTCR_DBURST_Pos) |
-                (3U << MDMA_CTCR_SBURST_Pos) |
+                (31U << MDMA_CTCR_TLEN_Pos) |
+                (5U << MDMA_CTCR_DBURST_Pos) |
+                (5U << MDMA_CTCR_SBURST_Pos) |
                 (dincos << MDMA_CTCR_DINCOS_Pos) |
                 (sincos << MDMA_CTCR_SINCOS_Pos) |
                 (size << MDMA_CTCR_DSIZE_Pos) |
@@ -328,7 +336,6 @@ static bool handle_scale_blit_dma(const gpu_message &g)
 
             // CMDR
             cll[9] = 0U;
-            mdma->CMAR = 0U;
         }
     }
     // load first set of registers
@@ -340,7 +347,7 @@ static bool handle_scale_blit_dma(const gpu_message &g)
 
     mdma->CIFCR = 0x1fU;
     mdma->CCR = MDMA_CCR_EN;
-    mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ | MDMA_CCR_CTCIE;
+    mdma->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ | MDMA_CCR_CTCIE | MDMA_CCR_TEIE;
 
     return true;
 }
@@ -385,6 +392,12 @@ void *gpu_thread(void *p)
     // Init framebuffer - 640x480 x 32bpp
     auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
     screen_set_frame_buffer((void *)fb.address, (void *)(fb.address + 0x200000));
+
+    // Clear to black
+    for(unsigned int i = 0; i < 0x400000; i += 4)
+    {
+        *(uint32_t *)(fb.address + i) = 0U;
+    }
 
     // Set up our scaling backbuffers (for 320x240 screen and 160x120 screen) - 32bpp
     scaling_bb[0] = (void *)(fb.address + 0x12c000);
