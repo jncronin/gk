@@ -460,8 +460,9 @@ void *gpu_thread(void *p)
 
             /* get details on pixel formats, strides etc */
             uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_pf;
-            uint32_t src_pf_for_psize = g.src_pf & 0xff;
-            uint32_t src_pf_for_blend = g.src_pf >> 8;
+            uint32_t src_pf = g.src_addr_color ? g.src_pf : focus_process->screen_pf;
+            uint32_t src_pf_for_psize = src_pf & 0xff;
+            uint32_t src_pf_for_blend = src_pf >> 8;
             uint32_t dest_pf_for_psize = dest_pf & 0xff;
             uint32_t dest_pf_for_blend = dest_pf >> 8;
             if(!src_pf_for_blend) src_pf_for_blend = src_pf_for_psize;
@@ -471,6 +472,9 @@ void *gpu_thread(void *p)
             uint32_t dest_addr;
             uint32_t dest_pitch;
             uint32_t dest_w, dest_h;
+            uint32_t src_addr;
+            uint32_t src_pitch;
+            uint32_t src_w, src_h;
             if(g.dest_addr == 0)
             {
                 if(focus_process->screen_w == 640 && focus_process->screen_h == 480)
@@ -512,11 +516,53 @@ void *gpu_thread(void *p)
                 dest_h = g.dh;
             }
 
+            if(g.src_addr_color == 0)
+            {
+                if(focus_process->screen_w == 640 && focus_process->screen_h == 480)
+                {
+                    src_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer(false);
+                    src_pitch = 640 * bpp;
+                    if(g.w == 0 && g.h == 0)
+                    {
+                        src_w = 640;
+                        src_h = 480;
+                    }
+                    else
+                    {
+                        src_w = g.w;
+                        src_h = g.h;
+                    }
+                }
+                else
+                {
+                    get_scaling_bb((void **)&src_addr);
+                    src_pitch = focus_process->screen_w * bpp;
+                    if(g.w == 0 && g.h == 0)
+                    {
+                        src_w = focus_process->screen_w;
+                        src_h = focus_process->screen_h;
+                    }
+                    else
+                    {
+                        src_w = g.w;
+                        src_h = g.h;
+                    }
+                }
+            }
+            else
+            {
+                src_addr = g.src_addr_color;
+                src_pitch = g.sp;
+                src_w = g.w;
+                src_h = g.h;
+            }
+
+
 #if GPU_DEBUG
             {
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, dw: %x, dh: %x, w: %x, h: %x\n",
-                    (unsigned int)clock_cur_ms(), g.type, dest_addr, g.src_addr_color, dest_w, dest_h, g.w, g.h);
+                    (unsigned int)clock_cur_ms(), g.type, dest_addr, src_addr, dest_w, dest_h, src_w, src_h);
                 SEGGER_RTT_printf(0, "gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
             }
 #endif
@@ -653,7 +699,7 @@ void *gpu_thread(void *p)
                         break;
                     
                     wait_dma2d();
-                    if(dest_w == g.w && dest_h == g.h)
+                    if(dest_w == src_w && dest_h == src_h)
                     {
                         // can do DMA2D copy
                         DMA2D->OPFCCR = dest_pf_for_psize;
@@ -663,9 +709,9 @@ void *gpu_thread(void *p)
 
                         // configure source, +/- pixel format correction
                         auto src_bpp = get_bpp(src_pf_for_psize);
-                        DMA2D->FGMAR = g.src_addr_color + g.sx * src_bpp + g.sy * g.sp;
+                        DMA2D->FGMAR = src_addr + g.sx * src_bpp + g.sy * src_pitch;
                         DMA2D->FGPFCCR = src_pf_for_psize;
-                        DMA2D->FGOR = (g.sp / src_bpp) - dest_w;
+                        DMA2D->FGOR = (src_pitch / src_bpp) - dest_w;
 
                         // does it blend?
                         uint32_t mode = 0;
@@ -694,6 +740,11 @@ void *gpu_thread(void *p)
                         g.dp = dest_pitch;
                         g.dw = dest_w;
                         g.dh = dest_h;
+                        g.src_addr_color = src_addr;
+                        g.src_pf = src_pf_for_psize;
+                        g.sp = src_pitch;
+                        g.w = src_w;
+                        g.h = src_h;
                         handle_scale_blit(g);
                     }
                     break;

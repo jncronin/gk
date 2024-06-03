@@ -21,10 +21,17 @@ SRAM4_DATA static int scr_brightness = 0;
 
 SRAM4_DATA Condition scr_vsync;
 
-void *screen_get_frame_buffer()
+void *screen_get_frame_buffer(bool back_buf)
 {
     CriticalGuard cg(s_scrbuf);
-    return scr_bufs[scr_cbuf & 0x1];
+    if(back_buf)
+    {
+        return scr_bufs[scr_cbuf & 0x1];
+    }
+    else
+    {
+        return scr_bufs[(scr_cbuf + 1) & 0x1];
+    }
 }
 
 void *screen_get_overlay_frame_buffer()
