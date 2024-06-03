@@ -60,10 +60,12 @@ class Process
         /* gamepad mapping */
         bool gamepad_is_joystick = true;
         bool gamepad_is_keyboard = true;
+        bool gamepad_is_mouse = false;
 
         enum GamepadKey { Left, Right, Up, Down, A, B, X, Y };
         unsigned int gamepad_buttons = 0;
-        void HandleGamepadEvent(GamepadKey key, bool pressed);
+        unsigned char mouse_buttons = 0;
+        void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
 
         unsigned short int gamepad_to_scancode[8] = { 80, 79, 82, 81, 224, 226, 225, 'z' };
 

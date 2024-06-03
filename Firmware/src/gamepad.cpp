@@ -13,9 +13,72 @@ static inline short int get_axis_value(unsigned int btns, Process::GamepadKey po
         return INT16_MIN;
 }
 
-void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed)
+void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ongoing_press)
 {
     CriticalGuard cg(sl);
+    if(gamepad_is_mouse)
+    {
+        if(ongoing_press || pressed)
+        {
+            switch(key)
+            {
+                case GamepadKey::Left:
+                    events.Push({ Event::event_type_t::MouseMove,
+                        .mouse_data = { .x = -1, .y = 0, .is_rel = 1, .buttons = mouse_buttons } });
+                    break;
+                case GamepadKey::Right:
+                    events.Push({ Event::event_type_t::MouseMove,
+                        .mouse_data = { .x = 1, .y = 0, .is_rel = 1, .buttons = mouse_buttons } });
+                    break;
+                case GamepadKey::Up:
+                    events.Push({ Event::event_type_t::MouseMove,
+                        .mouse_data = { .x = 0, .y = -1, .is_rel = 1, .buttons = mouse_buttons } });
+                    break;
+                case GamepadKey::Down:
+                    events.Push({ Event::event_type_t::MouseMove,
+                        .mouse_data = { .x = 0, .y = 1, .is_rel = 1, .buttons = mouse_buttons } });
+                    break;
+                default:
+                    break;
+            }
+        }
+        if(pressed)
+        {
+            switch(key)
+            {
+                case GamepadKey::A:
+                    mouse_buttons |= 1U;
+                    events.Push({ Event::event_type_t::MouseDown,
+                        .mouse_data = { .x = 0, .y = 0, .is_rel = 0, .buttons = 1U } });
+                    break;
+                case GamepadKey::B:
+                    mouse_buttons |= 2U;
+                    events.Push({ Event::event_type_t::MouseDown,
+                        .mouse_data = { .x = 0, .y = 0, .is_rel = 0, .buttons = 2U } });
+                    break;
+                default:
+                    break;
+            }
+        }
+        if(!pressed && !ongoing_press)
+        {
+            switch(key)
+            {
+                case GamepadKey::A:
+                    mouse_buttons &= ~1U;
+                    events.Push({ Event::event_type_t::MouseUp,
+                        .mouse_data = { .x = 0, .y = 0, .is_rel = 0, .buttons = 1U } });
+                    break;
+                case GamepadKey::B:
+                    mouse_buttons &= ~2U;
+                    events.Push({ Event::event_type_t::MouseUp,
+                        .mouse_data = { .x = 0, .y = 0, .is_rel = 0, .buttons = 2U } });
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
     if(gamepad_is_joystick)
     {
         if(pressed)
@@ -67,13 +130,17 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed)
     }
     if(gamepad_is_keyboard)
     {
-        if(pressed)
+        auto scode = gamepad_to_scancode[(int)key];
+        if(scode)
         {
-            events.Push({ Event::event_type_t::KeyDown, .key = gamepad_to_scancode[(int)key] });
-        }
-        else
-        {
-            events.Push({ Event::event_type_t::KeyUp, .key = gamepad_to_scancode[(int)key] });
+            if(pressed)
+            {
+                events.Push({ Event::event_type_t::KeyDown, .key = scode });
+            }
+            else
+            {
+                events.Push({ Event::event_type_t::KeyUp, .key = scode });
+            }
         }
     }
 }

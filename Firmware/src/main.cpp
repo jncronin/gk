@@ -461,10 +461,18 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/DOSBOX-0.74-gk/bin/dosbox", &pt);
     focus_process->screen_w = 320;
     focus_process->screen_h = 240;
-    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 224; // LCTRL
-    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 44;  // SPACE
+    //focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 224; // LCTRL
+    //focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 44;  // SPACE
     focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;  // RETURN
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 41;  // ESCAPE
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 0;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 0;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 0;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 0;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 0;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 0;
+    focus_process->gamepad_is_mouse = true;
+    focus_process->gamepad_is_joystick = false;
     extern Process p_supervisor;
     p_supervisor.events.Push({ .type = Event::CaptionChange });
 
