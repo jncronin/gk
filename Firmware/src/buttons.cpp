@@ -29,6 +29,8 @@ static Debounce db_MENU(BTN_MENU),
     db_X(BTN_X),
     db_Y(BTN_Y);
 
+static int longpress_count = 0;
+
 void init_buttons()
 {
     BTN_MENU.set_as_input();
@@ -132,6 +134,31 @@ template<int tick_period_ms,
     if(v & pin_state::NewStableState)
     {
         handle_state_change(db.get_pin().pin, v & pin_state::StableLow);
+    }
+    else if(v & pin_state::StableLow && (!(longpress_count % (50 / low_time_ms))))
+    {
+        // long presses
+        switch(db.get_pin().pin)
+        {
+            case 5:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::Left, false, true);
+                break;
+            case 6:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::Right, false, true);
+                break;
+            case 7:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::Up, false, true);
+                break;
+            case 8:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::Down, false, true);
+                break;
+            case 9:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::A, false, true);
+                break;
+            case 10:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::B, false, true);
+                break;
+        }
     }
 }
 
