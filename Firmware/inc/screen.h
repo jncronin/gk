@@ -3,7 +3,7 @@
 
 void init_screen();
 void *screen_flip(void **old_buf = nullptr);
-void *screen_get_frame_buffer();
+void *screen_get_frame_buffer(bool back_buf = true);
 void screen_set_frame_buffer(void *b0, void *b1);
 
 void screen_set_overlay_frame_buffer(void *b0, void *b1);
