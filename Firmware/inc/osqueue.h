@@ -47,8 +47,10 @@ class BaseQueue
             bool hpt = false;
             for(auto bt : waiting_threads)
             {
+                //CriticalGuard cg(bt->sl);
                 bt->is_blocking = false;
                 bt->block_until = 0;
+                bt->blocking_on = nullptr;
                 if(bt->base_priority > t->base_priority)
                     hpt = true;
                 signal_thread_woken(bt);

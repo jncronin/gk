@@ -134,7 +134,9 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
     do_op(op, val);
     if(waiting_thread)
     {
+        //CriticalGuard cg2(waiting_thread->sl);
         waiting_thread->is_blocking = false;
+        waiting_thread->blocking_on = nullptr;
         if(waiting_thread->base_priority > t->base_priority)
             hpt = true;
         signal_thread_woken(waiting_thread);
@@ -223,7 +225,9 @@ Condition::~Condition()
     auto t = GetCurrentThreadForCore();
     for(auto &bt : waiting_threads)
     {
+        //CriticalGuard cg2(bt.first->sl);
         bt.first->is_blocking = false;
+        bt.first->blocking_on = nullptr;
         bt.first->block_until = 0;
         if(bt.first->base_priority > t->base_priority)
             hpt = true;
@@ -260,6 +264,7 @@ void Condition::Signal(bool signal_all)
                     *bt.second.signalled = true;
                 
                 bt.first->is_blocking = false;
+                bt.first->blocking_on = nullptr;
                 bt.first->block_until = 0;
                 if(bt.first->base_priority > t->base_priority)
                     hpt = true;
@@ -288,6 +293,7 @@ void Condition::Signal(bool signal_all)
                     *tp.signalled = true;
                 
                 iter->first->is_blocking = false;
+                iter->first->blocking_on = nullptr;
                 iter->first->block_until = 0;
                 if(iter->first->base_priority > t->base_priority)
                     hpt = true;
