@@ -135,7 +135,7 @@ template<int tick_period_ms,
     {
         handle_state_change(db.get_pin().pin, v & pin_state::StableLow);
     }
-    else if(v & pin_state::StableLow && (!(longpress_count % (50 / low_time_ms))))
+    else if(v & pin_state::StableLow && (!(longpress_count % (100 / low_time_ms))))
     {
         // long presses
         switch(db.get_pin().pin)
@@ -175,6 +175,8 @@ extern "C" void LPTIM2_IRQHandler()
     handle_debounce_event(db_B);
     handle_debounce_event(db_X);
     handle_debounce_event(db_Y);
+
+    longpress_count++;
 
     LPTIM2->ICR = LPTIM_ICR_ARRMCF;
     __DMB();
