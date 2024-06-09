@@ -251,6 +251,7 @@ int elf_load_memory(const void *e, const std::string &pname,
                 case R_ARM_THM_JUMP24:
                 case R_ARM_THM_CALL:
                 case R_ARM_PREL31:
+                case R_ARM_REL32:
                     /* relative reloc, do nothing */
                     break;
 
@@ -687,6 +688,7 @@ int elf_load_fildes(int fd,
                 case R_ARM_THM_CALL:
                 case R_ARM_PREL31:
                 case R_ARM_TARGET2:
+                case R_ARM_REL32:
                     /* relative reloc, do nothing */
                     break;
 

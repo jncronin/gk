@@ -211,6 +211,20 @@ void *proccreate_thread(void *ptr)
         p_supervisor.events.Push( { .type = Event::CaptionChange });
     }
 
+    // Set cwd
+    if(pcinfo->cwd)
+    {
+        proc->cwd = pcinfo->cwd;
+    }
+    else if(lastslash)
+    {
+        proc->cwd = std::string(fname, lastslash - fname);
+    }
+    else
+    {
+        proc->cwd = "/";
+    }
+
     // schedule startup thread
     Schedule(start_t);
 
