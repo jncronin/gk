@@ -7,6 +7,8 @@
 #include <cstring>
 #include <fcntl.h>
 #include <ext4.h>
+#include <string>
+#include <sstream>
 
 #include "ext4_thread.h"
 
@@ -105,6 +107,66 @@ int get_free_fildes(Process &p)
     return fd;
 }
 
+static inline bool starts_with(const std::string &s, char c)
+{
+    return s.length() > 0 && s[0] == c;
+}
+
+static void add_part(std::vector<std::string> &output, const std::string &input)
+{
+    if(input == ".")
+    {
+        return;
+    }
+    else if(input == "..")
+    {
+        if(output.size() > 0)
+        {
+            output.pop_back();
+        }
+    }
+    else
+    {
+        output.push_back(input);
+    }
+}
+
+static void add_parts(std::vector<std::string> &output, const std::string &input)
+{
+    size_t last = 0;
+    size_t next = 0;
+    const std::string delimiter = "/";
+    while ((next = input.find(delimiter, last)) != std::string::npos)
+    {
+        add_part(output, input.substr(last, next - last));
+        last = next + 1;
+    }
+    add_part(output, input.substr(last));
+}
+
+static std::string parse_fname(const std::string &pname)
+{
+    std::vector<std::string> pnames;
+
+    if(!starts_with(pname, '/'))
+    {
+        // add cwd
+        auto cwd = GetCurrentThreadForCore()->p.cwd;
+        add_parts(pnames, cwd);
+    }
+    add_parts(pnames, pname);
+
+    std::ostringstream ss;
+    for(auto iter = pnames.begin(); iter != pnames.end(); iter++)
+    {
+        ss << *iter;
+        if(iter != pnames.end() - 1)
+            ss << "/";
+    }
+
+    return ss.str();
+}
+
 int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 {
     // try and get free process file handle
@@ -119,8 +181,10 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         return -1;
     }
 
+    auto act_name = parse_fname(pathname);
+
     // special case /dev files
-    if(strcmp("/dev/stdin", pathname) == 0)
+    if(act_name == "/dev/stdin")
     {
         if(is_opendir)
         {
@@ -130,7 +194,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         p.open_files[fd] = new SeggerRTTFile(0, true, false);
         return fd;
     }
-    if(strcmp("/dev/stdout", pathname) == 0)
+    if(act_name == "/dev/stdout")
     {
         if(is_opendir)
         {
@@ -140,7 +204,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         p.open_files[fd] = new SeggerRTTFile(0, false, true);
         return fd;
     }
-    if(strcmp("/dev/stderr", pathname) == 0)
+    if(act_name == "/dev/stderr")
     {
         if(is_opendir)
         {
@@ -150,7 +214,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         p.open_files[fd] = new SeggerRTTFile(0, false, true);
         return fd;
     }
-    if(strcmp("/dev/ttyUSB0", pathname) == 0)
+    if(act_name == "/dev/ttyUSB0")
     {
         if(is_opendir)
         {
@@ -162,9 +226,8 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
 
     // use lwext4
-    auto lwf = new LwextFile({ 0 }, pathname);
+    auto lwf = new LwextFile({ 0 }, act_name);
     p.open_files[fd] = lwf;
-    check_buffer(lwf->fname.c_str());
     auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
         p, fd, t->ss, t->ss_p);
     if(ext4_send_message(msg))

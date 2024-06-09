@@ -450,6 +450,7 @@ void *init_thread(void *p)
 #if 0
     const char *args[] = { "-nosound", "-nomusic", "-nosfx", "-iwad", "/share/doom/doom1.wad" };
 #endif
+#if 0
     const char *args[] = { "/share/dosbox/TIE/TIE.EXE" };
 
     pt.argv = args;
@@ -473,6 +474,16 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 0;
     focus_process->gamepad_is_mouse = true;
     focus_process->gamepad_is_joystick = false;
+#endif
+
+    // Pacman
+    const char *args[] = { };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/Pacman-0.1.1-gk";
+    deferred_call(syscall_proccreate, "/Pacman-0.1.1-gk/pacman", &pt);
+
+
     extern Process p_supervisor;
     p_supervisor.events.Push({ .type = Event::CaptionChange });
 

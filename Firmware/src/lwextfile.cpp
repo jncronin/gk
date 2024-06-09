@@ -8,15 +8,7 @@
 
 LwextFile::LwextFile(ext4_file fildes, std::string _fname) : f(fildes)
 { 
-    if(_fname.length() > 0 && _fname[0] != '/')
-    {
-        // append current directory
-        fname = GetCurrentThreadForCore()->p.cwd + _fname;
-    }
-    else
-    {
-        fname = _fname;
-    }
+    fname = _fname;
     type = FileType::FT_Lwext;
 }
 

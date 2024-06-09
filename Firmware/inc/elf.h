@@ -301,6 +301,7 @@ int elf32_load_segment(FILE *fp, Elf32_Phdr *phdr); */
 
 #define R_ARM_NONE			0
 #define R_ARM_ABS32         2
+#define R_ARM_REL32			3
 #define R_ARM_THM_CALL      10
 #define R_ARM_THM_JUMP24    30
 #define R_ARM_PREL31        42
