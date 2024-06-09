@@ -475,13 +475,24 @@ void *init_thread(void *p)
     focus_process->gamepad_is_mouse = true;
     focus_process->gamepad_is_joystick = false;
 #endif
-
+#if 0
     // Pacman
     const char *args[] = { };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/Pacman-0.1.1-gk";
     deferred_call(syscall_proccreate, "/Pacman-0.1.1-gk/pacman", &pt);
+#endif
+    // Pacman
+    const char *args[] = { };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/pacman_ebuc99-0.1.1-gk";
+    pt.stack_size = 32 * 1024;
+    deferred_call(syscall_proccreate, "/pacman_ebuc99-0.1.1-gk/pacman", &pt);
+    focus_process->gamepad_is_mouse = true;
+    focus_process->gamepad_is_joystick = false;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 40;  // RETURN
 
 
     extern Process p_supervisor;
