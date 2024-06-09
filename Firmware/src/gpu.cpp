@@ -9,7 +9,7 @@
 
 SRAM4_DATA static BinarySemaphore gpu_ready;
 SRAM4_DATA static BinarySemaphore mdma_ready;
-SRAM4_DATA static FixedQueue<gpu_message, 64> gpu_msg_list;
+SRAM4_DATA static FixedQueue<gpu_message, 512> gpu_msg_list;
 
 extern Spinlock s_rtt;
 #include "SEGGER_RTT.h"
