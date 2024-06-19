@@ -495,6 +495,7 @@ void *init_thread(void *p)
     focus_process->gamepad_is_joystick = false;
     focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 40;  // RETURN
 #endif
+#if 0
     // mesa gears
     const char *args[] = { };
     pt.argv = args;
@@ -502,6 +503,15 @@ void *init_thread(void *p)
     pt.cwd = "/glgears-0.1.1-gk";
     pt.stack_size = 64 * 1024;
     deferred_call(syscall_proccreate, "/glgears-0.1.1-gk/bin/glgears", &pt);
+#endif
+    // tuxracer
+    const char *args[] = { };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/tuxracer-0.1.1-gk";
+    pt.stack_size = 64 * 1024;
+    deferred_call(syscall_proccreate, "/tuxracer-0.1.1-gk/bin/tuxracer", &pt);
+    
 
 
     extern Process p_supervisor;
