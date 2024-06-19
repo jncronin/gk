@@ -483,6 +483,7 @@ void *init_thread(void *p)
     pt.cwd = "/Pacman-0.1.1-gk";
     deferred_call(syscall_proccreate, "/Pacman-0.1.1-gk/pacman", &pt);
 #endif
+#if 0
     // Pacman
     const char *args[] = { };
     pt.argv = args;
@@ -493,6 +494,14 @@ void *init_thread(void *p)
     focus_process->gamepad_is_mouse = true;
     focus_process->gamepad_is_joystick = false;
     focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 40;  // RETURN
+#endif
+    // mesa gears
+    const char *args[] = { };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/glgears-0.1.1-gk";
+    pt.stack_size = 64 * 1024;
+    deferred_call(syscall_proccreate, "/glgears-0.1.1-gk/bin/glgears", &pt);
 
 
     extern Process p_supervisor;
