@@ -69,6 +69,7 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno);
 int syscall_opendir(const char *pathname, int *_errno);
 int syscall_readdir(int dirfd, dirent *de, int *_errno);
 int syscall_closedir(int dirfd, int *_errno);
+int syscall_chdir(const char *path, int *_errno);
 
 int syscall_peekevent(Event *ev, int *_errno);
 

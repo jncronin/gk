@@ -358,3 +358,17 @@ int syscall_unlink(const char *pathname, int *_errno)
         return -1;
     }
 }
+
+int syscall_chdir(const char *pathname, int *_errno)
+{
+    if(!pathname)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto &p = GetCurrentThreadForCore()->p;
+    CriticalGuard cg(p.sl);
+    p.cwd = parse_fname(std::string(pathname));
+    return 0;
+}
