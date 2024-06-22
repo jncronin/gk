@@ -505,7 +505,7 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/glgears-0.1.1-gk/bin/glgears", &pt);
 #endif
     // tuxracer
-    const char *args[] = { };
+    const char *args[] = { "-debug", "all" };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/tuxracer-0.1.1-gk";
