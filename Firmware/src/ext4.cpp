@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <_sys_dirent.h>
 
-#define EXT4_DEBUG      1
+#define EXT4_DEBUG      0
 
 // checks lwext remains in sync with our exported dir types
 static_assert(EXT4_DE_UNKNOWN == DT_UNKNOWN);
@@ -213,49 +213,11 @@ static void handle_open_message(ext4_message &msg)
     // try and load in file system
     ext4_file f;
     ext4_dir d;
-    char fmode[8];
 
     // convert newlib flags to lwext4 flags
     bool is_opendir = (msg.params.open_params.mode == S_IFDIR) && (msg.params.open_params.f == O_RDONLY);
 
-    if(!is_opendir)
-    {
-        auto pflags = msg.params.open_params.flags & (O_RDONLY | O_WRONLY | O_CREAT | O_TRUNC | O_APPEND | O_RDWR);
-        switch(pflags)
-        {
-            case O_RDONLY:
-                strcpy(fmode, "r");
-                break;
-
-            case O_WRONLY | O_CREAT | O_TRUNC:
-                strcpy(fmode, "w");
-                break;
-
-            case O_WRONLY | O_CREAT | O_APPEND:
-                strcpy(fmode, "a");
-                break;
-
-            case O_RDWR:
-                strcpy(fmode, "r+");
-                break;
-
-            case O_RDWR | O_CREAT | O_TRUNC:
-                strcpy(fmode, "w+");
-                break;
-
-            case O_RDWR | O_CREAT | O_APPEND:
-                strcpy(fmode, "a+");
-                break;
-
-            default:
-                msg.ss_p->ival1 = -1;
-                msg.ss_p->ival2 = EINVAL;
-                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
-                return;
-        }
-    }
-
-    auto extret = ext4_fopen(&f, msg.params.open_params.pathname, fmode);
+    auto extret = ext4_fopen2(&f, msg.params.open_params.pathname, msg.params.open_params.flags);
     {
         CriticalGuard cg(msg.params.open_params.p->sl);
 
