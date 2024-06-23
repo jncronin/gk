@@ -76,7 +76,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 {
                     auto nbytes = (int)r2;
 
-                    if(nbytes <= 0)
+                    if(nbytes == 0)
                     {
                         *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
                     }
@@ -93,14 +93,17 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         {
                             *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
 
+                            // Not required to clear - newlib doesn't define MORECORE_CLEARS
+                            /*
                             for(unsigned int i = 0; i < unbytes; i += 4)
                             {
                                 *reinterpret_cast<uint32_t *>(p.heap.address + p.brk + i) = 0;
                             }
+                            */
                             p.brk += unbytes;
                         }
                     }
-#if 0
+#if 1
                     else
                     {
                         // nbytes < 0
@@ -121,9 +124,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
                     {
                         CriticalGuard cg2(s_rtt);
-                        SEGGER_RTT_printf(0, "sbrk: nbytes: %d, new_brk: %u, ret: %x\n",
-                            nbytes, p.brk, *reinterpret_cast<int *>(r1));
+                        SEGGER_RTT_printf(0, "sbrk: nbytes: %d, new_brk: %u, ret: %x, ret@: %x\n",
+                            nbytes, p.brk, *reinterpret_cast<uint32_t *>(r1), reinterpret_cast<uint32_t>(r1));
                     }
+                }
+                else
+                {
+                    // Invalid heap
+                    *reinterpret_cast<int *>(r1) = -1;
+                    *reinterpret_cast<int *>(r3) = ENOMEM;
                 }
             }
             break;
