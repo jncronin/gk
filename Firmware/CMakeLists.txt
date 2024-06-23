@@ -57,6 +57,9 @@ target_compile_definitions(tusb
         STM32H747xx
         CORE_CM7
         ETH_MODE
+        _POSIX_READER_WRITER_LOCKS
+        _UNIX98_THREAD_MUTEX_ATTRIBUTES
+
 )
 
 target_sources(tusb
@@ -77,6 +80,9 @@ target_compile_definitions(winc
     STM32H747xx
     CORE_CM7
     ETH_MODE
+    _POSIX_READER_WRITER_LOCKS
+    _UNIX98_THREAD_MUTEX_ATTRIBUTES
+
 )
 
 target_sources(winc
@@ -106,6 +112,9 @@ target_compile_definitions(${PROJECT_NAME}
         STM32H747xx
         CORE_CM7
         ETH_MODE
+        _POSIX_READER_WRITER_LOCKS
+        _UNIX98_THREAD_MUTEX_ATTRIBUTES
+
 )
 
 target_sources(${PROJECT_NAME}
