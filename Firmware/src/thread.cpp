@@ -96,6 +96,27 @@ Thread *Thread::Create(std::string name,
     t->tss.lr = 0xfffffffdUL;               // return to thread mode, normal frame, use PSP
     t->tss.control = is_priv ? 2UL : 3UL;   // bit0 = !privilege, bit1 = use PSP
 
+    /* Create TLS, if any */
+    if(owning_process.has_tls)
+    {
+        t->mr_tls = memblk_allocate(owning_process.tls_len, MemRegionType::AXISRAM);
+        if(!t->mr_tls.valid)
+        {
+            t->mr_tls = memblk_allocate(owning_process.tls_len, MemRegionType::SDRAM);
+        }
+        if(!t->mr_tls.valid)
+        {
+            return nullptr;
+        }
+
+        // initialize TLS segment
+        {
+            SharedMemoryGuard smg_write((void *)t->mr_tls.address, owning_process.tls_len, false, true);
+            SharedMemoryGuard smg_read((void *)owning_process.tls_base, owning_process.tls_len, true, false);
+            memcpy((void *)t->mr_tls.address, (void *)owning_process.tls_base, owning_process.tls_len);
+        }
+    }
+
     /* Create stack frame */
     if(stackblk.valid)
     {
@@ -149,6 +170,11 @@ Thread *Thread::Create(std::string name,
     t->tss.mpuss[4] = MPUGenerate(stackblk.address,
         stackblk.length, 4, false,
         RW, RW, WBWA_NS);
+    if(owning_process.has_tls)
+    {
+        t->tss.mpuss[5] = MPUGenerate(t->mr_tls.address,
+            t->mr_tls.length, 5, false, RW, RW, WBWA_NS);
+    }
 
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
     //CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);

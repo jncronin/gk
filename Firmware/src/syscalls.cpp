@@ -661,6 +661,12 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_read_tp:
+            {
+                *reinterpret_cast<void **>(r1) = (void *)GetCurrentThreadForCore()->mr_tls.address;
+            }
+            break;
+
         default:
             {
                 CriticalGuard cg(s_rtt);

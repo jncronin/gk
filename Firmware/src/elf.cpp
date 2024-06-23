@@ -445,7 +445,8 @@ int elf_load_fildes(int fd,
         }
 
         if(phdr.p_type == PT_LOAD ||
-            phdr.p_type == PT_ARM_EXIDX)
+            phdr.p_type == PT_ARM_EXIDX ||
+            phdr.p_type == PT_TLS)
         {
             auto cur_max = phdr.p_vaddr + phdr.p_memsz;
             if(cur_max > max_size)
@@ -491,8 +492,18 @@ int elf_load_fildes(int fd,
         }
 
         if(phdr.p_type == PT_LOAD ||
-            phdr.p_type == PT_ARM_EXIDX)
+            phdr.p_type == PT_ARM_EXIDX ||
+            phdr.p_type == PT_TLS)
         {
+            if(phdr.p_type == PT_TLS)
+            {
+                // store at end of executable
+                phdr.p_vaddr = max_size - arg_length - phdr.p_memsz;
+                
+                p.has_tls = true;
+                p.tls_base = base_ptr + phdr.p_vaddr;
+                p.tls_len = phdr.p_memsz;            
+            }
             if(phdr.p_filesz)
             {
                 if(deferred_call(syscall_lseek, fd, phdr.p_offset, SEEK_SET) == (off_t)-1)
@@ -689,6 +700,8 @@ int elf_load_fildes(int fd,
                 case R_ARM_PREL31:
                 case R_ARM_TARGET2:
                 case R_ARM_REL32:
+                case R_ARM_TLS_LE32:
+                case R_ARM_TLS_LE12:
                     /* relative reloc, do nothing */
                     break;
 

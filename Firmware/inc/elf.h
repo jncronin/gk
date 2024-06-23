@@ -212,6 +212,7 @@ typedef struct
 #define PT_NOTE 4
 #define PT_SHLIB 5
 #define PT_PHDR 6
+#define PT_TLS 7
 #define PT_ARM_EXIDX 0x70000001
 
 #define PF_X 0x1
@@ -307,5 +308,7 @@ int elf32_load_segment(FILE *fp, Elf32_Phdr *phdr); */
 #define R_ARM_PREL31        42
 #define R_ARM_TARGET1       38
 #define R_ARM_TARGET2		41
+#define R_ARM_TLS_LE32		108
+#define R_ARM_TLS_LE12		110
 
 #endif

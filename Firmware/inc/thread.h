@@ -67,6 +67,9 @@ class Thread
         /* pthread TLS data */
         std::map<pthread_key_t, void *> tls_data;
 
+        /* ELF TLS data */
+        MemRegion mr_tls = InvalidMemregion();
+
         /* pthread_join waiting thread */
         Thread *join_thread = nullptr;
         void **join_thread_retval;
