@@ -277,11 +277,14 @@ static void handle_read_message(ext4_message &msg)
     size_t br;
     int extret;
 
+#if EXT4_DEBUG
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "ext4: read(%x, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
             msg.params.rw_params.nbytes);
     }
+
+#endif
 
     {
         //SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, false, true);
@@ -679,11 +682,13 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
     if(!blk_cnt)
         return EOK;
     
+#if EXT4_DEBUG
     {
         CriticalGuard cg(s_rtt);
         SEGGER_RTT_printf(0, "sd_bread: %x, %u, %u\n", (uint32_t)(uintptr_t)buf,
             (uint32_t)blk_id, blk_cnt);
     }
+#endif
 
     auto sdr = sd_perform_transfer(blk_id, blk_cnt, buf, true);
     //InvalidateM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);

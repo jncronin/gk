@@ -71,6 +71,11 @@ class Process
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
+
+        /* TLS segment, if any */
+        bool has_tls = false;
+        size_t tls_base = 0;
+        size_t tls_len = 0;
 };
 
 extern Process *focus_process;
