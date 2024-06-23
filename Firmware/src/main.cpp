@@ -504,6 +504,7 @@ void *init_thread(void *p)
     pt.stack_size = 64 * 1024;
     deferred_call(syscall_proccreate, "/glgears-0.1.1-gk/bin/glgears", &pt);
 #endif
+#if 0
     // tuxracer
     const char *args[] = { "-debug", "all" };
     pt.argv = args;
@@ -511,7 +512,15 @@ void *init_thread(void *p)
     pt.cwd = "/tuxracer-0.1.1-gk";
     pt.stack_size = 64 * 1024;
     deferred_call(syscall_proccreate, "/tuxracer-0.1.1-gk/bin/tuxracer", &pt);
-    
+#endif
+    // mednafen
+    const char *args[] = { };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/mednafen-gk";
+    pt.stack_size = 64 * 1024;
+    deferred_call(syscall_proccreate, "/mednafen-gk/bin/mednafen", &pt);
+
 
 
     extern Process p_supervisor;
