@@ -55,6 +55,12 @@ int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno);
 int syscall_pthread_join(Thread *thread, void **retval, int *_errno);
 int syscall_pthread_exit(void **retval, int *_errno);
 
+int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr_t *attr, int *_errno);
+int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno);
+int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int *_errno);
+int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int *_errno);
+int syscall_pthread_rwlock_unlock(pthread_rwlock_t *lock, int *_errno);
+
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno);
 
 int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno);

@@ -393,3 +393,101 @@ bool Mutex::try_delete()
     }
     return false;
 }
+
+bool RwLock::try_rdlock(int *reason)
+{
+    CriticalGuard cg(sl);
+    auto t = GetCurrentThreadForCore();
+    if(wrowner)
+    {
+        if(wrowner == t)
+        {
+            if(reason) *reason = EDEADLK;
+            return false;
+        }
+        else
+        {
+            if(reason) *reason = EBUSY;
+            return false;
+        }
+    }
+    rdowners.insert(t);
+    return true;
+}
+
+bool RwLock::try_wrlock(int *reason)
+{
+    CriticalGuard cg(sl);
+    auto t = GetCurrentThreadForCore();
+    if(wrowner)
+    {
+        if(wrowner == t)
+        {
+            if(reason) *reason = EDEADLK;
+            return false;
+        }
+        else
+        {
+            if(reason) *reason = EBUSY;
+            return false;
+        }
+    }
+    if(!rdowners.empty())
+    {
+        if(rdowners.find(t) != rdowners.end())
+        {
+            if(reason) *reason = EDEADLK;
+            return false;
+        }
+        else
+        {
+            if(reason) *reason = EBUSY;
+            return false;
+        }
+    }
+    wrowner = t;
+    return true;
+}
+
+bool RwLock::unlock(int *reason)
+{
+    CriticalGuard cg(sl);
+    auto t = GetCurrentThreadForCore();
+    if(wrowner)
+    {
+        if(wrowner == t)
+        {
+            wrowner = nullptr;
+            return true;
+        }
+        else
+        {
+            if(reason) *reason = EPERM;
+            return false;
+        }
+    }
+    if(rdowners.empty())
+    {
+        if(reason) *reason = EPERM;
+        return false;
+    }
+    auto iter = rdowners.find(t);
+    if(iter == rdowners.end())
+    {
+        if(reason) *reason = EPERM;
+        return false;
+    }
+    rdowners.erase(iter);
+    return true;
+}
+
+bool RwLock::try_delete(int *reason)
+{
+    CriticalGuard cg(sl);
+    if(wrowner || !rdowners.empty())
+    {
+        if(reason) *reason = EBUSY;
+        return false;
+    }
+    return true;
+}
