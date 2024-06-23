@@ -1165,6 +1165,10 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     /* Check mem_address is valid for direct SD DMA */
     if(!is_valid_dma(mem_address, block_count))
     {
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "sd_perform_transfer: unaligned transfer\n");
+        }
         return sd_perform_unaligned_transfer(block_start, block_count,
             mem_address, is_read, nretries);
     }
