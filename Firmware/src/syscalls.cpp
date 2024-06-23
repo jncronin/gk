@@ -667,6 +667,37 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_pthread_rwlock_init:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_rwlock_init_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_init(p->lock, p->attr, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pthread_rwlock_destroy:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_destroy(reinterpret_cast<pthread_rwlock_t *>(r2), reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pthread_rwlock_tryrdlock:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_tryrdlock(reinterpret_cast<pthread_rwlock_t *>(r2), reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pthread_rwlock_trywrlock:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_trywrlock(reinterpret_cast<pthread_rwlock_t *>(r2), reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pthread_rwlock_unlock:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_unlock(reinterpret_cast<pthread_rwlock_t *>(r2), reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 CriticalGuard cg(s_rtt);

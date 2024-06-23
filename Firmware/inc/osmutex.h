@@ -49,6 +49,20 @@ class Mutex
         bool try_delete();
 };
 
+class RwLock
+{
+    protected:
+        Thread *wrowner = nullptr;
+        std::unordered_set<Thread *> rdowners;
+        Spinlock sl;
+
+    public:
+        bool try_wrlock(int *reason = nullptr);
+        bool try_rdlock(int *reason = nullptr);
+        bool try_delete(int *reason = nullptr);
+        bool unlock(int *reason = nullptr);
+};
+
 class Condition
 {
     protected:

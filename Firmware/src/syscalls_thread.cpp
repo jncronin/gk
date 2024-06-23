@@ -104,6 +104,19 @@ static bool check_mutex(pthread_mutex_t *mutex)
     return true;    // TODO: check against list of mutexes this process can access
 }
 
+static bool check_rwlock(pthread_rwlock_t *lock)
+{
+    if(!lock)
+        return false;
+    if(*lock == _PTHREAD_RWLOCK_INITIALIZER)
+    {
+        syscall_pthread_rwlock_init(lock, nullptr, nullptr);
+    }
+    if(*lock < 0x38000000U || *lock >= 0x38010000u)
+        return false;
+    return true;
+}
+
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
 {
     if(!check_mutex(mutex))
@@ -153,6 +166,108 @@ int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)
     else
     {   
         *_errno = EPERM;
+        return -1;
+    }
+}
+
+int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr_t *attr, int *_errno)
+{
+    if(!lock)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto l = new RwLock();
+    if(!l)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+    
+    *reinterpret_cast<RwLock **>(lock) = l;
+    return 0;
+}
+
+int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int *_errno)
+{
+    if(!check_rwlock(lock))
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto l = *reinterpret_cast<RwLock **>(lock);
+    int reason;
+    if(l->try_rdlock(&reason))
+        return 0;
+    else
+    {
+        *_errno = reason;
+        if(reason == EBUSY)
+            return -3;      // Try again
+        else
+            return -1;      // hard fail
+    }
+}
+
+int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int *_errno)
+{
+    if(!check_rwlock(lock))
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto l = *reinterpret_cast<RwLock **>(lock);
+    int reason;
+    if(l->try_wrlock(&reason))
+        return 0;
+    else
+    {
+        *_errno = reason;
+        if(reason == EBUSY)
+            return -3;      // Try again
+        else
+            return -1;      // hard fail
+    }
+}
+
+int syscall_pthread_rwlock_unlock(pthread_rwlock_t *lock, int *_errno)
+{
+    if(!check_rwlock(lock))
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto l = *reinterpret_cast<RwLock **>(lock);
+    if(l->unlock())
+        return 0;
+    else
+    {
+        *_errno = EPERM;
+        return -1;
+    }
+}
+
+int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno)
+{
+    if(!check_rwlock(lock))
+    {   
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto l = *reinterpret_cast<RwLock **>(lock);
+    if(l->try_delete())
+    {
+        *reinterpret_cast<RwLock **>(lock) = nullptr;
+        return 0;
+    }
+    else
+    {
+        *_errno = EBUSY;
         return -1;
     }
 }
