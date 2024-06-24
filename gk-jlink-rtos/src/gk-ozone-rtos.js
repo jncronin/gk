@@ -66,11 +66,18 @@ function blocking_on(t)
                 {
                     case 0:
                         ret += task_get_name(t_block);
-                        var t_block_str = blocking_on(t_block);
-                        if(t_block_str != "")
+                        if(t == t_block)
                         {
-                            ret += "(" + t_block_str + ")";
+                            ret += "( ** ERROR ** )";
                         }
+                        else
+                        {
+                            var t_block_str = blocking_on(t_block);
+                            if(t_block_str != "")
+                            {
+                                ret += "(" + t_block_str + ")";
+                            }
+                        }   
                         break;
 
                     case 1:
