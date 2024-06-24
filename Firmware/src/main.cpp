@@ -514,7 +514,11 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/tuxracer-0.1.1-gk/bin/tuxracer", &pt);
 #endif
     // mednafen
-    const char *args[] = { };
+    const char *args[] = { 
+        "-video.driver",
+        "softfb",
+        "usr/share/mednafen/games/Super Mario Bros (E).nes"
+    };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/mednafen-gk";
