@@ -286,6 +286,79 @@ int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno)
     }
 }
 
+int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno)
+{
+    if(!sem)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    sem->s = new CountingSemaphore(value);
+    if(!sem->s)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+    return 0;
+}
+
+int syscall_sem_destroy(sem_t *sem, int *_errno)
+{
+    if(!sem || !sem->s)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    delete sem->s;
+    sem->s = nullptr;
+    return 0;
+}
+
+int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno)
+{
+    if(!sem || !sem->s || !outval)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    *outval = (int)sem->s->Value();
+    return 0;
+}
+
+int syscall_sem_post(sem_t *sem, int *_errno)
+{
+    if(!sem || !sem->s)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    sem->s->Signal();
+    return 0;
+}
+
+int syscall_sem_trywait(sem_t *sem, int *_errno)
+{
+    if(!sem || !sem->s)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(sem->s->WaitOnce(0ULL))
+    {
+        return 0;
+    }
+    else
+    {
+        *_errno = EAGAIN;
+        return -3;
+    }
+}
+
 int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), int *_errno)
 {
     if(!key)

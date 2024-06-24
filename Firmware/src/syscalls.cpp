@@ -698,6 +698,41 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_sem_init:
+            {
+                auto p = reinterpret_cast<__syscall_sem_init_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_sem_init((sem_t *)p->sem, p->pshared, p->value,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_sem_destroy:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_sem_destroy((sem_t *)r2,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_sem_getvalue:
+            {
+                auto p = reinterpret_cast<__syscall_sem_getvalue_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_sem_getvalue((sem_t *)p->sem, p->outval,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_sem_post:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_sem_post((sem_t *)r2, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_sem_trywait:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_sem_trywait((sem_t *)r2, reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 CriticalGuard cg(s_rtt);
