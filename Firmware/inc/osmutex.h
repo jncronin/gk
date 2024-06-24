@@ -38,15 +38,16 @@ class Mutex
         Spinlock sl;
         std::unordered_set<Thread *> waiting_threads;
         bool is_recursive = false;
+        bool echeck = false;
         int lockcount = 0;
 
     public:
-        Mutex(bool recursive = false);
+        Mutex(bool recursive = false, bool error_check = false);
 
         void lock();
-        bool try_lock();
-        bool unlock();
-        bool try_delete();
+        bool try_lock(int *reason = nullptr);
+        bool unlock(int *reason = nullptr);
+        bool try_delete(int *reason = nullptr);
 };
 
 class RwLock

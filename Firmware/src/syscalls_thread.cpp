@@ -78,13 +78,16 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 
 int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr, int *_errno)
 {
-    if(!mutex || !attr)
+    if(!mutex)
     {   
         *_errno = EINVAL;
         return -1;
     }
+
+    bool is_recursive = attr && (attr->recursive || attr->type == PTHREAD_MUTEX_RECURSIVE);
+    bool is_errorcheck = attr && (attr->type == PTHREAD_MUTEX_ERRORCHECK);
     
-    auto m = new Mutex(attr->recursive ? true : false);
+    auto m = new Mutex(is_recursive, is_errorcheck);
     if(!m)
     {
         *_errno = ENOMEM;
@@ -99,6 +102,10 @@ static bool check_mutex(pthread_mutex_t *mutex)
 {
     if(!mutex)
         return false;
+    if(*mutex == _PTHREAD_MUTEX_INITIALIZER)
+    {
+        syscall_pthread_mutex_init(mutex, nullptr, nullptr);
+    }
     if(*mutex < 0x38000000U || *mutex >= 0x38010000u)
         return false;
     return true;    // TODO: check against list of mutexes this process can access
@@ -146,10 +153,17 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int *_errno)
     }
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
-    if(m->try_lock())
+    int reason;
+    if(m->try_lock(&reason))
         return 0;
     else
-        return -3;      // Try again
+    {
+        *_errno = reason;
+        if(reason == EBUSY)
+            return -3;      // Try again
+        else
+            return -1;      // hard fail
+    }
 }
 
 int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)

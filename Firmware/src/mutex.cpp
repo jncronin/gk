@@ -314,18 +314,26 @@ void Condition::Signal(bool signal_all)
     }
 }
 
-Mutex::Mutex(bool recursive) : 
+Mutex::Mutex(bool recursive, bool error_check) : 
     owner(nullptr),
     is_recursive(recursive),
+    echeck(error_check),
     lockcount(0)
 {}
 
 void Mutex::lock()
 {
-    while(!try_lock());
+    int reason;
+    while(!try_lock(&reason))
+    {
+        if(reason != EBUSY)
+        {
+            __asm__ volatile("bkpt \n" ::: "memory");
+        }
+    }
 }
 
-bool Mutex::try_lock()
+bool Mutex::try_lock(int *reason)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -336,8 +344,25 @@ bool Mutex::try_lock()
             lockcount++;
         return true;
     }
+    else if(owner == t)
+    {
+        if(reason) *reason = EDEADLK;
+        if(echeck)
+        {
+            return false;
+        }
+        else
+        {
+            // non-error checking non-recursive mutex already owned - deadlock
+            t->is_blocking = true;
+            t->blocking_on = nullptr;
+            Yield();
+            return false;
+        }
+    }
     else
     {
+        if(reason) *reason = EBUSY;
         t->is_blocking = true;
         t->blocking_on = owner;
         waiting_threads.insert(t);
@@ -346,13 +371,14 @@ bool Mutex::try_lock()
     }
 }
 
-bool Mutex::unlock()
+bool Mutex::unlock(int *reason)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     bool hpt = false;
     if(owner != t)
     {
+        if(reason) *reason = EPERM;
         return false;
     }
     if(!is_recursive || --lockcount == 0)
@@ -377,7 +403,7 @@ bool Mutex::unlock()
     return true;
 }
 
-bool Mutex::try_delete()
+bool Mutex::try_delete(int *reason)
 {
     CriticalGuard cg(sl);
     if(owner == nullptr || owner == GetCurrentThreadForCore())
@@ -391,6 +417,7 @@ bool Mutex::try_delete()
         waiting_threads.clear();
         return true;
     }
+    if(reason) *reason = EBUSY;
     return false;
 }
 
