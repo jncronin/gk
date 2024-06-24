@@ -10,6 +10,11 @@
 #include "_gk_event.h"
 #include "_sys_dirent.h"
 
+struct sem_t
+{
+    CountingSemaphore *s;
+};
+
 int get_free_fildes(Process &p);
 
 int syscall_fstat(int file, struct stat *st, int *_errno);
@@ -62,6 +67,12 @@ int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int *_errno);
 int syscall_pthread_rwlock_unlock(pthread_rwlock_t *lock, int *_errno);
 
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno);
+
+int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno);
+int syscall_sem_destroy(sem_t *sem, int *_errno);
+int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno);
+int syscall_sem_post(sem_t *sem, int *_errno);
+int syscall_sem_trywait(sem_t *sem, int *_errno);
 
 int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno);
 int syscall_memdealloc(size_t len, const void *addr, int *_errno);

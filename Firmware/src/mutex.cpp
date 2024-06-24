@@ -147,6 +147,11 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
     }
 }
 
+uint32_t SimpleSignal::Value()
+{
+    return signal_value;
+}
+
 void SimpleSignal::do_op(SignalOperation op, uint32_t vop)
 {
     switch(op)
@@ -215,6 +220,11 @@ bool CountingSemaphore::Wait(uint64_t tout)
 bool CountingSemaphore::WaitOnce(uint64_t tout)
 {
     return ss.WaitOnce(SimpleSignal::Sub, 1, tout) != 0;
+}
+
+unsigned int CountingSemaphore::Value()
+{
+    return ss.Value();
 }
 
 Condition::~Condition()
