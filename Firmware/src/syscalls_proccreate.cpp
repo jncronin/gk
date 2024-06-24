@@ -148,6 +148,7 @@ void *proccreate_thread(void *ptr)
     proc->heap = heap;
     proc->default_affinity = (CPUAffinity)core_affinity;
     proc->heap_is_exec = pcinfo->heap_is_exec ? true : false;
+    proc->is_priv = is_priv;
     
     // load the elf file
     uint32_t epoint;

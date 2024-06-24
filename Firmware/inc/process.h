@@ -26,6 +26,8 @@ class Process
         MemRegion heap;
         MemRegion code_data;
         bool heap_is_exec = false;
+        bool is_priv = true;
+        uint32_t thread_finalizer = 0;
 
         uint32_t brk = 0;
 
