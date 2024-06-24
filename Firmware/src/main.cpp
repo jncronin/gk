@@ -517,7 +517,7 @@ void *init_thread(void *p)
     const char *args[] = { 
         "-video.driver",
         "softfb",
-        "usr/share/mednafen/games/Super Mario Bros (E).nes"
+        "/usr/share/mednafen/games/Super Mario Bros (E).nes"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
