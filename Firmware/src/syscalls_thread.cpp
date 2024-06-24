@@ -32,9 +32,9 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 
     auto stack_size = attr ? attr->stacksize : 0;
     if(!stack_size)
-        stack_size = 4096;
-    if(stack_size > 8192)
-        stack_size = 8192;
+        stack_size = 65536;
+    if(stack_size > 65536)
+        stack_size = 65536;
     
     auto stack = memblk_allocate_for_stack((size_t)stack_size, CPUAffinity::Either);
     if(!stack.valid)
