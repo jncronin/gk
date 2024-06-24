@@ -515,14 +515,16 @@ void *init_thread(void *p)
 #endif
     // mednafen
     const char *args[] = { 
-        "-video.driver",
-        "softfb",
+        "-video.driver", "softfb",
+        "-video.fs", "1",
+        "-nes.stretch", "0",
         "/usr/share/mednafen/games/Super Mario Bros (E).nes"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/mednafen-gk";
     pt.stack_size = 64 * 1024;
+    pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     deferred_call(syscall_proccreate, "/mednafen-gk/bin/mednafen", &pt);
 
 
