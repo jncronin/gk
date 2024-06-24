@@ -445,13 +445,40 @@ int elf_load_fildes(int fd,
         }
 
         if(phdr.p_type == PT_LOAD ||
-            phdr.p_type == PT_ARM_EXIDX ||
-            phdr.p_type == PT_TLS)
+            phdr.p_type == PT_ARM_EXIDX)
         {
             auto cur_max = phdr.p_vaddr + phdr.p_memsz;
             if(cur_max > max_size)
                 max_size = cur_max;
         }
+        else if(phdr.p_type == PT_TLS)
+        {
+            p.has_tls = true;
+            p.tls_len = phdr.p_memsz;
+        }
+    }
+
+    // allocate space for TLS
+    if(p.has_tls)
+    {
+        p.tls_base = max_size;
+        max_size += p.tls_len;
+    }
+
+    // Create region for userspace thread finalizer code, aligned on 32-byte boundary
+    if(p.is_priv)
+    {
+        p.thread_finalizer = 0;
+    }
+    else
+    {
+        if(max_size & 0x1fU)
+        {
+            max_size = (max_size + 0x1fU) & ~0x1fU;
+        }
+
+        p.thread_finalizer = max_size;
+        max_size += 32;
     }
 
     // Create region for arguments
@@ -497,12 +524,9 @@ int elf_load_fildes(int fd,
         {
             if(phdr.p_type == PT_TLS)
             {
-                // store at end of executable
-                phdr.p_vaddr = max_size - arg_length - phdr.p_memsz;
-                
-                p.has_tls = true;
+                // store at end of executable - current p.tls_base is not offset by base_ptr - fix this
+                phdr.p_vaddr = p.tls_base;                
                 p.tls_base = base_ptr + phdr.p_vaddr;
-                p.tls_len = phdr.p_memsz;            
             }
             if(phdr.p_filesz)
             {
@@ -742,6 +766,23 @@ int elf_load_fildes(int fd,
         {
             CleanOrInvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Data);
         }
+    }
+
+    // Create the userspace cleanup code, if necessary
+    if(!p.is_priv)
+    {
+        p.thread_finalizer += base_ptr;
+        auto tf = (uint16_t *)p.thread_finalizer;
+
+        // mov r1, r0; mov r0, #0; svc #0; bl .
+        static_assert(((unsigned int)__syscall_thread_cleanup) < 256U);
+        tf[0] = 0x1c01;
+        tf[1] = 0x2000 | (unsigned int)__syscall_thread_cleanup;
+        tf[2] = 0xdf00;
+        tf[3] = 0xe7fe;
+
+        CleanOrInvalidateM7Cache(p.thread_finalizer, 32, CacheType_t::Data);
+        InvalidateM7Cache(p.thread_finalizer, 32, CacheType_t::Instruction);
     }
 
     // setup args
