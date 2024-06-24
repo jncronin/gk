@@ -74,6 +74,9 @@ int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno);
 int syscall_sem_post(sem_t *sem, int *_errno);
 int syscall_sem_trywait(sem_t *sem, int *_errno);
 
+int syscall_set_thread_priority(Thread *thread, int priority, int *_errno);
+int syscall_get_thread_priority(Thread *thread, int *_errno);
+
 int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno);
 int syscall_memdealloc(size_t len, const void *addr, int *_errno);
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno);

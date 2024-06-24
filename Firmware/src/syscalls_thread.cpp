@@ -18,25 +18,19 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         return -1;
     }
 
-    if(!attr)
-    {
-        *_errno = EINVAL;
-        return -1;
-    }
-
     if(!start_func)
     {
         *_errno = EINVAL;
         return -1;
     }
 
-    if(!attr->is_initialized)
+    if(attr && !attr->is_initialized)
     {
         *_errno = EINVAL;
         return -1;
     }
 
-    auto stack_size = attr->stacksize;
+    auto stack_size = attr ? attr->stacksize : 0;
     if(!stack_size)
         stack_size = 4096;
     if(stack_size > 8192)
@@ -602,4 +596,24 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
     auto t = reinterpret_cast<Thread *>(0x38000000U + thread);
     t->name = std::string(name);
     return 0;
+}
+
+int syscall_set_thread_priority(Thread *t, int priority, int *_errno)
+{
+    // don't support user setting priority at this time
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "thread: request from %s to set priority of %s to %d - currently not implemented",
+            GetCurrentThreadForCore()->name.c_str(),
+            t->name.c_str(),
+            priority);
+    }
+    return 0;
+}
+
+int syscall_get_thread_priority(Thread *t, int *_errno)
+{
+    // scale 0 (highest priority) to 19 (lowest priority)
+    auto ret = (GK_PRIORITY_VHIGH - t->base_priority) * 19 / GK_PRIORITY_VHIGH;
+    return ret;
 }
