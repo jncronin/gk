@@ -27,6 +27,8 @@ static const auto mdma = ((MDMA_Channel_TypeDef *)(MDMA_BASE + 0x40U + 0x40U * g
 SRAM4_DATA static uint64_t last_flip_time = 0ULL;
 #endif
 
+extern bool screen_flip_in_progress;
+
 static inline void *get_scaling_bb(void **old_buf = nullptr)
 {
     if(old_buf)
@@ -583,7 +585,8 @@ void *gpu_thread(void *p)
                             *(void **)g.src_addr_color = old_buf;
                         }
                     }
-                    scr_vsync.Wait();
+                    while(screen_flip_in_progress) {}
+                    //scr_vsync.Wait();
 
 #if GK_GPU_SHOW_FPS
                     {

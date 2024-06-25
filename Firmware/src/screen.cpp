@@ -21,6 +21,8 @@ SRAM4_DATA static int scr_brightness = 0;
 
 SRAM4_DATA Condition scr_vsync;
 
+SRAM4_DATA volatile bool screen_flip_in_progress = false;
+
 void *screen_get_frame_buffer(bool back_buf)
 {
     CriticalGuard cg(s_scrbuf);
@@ -103,6 +105,8 @@ void *screen_flip(void **old_buf)
     {
         LTDC_Layer1->CR &= ~LTDC_LxCR_LEN;
     }
+    screen_flip_in_progress = true;
+    __DMB();
     LTDC->SRCR = LTDC_SRCR_VBR;
     if(old_buf)
     {
@@ -514,7 +518,7 @@ void init_screen()
 
     /* Enable */
     LTDC->LIPCR = 499;
-    LTDC->IER = LTDC_IER_LIE;
+    LTDC->IER = LTDC_IER_LIE | LTDC_IER_RRIE;
     NVIC_EnableIRQ(LTDC_IRQn);
     LTDC->SRCR = LTDC_SRCR_IMR;
     LTDC->GCR |= LTDC_GCR_LTDCEN;
@@ -561,6 +565,11 @@ extern "C" void LTDC_IRQHandler()
     if(LTDC->ISR & LTDC_ISR_LIF)
     {
         scr_vsync.Signal();
+    }
+
+    if(LTDC->ISR & LTDC_ISR_RRIF)
+    {
+        screen_flip_in_progress = false;
     }
 
     LTDC->ICR = 0xf;
