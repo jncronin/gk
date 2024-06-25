@@ -7,6 +7,9 @@
 #include "osmutex.h"
 #include "SEGGER_RTT.h"
 #include "thread.h"
+#include "scheduler.h"
+
+#define DEBUG_USB 0
 
 extern Spinlock s_rtt;
 
@@ -87,7 +90,7 @@ void *usb_task(void *pvParams)
 #if DEBUG_USB
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "usb: task starting\n");
+        SEGGER_RTT_printf(0, "usb: task starting, core %d\n", GetCoreID());
     }
 #endif
     init_usb();
