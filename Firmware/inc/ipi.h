@@ -29,7 +29,8 @@ struct ipi_message
 };
 
 constexpr const unsigned int n_ipi_messages = 32;
-extern RingBuffer<ipi_message, n_ipi_messages> ipi_messages[2];
+using IpiRingBuffer = RingBuffer<ipi_message, n_ipi_messages>;
+extern IpiRingBuffer ipi_messages[2];
 #define M4_MAGIC 0xa1b2c3d4
 
 static inline void signal_thread_woken(Thread *t)
