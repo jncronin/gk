@@ -51,6 +51,7 @@ class Process
         uint16_t screen_w = 640;
         uint16_t screen_h = 480;
         uint8_t screen_pf = 0;
+        bool screen_ignore_vsync = false;
 
         /* current working directory */
         std::string cwd = "/";
