@@ -532,6 +532,7 @@ void *init_thread(void *p)
     deferred_call(syscall_proccreate, "/mednafen-gk/bin/mednafen", &pt);
 
     delay_ms(5);
+    /* NES mappings */
     focus_process->gamepad_is_joystick = false;
     focus_process->gamepad_is_mouse = false;
     focus_process->gamepad_is_keyboard = true;
