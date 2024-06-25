@@ -530,6 +530,7 @@ void *init_thread(void *p)
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     pt.screen_w = 320;
     pt.screen_h = 240;
+    pt.screen_ignore_vsync = 1;
     deferred_call(syscall_proccreate, "/mednafen-gk/bin/mednafen", &pt);
 
     delay_ms(5);

@@ -585,8 +585,11 @@ void *gpu_thread(void *p)
                             *(void **)g.src_addr_color = old_buf;
                         }
                     }
-                    while(screen_flip_in_progress) {}
-                    //scr_vsync.Wait();
+                    if(!focus_process->screen_ignore_vsync)
+                    {
+                        while(screen_flip_in_progress);
+                        //scr_vsync.Wait();
+                    }
 
 #if GK_GPU_SHOW_FPS
                     {
@@ -671,7 +674,10 @@ void *gpu_thread(void *p)
                     break;
 
                 case gpu_message_type::SignalThread:
-                    wait_dma2d();
+                    if(!focus_process->screen_ignore_vsync)
+                    {
+                        wait_dma2d();
+                    }
                     {
                         auto t = (Thread *)g.dest_addr;
                         {
