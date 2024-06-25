@@ -203,6 +203,26 @@ void *proccreate_thread(void *ptr)
             proc->screen_pf = GK_PIXELFORMAT_RGB565;  // something sensible
             break;
     }
+    if(pcinfo->screen_w == 0 && pcinfo->screen_h == 0)
+    {
+        proc->screen_w = 640;
+        proc->screen_h = 480;
+    }
+    else if(pcinfo->screen_w <= 160 && pcinfo->screen_h <= 120)
+    {
+        proc->screen_w = 160;
+        proc->screen_h = 120;
+    }
+    else if(pcinfo->screen_w <= 320 && pcinfo->screen_h <= 240)
+    {
+        proc->screen_w = 320;
+        proc->screen_h = 240;
+    }
+    else
+    {
+        proc->screen_w = 640;
+        proc->screen_h = 480;
+    }
 
     // Set as focus if possible
     if(pcinfo->with_focus)
