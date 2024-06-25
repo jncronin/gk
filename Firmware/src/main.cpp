@@ -520,7 +520,8 @@ void *init_thread(void *p)
         //"-nes.stretch", "0",
         "-sound", "0",
         "-sound.rate", "22050",
-        "/usr/share/mednafen/games/Castlevania (E).nes"
+        "-gb.stretch", "aspect_int",
+        "/usr/share/mednafen/games/Xenon 2 (E) (Virgin) [!].sms"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
@@ -536,7 +537,34 @@ void *init_thread(void *p)
     focus_process->gamepad_is_joystick = false;
     focus_process->gamepad_is_mouse = false;
     focus_process->gamepad_is_keyboard = true;
-    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 91;    // keypad 3  = MDFN A
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 91;    // keypad 3  = MDFN A (flipped - A on right)
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 90;    // keypad 2  = MDFN B
+    focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;    // enter     = MDFN start
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 43;    // tab       = MDFN select
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 4;  // A         = MDFN left
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
+
+    /* lynx mappings */
+    focus_process->gamepad_is_joystick = false;
+    focus_process->gamepad_is_mouse = false;
+    focus_process->gamepad_is_keyboard = true;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 91;    // keypad 3  = MDFN A (flipped - A on right)
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 90;    // keypad 2  = MDFN B
+    focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 89;    // keypad 1  = MDFN option 2 (lower)
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 95;    // keypad 7  = MDFN option 1 (upper)
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 4;  // A         = MDFN left
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
+
+    /* gameboy mappings */
+    // use screen 640x480 with integer scaling "aspect_int" for best results
+    focus_process->gamepad_is_joystick = false;
+    focus_process->gamepad_is_mouse = false;
+    focus_process->gamepad_is_keyboard = true;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 91;    // keypad 3  = MDFN A (flipped - A on right)
     focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 90;    // keypad 2  = MDFN B
     focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;    // enter     = MDFN start
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 43;    // tab       = MDFN select
