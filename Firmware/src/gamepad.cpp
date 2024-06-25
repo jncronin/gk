@@ -137,7 +137,7 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
             {
                 events.Push({ Event::event_type_t::KeyDown, .key = scode });
             }
-            else
+            else if(!ongoing_press)
             {
                 events.Push({ Event::event_type_t::KeyUp, .key = scode });
             }
