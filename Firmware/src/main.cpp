@@ -520,7 +520,7 @@ void *init_thread(void *p)
         //"-nes.stretch", "0",
         "-sound", "0",
         "-sound.rate", "22050",
-        "/usr/share/mednafen/games/Super Mario Bros (E).nes"
+        "/usr/share/mednafen/games/Castlevania (E).nes"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
@@ -535,8 +535,8 @@ void *init_thread(void *p)
     focus_process->gamepad_is_joystick = false;
     focus_process->gamepad_is_mouse = false;
     focus_process->gamepad_is_keyboard = true;
-    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 91;    // keypad 3  = MDFN A
-    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 90;    // keypad 2  = MDFN B
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 91;    // keypad 3  = MDFN A
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 90;    // keypad 2  = MDFN B
     focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;    // enter     = MDFN start
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 43;    // tab       = MDFN select
     focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 4;  // A         = MDFN left
