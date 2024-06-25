@@ -521,6 +521,10 @@ void *init_thread(void *p)
         "-sound", "0",
         "-sound.rate", "22050",
         "-gb.stretch", "aspect_int",
+        "-nothrottle", "1",
+        "-osd.alpha_blend", "0",
+        "-video.blit_timesync", "0",
+        "-video.frameskip", "0",
         "/usr/share/mednafen/games/Xenon 2 (E) (Virgin) [!].sms"
     };
     pt.argv = args;
@@ -569,6 +573,19 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 90;    // keypad 2  = MDFN B
     focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;    // enter     = MDFN start
     focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 43;    // tab       = MDFN select
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 4;  // A         = MDFN left
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
+
+    /* master system mappings */
+    focus_process->gamepad_is_joystick = false;
+    focus_process->gamepad_is_mouse = false;
+    focus_process->gamepad_is_keyboard = true;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 91;    // keypad 3  = MDFN Fire 2
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 90;    // keypad 2  = MDFN Fire 1/Start
+    focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 0;     // only 2 buttons on SMS
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 0;     // only 2 buttons on SMS
     focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 4;  // A         = MDFN left
     focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
     focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
