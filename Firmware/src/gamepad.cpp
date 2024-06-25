@@ -104,7 +104,7 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
                     break;
             }
         }
-        else
+        else if(!ongoing_press)
         {
             gamepad_buttons &= ~(1U << (int)key);
             switch(key)
