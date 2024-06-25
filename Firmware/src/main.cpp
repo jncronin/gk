@@ -518,6 +518,8 @@ void *init_thread(void *p)
         "-video.driver", "softfb",
         "-video.fs", "1",
         //"-nes.stretch", "0",
+        "-sound", "0",
+        "-sound.rate", "22050",
         "/usr/share/mednafen/games/Super Mario Bros (E).nes"
     };
     pt.argv = args;
@@ -525,7 +527,22 @@ void *init_thread(void *p)
     pt.cwd = "/mednafen-gk";
     pt.stack_size = 64 * 1024;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
+    pt.screen_w = 320;
+    pt.screen_h = 240;
     deferred_call(syscall_proccreate, "/mednafen-gk/bin/mednafen", &pt);
+
+    delay_ms(5);
+    focus_process->gamepad_is_joystick = false;
+    focus_process->gamepad_is_mouse = false;
+    focus_process->gamepad_is_keyboard = true;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 91;    // keypad 3  = MDFN A
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 90;    // keypad 2  = MDFN B
+    focus_process->gamepad_to_scancode[Process::GamepadKey::X] = 40;    // enter     = MDFN start
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Y] = 43;    // tab       = MDFN select
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 4;  // A         = MDFN left
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
 
 
 
