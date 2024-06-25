@@ -14,6 +14,10 @@
 
 #define FS_PROVISION_BLOCK_SIZE     (4*1024*1024)
 
+#define FS_PROVISION_EXTRACT_FILE 1
+#define FS_PROVISION_EXTRACT_FILE_FROM "/home/user/.mednafen/mednafen.cfg"
+#define FS_PROVISION_EXTRACT_FILE_TO "mednafen.cfg"
+
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
     
@@ -38,6 +42,11 @@ SRAM4_DATA static volatile unsigned int fake_mbr_lba = 0;
 static FATFS fs;
 static FIL fp;
 extern Spinlock s_rtt;
+
+/* Extract a file from sd card to fat if requested */
+#if FS_PROVISION_EXTRACT_FILE
+static void fs_provision_extract(const std::string &from, const std::string &to);
+#endif
 
 /* Generates a fake MBR which is exported whenever USB MSC asks to read
     sector 0 */
@@ -519,6 +528,10 @@ int fs_provision()
         }
     }
     f_closedir(&dp);
+
+#if FS_PROVISION_EXTRACT_FILE
+    fs_provision_extract(FS_PROVISION_EXTRACT_FILE_FROM, FS_PROVISION_EXTRACT_FILE_TO);
+#endif
     f_unmount("/");
 
     return 0;
@@ -576,3 +589,89 @@ extern "C" void zcfree(void *opaque, void *ptr)
 {
     gz_free_buffer(ptr);
 }
+
+static struct stat _st;
+
+#if FS_PROVISION_EXTRACT_FILE
+void fs_provision_extract(const std::string &from, const std::string &to)
+{
+    int rfd = deferred_call(syscall_open, from.c_str(), O_RDONLY, 0);
+    if(rfd == -1)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: couldn't open %s\n", from.c_str());
+        return;
+    }
+
+    if(deferred_call(syscall_fstat, rfd, &_st) < 0)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: fstat failed\n");
+        close(rfd);
+        return;
+    }
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: opened %s of size %u\n",
+            from.c_str(), _st.st_size);
+    }
+
+    auto mr = memblk_allocate(_st.st_size, MemRegionType::AXISRAM);
+    if(!mr.valid)
+        mr = memblk_allocate(_st.st_size, MemRegionType::SDRAM);
+    if(!mr.valid)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: unable to allocate memregion of size %d for %s\n",
+            _st.st_size, from.c_str());
+        close(rfd);
+        return;
+    }
+
+    auto br = deferred_call(syscall_read, rfd, (char *)mr.address, (int)_st.st_size);
+    close(rfd);
+    if(br != _st.st_size)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: failed to load entire file: %d\n", br);
+        memblk_deallocate(mr);
+        return;
+    }
+
+    // open fat file
+    auto fr = f_open(&fp, to.c_str(), FA_WRITE | FA_CREATE_ALWAYS);
+    if(fr != FR_OK)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: failed to open %s for writing (%d)\n",
+            to.c_str(), fr);
+        memblk_deallocate(mr);
+        return;
+    }
+
+    UINT bw;
+    fr = f_write(&fp, (const void *)mr.address, (UINT)_st.st_size, &bw);
+    memblk_deallocate(mr);
+    f_close(&fp);
+    if(fr != FR_OK)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: failed to write to %s: %d\n",
+            to.c_str(), fr);
+        return;
+    }
+    if(bw != (UINT)_st.st_size)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: failed to write sufficient bytes to %s: %u vs %u\n",
+            to.c_str(), bw, (UINT)_st.st_size);
+    }
+
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "fs_provision_extract: successfully extracted %s to %s\n",
+            from.c_str(), to.c_str());
+    }
+}
+#endif
