@@ -572,7 +572,10 @@ void *gpu_thread(void *p)
             switch(g.type)
             {
                 case gpu_message_type::FlipBuffers:
-                    wait_dma2d();
+                    if(!focus_process->screen_ignore_vsync)
+                    {
+                        wait_dma2d();
+                    }
                     {
                         void *old_buf;
                         auto new_buf = screen_flip(&old_buf);
@@ -606,7 +609,10 @@ void *gpu_thread(void *p)
                     break;
 
                 case gpu_message_type::FlipScaleBuffers:
-                    wait_dma2d();
+                    if(!focus_process->screen_ignore_vsync)
+                    {
+                        wait_dma2d();
+                    }
                     scaling_bb_idx++;
                     {
                         void *old_buf;
@@ -691,7 +697,10 @@ void *gpu_thread(void *p)
                 case gpu_message_type::BlitColor:
                     if(!dest_w || !dest_h)
                         break;
-                    wait_dma2d();
+                    if(!focus_process->screen_ignore_vsync)
+                    {
+                        wait_dma2d();
+                    }
                     DMA2D->OPFCCR = dest_pf;
                     DMA2D->OCOLR = color_encode(g.src_addr_color, dest_pf);
                     DMA2D->OMAR = dest_addr + g.dx * bpp + g.dy * dest_pitch;
@@ -706,8 +715,10 @@ void *gpu_thread(void *p)
                 case gpu_message_type::BlitImageNoBlend:
                     if(!dest_w || !dest_h)
                         break;
-                    
-                    wait_dma2d();
+                    if(!focus_process->screen_ignore_vsync)
+                    {                    
+                        wait_dma2d();
+                    }
                     if(dest_w == src_w && dest_h == src_h)
                     {
                         // can do DMA2D copy
