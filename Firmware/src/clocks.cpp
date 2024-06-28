@@ -5,6 +5,9 @@
 #include "osmutex.h"
 #include "gk_conf.h"
 
+#include "scheduler.h"
+#include "ipi.h"
+
 __attribute__((section(".sram4"))) uint32_t SystemCoreClock;
 __attribute__((section(".sram4"))) struct timespec toffset;
 __attribute__((section(".sram4"))) Spinlock sl_toffset;
@@ -167,6 +170,28 @@ extern "C" void LPTIM1_IRQHandler()
     // do it this way round or the IRQ is still active on IRQ return
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
     _cur_ms++;
+
+    // Handler works on core 0 - awake tickless blocking threads if necessary
+#if GK_TICKLESS
+#if GK_DUAL_CORE_AMP
+    if(scheds[0].block_until && _cur_ms >= scheds[0].block_until)
+    {
+        Yield();
+    }
+    if(scheds[1].block_until && _cur_ms >= scheds[1].block_until)
+    {
+        ipi_messages[1].Write({ .type = ipi_message::ipi_message_type_t::Yield });
+    }
+#else
+    if(sched.block_until && _cur_ms >= sched.block_until)
+    {
+        Yield();
+#if GK_DUAL_CORE
+        ipi_messages[1].Write({ .type = ipi_message::ipi_message_type_t::Yield });
+#endif
+    }
+#endif
+#endif
     __DMB();
 }
 
@@ -198,7 +223,11 @@ uint64_t clock_cur_us()
 void delay_ms(uint64_t nms)
 {
     auto await_val = _cur_ms + nms + 1;
-    while(_cur_ms < await_val) __WFI();
+    while(_cur_ms < await_val)
+    {
+        if(GetCoreID() == 0)
+            __WFI();            // timer ticks only come to core 0, else busy wait
+    }
 }
 
 bool clock_set_cpu(clock_cpu_speed speed)

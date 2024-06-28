@@ -1,6 +1,7 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+#include "gk_conf.h"
 #include "region_allocator.h"
 #include "thread.h"
 #include "osmutex.h"
@@ -60,6 +61,10 @@ class Scheduler
         LockedThread current_thread[ncores];
 
         bool scheduler_running[ncores];
+
+#if GK_TICKLESS
+        volatile uint64_t block_until = 0ULL;
+#endif
 };
 
 void Schedule(Thread *t);

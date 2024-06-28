@@ -11,7 +11,8 @@ struct ipi_message
 {
     enum ipi_message_type_t { M7DataCacheClean, M7DataCacheInv, M7DataCacheCleanInv, M7InstCacheInv,
         M4Wakeup,
-        ThreadUnblocked };
+        ThreadUnblocked,
+        Yield };
     ipi_message_type_t type;
     
     SimpleSignal *ss;
