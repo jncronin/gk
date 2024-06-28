@@ -46,11 +46,11 @@ static inline void wait_dma2d()
 {
     while(DMA2D->CR & DMA2D_CR_START)
     {
-        gpu_ready.Wait(clock_cur_ms() + 5ULL);
+        gpu_ready.Wait(/*clock_cur_ms() + 5ULL*/);
     }
     while(mdma->CCR & MDMA_CCR_EN)
     {
-        mdma_ready.Wait(clock_cur_ms() + 5ULL);
+        mdma_ready.Wait(/*clock_cur_ms() + 5ULL*/);
     }
 }
 
@@ -455,10 +455,12 @@ void *gpu_thread(void *p)
 #endif
 
             // We should never be able to write to the current framebuffer
+#if 0
             {
                 while(LTDC_Layer1->CFBAR == (uint32_t)(uintptr_t)screen_get_frame_buffer())
                     Yield();
             }
+#endif
 
             /* get details on pixel formats, strides etc */
             uint32_t dest_pf = g.dest_addr ? g.dest_pf : focus_process->screen_pf;
