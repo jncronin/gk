@@ -45,9 +45,12 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
     {
         case StartFirstThread:
             // enable systick and trigger a PendSV IRQ
+#if GK_TICKLESS
+#else
             SysTick->CTRL = 7UL;
-            SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+#endif
             scheduler_running() = true;
+            Yield();
 
 #if GK_USE_CACHE
             if(GetCoreID() == 0)

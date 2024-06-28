@@ -4,7 +4,7 @@
 #include "clocks.h"
 #include "gk_conf.h"
 
-#define DEBUG_SCHEDULER 0
+#define DEBUG_SCHEDULER 1
 
 extern Spinlock s_rtt;
 
@@ -101,9 +101,46 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         cur_t->tss.deschedule_from_core = ncore + 1;
     }
 
+#if GK_TICKLESS
+    // Tickless needs to know the earliest time blocker as well
+    block_until = 0;
+    for(int i = 0; i < npriorities; i++)
+    {
+#if GK_DUAL_CORE
+        CriticalGuard cg(tlist[i].m);
+#endif
+
+        for(const auto &tthread : tlist[i].v.v)
+        {
+            if(tthread->is_blocking && tthread->block_until)
+            {
+                if(tthread->block_until <= clock_cur_ms())
+                {
+                    tthread->is_blocking = false;
+                    tthread->block_until = 0ULL;
+                }
+                else if(!block_until || tthread->block_until < block_until)
+                {
+                    block_until = tthread->block_until;
+                }
+            }
+        }
+    }
+
+#if DEBUG_SCHEDULER
+    if(block_until)
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "sched core %d: set block_until to %d\n", ncore, (uint32_t)block_until);
+    }
+#endif
+#endif
+
     for(int i = npriorities-1; i >= cur_prio; i--)
     {
+#if GK_DUAL_CORE
         CriticalGuard cg(tlist[i].m);
+#endif
 
         if(tlist[i].v.v.empty())
         {
@@ -275,7 +312,9 @@ void Scheduler::unblock_delayer(Thread *t)
 void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 {
     CriticalGuard cg(s_rtt);
-    SEGGER_RTT_printf(0, "%d: sched: %s (%d) to %s (%d)\n", (uint32_t)clock_cur_ms(),
+    SEGGER_RTT_printf(0, "%d: sched core %d: %s (%d) to %s (%d)\n",
+        (uint32_t)clock_cur_ms(),
+        GetCoreID(),
         old_t->name.c_str(), old_t->base_priority,
         new_t->name.c_str(), new_t->base_priority);
 }

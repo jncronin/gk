@@ -44,6 +44,10 @@ extern "C" void CM4_SEV_IRQHandler()
             case ipi_message::ThreadUnblocked:
                 handle_thread_unblocked(0, msg.t);
                 break;
+            
+            case ipi_message::Yield:
+                Yield();
+                break;
 #endif
             default:
                 break;
@@ -68,6 +72,10 @@ extern "C" void CM7_SEV_IRQHandler()
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
             case ipi_message::ThreadUnblocked:
                 handle_thread_unblocked(1, msg.t);
+                break;
+
+            case ipi_message::Yield:
+                Yield();
                 break;
 #endif
 

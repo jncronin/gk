@@ -664,7 +664,8 @@ void init_ext4()
 
 int sd_open(ext4_blockdev *bdev)
 {
-    while(!sd_ready);
+    while(!sd_ready)
+        Yield();
 
     if(bdev->part_size == 0 || bdev->bdif->ph_bcnt == 0)
     {

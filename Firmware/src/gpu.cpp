@@ -46,11 +46,11 @@ static inline void wait_dma2d()
 {
     while(DMA2D->CR & DMA2D_CR_START)
     {
-        gpu_ready.Wait(clock_cur_ms() + 20ULL);
+        gpu_ready.Wait(clock_cur_ms() + 5ULL);
     }
     while(mdma->CCR & MDMA_CCR_EN)
     {
-        mdma_ready.Wait(clock_cur_ms() + 20ULL);
+        mdma_ready.Wait(clock_cur_ms() + 5ULL);
     }
 }
 
@@ -572,7 +572,7 @@ void *gpu_thread(void *p)
             switch(g.type)
             {
                 case gpu_message_type::FlipBuffers:
-                    if(!focus_process->screen_ignore_vsync)
+                    //if(!focus_process->screen_ignore_vsync)
                     {
                         wait_dma2d();
                     }

@@ -521,19 +521,20 @@ void *init_thread(void *p)
         "-sound", "0",
         "-sound.rate", "22050",
         "-gb.stretch", "aspect_int",
-        "-nothrottle", "1",
+//        "-nothrottle", "1",
         "-osd.alpha_blend", "0",
         "-video.blit_timesync", "0",
-        "-video.frameskip", "0",
-        "/usr/share/mednafen/games/Xenon 2 (E) (Virgin) [!].sms"
+//        "-video.frameskip", "0",
+        "-fps.autoenable", "1",
+        "/usr/share/mednafen/games/Sega Galaga (SG-1000) [!].sg"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/mednafen-gk";
     pt.stack_size = 64 * 1024;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
-    pt.screen_w = 320;
-    pt.screen_h = 240;
+    pt.screen_w = 640;
+    pt.screen_h = 480;
     pt.screen_ignore_vsync = 1;
     deferred_call(syscall_proccreate, "/mednafen-gk/bin/mednafen", &pt);
 
