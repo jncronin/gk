@@ -526,7 +526,7 @@ void *init_thread(void *p)
         "-video.blit_timesync", "0",
 //        "-video.frameskip", "0",
         "-fps.autoenable", "1",
-        "/usr/share/mednafen/games/Sega Galaga (SG-1000) [!].sg"
+        "/usr/share/mednafen/games/Sonic The Hedgehog 2 (UE) (V2.2).sms"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
