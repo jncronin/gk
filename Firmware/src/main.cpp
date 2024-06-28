@@ -526,7 +526,7 @@ void *init_thread(void *p)
         "-video.blit_timesync", "0",
 //        "-video.frameskip", "0",
         "-fps.autoenable", "1",
-        "/usr/share/mednafen/games/Sonic The Hedgehog 2 (UE) (V2.2).sms"
+        "/usr/share/mednafen/games/Castlevania (E).nes"
     };
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
@@ -551,7 +551,7 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
     focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
     focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
-
+#if 0
     /* lynx mappings */
     focus_process->gamepad_is_joystick = false;
     focus_process->gamepad_is_mouse = false;
@@ -591,7 +591,7 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 7; // D         = MDFN right
     focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
     focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
-
+#endif
 
 
     extern Process p_supervisor;

@@ -1,27 +1,27 @@
 
 
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/thread.cpp:187:5, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/usb.cpp:93:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/thread.cpp:188:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/usb.cpp:96:5, State=BP_STATE_DISABLED
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp:144, State=BP_STATE_ON
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/clocks.cpp:200:5, State=BP_STATE_ON
-Breakpoint=0x080056C8, State=BP_STATE_ON
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/clocks.cpp:200:5, State=BP_STATE_DISABLED
+Breakpoint=0x080056C8, State=BP_STATE_DISABLED
 Breakpoint=0x0801095E, State=BP_STATE_DISABLED
-Breakpoint=0x0801096C, State=BP_STATE_DISABLED
+Breakpoint=0x0801096E, State=BP_STATE_DISABLED
 Breakpoint=0x08012FCC, State=BP_STATE_DISABLED
-Breakpoint=0x08012FD8, State=BP_STATE_DISABLED
-OpenDocument="scheduler.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/inc/scheduler.h", Line=64
+Breakpoint=0x08012FDC, State=BP_STATE_DISABLED
+OpenDocument="startup_stm32h747xx.s", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/startup_stm32h747xx.s", Line=232
 OpenDocument="elf.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/elf.cpp", Line=0
 OpenDocument="switcher.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/switcher.cpp", Line=16
 OpenDocument="hashtable.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable.h", Line=893
 OpenDocument="osqueue.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/inc/osqueue.h", Line=118
-OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp", Line=496
+OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp", Line=42
 OpenDocument="scheduler.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/scheduler.cpp", Line=74
 OpenDocument="cmsis_gcc.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/cmsis_Core/Include/cmsis_gcc.h", Line=188
 OpenDocument="mutex.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/mutex.cpp", Line=103
 OpenDocument="usb.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/usb.cpp", Line=73
 OpenDocument="cache.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/cache.cpp", Line=59
 OpenDocument="syscalls.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/syscalls.cpp", Line=31
-OpenDocument="clocks.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/clocks.cpp", Line=187
+OpenDocument="scheduler.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/inc/scheduler.h", Line=50
 OpenDocument="hashtable_policy.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable_policy.h", Line=196
 OpenDocument="util.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/inc/util.h", Line=0
 OpenDocument="net_icmp.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/net_icmp.cpp", Line=18
@@ -41,7 +41,7 @@ OpenDocument="net_ethernet.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmwa
 OpenDocument="SEGGER_RTT_printf.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/SEGGER_RTT_printf.c", Line=333
 OpenDocument="net_telnet.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/net_telnet.cpp", Line=40
 OpenDocument="net_socket.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/net_socket.cpp", Line=261
-OpenDocument="startup_stm32h747xx.s", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/startup_stm32h747xx.s", Line=232
+OpenDocument="clocks.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/clocks.cpp", Line=186
 OpenDocument="net_tcp.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/net_tcp.cpp", Line=264
 OpenDocument="osnet.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/inc/osnet.h", Line=11
 OpenDocument="unordered_set.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/unordered_set.h", Line=411
@@ -53,7 +53,7 @@ OpenDocument="tusb_lwip.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/
 OpenDocument="ext4.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/ext4.cpp", Line=510
 OpenDocument="core_cm7.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/cmsis_Core/Include/core_cm7.h", Line=1897
 OpenDocument="thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/thread.cpp", Line=176
-OpenDocument="sd.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/sd.cpp", Line=814
+OpenDocument="sd.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/sd.cpp", Line=374
 OpenDocument="stl_vector.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/stl_vector.h", Line=1111
 OpenDocument="usbd.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/tinyusb/src/device/usbd.c", Line=452
 OpenDocument="ecm_rndis_device.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/tinyusb/src/class/net/ecm_rndis_device.c", Line=43
@@ -71,17 +71,17 @@ OpenDocument="usbd.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/tinyusb
 OpenDocument="ext4_super.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/include/ext4_super.h", Line=85
 OpenDocument="gk.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware/gk.jdebug", Line=15
 OpenToolbar="Debug", Floating=0, x=0, y=0
-OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=5, w=1469, h=213, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=1, w=1469, h=211, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=5, w=1469, h=214, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=1, w=1469, h=213, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Break & Tracepoints", DockArea=BOTTOM, x=0, y=0, w=371, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=254
 OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=1307, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x30005F80
-OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1469, h=198, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1469, h=213, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1469, h=188, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1469, h=201, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1469, h=214, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=4, w=1469, h=192, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=371, h=1316, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Terminal", DockArea=BOTTOM, x=2, y=0, w=779, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=740, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="gkos", DockArea=RIGHT, x=0, y=0, w=1469, h=288, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing="Task List"
+OpenWindow="gkos", DockArea=RIGHT, x=0, y=0, w=1469, h=277, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, Showing="Task List"
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
 TableHeader="Global Data", SortCol="Name", SortOrder="DESCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[123;118;157;101;109;27;800]
 TableHeader="Vector Catches", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;500]
