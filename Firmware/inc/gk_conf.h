@@ -13,10 +13,10 @@
 #define GK_EXT_READONLY             0
 #define GK_EXT_USE_JOURNAL          0
 #define GK_SD_USE_HS_MODE           1
-#define GK_GPU_SHOW_FPS             1
+#define GK_GPU_SHOW_FPS             0
 #define GK_DUAL_CORE_AMP            1
 #define GK_OVERCLOCK                1
-#define GK_TICKLESS                 1
+#define GK_TICKLESS                 0
 
 #define GK_SDRAM_BASE               0x60000000
 

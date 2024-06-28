@@ -4,7 +4,7 @@
 #include "clocks.h"
 #include "gk_conf.h"
 
-#define DEBUG_SCHEDULER 1
+#define DEBUG_SCHEDULER 0
 
 extern Spinlock s_rtt;
 
