@@ -353,8 +353,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_pthread_mutex_trylock:
             {
-                auto p = reinterpret_cast<pthread_mutex_t *>(r2);
-                int ret = syscall_pthread_mutex_trylock(p, reinterpret_cast<int *>(r3));
+                auto p = reinterpret_cast<__syscall_trywait_params *>(r2);
+                int ret = syscall_pthread_mutex_trylock((pthread_mutex_t *)p->sync, p->clock_id, p->until, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -685,13 +685,17 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_pthread_rwlock_tryrdlock:
             {
-                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_tryrdlock(reinterpret_cast<pthread_rwlock_t *>(r2), reinterpret_cast<int *>(r3));
+                auto p = reinterpret_cast<__syscall_trywait_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_tryrdlock((pthread_rwlock_t *)p->sync,
+                    p->clock_id, p->until, reinterpret_cast<int *>(r3));
             }
             break;
 
         case __syscall_pthread_rwlock_trywrlock:
             {
-                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_trywrlock(reinterpret_cast<pthread_rwlock_t *>(r2), reinterpret_cast<int *>(r3));
+                auto p = reinterpret_cast<__syscall_trywait_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_rwlock_trywrlock((pthread_rwlock_t *)p->sync,
+                    p->clock_id, p->until, reinterpret_cast<int *>(r3));
             }
             break;
 
@@ -732,7 +736,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_sem_trywait:
             {
-                *reinterpret_cast<int *>(r1) = syscall_sem_trywait((sem_t *)r2, reinterpret_cast<int *>(r3));
+                auto p = reinterpret_cast<__syscall_trywait_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_sem_trywait((sem_t *)p->sync,
+                    p->clock_id, p->until, reinterpret_cast<int *>(r3));
             }
             break;
 

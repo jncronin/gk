@@ -44,7 +44,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, int *_e
 
 int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr, int *_errno);
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno);
-int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int *_errno);
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno);
 int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno);
 
 int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), int *_errno);
@@ -62,8 +62,8 @@ int syscall_pthread_exit(void **retval, int *_errno);
 
 int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr_t *attr, int *_errno);
 int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno);
-int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int *_errno);
-int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int *_errno);
+int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int clock_id, const timespec *until, int *_errno);
+int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int clock_id, const timespec *until, int *_errno);
 int syscall_pthread_rwlock_unlock(pthread_rwlock_t *lock, int *_errno);
 
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno);
@@ -72,7 +72,7 @@ int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno);
 int syscall_sem_destroy(sem_t *sem, int *_errno);
 int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno);
 int syscall_sem_post(sem_t *sem, int *_errno);
-int syscall_sem_trywait(sem_t *sem, int *_errno);
+int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_errno);
 
 int syscall_set_thread_priority(Thread *thread, int priority, int *_errno);
 int syscall_get_thread_priority(Thread *thread, int *_errno);
