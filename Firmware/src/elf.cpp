@@ -372,7 +372,7 @@ template<typename T> static int load_from(int fd, unsigned int offset, T* buf)
 static MemRegion memblk_allocate_for_elf(size_t nbytes)
 {
     auto mr = memblk_allocate(nbytes, MemRegionType::AXISRAM);
-    if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SRAM);
+    //if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SRAM);
     if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SDRAM);
     return mr;
 }
