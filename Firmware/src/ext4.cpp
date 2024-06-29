@@ -256,11 +256,13 @@ static void handle_open_message(ext4_message &msg)
             }
             else
             {
+#if EXT4_DEBUG
                 {
                     CriticalGuard cg_rtt(s_rtt);
                     SEGGER_RTT_printf(0, "ext4_fopen: open(%s) failing with %d\n",
                         msg.params.open_params.pathname, extret);
                 }
+#endif
                 delete msg.params.open_params.p->open_files[msg.params.open_params.f];
                 msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
 
