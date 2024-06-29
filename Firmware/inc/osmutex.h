@@ -45,7 +45,7 @@ class Mutex
         Mutex(bool recursive = false, bool error_check = false);
 
         void lock();
-        bool try_lock(int *reason = nullptr);
+        bool try_lock(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
         bool unlock(int *reason = nullptr);
         bool try_delete(int *reason = nullptr);
 };
@@ -55,13 +55,27 @@ class RwLock
     protected:
         Thread *wrowner = nullptr;
         std::unordered_set<Thread *> rdowners;
+        std::unordered_set<Thread *> waiting_threads;
         Spinlock sl;
 
     public:
-        bool try_wrlock(int *reason = nullptr);
-        bool try_rdlock(int *reason = nullptr);
+        bool try_wrlock(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
+        bool try_rdlock(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
         bool try_delete(int *reason = nullptr);
         bool unlock(int *reason = nullptr);
+};
+
+class UserspaceSemaphore
+{
+    protected:
+        Spinlock sl;
+        unsigned int val;
+        std::unordered_set<Thread *> waiting_threads;
+
+    public:
+        bool try_wait(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
+        void post();
+        bool try_delete(int *reason = nullptr);
 };
 
 class Condition
