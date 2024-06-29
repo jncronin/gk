@@ -41,6 +41,9 @@ static inline void signal_thread_woken(Thread *t)
     ipi_messages[other_core].Write({ ipi_message::ThreadUnblocked, nullptr, .t = t });
     __SEV();
 #endif
+
+    if(t->base_priority >= GetCurrentThreadForCore()->base_priority)
+        Yield();
 }
 
 #endif

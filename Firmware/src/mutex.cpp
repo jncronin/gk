@@ -343,7 +343,7 @@ void Mutex::lock()
     }
 }
 
-bool Mutex::try_lock(int *reason)
+bool Mutex::try_lock(int *reason, bool block, uint64_t tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -373,10 +373,17 @@ bool Mutex::try_lock(int *reason)
     else
     {
         if(reason) *reason = EBUSY;
-        t->is_blocking = true;
-        t->blocking_on = owner;
-        waiting_threads.insert(t);
-        Yield();
+
+        if(block)
+        {
+            t->is_blocking = true;
+            t->blocking_on = owner;
+            waiting_threads.insert(t);
+
+            if(tout)
+                t->block_until = tout;
+            Yield();
+        }
         return false;
     }
 }
@@ -385,7 +392,6 @@ bool Mutex::unlock(int *reason)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
-    bool hpt = false;
     if(owner != t)
     {
         if(reason) *reason = EPERM;
@@ -399,17 +405,12 @@ bool Mutex::unlock(int *reason)
             wt->block_until = 0;
             wt->blocking_on = nullptr;
 
-            if(wt->base_priority > t->base_priority)
-                hpt = true;
             signal_thread_woken(wt);
         }
         waiting_threads.clear();
         owner = nullptr;
     }
 
-    if(hpt)
-        Yield();
-    
     return true;
 }
 
@@ -431,7 +432,7 @@ bool Mutex::try_delete(int *reason)
     return false;
 }
 
-bool RwLock::try_rdlock(int *reason)
+bool RwLock::try_rdlock(int *reason, bool block, uint64_t tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -445,6 +446,16 @@ bool RwLock::try_rdlock(int *reason)
         else
         {
             if(reason) *reason = EBUSY;
+            if(block)
+            {
+                t->is_blocking = true;
+                t->blocking_on = wrowner;
+                waiting_threads.insert(t);
+
+                if(tout)
+                    t->block_until = tout;
+                Yield();
+            }
             return false;
         }
     }
@@ -452,7 +463,7 @@ bool RwLock::try_rdlock(int *reason)
     return true;
 }
 
-bool RwLock::try_wrlock(int *reason)
+bool RwLock::try_wrlock(int *reason, bool block, uint64_t tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -466,6 +477,16 @@ bool RwLock::try_wrlock(int *reason)
         else
         {
             if(reason) *reason = EBUSY;
+            if(block)
+            {
+                t->is_blocking = true;
+                t->blocking_on = wrowner;
+                waiting_threads.insert(t);
+
+                if(tout)
+                    t->block_until = tout;
+                Yield();
+            }
             return false;
         }
     }
@@ -479,6 +500,16 @@ bool RwLock::try_wrlock(int *reason)
         else
         {
             if(reason) *reason = EBUSY;
+            if(block)
+            {
+                t->is_blocking = true;
+                t->blocking_on = *rdowners.begin();
+                waiting_threads.insert(t);
+
+                if(tout)
+                    t->block_until = tout;
+                Yield();
+            }
             return false;
         }
     }
@@ -494,7 +525,17 @@ bool RwLock::unlock(int *reason)
     {
         if(wrowner == t)
         {
+            for(auto wt : waiting_threads)
+            {
+                wt->is_blocking = false;
+                wt->block_until = 0;
+                wt->blocking_on = nullptr;
+
+                signal_thread_woken(wt);
+            }
+            waiting_threads.clear();
             wrowner = nullptr;
+
             return true;
         }
         else
@@ -515,6 +556,19 @@ bool RwLock::unlock(int *reason)
         return false;
     }
     rdowners.erase(iter);
+
+    if(rdowners.empty())
+    {
+        for(auto wt : waiting_threads)
+        {
+            wt->is_blocking = false;
+            wt->block_until = 0;
+            wt->blocking_on = nullptr;
+
+            signal_thread_woken(wt);
+        }
+        waiting_threads.clear();
+    }
     return true;
 }
 
@@ -526,5 +580,56 @@ bool RwLock::try_delete(int *reason)
         if(reason) *reason = EBUSY;
         return false;
     }
+    return true;
+}
+
+bool UserspaceSemaphore::try_wait(int *reason, bool block, uint64_t tout)
+{
+    CriticalGuard cg(sl);
+    auto t = GetCurrentThreadForCore();
+    if(val)
+    {
+        val--;
+        return true;
+    }
+    else
+    {
+        // val == 0
+        if(reason) *reason = EBUSY;
+        if(block)
+        {
+            t->is_blocking = true;
+            t->blocking_on = BLOCKING_ON_CONDITION(this);
+            waiting_threads.insert(t);
+
+            if(tout)
+                t->block_until = tout;
+            Yield();
+        }
+        return false;
+    }
+}
+
+void UserspaceSemaphore::post()
+{
+    CriticalGuard cg(sl);
+    if(val == 0)
+    {
+        for(auto wt : waiting_threads)
+        {
+            wt->is_blocking = false;
+            wt->block_until = 0;
+            wt->blocking_on = 0;
+
+            signal_thread_woken(wt);
+        }
+        waiting_threads.clear();
+    }
+    val++;
+}
+
+bool UserspaceSemaphore::try_delete(int *reason)
+{
+    // always succeeds - posix states UB if threads are waiting on it
     return true;
 }
