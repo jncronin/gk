@@ -138,7 +138,7 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
     return -1;
 }
 
-int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int *_errno)
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno)
 {
     if(!check_mutex(mutex))
     {   
@@ -197,7 +197,7 @@ int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr
     return 0;
 }
 
-int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int *_errno)
+int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int clock_id, const timespec *until, int *_errno)
 {
     if(!check_rwlock(lock))
     {   
@@ -219,7 +219,7 @@ int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int *_errno)
     }
 }
 
-int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int *_errno)
+int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int clock_id, const timespec *until, int *_errno)
 {
     if(!check_rwlock(lock))
     {   
@@ -334,7 +334,7 @@ int syscall_sem_post(sem_t *sem, int *_errno)
     return 0;
 }
 
-int syscall_sem_trywait(sem_t *sem, int *_errno)
+int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_errno)
 {
     if(!sem || !sem->s)
     {
