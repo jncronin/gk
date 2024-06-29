@@ -125,11 +125,13 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                     }
 #endif
 
+#if 0
                     {
                         CriticalGuard cg2(s_rtt);
                         SEGGER_RTT_printf(0, "sbrk: nbytes: %d, new_brk: %u, ret: %x, ret@: %x\n",
                             nbytes, p.brk, *reinterpret_cast<uint32_t *>(r1), reinterpret_cast<uint32_t>(r1));
                     }
+#endif
                 }
                 else
                 {
