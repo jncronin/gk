@@ -513,6 +513,7 @@ void *init_thread(void *p)
     pt.stack_size = 64 * 1024;
     deferred_call(syscall_proccreate, "/tuxracer-0.1.1-gk/bin/tuxracer", &pt);
 #endif
+#if 0
     // mednafen
     const char *args[] = { 
         "-video.driver", "softfb",
@@ -526,6 +527,7 @@ void *init_thread(void *p)
         "-video.blit_timesync", "0",
 //        "-video.frameskip", "0",
         "-fps.autoenable", "1",
+        "-fps.scale", "2",
         "-md.videoip", "0",
         "/usr/share/mednafen/games/Sonic The Hedgehog (UE) [!].sms"
     };
@@ -593,6 +595,29 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 26;   // W         = MDFN up
     focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
 #endif
+#endif
+    // gkmenu
+    const char *args[] = { };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/gkmenu-0.1.1-gk";
+    pt.stack_size = 64 * 1024;
+    pt.screen_w = 640;
+    pt.screen_h = 480;
+    pt.pixel_format = GK_PIXELFORMAT_RGB565;
+    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt);
+
+    delay_ms(5);
+    focus_process->gamepad_is_keyboard = true;
+    focus_process->gamepad_is_mouse = true;
+    focus_process->gamepad_is_joystick = false;
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 259;    // NEXT
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 258;   // PREV
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 259;      // NEXT
+    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 258;    // PREV
+    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
+    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
+
 
 
     extern Process p_supervisor;
