@@ -633,3 +633,14 @@ bool UserspaceSemaphore::try_delete(int *reason)
     // always succeeds - posix states UB if threads are waiting on it
     return true;
 }
+
+UserspaceSemaphore::UserspaceSemaphore(unsigned int value)
+{
+    val = value;
+}
+
+unsigned int UserspaceSemaphore::get_value()
+{
+    CriticalGuard cg(sl);
+    return val;
+}

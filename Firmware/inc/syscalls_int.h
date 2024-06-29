@@ -12,7 +12,7 @@
 
 struct sem_t
 {
-    CountingSemaphore *s;
+    UserspaceSemaphore *s;
 };
 
 int get_free_fildes(Process &p);

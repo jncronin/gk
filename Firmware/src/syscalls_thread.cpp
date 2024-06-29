@@ -230,8 +230,11 @@ int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int clock_id, const
     }
 
     auto l = *reinterpret_cast<RwLock **>(lock);
+    bool block = clock_id != CLOCK_TRY_ONCE;
+    uint64_t tout = ts_to_timeout(until, clock_id);
+
     int reason;
-    if(l->try_rdlock(&reason))
+    if(l->try_rdlock(&reason, block, tout))
         return 0;
     else
     {
@@ -252,8 +255,12 @@ int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int clock_id, const
     }
 
     auto l = *reinterpret_cast<RwLock **>(lock);
+    bool block = clock_id != CLOCK_TRY_ONCE;
+    uint64_t tout = ts_to_timeout(until, clock_id);
+
+
     int reason;
-    if(l->try_wrlock(&reason))
+    if(l->try_wrlock(&reason, block, tout))
         return 0;
     else
     {
@@ -312,7 +319,7 @@ int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno)
         return -1;
     }
 
-    sem->s = new CountingSemaphore(value);
+    sem->s = new UserspaceSemaphore(value);
     if(!sem->s)
     {
         *_errno = ENOMEM;
@@ -329,6 +336,13 @@ int syscall_sem_destroy(sem_t *sem, int *_errno)
         return -1;
     }
 
+    int reason;
+    if(!sem->s->try_delete(&reason))
+    {
+        *_errno = reason;
+        return -1;
+    }
+
     delete sem->s;
     sem->s = nullptr;
     return 0;
@@ -342,7 +356,7 @@ int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno)
         return -1;
     }
 
-    *outval = (int)sem->s->Value();
+    *outval = (int)sem->s->get_value();
     return 0;
 }
 
@@ -354,7 +368,7 @@ int syscall_sem_post(sem_t *sem, int *_errno)
         return -1;
     }
 
-    sem->s->Signal();
+    sem->s->post();
     return 0;
 }
 
@@ -366,14 +380,19 @@ int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_e
         return -1;
     }
 
-    if(sem->s->WaitOnce(0ULL))
-    {
+    bool block = clock_id != CLOCK_TRY_ONCE;
+    uint64_t tout = ts_to_timeout(until, clock_id);
+
+    int reason;
+    if(sem->s->try_wait(&reason, block, tout))
         return 0;
-    }
     else
     {
-        *_errno = EAGAIN;
-        return -3;
+        *_errno = reason;
+        if(reason == EBUSY)
+            return -3;
+        else
+            return -1;
     }
 }
 

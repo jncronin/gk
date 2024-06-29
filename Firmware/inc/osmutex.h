@@ -76,6 +76,9 @@ class UserspaceSemaphore
         bool try_wait(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
         void post();
         bool try_delete(int *reason = nullptr);
+        unsigned int get_value();
+
+        UserspaceSemaphore(unsigned int val = 0);
 };
 
 class Condition
