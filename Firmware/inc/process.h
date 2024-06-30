@@ -65,7 +65,17 @@ class Process
         bool gamepad_is_keyboard = true;
         bool gamepad_is_mouse = false;
 
-        enum GamepadKey { Left, Right, Up, Down, A, B, X, Y };
+        enum GamepadKey {
+            Left = GK_KEYLEFT,
+            Right = GK_KEYRIGHT,
+            Up = GK_KEYUP,
+            Down = GK_KEYDOWN,
+            A = GK_KEYA,
+            B = GK_KEYB,
+            X = GK_KEYX,
+            Y = GK_KEYY
+        };
+        
         unsigned int gamepad_buttons = 0;
         unsigned char mouse_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
