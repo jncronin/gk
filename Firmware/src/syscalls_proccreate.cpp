@@ -248,6 +248,13 @@ void *proccreate_thread(void *ptr)
         proc->cwd = "/";
     }
 
+    // Set key mappings
+    proc->gamepad_is_joystick = pcinfo->keymap.gamepad_is_joystick != 0;
+    proc->gamepad_is_keyboard = pcinfo->keymap.gamepad_is_keyboard != 0;
+    proc->gamepad_is_mouse = pcinfo->keymap.gamepad_is_mouse != 0;
+    memcpy(proc->gamepad_to_scancode, pcinfo->keymap.gamepad_to_scancode,
+        GK_NUMKEYS * sizeof(unsigned short int));
+
     // schedule startup thread
     Schedule(start_t);
 
