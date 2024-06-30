@@ -136,7 +136,7 @@ void *proccreate_thread(void *ptr)
     if(!heap.valid)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "process_create: could not allocate heap of %d\n", stack_size);
+        SEGGER_RTT_printf(0, "process_create: could not allocate heap of %d\n", heap_size);
         close(fd);
         *ss_p = ENOMEM;
         ss->Signal();
