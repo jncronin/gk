@@ -341,3 +341,26 @@ void Block(uint64_t until, Thread *block_on)
     }
     Yield();
 }
+
+void Scheduler::Unschedule(Thread *t)
+{
+    for(int i = 0; i < npriorities; i++)
+    {
+        CriticalGuard cg(tlist[i].m);
+
+        auto &v = tlist[i].v.v;
+
+        auto iter = v.begin();
+        while(iter != v.end())
+        {
+            if(*iter == t)
+            {
+                iter = v.erase(iter);
+            }
+            else
+            {
+                iter++;
+            }
+        }
+    }
+}

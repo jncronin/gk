@@ -10,6 +10,7 @@
 #include <cstring>
 #include "SEGGER_RTT.h"
 #include "elf.h"
+#include "cleanup.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -233,6 +234,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 p.for_deletion = true;
 
                 proc_list.DeleteProcess(p.pid, rc);
+
+                CleanupQueue.Push({ .is_thread = false, .p = &p });
 
                 Yield();
             }

@@ -10,6 +10,7 @@
 #include "clocks.h"
 #include "ossharedmem.h"
 #include "process.h"
+#include "cleanup.h"
 
 extern Thread dt;
 
@@ -17,49 +18,53 @@ Thread::Thread(Process &owning_process) : p(owning_process) {}
 
 void Thread::Cleanup(void *tretval)
 {
-    CriticalGuard cg(sl);
-    for_deletion = true;
-    retval = tretval;
-
-    // signal any thread waiting on a join
-    if(join_thread)
     {
-        if(join_thread_retval)
-            *join_thread_retval = tretval;
-        join_thread->ss_p.ival1 = 0;
-        join_thread->ss.Signal();
-    }
+        CriticalGuard cg(sl);
+        for_deletion = true;
+        retval = tretval;
 
-    // clean up any tls data
-    for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
-    {
-        bool has_nonnull = false;
-
+        // signal any thread waiting on a join
+        if(join_thread)
         {
-            CriticalGuard cg_p(p.sl);
-            for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
+            if(join_thread_retval)
+                *join_thread_retval = tretval;
+            join_thread->ss_p.ival1 = 0;
+            join_thread->ss.Signal();
+        }
+
+        // clean up any tls data
+        for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
+        {
+            bool has_nonnull = false;
+
             {
-                auto k = iter->first;
-                auto d = iter->second;
-
-                auto t_iter = tls_data.find(k);
-                if(t_iter != tls_data.end())
+                CriticalGuard cg_p(p.sl);
+                for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
                 {
-                    if(t_iter->second)
-                    {
-                        // non-null
-                        has_nonnull = true;
+                    auto k = iter->first;
+                    auto d = iter->second;
 
-                        // run destructor
-                        d(t_iter->second);
+                    auto t_iter = tls_data.find(k);
+                    if(t_iter != tls_data.end())
+                    {
+                        if(t_iter->second)
+                        {
+                            // non-null
+                            has_nonnull = true;
+
+                            // run destructor
+                            d(t_iter->second);
+                        }
                     }
                 }
             }
-        }
 
-        if(!has_nonnull)
-            break;
+            if(!has_nonnull)
+                break;
+        }
     }
+
+    CleanupQueue.Push({ .is_thread = true, .t = this });
 }
 
 void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid

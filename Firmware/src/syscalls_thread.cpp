@@ -10,6 +10,7 @@
 #include "SEGGER_RTT.h"
 #include "osmutex.h"
 #include "clocks.h"
+#include "cleanup.h"
 
 extern Spinlock s_rtt;
 
@@ -615,6 +616,8 @@ int syscall_pthread_exit(void **retval, int *_errno)
         }
 
         t->for_deletion = true;
+
+        CleanupQueue.Push({ .is_thread = true, .t = t });
     }
     return 0;
 }
