@@ -219,10 +219,10 @@ static void handle_open_message(ext4_message &msg)
 
     auto extret = ext4_fopen2(&f, msg.params.open_params.pathname, msg.params.open_params.flags);
     {
-        CriticalGuard cg(msg.params.open_params.p->sl);
-
         if(extret == EOK)
         {
+            CriticalGuard cg(msg.params.open_params.p->sl);
+
             if(is_opendir)
             {
                 delete msg.params.open_params.p->open_files[msg.params.open_params.f];
@@ -245,30 +245,34 @@ static void handle_open_message(ext4_message &msg)
                 // try and open as directory
                 extret = ext4_dir_open(&d, msg.params.open_params.pathname);
             }
-            if(extret == EOK)
             {
-                auto lwfile = reinterpret_cast<LwextFile *>(
-                    msg.params.open_params.p->open_files[msg.params.open_params.f]);
-                lwfile->d = d;
-                lwfile->is_dir = true;
-                msg.ss_p->ival1 = msg.params.open_params.f;
-                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
-            }
-            else
-            {
-#if EXT4_DEBUG
-                {
-                    CriticalGuard cg_rtt(s_rtt);
-                    SEGGER_RTT_printf(0, "ext4_fopen: open(%s) failing with %d\n",
-                        msg.params.open_params.pathname, extret);
-                }
-#endif
-                delete msg.params.open_params.p->open_files[msg.params.open_params.f];
-                msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
+                CriticalGuard cg(msg.params.open_params.p->sl);
 
-                msg.ss_p->ival1 = -1;
-                msg.ss_p->ival2 = extret;
-                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                if(extret == EOK)
+                {
+                    auto lwfile = reinterpret_cast<LwextFile *>(
+                        msg.params.open_params.p->open_files[msg.params.open_params.f]);
+                    lwfile->d = d;
+                    lwfile->is_dir = true;
+                    msg.ss_p->ival1 = msg.params.open_params.f;
+                    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                }
+                else
+                {
+#if EXT4_DEBUG
+                    {
+                        CriticalGuard cg_rtt(s_rtt);
+                        SEGGER_RTT_printf(0, "ext4_fopen: open(%s) failing with %d\n",
+                            msg.params.open_params.pathname, extret);
+                    }
+#endif
+                    delete msg.params.open_params.p->open_files[msg.params.open_params.f];
+                    msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
+
+                    msg.ss_p->ival1 = -1;
+                    msg.ss_p->ival2 = extret;
+                    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                }
             }
         }
     }
