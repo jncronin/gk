@@ -92,8 +92,10 @@ void *proccreate_thread(void *ptr)
     auto fd = deferred_call(syscall_open, fname, O_RDONLY, 0);
     if(fd < 0)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "process_create: open(%s) failed %d\n", fname, errno);
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "process_create: open(%s) failed %d\n", fname, errno);
+        }
         *ss_p = EFAULT;
         ss->Signal();
         return nullptr;
@@ -127,8 +129,10 @@ void *proccreate_thread(void *ptr)
     auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity);
     if(!stack.valid)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "process_create: could not allocate stack of %d\n", stack_size);
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "process_create: could not allocate stack of %d\n", stack_size);
+        }
         close(fd);
         *ss_p = ENOMEM;
         ss->Signal();
@@ -139,8 +143,10 @@ void *proccreate_thread(void *ptr)
     if(!heap.valid) heap = memblk_allocate(heap_size, MemRegionType::SDRAM);
     if(!heap.valid)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "process_create: could not allocate heap of %d\n", heap_size);
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "process_create: could not allocate heap of %d\n", heap_size);
+        }
         close(fd);
         *ss_p = ENOMEM;
         ss->Signal();
@@ -161,8 +167,10 @@ void *proccreate_thread(void *ptr)
     close(fd);
     if(eret != 0)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "process_create: elf_load_fildes() failed %d\n", eret);
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "process_create: elf_load_fildes() failed %d\n", eret);
+        }
         delete proc;
         *ss_p = eret;
         ss->Signal();
@@ -177,8 +185,10 @@ void *proccreate_thread(void *ptr)
         stack);
     if(start_t == nullptr)
     {
-        CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "process_create: Thread::Create() failed\n");
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "process_create: Thread::Create() failed\n");
+        }
         delete proc;
         *ss_p = ENOMEM;
         ss->Signal();
