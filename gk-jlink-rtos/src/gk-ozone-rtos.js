@@ -1,5 +1,7 @@
 var saddr;
-var saddr2;
+var ncores;
+var nscheds;
+var is_smp;
 
 function init()
 {
@@ -7,28 +9,24 @@ function init()
     Threads.newqueue("Task List");
     Threads.setColor("Status", "ready", "executing", "blocked");
 
-    saddr = Debug.evaluate("&s");
-    if(saddr == undefined)
+    /* Get info about the system */
+    ncores = Debug.evaluate("gk_ncores");
+    is_smp = Debug.evaluate("gk_is_smp");
+    nscheds = is_smp ? 1 : ncores;
+    saddr = new Array(nscheds);
+    if(is_smp)
     {
-        saddr = Debug.evaluate("&sched");
-        if(saddr == undefined)
-        {
-            saddr = Debug.evaluate("&scheds[0]");
-            saddr2 = Debug.evaluate("&scheds[1]");
-            Threads.setColumns("ID", "Name", "Core", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
-        }
-        else
-        {
-            saddr2 = undefined; 
-            Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
-        }
+        saddr[0] = Debug.evaluate("&sched");
+        Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
     }
     else
     {
-        Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
+        for(var i = 0; i < ncores; i++)
+        {
+            saddr[i] = Debug.evaluate("&scheds[" + i + "]");
+        }
+        Threads.setColumns("ID", "Name", "Core", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
     }
-
-    TargetInterface.message("s at " + saddr);
 }
 
 function task_get_name(t)
@@ -281,44 +279,49 @@ function update()
     Threads.clear();
     //TargetInterface.message("s at " + saddr);
 
-    var ncores = 2;
-    var curt = new Array(2);
-    if(saddr2 == undefined)
+    var curt = new Array(ncores);
+    for(var i = 0; i < ncores; i++)
     {
-        for(var i = 0; i < ncores; i++)
+        if(is_smp)
         {
-            var curtaddr = Debug.evaluate("&((Scheduler *)" + saddr + ")->current_thread[" + i + "]");
-            if(curtaddr == undefined)
-            {
-                curt[i] = 0;
-            }
-            else
-            {
-                curt[i] = TargetInterface.peekWord(curtaddr);
-            }
-            //TargetInterface.message("curt[" + i + "] = " + curt[i]);
+            var curtaddr = Debug.evaluate("&((Scheduler *)" + saddr[0] + ")->current_thread[" + i + "]");
         }
-    }
-    else
-    {
-        var curtaddr1 = Debug.evaluate("&((Scheduler *)" + saddr + ")->current_thread[0]");
-        curt[0] = TargetInterface.peekWord(curtaddr1);
-        var curtaddr2 = Debug.evaluate("&((Scheduler *)" + saddr2 + ")->current_thread[0]");
-        curt[1] = TargetInterface.peekWord(curtaddr2);
+        else
+        {
+            var curtaddr = Debug.evaluate("&((Scheduler *)" + saddr[i] + ")->current_thread[0]");
+        }
+        if(curtaddr == undefined)
+        {
+            curt[i] = 0;
+        }
+        else
+        {
+            curt[i] = TargetInterface.peekWord(curtaddr);
+        }
     }
 
     var tottime = Debug.evaluate("_cur_ms");
 
-    if(saddr2 != undefined)
+    if(is_smp)
     {
-        add_threads_for_scheduler(saddr, tottime, "M7", curt, ncores);
-        add_threads_for_scheduler(saddr2, tottime, "M4", curt, ncores);
+        add_threads_for_scheduler(saddr[0], tottime, undefined, curt, ncores);
     }
     else
     {
-        add_threads_for_scheduler(saddr, tottime, undefined, curt, ncores);
+        for(var i = 0; i < nscheds; i++)
+        {
+            var core_name = i.toString();
+            if(i == 0)
+            {
+                core_name = "M7";
+            }
+            else if(i == 1)
+            {
+                core_name = "M4";
+            }
+            add_threads_for_scheduler(saddr[i], tottime, core_name, curt, ncores);
+        }
     }
-
 }
 
 function getOSName()
