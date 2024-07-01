@@ -31,8 +31,6 @@ class Scheduler
         using LockedThreadVector = locked_val<SRAM4Vector<Thread *>>;
 
         LockedIndexedThreadVector tlist[npriorities];
-        LockedThreadVector sleeping_tasks;
-        LockedThreadVector blocking_tasks;
 
         /* Follows the chain of 'blocking_on' to allow priority escalation */
         Thread *get_blocker(Thread *t);
@@ -48,6 +46,7 @@ class Scheduler
         Scheduler(const Scheduler &) = delete;
 
         void Schedule(Thread *t);
+        void Unschedule(Thread *t);
         void TimerTick(uint32_t nticks);
         void Unsleep(Thread *t);
         void Unblock(Thread *t);
