@@ -90,8 +90,10 @@ int main()
 
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M4Only,
         memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
+#endif
 
 #if GK_ENABLE_TEST_THREADS
     Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc));
@@ -596,6 +598,7 @@ void *init_thread(void *p)
     focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 22; // S         = MDFN down
 #endif
 #endif
+#if 1
     // gkmenu
     const char *args[] = { };
     pt.argv = args;
@@ -606,19 +609,32 @@ void *init_thread(void *p)
     pt.screen_w = 640;
     pt.screen_h = 480;
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
+    pt.keymap.gamepad_is_keyboard = true;
+    pt.keymap.gamepad_is_mouse = true;
+    pt.keymap.gamepad_is_joystick = false;
+    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Left] = 259;    // NEXT
+    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Right] = 258;   // PREV
+    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Up] = 259;      // NEXT
+    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Down] = 258;    // PREV
+    pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
+    pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
+
     deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt);
-
-    delay_ms(5);
-    focus_process->gamepad_is_keyboard = true;
-    focus_process->gamepad_is_mouse = true;
-    focus_process->gamepad_is_joystick = false;
-    focus_process->gamepad_to_scancode[Process::GamepadKey::Left] = 259;    // NEXT
-    focus_process->gamepad_to_scancode[Process::GamepadKey::Right] = 258;   // PREV
-    focus_process->gamepad_to_scancode[Process::GamepadKey::Up] = 259;      // NEXT
-    focus_process->gamepad_to_scancode[Process::GamepadKey::Down] = 258;    // PREV
-    focus_process->gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
-    focus_process->gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
-
+#endif
+#if 0
+    // doom
+    const char *args[] = { "-nosound", "-nomusic", "-nosfx",
+        "-iwad", "/share/doom/doom1.wad" };
+    pt.argv = args;
+    pt.argc = sizeof(args) / sizeof(char *);
+    pt.cwd = "/gkmenu-0.1.1-gk";
+    pt.stack_size = 64 * 1024;
+    pt.heap_size = 16*1024*1024;
+    pt.screen_w = 320;
+    pt.screen_h = 240;
+    pt.pixel_format = GK_PIXELFORMAT_RGB565;
+    deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
+#endif
 
 
     extern Process p_supervisor;
