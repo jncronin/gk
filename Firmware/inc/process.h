@@ -13,10 +13,15 @@ class Thread;
 #include "_gk_event.h"
 #include "_gk_proccreate.h"
 #include "gk_conf.h"
+#include <sys/types.h>
+#include <unordered_set>
 
 class Process
 {
     public:
+        Process();
+        ~Process();
+
         Spinlock sl;
         
         std::string name;
@@ -75,7 +80,7 @@ class Process
             X = GK_KEYX,
             Y = GK_KEYY
         };
-        
+
         unsigned int gamepad_buttons = 0;
         unsigned char mouse_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
@@ -89,9 +94,38 @@ class Process
         bool has_tls = false;
         size_t tls_base = 0;
         size_t tls_len = 0;
+
+        /* PID support */
+        pid_t pid;
+        pid_t ppid;     // parent pid
+        std::unordered_set<pid_t> child_processes;
 };
 
 extern Process *focus_process;
 extern Process kernel_proc;
+
+/* support for atomically providing a new pid and associating with a process */
+class ProcessList
+{
+    public:
+        pid_t RegisterProcess(Process *p);
+        void DeleteProcess(pid_t pid, int retval);
+        int GetReturnValue(pid_t pid, int *retval, bool wait = false);
+
+    private:
+        struct pval
+        {
+            Process *p;
+            bool is_alive;
+            int retval;
+            std::unordered_set<Thread *> waiting_threads;
+        };
+
+        std::vector<pval> pvals;
+
+        Spinlock sl;
+};
+
+extern ProcessList proc_list;
 
 #endif

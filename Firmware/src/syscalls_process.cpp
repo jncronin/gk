@@ -7,6 +7,7 @@
 #include "SEGGER_RTT.h"
 #include "process.h"
 #include "elf.h"
+#include <sys/wait.h>
 
 extern Spinlock s_rtt;
 extern Process p_supervisor;
@@ -18,11 +19,12 @@ struct pct_params
     int *ss_p;
     const char *fname;
     const proccreate_t *pcinfo;
+    pid_t *pid_out;
 };
 
 static void *proccreate_thread(void *ptr);
 
-int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errno)
+int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, pid_t *pid, int *_errno)
 {
     if(!fname)
     {
@@ -45,6 +47,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, int *_errn
     param->ss_p = (int *)&t->ss_p.ival1;
     param->fname = fname;
     param->pcinfo = pcinfo;
+    param->pid_out = pid;
 
     // ensure pct stack is not in DTCM as this isn't handled by ext4_read yet
     auto pct_stack = memblk_allocate(4096, MemRegionType::AXISRAM);
@@ -76,6 +79,7 @@ void *proccreate_thread(void *ptr)
     auto t = pct->calling_thread;
     auto ss = pct->ss;
     auto ss_p = pct->ss_p;
+    auto pid_out = pct->pid_out;
     delete pct;
 
     // get last part of path to use as process name
@@ -258,8 +262,33 @@ void *proccreate_thread(void *ptr)
     // schedule startup thread
     Schedule(start_t);
 
+    // bind to parent and report back if requested
+    if(t)
+    {
+        t->p.child_processes.insert(proc->pid);
+        proc->ppid = t->p.pid;
+    }
+    if(pid_out)
+        *pid_out = proc->pid;
+
     *ss_p = 0;
     ss->Signal();
 
     return nullptr;
+}
+
+int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
+{
+    auto wret = proc_list.GetReturnValue(pid, retval,
+        (options & WNOHANG) == 0);
+    if(wret == -1)
+    {
+        *_errno = ECHILD;
+        return -1;
+    }
+    else if(wret < 0)
+    {
+        return -3;  // we should block in GetReturnValue, therefore if awakened ask for retry
+    }
+    return pid;
 }
