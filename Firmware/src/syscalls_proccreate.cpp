@@ -226,14 +226,6 @@ void *proccreate_thread(void *ptr)
     
     proc->screen_ignore_vsync = pcinfo->screen_ignore_vsync != 0;
 
-    // Set as focus if possible
-    if(pcinfo->with_focus)
-    {
-        focus_process = proc;
-
-        p_supervisor.events.Push( { .type = Event::CaptionChange });
-    }
-
     // Set cwd
     if(pcinfo->cwd)
     {
@@ -254,6 +246,14 @@ void *proccreate_thread(void *ptr)
     proc->gamepad_is_mouse = pcinfo->keymap.gamepad_is_mouse != 0;
     memcpy(proc->gamepad_to_scancode, pcinfo->keymap.gamepad_to_scancode,
         GK_NUMKEYS * sizeof(unsigned short int));
+
+    // Set as focus if possible
+    if(pcinfo->with_focus)
+    {
+        focus_process = proc;
+
+        p_supervisor.events.Push( { .type = Event::CaptionChange });
+    }
 
     // schedule startup thread
     Schedule(start_t);
