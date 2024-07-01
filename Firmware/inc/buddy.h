@@ -94,6 +94,7 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
         uint32_t lock()
         {
             auto ret = DisableInterrupts();
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
             while(true)
             {
                 uint32_t expected_zero = 0;
@@ -109,19 +110,26 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                     return ret;
                 }
             }
+#else
+            return ret;
+#endif
         }
 
         void unlock(uint32_t cpsr)
         {
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
             set(&_lock_val, 0UL);
             __DMB();
+#endif
             RestoreInterrupts(cpsr);
         }
 
         uint32_t level_starts[num_levels()];
         uint32_t level_word_counts[num_levels()];
         uint32_t b[total_words()];
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
         volatile uint32_t _lock_val = 0;
+#endif
 
         void release_at_level(uint32_t level, uint32_t bitidx)
         {
