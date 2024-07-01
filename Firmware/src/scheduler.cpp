@@ -4,13 +4,24 @@
 #include "clocks.h"
 #include "gk_conf.h"
 
-#define DEBUG_SCHEDULER 0
+#define DEBUG_SCHEDULER 1
 
 extern Spinlock s_rtt;
 
 extern Process kernel_proc;
 Process *focus_process = &kernel_proc;     // which process has access to screen and inputs
 __attribute__((section(".sram4"))) Thread dt(kernel_proc);
+
+#if GK_DUAL_CORE
+const int gk_ncores = 2;
+const bool gk_is_smp = true;
+#elif GK_DUAL_CORE_AMP
+const int gk_ncores = 2;
+const bool gk_is_smp = false;
+#else
+const int gk_ncores = 1;
+const bool gk_is_smp = true;
+#endif
 
 Scheduler::Scheduler()
 {
