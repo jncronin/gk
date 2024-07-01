@@ -619,7 +619,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
 
-    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt);
+    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, nullptr);
 #endif
 #if 0
     // doom

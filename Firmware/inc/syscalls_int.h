@@ -40,7 +40,7 @@ int syscall_gettimeofday(struct timeval *tv, struct timezone *tz, int *_errno);
 
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno);
-int syscall_proccreate(const char *fname, const proccreate_t *proc_info, int *_errno);
+int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *pid, int *_errno);
 
 int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr, int *_errno);
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno);
@@ -96,6 +96,8 @@ int syscall_peekevent(Event *ev, int *_errno);
 int syscall_setwindowtitle(const char *title, int *_errno);
 
 int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno);
+
+int syscall_waitpid(pid_t pid, int *status, int options, int *_errno);
 
 static inline int deferred_return(int ret, int _errno)
 {

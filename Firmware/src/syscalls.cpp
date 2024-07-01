@@ -232,6 +232,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 p.rc = rc;
                 p.for_deletion = true;
 
+                proc_list.DeleteProcess(p.pid, rc);
+
                 Yield();
             }
             break;
@@ -332,7 +334,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_proccreate:
             {
                 auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
-                int ret = syscall_proccreate(p->fname, p->proc_info, reinterpret_cast<int *>(r3));
+                int ret = syscall_proccreate(p->fname, p->proc_info, p->pid, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -761,6 +763,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_get_thread_priority:
             {
                 *reinterpret_cast<int *>(r1) = syscall_get_thread_priority((Thread *)r2, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_waitpid:
+            {
+                auto p = reinterpret_cast<__syscall_waitpid_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_waitpid(p->pid, p->stat_loc, p->options,
+                    reinterpret_cast<int *>(r3));
             }
             break;
 
