@@ -474,10 +474,10 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                         case 4: // MONOTONIC
                         case 5: // MONOTONIC_RAW
                             {
-                                auto curt = clock_cur_ms();
+                                auto curt = clock_cur_us();
 
-                                p->tp->tv_nsec = (curt % 1000) * 1000000;
-                                p->tp->tv_sec = curt / 1000;
+                                p->tp->tv_nsec = (curt % 1000000ULL) * 1000ULL;
+                                p->tp->tv_sec = curt / 1000000ULL;
                                 *reinterpret_cast<int *>(r1) = 0;
                             }
                             break;
