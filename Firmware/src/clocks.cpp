@@ -307,10 +307,10 @@ void clock_set_timebase(const struct timespec *tp)
 void clock_get_now(struct timespec *tp)
 {
     clock_get_timebase(tp);
-    auto curt = clock_cur_ms();
+    auto curt = clock_cur_us();
 
-    auto cur_ns = (curt % 1000) * 1000000;
-    auto cur_s = curt / 1000;
+    auto cur_ns = (curt % 1000000ULL) * 1000ULL;
+    auto cur_s = curt / 1000000ULL;
 
     tp->tv_nsec += cur_ns;
     while(tp->tv_nsec >= 1000000000)
