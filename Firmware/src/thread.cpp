@@ -64,6 +64,9 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
                 *join_thread_retval = tretval;
             join_thread->ss_p.ival1 = 0;
             join_thread->ss.Signal();
+            join_thread->blocking_on = nullptr;
+            join_thread->is_blocking = false;
+            join_thread->block_until = kernel_time();
 
             join_thread = nullptr;
         }

@@ -590,7 +590,7 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
             }
 
             // is anything else waiting?
-            if(thread->join_thread)
+            if(thread->join_thread && thread->join_thread != t)
             {
                 *_errno = EDEADLK;
                 return -1;
