@@ -1,6 +1,8 @@
 #ifndef WIDGET_KEYBOARD_H
 #define WIDGET_KEYBOARD_H
 
+#include "_gk_scancodes.h"
+
 class KeyboardWidget : public GridWidget
 {
     protected:
@@ -26,18 +28,18 @@ class KeyboardWidget : public GridWidget
         Keybutton btns[85] =
         {
             Keybutton(27, "Esc", 0, 0),
-            Keybutton(282, "F1", 1.1, 0, 0.9),
-            Keybutton(283, "F2", 2.0, 0, 0.9),
-            Keybutton(284, "F3", 2.9, 0, 0.9),
-            Keybutton(285, "F4", 3.8, 0, 0.9),
-            Keybutton(286, "F5", 4.8, 0, 0.9),
-            Keybutton(287, "F6", 5.7, 0, 0.9),
-            Keybutton(288, "F7", 6.6, 0, 0.9),
-            Keybutton(289, "F8", 7.5, 0, 0.9),
-            Keybutton(290, "F9", 8.5, 0, 0.9),
-            Keybutton(291, "F10", 9.4, 0, 0.9),
-            Keybutton(292, "F11", 10.3, 0, 0.9),
-            Keybutton(293, "F12", 11.2, 0, 0.9),
+            Keybutton(GK_SCANCODE_F1, "F1", 1.1, 0, 0.9),
+            Keybutton(GK_SCANCODE_F2, "F2", 2.0, 0, 0.9),
+            Keybutton(GK_SCANCODE_F3, "F3", 2.9, 0, 0.9),
+            Keybutton(GK_SCANCODE_F4, "F4", 3.8, 0, 0.9),
+            Keybutton(GK_SCANCODE_F5, "F5", 4.8, 0, 0.9),
+            Keybutton(GK_SCANCODE_F6, "F6", 5.7, 0, 0.9),
+            Keybutton(GK_SCANCODE_F7, "F7", 6.6, 0, 0.9),
+            Keybutton(GK_SCANCODE_F8, "F8", 7.5, 0, 0.9),
+            Keybutton(GK_SCANCODE_F9, "F9", 8.5, 0, 0.9),
+            Keybutton(GK_SCANCODE_F10, "F10", 9.4, 0, 0.9),
+            Keybutton(GK_SCANCODE_F11, "F11", 10.3, 0, 0.9),
+            Keybutton(GK_SCANCODE_F12, "F12", 11.2, 0, 0.9),
             Keybutton(316, "PrtSc", 12.2, 0),
             Keybutton(19, "Pause", 13.2, 0),
             Keybutton(277, "Ins", 14.2, 0),
