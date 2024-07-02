@@ -53,6 +53,7 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
     }
     else
     {
+        CriticalGuard cg(sl);
         for_deletion = true;
         retval = tretval;
 
