@@ -197,24 +197,35 @@ extern "C" void LPTIM1_IRQHandler()
 
 uint64_t clock_cur_ms()
 {
-    CriticalGuard cg(sl_timer);
-    return _cur_ms + ((LPTIM1->ISR & LPTIM_ISR_ARRM) ? 1ULL : 0ULL);
+    return clock_cur_us() / 1000ULL;
 }
 
 uint64_t clock_cur_us()
 {
-    CriticalGuard cg(sl_timer);
+    /* The basic idea here is to try and read both LPTIM1->CNT and _cur_ms atomically.
+        We need to account for the fact that on calling this function:
+            1) interrupts may be enabled and so _cur_ms may change as we read LPTIM1->CNT
+            2) interrupts may be disabled and so LPTIM1->CNT may rollover without a change in
+                _cur_ms - luckily LPTIM1->ISR & ARRM will be set in this instance.
+    */
+
     uint32_t cnt = 0U;
-    uint32_t isr_1;
+    uint64_t cms = 0U;
+    uint32_t isr = 0U;
+
     while(true)
     {
-        isr_1 = LPTIM1->ISR;
+        cms = _cur_ms;
+        isr = LPTIM1->ISR;
         cnt = LPTIM1->CNT;
-        if(LPTIM1->ISR == isr_1)
-            break;
+
+        auto isr2 = LPTIM1->ISR;
+        auto cms2 = _cur_ms;
+
+        if(isr == isr2 && cms == cms2) break;
     }
 
-    auto ret = _cur_ms + ((isr_1 & LPTIM_ISR_ARRM) ? 1ULL : 0ULL);
+    auto ret = cms + ((isr & LPTIM_ISR_ARRM) ? 1ULL : 0ULL);
     ret *= 1000ULL;
     ret += cnt;
     return ret;
