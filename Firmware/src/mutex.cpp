@@ -121,7 +121,7 @@ uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
         auto sv = WaitOnce(op, vop, tout);
         if(sv)
             return sv;
-        else if(clock_cur() >= tout)
+        else if(tout.is_valid() && clock_cur() >= tout)
             return 0;
     }
 }
