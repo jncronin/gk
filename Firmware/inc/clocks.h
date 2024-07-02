@@ -14,6 +14,23 @@ enum clock_cpu_speed
     cpu_384_192
 };
 
+class kernel_time
+{
+    private:
+        uint64_t _us;
+
+    public:
+        kernel_time from_ns(uint64_t ns);
+        kernel_time from_us(uint64_t us);
+        kernel_time from_ms(uint64_t ms);
+        kernel_time from_timespec(const timespec *ts);
+
+        uint64_t to_ns();
+        uint64_t to_us();
+        uint64_t to_ms();
+        void to_timespec(timespec *ts);
+};
+
 bool clock_set_cpu(clock_cpu_speed speed);
 
 void delay_ms(uint64_t nms);
