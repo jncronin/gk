@@ -600,12 +600,7 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
             thread->join_thread = t;
             thread->join_thread_retval = retval;
 
-            t->is_blocking = true;
-            t->blocking_on = thread;
-            t->block_until.invalidate();
-            Yield();
-
-            return 0;
+            return -2;
         }
     }
 }
