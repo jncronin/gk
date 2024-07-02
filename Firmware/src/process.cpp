@@ -43,7 +43,7 @@ void ProcessList::DeleteProcess(pid_t pid, int retval)
     for(const auto &wait_t : cpval.waiting_threads)
     {
         wait_t->is_blocking = false;
-        wait_t->block_until = 0;
+        wait_t->block_until.invalidate();
         wait_t->blocking_on = nullptr;
         signal_thread_woken(wait_t);
     }

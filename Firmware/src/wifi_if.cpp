@@ -152,7 +152,7 @@ void nm_bsp_interrupt_ctrl(uint8 ctrl)
 void nm_bsp_sleep(uint32 msec)
 {
     if(scheduler_running())
-        Block(clock_cur_ms() + msec);
+        Block(clock_cur() + kernel_time::from_ms(msec));
     else
         delay_ms(msec);
 }
@@ -548,7 +548,7 @@ void *wifi_task(void *p)
 
     while(true)
     {
-        wifi_irq.Wait(clock_cur_ms() + 200ULL);
+        wifi_irq.Wait(clock_cur() + kernel_time::from_ms(200ULL));
         {
             //rtt_printf_wrapper("wifi: event\n");
             static WincNetInterface::state old_state = WincNetInterface::WIFI_UNINIT;

@@ -99,6 +99,6 @@ static inline void Yield()
     }
 }
 
-void Block(uint64_t until = UINT64_MAX, Thread *block_on = nullptr);
+void Block(kernel_time until = kernel_time(), Thread *block_on = nullptr);
 
 #endif

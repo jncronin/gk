@@ -1,4 +1,3 @@
-#define _POSIX_MONOTONIC_CLOCK
 #define _GNU_SOURCE 1
 #include "time.h"
 
@@ -13,22 +12,6 @@
 #include "cleanup.h"
 
 extern Spinlock s_rtt;
-
-static uint64_t ts_to_timeout(const timespec *ts, int clock_id)
-{
-    switch(clock_id)
-    {
-        case CLOCK_MONOTONIC:
-        case CLOCK_MONOTONIC_RAW:
-            return (ts->tv_nsec / 1000000ULL) + (ts->tv_sec + 1000000ULL);
-        
-        case CLOCK_REALTIME:
-            return clock_timespec_to_ms(*ts);
-
-        default:
-            return 0ULL;
-    }
-}
 
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno)
@@ -170,7 +153,7 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
     auto m = *reinterpret_cast<Mutex **>(mutex);
 
     bool block = clock_id != CLOCK_TRY_ONCE;
-    uint64_t tout = ts_to_timeout(until, clock_id);
+    auto tout = kernel_time::from_timespec(until, clock_id);
 
     int reason;
     if(m->try_lock(&reason, block, tout))
@@ -232,7 +215,7 @@ int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int clock_id, const
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     bool block = clock_id != CLOCK_TRY_ONCE;
-    uint64_t tout = ts_to_timeout(until, clock_id);
+    auto tout = kernel_time::from_timespec(until, clock_id);
 
     int reason;
     if(l->try_rdlock(&reason, block, tout))
@@ -257,7 +240,7 @@ int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int clock_id, const
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     bool block = clock_id != CLOCK_TRY_ONCE;
-    uint64_t tout = ts_to_timeout(until, clock_id);
+    auto tout = kernel_time::from_timespec(until, clock_id);
 
 
     int reason;
@@ -382,7 +365,7 @@ int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_e
     }
 
     bool block = clock_id != CLOCK_TRY_ONCE;
-    uint64_t tout = ts_to_timeout(until, clock_id);
+    auto tout = kernel_time::from_timespec(until, clock_id);
 
     int reason;
     if(sem->s->try_wait(&reason, block, tout))
@@ -518,10 +501,10 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
     auto m = *reinterpret_cast<Mutex **>(mutex);
     m->unlock();
 
-    uint64_t tout = UINT64_MAX;
+    kernel_time tout;
     if(abstime)
     {
-        tout = clock_timespec_to_ms(*abstime);
+        tout = kernel_time::from_timespec(abstime, CLOCK_REALTIME);
     }
     c->Wait(tout, signalled);
     return 0;
@@ -586,7 +569,7 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
 
             t->is_blocking = true;
             t->blocking_on = thread;
-            t->block_until = 0;
+            t->block_until.invalidate();
             Yield();
 
             return 0;
