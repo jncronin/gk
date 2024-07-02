@@ -10,6 +10,7 @@
 #include "osmutex.h"
 #include "clocks.h"
 #include "cleanup.h"
+#include "sync_primitive_locks.h"
 
 extern Spinlock s_rtt;
 
@@ -93,6 +94,9 @@ int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t
     }
     
     *reinterpret_cast<Mutex **>(mutex) = m;
+
+    auto t = GetCurrentThreadForCore();
+    add_sync_primitive(m, t->p.owned_mutexes, &t->p);
     return 0;
 }
 
@@ -134,7 +138,11 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
     auto ret = m->try_delete();
     if(ret)
     {
+        auto t = GetCurrentThreadForCore();
+        delete_sync_primitive(m, t->p.owned_mutexes, &t->p);
+
         delete m;
+
         return 0;
     }
 
@@ -157,7 +165,9 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
 
     int reason;
     if(m->try_lock(&reason, block, tout))
+    {
         return 0;
+    }
     else
     {
         *_errno = reason;
@@ -202,6 +212,9 @@ int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr
     }
     
     *reinterpret_cast<RwLock **>(lock) = l;
+
+    auto t = GetCurrentThreadForCore();
+    add_sync_primitive(l, t->p.owned_rwlocks, &t->p);
     return 0;
 }
 
@@ -285,7 +298,12 @@ int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno)
     auto l = *reinterpret_cast<RwLock **>(lock);
     if(l->try_delete())
     {
+        auto t = GetCurrentThreadForCore();
+        delete_sync_primitive(l, t->p.owned_rwlocks, &t->p);
+
         *reinterpret_cast<RwLock **>(lock) = nullptr;
+        delete l;
+
         return 0;
     }
     else
@@ -309,6 +327,10 @@ int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
+
+    auto t = GetCurrentThreadForCore();
+    add_sync_primitive(sem->s, t->p.owned_semaphores, &t->p);
+
     return 0;
 }
 
@@ -327,8 +349,12 @@ int syscall_sem_destroy(sem_t *sem, int *_errno)
         return -1;
     }
 
+    auto t = GetCurrentThreadForCore();
+    delete_sync_primitive(sem->s, t->p.owned_semaphores, &t->p);
+
     delete sem->s;
     sem->s = nullptr;
+
     return 0;
 }
 
@@ -471,6 +497,9 @@ int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *at
     }
     
     *reinterpret_cast<Condition **>(cond) = c;
+
+    auto t = GetCurrentThreadForCore();
+    add_sync_primitive(c, t->p.owned_conditions, &t->p);
     return 0;
 }
 
@@ -483,6 +512,10 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
     }
 
     auto c = *reinterpret_cast<Condition **>(cond);
+
+    auto t = GetCurrentThreadForCore();
+    delete_sync_primitive(c, t->p.owned_conditions, &t->p);
+
     delete c;
     return 0;
 }

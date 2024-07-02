@@ -1,6 +1,7 @@
 #include "cleanup.h"
 #include "process.h"
 #include "scheduler.h"
+#include "sync_primitive_locks.h"
 
 SRAM4_DATA CleanupQueue_t CleanupQueue;
 
@@ -60,7 +61,9 @@ void cleanup(Thread *t)
 
     /* TODO: ensure TLS destructors are run here */
 
-    /* TODO: release mutexes and rwlocks held by the thread */
+    /* release mutexes and rwlocks held by the thread */
+    unlock_all_thread_sync_primitives(t->locked_mutexes, t);
+    unlock_all_thread_sync_primitives(t->locked_rwlocks, t);
     
     /* Clean up thread resources */
     memblk_deallocate(t->mr_tls);
@@ -100,7 +103,11 @@ void cleanup(Process *p)
     memblk_deallocate(p->heap);
     memblk_deallocate(p->code_data);
 
-    /* TODO: cleanup mutexes etc (need to store in process structure first) */
+    /* cleanup mutexes etc */
+    delete_all_process_sync_primitives(p->owned_conditions, p);
+    delete_all_process_sync_primitives(p->owned_mutexes, p);
+    delete_all_process_sync_primitives(p->owned_rwlocks, p);
+    delete_all_process_sync_primitives(p->owned_semaphores, p);
 
     delete p;
 

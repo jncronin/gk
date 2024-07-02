@@ -99,6 +99,12 @@ class Process
         pid_t pid;
         pid_t ppid;     // parent pid
         std::unordered_set<pid_t> child_processes;
+
+        /* primitives owned by this process */
+        std::unordered_set<Mutex *> owned_mutexes;
+        std::unordered_set<Condition *> owned_conditions;
+        std::unordered_set<RwLock *> owned_rwlocks;
+        std::unordered_set<UserspaceSemaphore *> owned_semaphores;
 };
 
 extern Process *focus_process;
