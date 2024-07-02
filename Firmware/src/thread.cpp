@@ -16,22 +16,10 @@ extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
 
-void Thread::Cleanup(void *tretval)
+void Thread::Cleanup(void *tretval, bool from_cleanup)
 {
+    if(from_cleanup)
     {
-        CriticalGuard cg(sl);
-        for_deletion = true;
-        retval = tretval;
-
-        // signal any thread waiting on a join
-        if(join_thread)
-        {
-            if(join_thread_retval)
-                *join_thread_retval = tretval;
-            join_thread->ss_p.ival1 = 0;
-            join_thread->ss.Signal();
-        }
-
         // clean up any tls data
         for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
         {
@@ -63,14 +51,30 @@ void Thread::Cleanup(void *tretval)
                 break;
         }
     }
+    else
+    {
+        for_deletion = true;
+        retval = tretval;
 
-    CleanupQueue.Push({ .is_thread = true, .t = this });
+        // signal any thread waiting on a join
+        if(join_thread)
+        {
+            if(join_thread_retval)
+                *join_thread_retval = tretval;
+            join_thread->ss_p.ival1 = 0;
+            join_thread->ss.Signal();
+
+            join_thread = nullptr;
+        }
+
+        CleanupQueue.Push({ .is_thread = true, .t = this });
+    }
 }
 
 void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
 {
     auto t = GetCurrentThreadForCore();
-    t->Cleanup(tretval);
+    t->Cleanup(tretval, false);
     while(true)
     {
         Yield();
