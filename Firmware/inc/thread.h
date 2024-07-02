@@ -79,6 +79,10 @@ class Thread
         uint64_t total_s_time = 0ULL;
         uint64_t total_us_time = 0ULL;
 
+        /* primitives locked by this thread */
+        std::unordered_set<Mutex *> locked_mutexes;
+        std::unordered_set<RwLock *> locked_rwlocks;
+
         Thread(Process &owning_process);
 
         void Cleanup(void *tretval);

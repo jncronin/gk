@@ -3,6 +3,7 @@
 #include "scheduler.h"
 #include "clocks.h"
 #include "ipi.h"
+#include "sync_primitive_locks.h"
 #include "gk_conf.h"
 
 UninterruptibleGuard::UninterruptibleGuard()
@@ -352,6 +353,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
         owner = t;
         if(is_recursive)
             lockcount++;
+        add_sync_primitive(this, t->locked_mutexes, t);
         return true;
     }
     else if(owner == t)
@@ -411,6 +413,8 @@ bool Mutex::unlock(int *reason)
         owner = nullptr;
     }
 
+    delete_sync_primitive(this, t->locked_mutexes, t);
+
     return true;
 }
 
@@ -460,6 +464,7 @@ bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
         }
     }
     rdowners.insert(t);
+    add_sync_primitive(this, t->locked_rwlocks, t);
     return true;
 }
 
@@ -514,6 +519,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
         }
     }
     wrowner = t;
+    add_sync_primitive(this, t->locked_rwlocks, t);
     return true;
 }
 
@@ -535,6 +541,8 @@ bool RwLock::unlock(int *reason)
             }
             waiting_threads.clear();
             wrowner = nullptr;
+
+            delete_sync_primitive(this, t->locked_rwlocks, t);
 
             return true;
         }
@@ -569,6 +577,7 @@ bool RwLock::unlock(int *reason)
         }
         waiting_threads.clear();
     }
+    delete_sync_primitive(this, t->locked_rwlocks, t);
     return true;
 }
 
