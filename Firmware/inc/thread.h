@@ -54,7 +54,7 @@ class Thread
 
         bool is_blocking = false;
         Thread *blocking_on = nullptr;
-        uint64_t block_until = 0;
+        kernel_time block_until;
 
         Spinlock sl;
 

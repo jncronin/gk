@@ -47,7 +47,7 @@ class BaseQueue
             {
                 //CriticalGuard cg(bt->sl);
                 bt->is_blocking = false;
-                bt->block_until = 0;
+                bt->block_until.invalidate();
                 bt->blocking_on = nullptr;
                 signal_thread_woken(bt);
             }
@@ -112,13 +112,13 @@ class BaseQueue
             }
         }
 
-        bool Pop(void *v, uint64_t timeout = 0)
+        bool Pop(void *v, kernel_time timeout = kernel_time())
         {
             if(!v)
                 return false;
 
-            if(timeout)
-                timeout += clock_cur_ms();
+            if(timeout.is_valid())
+                timeout += clock_cur();
             
             while(true)
             {
@@ -130,7 +130,7 @@ class BaseQueue
                         waiting_threads.insert(t);
                         t->is_blocking = true;
                         t->blocking_on = BLOCKING_ON_QUEUE(this);
-                        if(timeout)
+                        if(timeout.is_valid())
                             t->block_until = timeout;
                         Yield();
                     }
@@ -142,7 +142,7 @@ class BaseQueue
                     }
                 }
                 __DMB();
-                if(timeout && clock_cur_ms() >= timeout)
+                if(timeout.is_valid() && clock_cur() >= timeout)
                 {
                     return false;
                 }

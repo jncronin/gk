@@ -292,7 +292,7 @@ extern Spinlock s_rtt;
 
 void Scheduler::unblock_delayer(Thread *t)
 {
-    if(t->is_blocking && t->block_until && clock_cur_ms() >= t->block_until)
+    if(t->is_blocking && t->block_until.is_valid() && clock_cur() >= t->block_until)
     {
 #if DEBUG_SCHEDULER
         {
@@ -303,7 +303,7 @@ void Scheduler::unblock_delayer(Thread *t)
         }
 #endif
         t->is_blocking = false;
-        t->block_until = 0;
+        t->block_until.invalidate();
         t->blocking_on = nullptr;
     }
     if(t->is_blocking && (((uint32_t)(uintptr_t)t->blocking_on) & 0x3U) == 0x1U &&
@@ -315,7 +315,7 @@ void Scheduler::unblock_delayer(Thread *t)
                 t->name.c_str());
         }
         t->is_blocking = false;
-        t->block_until = 0;
+        t->block_until.invalidate();
         t->blocking_on = nullptr;
     }
 }
@@ -330,7 +330,7 @@ void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
         new_t->name.c_str(), new_t->base_priority);
 }
 
-void Block(uint64_t until, Thread *block_on)
+void Block(kernel_time until, Thread *block_on)
 {
     auto t = GetCurrentThreadForCore();
     {

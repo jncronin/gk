@@ -19,7 +19,7 @@ set(CMAKE_C_STANDARD_LIBRARIES "-lm")
 set(CMAKE_CXX_STANDARD_LIBRARIES "-lm")
 
 set(COMMON_FLAGS "-mthumb -mcpu=${TARGET_CPU} -mfloat-abi=hard -mfpu=fpv5-sp-d16 -ffast-math")
-set(C_CXX_FLAGS  "--specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -D__GAMEKID__")
+set(C_CXX_FLAGS  "--specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -D__GAMEKID__ -D_POSIX_MONOTONIC_CLOCK -D_GNU_SOURCE=1")
 set(CXX_FLAGS    "-fno-exceptions -fno-rtti -fno-threadsafe-statics")
 
 set(CMAKE_C_FLAGS_INIT          "${COMMON_FLAGS} ${C_CXX_FLAGS}"              CACHE STRING "" FORCE)

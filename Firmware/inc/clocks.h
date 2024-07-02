@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <ctime>
+#include <time.h>
 
 void init_clocks();
 
@@ -20,15 +21,30 @@ class kernel_time
         uint64_t _us;
 
     public:
-        kernel_time from_ns(uint64_t ns);
-        kernel_time from_us(uint64_t us);
-        kernel_time from_ms(uint64_t ms);
-        kernel_time from_timespec(const timespec *ts);
+        static kernel_time from_ns(uint64_t ns);
+        static kernel_time from_us(uint64_t us);
+        static kernel_time from_ms(uint64_t ms);
+        static kernel_time from_timespec(const timespec *ts, int clock_id = CLOCK_MONOTONIC);
 
         uint64_t to_ns();
         uint64_t to_us();
         uint64_t to_ms();
-        void to_timespec(timespec *ts);
+        void to_timespec(timespec *ts, int clock_id = CLOCK_MONOTONIC);
+
+        kernel_time(uint64_t us = 0ULL);
+
+        bool is_valid() const;
+        void invalidate();
+
+        kernel_time operator+(const kernel_time &rhs);
+        kernel_time operator-(const kernel_time &rhs);
+        kernel_time &operator+=(const kernel_time &rhs);
+        kernel_time &operator-=(const kernel_time &rhs);
+        bool operator==(const kernel_time &rhs);
+        bool operator<(const kernel_time &rhs);
+        bool operator<=(const kernel_time &rhs);
+        bool operator>(const kernel_time &rhs);
+        bool operator>=(const kernel_time &rhs);
 };
 
 bool clock_set_cpu(clock_cpu_speed speed);
@@ -36,6 +52,7 @@ bool clock_set_cpu(clock_cpu_speed speed);
 void delay_ms(uint64_t nms);
 uint64_t clock_cur_ms();
 uint64_t clock_cur_us();
+kernel_time clock_cur();
 
 void clock_get_timebase(struct timespec *tp);
 void clock_set_timebase(const struct timespec *tp);

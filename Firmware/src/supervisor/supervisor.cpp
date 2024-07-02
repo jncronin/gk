@@ -194,7 +194,8 @@ void *supervisor_thread(void *p)
     {
         Event e;
         bool do_update = false;
-        bool has_event = p_supervisor.events.Pop(&e, HasAnimations(wl) ? 1000ULL / 60ULL : 0ULL);
+        bool has_event = p_supervisor.events.Pop(&e,
+            HasAnimations(wl) ? kernel_time::from_ms(1000ULL / 60ULL) : kernel_time());
         if(RunAnimations(wl, clock_cur_ms()))
         {
             do_update = true;

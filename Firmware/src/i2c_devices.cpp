@@ -113,10 +113,10 @@ static void reset_i2c()
     I2C1_SCL.set_as_output(pin::OpenDrain);
     I2C1_SDA.clear();
     I2C1_SCL.clear();
-    Block(clock_cur_ms() + 1ULL);
+    Block(clock_cur() + kernel_time::from_ms(1));
     I2C1_SDA.set();
     I2C1_SCL.set();
-    Block(clock_cur_ms() + 1ULL);
+    Block(clock_cur() + kernel_time::from_ms(1));
 
     I2C1_SDA.set_as_af(pin::OpenDrain);
     I2C1_SCL.set_as_af(pin::OpenDrain);
@@ -134,7 +134,7 @@ static void reset_i2c()
 
     i2c_init = true;
 
-    Block(clock_cur_ms() + 5ULL);
+    Block(clock_cur() + kernel_time::from_ms(5));
 }
 
 void init_i2c()
@@ -305,9 +305,9 @@ void *cst_thread(void *param)
         {
             CTP_NRESET.set_as_output();
             CTP_NRESET.clear();
-            Block(clock_cur_ms() + 50ULL);
+            Block(clock_cur() + kernel_time::from_ms(50));
             CTP_NRESET.set();
-            Block(clock_cur_ms() + 300ULL);
+            Block(clock_cur() + kernel_time::from_ms(300));
 
             // check read
             char buf[4];
@@ -323,7 +323,7 @@ void *cst_thread(void *param)
             // TODO init CTP
         }
 
-        sem_ctp.Wait(clock_cur_ms() + 100ULL);
+        sem_ctp.Wait(clock_cur() + kernel_time::from_ms(100));
         // TODO poll ctp
     }
 }

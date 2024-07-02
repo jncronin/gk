@@ -85,7 +85,7 @@ void Spinlock::unlock()
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 {}
 
-uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
+uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -101,7 +101,7 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
     waiting_thread = t;
     t->is_blocking = true;
     t->blocking_on = BLOCKING_ON_SS(this);   
-    if(tout != UINT64_MAX)
+    if(tout.is_valid())
         t->block_until = tout;
     Yield();
     if(signal_value)
@@ -114,14 +114,14 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, uint64_t tout)
     return signal_value;    
 }
 
-uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, uint64_t tout)
+uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
 {
     while(true)
     {
         auto sv = WaitOnce(op, vop, tout);
         if(sv)
             return sv;
-        else if(clock_cur_ms() >= tout)
+        else if(clock_cur() >= tout)
             return 0;
     }
 }
@@ -179,7 +179,7 @@ void SimpleSignal::do_op(SignalOperation op, uint32_t vop)
     }
 }
 
-void Condition::Wait(uint64_t tout, int *signalled_ret)
+void Condition::Wait(kernel_time tout, int *signalled_ret)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -187,7 +187,7 @@ void Condition::Wait(uint64_t tout, int *signalled_ret)
     waiting_threads.insert_or_assign(t, to);
     t->is_blocking = true;
     t->blocking_on = BLOCKING_ON_CONDITION(this);
-    if(tout != UINT64_MAX)
+    if(tout.is_valid())
         t->block_until = tout;
     Yield();
 }
@@ -197,12 +197,12 @@ void BinarySemaphore::Signal()
     ss.Signal();
 }
 
-bool BinarySemaphore::Wait(uint64_t tout)
+bool BinarySemaphore::Wait(kernel_time tout)
 {
     return ss.Wait(SimpleSignal::Set, 0, tout) != 0;
 }
 
-bool BinarySemaphore::WaitOnce(uint64_t tout)
+bool BinarySemaphore::WaitOnce(kernel_time tout)
 {
     return ss.WaitOnce(SimpleSignal::Set, 0, tout) != 0;
 }
@@ -212,12 +212,12 @@ void CountingSemaphore::Signal()
     ss.Signal(SimpleSignal::Add, 1);
 }
 
-bool CountingSemaphore::Wait(uint64_t tout)
+bool CountingSemaphore::Wait(kernel_time tout)
 {
     return ss.Wait(SimpleSignal::Sub, 1, tout) != 0;
 }
 
-bool CountingSemaphore::WaitOnce(uint64_t tout)
+bool CountingSemaphore::WaitOnce(kernel_time tout)
 {
     return ss.WaitOnce(SimpleSignal::Sub, 1, tout) != 0;
 }
@@ -238,7 +238,7 @@ Condition::~Condition()
         //CriticalGuard cg2(bt.first->sl);
         bt.first->is_blocking = false;
         bt.first->blocking_on = nullptr;
-        bt.first->block_until = 0;
+        bt.first->block_until.invalidate();
         if(bt.first->base_priority > t->base_priority)
             hpt = true;
         signal_thread_woken(bt.first);
@@ -255,14 +255,14 @@ void Condition::Signal(bool signal_all)
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     bool hpt = false;
-    auto tnow = clock_cur_ms();
+    auto tnow = clock_cur();
 
     if(signal_all)
     {
         for(auto &bt : waiting_threads)
         {
             bool timedout = false;
-            if(bt.second.tout != UINT64_MAX &&
+            if(bt.second.tout.is_valid() &&
                 tnow > bt.second.tout)
             {
                 timedout = 1;
@@ -275,7 +275,7 @@ void Condition::Signal(bool signal_all)
                 
                 bt.first->is_blocking = false;
                 bt.first->blocking_on = nullptr;
-                bt.first->block_until = 0;
+                bt.first->block_until.invalidate();
                 if(bt.first->base_priority > t->base_priority)
                     hpt = true;
                 signal_thread_woken(bt.first);
@@ -291,7 +291,7 @@ void Condition::Signal(bool signal_all)
         {
             bool timedout = false;
             auto &tp = iter->second;
-            if(tp.tout != UINT64_MAX &&
+            if(tp.tout.is_valid() &&
                 tnow > tp.tout)
             {
                 timedout = 1;
@@ -304,7 +304,7 @@ void Condition::Signal(bool signal_all)
                 
                 iter->first->is_blocking = false;
                 iter->first->blocking_on = nullptr;
-                iter->first->block_until = 0;
+                iter->first->block_until.invalidate();
                 if(iter->first->base_priority > t->base_priority)
                     hpt = true;
                 signal_thread_woken(iter->first);
@@ -343,7 +343,7 @@ void Mutex::lock()
     }
 }
 
-bool Mutex::try_lock(int *reason, bool block, uint64_t tout)
+bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -380,7 +380,7 @@ bool Mutex::try_lock(int *reason, bool block, uint64_t tout)
             t->blocking_on = owner;
             waiting_threads.insert(t);
 
-            if(tout)
+            if(tout.is_valid())
                 t->block_until = tout;
             Yield();
         }
@@ -402,7 +402,7 @@ bool Mutex::unlock(int *reason)
         for(auto wt : waiting_threads)
         {
             wt->is_blocking = false;
-            wt->block_until = 0;
+            wt->block_until.invalidate();
             wt->blocking_on = nullptr;
 
             signal_thread_woken(wt);
@@ -422,7 +422,7 @@ bool Mutex::try_delete(int *reason)
         for(auto wt : waiting_threads)
         {
             wt->is_blocking = false;
-            wt->block_until = 0;
+            wt->block_until.invalidate();
             wt->blocking_on = nullptr;
         }
         waiting_threads.clear();
@@ -432,7 +432,7 @@ bool Mutex::try_delete(int *reason)
     return false;
 }
 
-bool RwLock::try_rdlock(int *reason, bool block, uint64_t tout)
+bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -452,7 +452,7 @@ bool RwLock::try_rdlock(int *reason, bool block, uint64_t tout)
                 t->blocking_on = wrowner;
                 waiting_threads.insert(t);
 
-                if(tout)
+                if(tout.is_valid())
                     t->block_until = tout;
                 Yield();
             }
@@ -463,7 +463,7 @@ bool RwLock::try_rdlock(int *reason, bool block, uint64_t tout)
     return true;
 }
 
-bool RwLock::try_wrlock(int *reason, bool block, uint64_t tout)
+bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -483,7 +483,7 @@ bool RwLock::try_wrlock(int *reason, bool block, uint64_t tout)
                 t->blocking_on = wrowner;
                 waiting_threads.insert(t);
 
-                if(tout)
+                if(tout.is_valid())
                     t->block_until = tout;
                 Yield();
             }
@@ -506,7 +506,7 @@ bool RwLock::try_wrlock(int *reason, bool block, uint64_t tout)
                 t->blocking_on = *rdowners.begin();
                 waiting_threads.insert(t);
 
-                if(tout)
+                if(tout.is_valid())
                     t->block_until = tout;
                 Yield();
             }
@@ -528,7 +528,7 @@ bool RwLock::unlock(int *reason)
             for(auto wt : waiting_threads)
             {
                 wt->is_blocking = false;
-                wt->block_until = 0;
+                wt->block_until.invalidate();
                 wt->blocking_on = nullptr;
 
                 signal_thread_woken(wt);
@@ -562,7 +562,7 @@ bool RwLock::unlock(int *reason)
         for(auto wt : waiting_threads)
         {
             wt->is_blocking = false;
-            wt->block_until = 0;
+            wt->block_until.invalidate();
             wt->blocking_on = nullptr;
 
             signal_thread_woken(wt);
@@ -583,7 +583,7 @@ bool RwLock::try_delete(int *reason)
     return true;
 }
 
-bool UserspaceSemaphore::try_wait(int *reason, bool block, uint64_t tout)
+bool UserspaceSemaphore::try_wait(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
@@ -602,7 +602,7 @@ bool UserspaceSemaphore::try_wait(int *reason, bool block, uint64_t tout)
             t->blocking_on = BLOCKING_ON_CONDITION(this);
             waiting_threads.insert(t);
 
-            if(tout)
+            if(tout.is_valid())
                 t->block_until = tout;
             Yield();
         }
@@ -618,7 +618,7 @@ void UserspaceSemaphore::post()
         for(auto wt : waiting_threads)
         {
             wt->is_blocking = false;
-            wt->block_until = 0;
+            wt->block_until.invalidate();
             wt->blocking_on = 0;
 
             signal_thread_woken(wt);

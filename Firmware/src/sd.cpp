@@ -829,7 +829,7 @@ void *sd_thread(void *param)
         {
             sd_reset();
             if(!sd_ready)
-                Block(clock_cur_ms() + 1000ULL);
+                Block(clock_cur() + kernel_time::from_ms(1000));
             continue;
         }
 

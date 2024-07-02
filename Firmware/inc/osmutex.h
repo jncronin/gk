@@ -6,6 +6,7 @@
 #include <region_allocator.h>
 #include <unordered_set>
 #include <unordered_map>
+#include "clocks.h"
 
 #define DEBUG_SPINLOCK      1
 
@@ -45,7 +46,7 @@ class Mutex
         Mutex(bool recursive = false, bool error_check = false);
 
         void lock();
-        bool try_lock(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
+        bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool unlock(int *reason = nullptr);
         bool try_delete(int *reason = nullptr);
 };
@@ -59,8 +60,8 @@ class RwLock
         Spinlock sl;
 
     public:
-        bool try_wrlock(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
-        bool try_rdlock(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
+        bool try_wrlock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
+        bool try_rdlock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool try_delete(int *reason = nullptr);
         bool unlock(int *reason = nullptr);
 };
@@ -73,7 +74,7 @@ class UserspaceSemaphore
         std::unordered_set<Thread *> waiting_threads;
 
     public:
-        bool try_wait(int *reason = nullptr, bool block = true, uint64_t tout = 0ULL);
+        bool try_wait(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         void post();
         bool try_delete(int *reason = nullptr);
         unsigned int get_value();
@@ -84,12 +85,12 @@ class UserspaceSemaphore
 class Condition
 {
     protected:
-        struct timeout { uint64_t tout; int *signalled; };
+        struct timeout { kernel_time tout; int *signalled; };
         std::unordered_map<Thread *, timeout> waiting_threads;
         Spinlock sl;
 
     public:
-        void Wait(uint64_t tout = UINT64_MAX, int *signalled_ret = nullptr);
+        void Wait(kernel_time tout = kernel_time(), int *signalled_ret = nullptr);
         void Signal(bool all = true);
         ~Condition();
 };
@@ -103,8 +104,8 @@ class SimpleSignal
     public:
         Thread *waiting_thread = nullptr;
         enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
-        uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
-        uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, uint64_t tout = UINT64_MAX);
+        uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
+        uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
         uint32_t Value();
         void Signal(SignalOperation op = Set, uint32_t val = 0x1);
         SimpleSignal(uint32_t val = 0);
@@ -119,8 +120,8 @@ class BinarySemaphore
         SimpleSignal ss;
 
     public:
-        bool Wait(uint64_t tout = UINT64_MAX);
-        bool WaitOnce(uint64_t tout = UINT64_MAX);
+        bool Wait(kernel_time tout = kernel_time());
+        bool WaitOnce(kernel_time tout = kernel_time());
         void Signal();
         bool Value();
 };
@@ -131,8 +132,8 @@ class CountingSemaphore
         SimpleSignal ss;
 
     public:
-        bool Wait(uint64_t tout = UINT64_MAX);
-        bool WaitOnce(uint64_t tout = UINT64_MAX);
+        bool Wait(kernel_time tout = kernel_time());
+        bool WaitOnce(kernel_time tout = kernel_time());
         void Signal();
         unsigned int Value();
         CountingSemaphore(unsigned int value = 0) : ss(value) {};

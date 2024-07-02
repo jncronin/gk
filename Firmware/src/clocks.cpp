@@ -195,6 +195,11 @@ extern "C" void LPTIM1_IRQHandler()
     __DMB();
 }
 
+kernel_time clock_cur()
+{
+    return kernel_time::from_us(clock_cur_us());
+}
+
 uint64_t clock_cur_ms()
 {
     return clock_cur_us() / 1000ULL;

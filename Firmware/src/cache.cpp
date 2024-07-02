@@ -26,7 +26,7 @@ static SimpleSignal *get_ss()
 
 static inline void wait_completion(SimpleSignal *ss, IpiRingBuffer *rb)
 {
-    while(!ss->Wait(SimpleSignal::Set, 0U, clock_cur_ms() + 2ULL))
+    while(!ss->Wait(SimpleSignal::Set, 0U, clock_cur() + kernel_time::from_ms(2)))
     {
         if(rb->empty())
         {

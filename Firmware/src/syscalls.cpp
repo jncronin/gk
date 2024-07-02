@@ -493,7 +493,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_sleep_ms:
             {
-                auto tout = clock_cur_ms() + *reinterpret_cast<unsigned long *>(r2);
+                auto tout = kernel_time::from_ms(clock_cur_ms() + *reinterpret_cast<unsigned long *>(r2));
                 auto curt = GetCurrentThreadForCore();
                 {
                     CriticalGuard cg(curt->sl);
