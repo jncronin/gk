@@ -17,7 +17,7 @@ function init()
     if(is_smp)
     {
         saddr[0] = Debug.evaluate("&sched");
-        Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
+        Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (us) / %");
     }
     else
     {
@@ -25,7 +25,7 @@ function init()
         {
             saddr[i] = Debug.evaluate("&scheds[" + i + "]");
         }
-        Threads.setColumns("ID", "Name", "Core", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (ms) / %");
+        Threads.setColumns("ID", "Name", "Core", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (us) / %");
     }
 }
 
@@ -54,7 +54,7 @@ function blocking_on(t)
     if(Debug.evaluate("((Thread *)" + t + ")->is_blocking"))
     {
         var t_block = Debug.evaluate("((Thread *)" + t + ")->blocking_on");
-        var t_block_until = Debug.evaluate("((Thread *)" + t + ")->block_until");
+        var t_block_until = Debug.evaluate("((Thread *)" + t + ")->block_until._us");
         if(t_block || t_block_until != 0)
         {
             var ret = "";
@@ -98,7 +98,7 @@ function blocking_on(t)
             if(t_block_until != 0)
             {
                 ret += t_block_until.toString();
-                ret += " ms";
+                ret += " us";
             }
             return ret;
         }
@@ -300,7 +300,7 @@ function update()
         }
     }
 
-    var tottime = Debug.evaluate("_cur_ms");
+    var tottime = Debug.evaluate("_cur_ms") * 1000;
 
     if(is_smp)
     {
