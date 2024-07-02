@@ -197,7 +197,7 @@ clock_t syscall_times(tms *buf, int *_errno)
     buf->tms_cutime = tot_u;
     buf->tms_cstime = tot_s;
 
-    return (clock_t)clock_cur_ms();
+    return (clock_t)clock_cur_us();
 }
 
 int syscall_kill(pid_t pid, int sig, int *_errno)

@@ -573,7 +573,7 @@ void *gpu_thread(void *p)
             {
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, dw: %x, dh: %x, w: %x, h: %x\n",
-                    (unsigned int)clock_cur_ms(), g.g.type, dest_addr, src_addr, dest_w, dest_h, src_w, src_h);
+                    (unsigned int)clock_cur_us(), g.g.type, dest_addr, src_addr, dest_w, dest_h, src_w, src_h);
                 SEGGER_RTT_printf(0, "gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
             }
 #endif
@@ -605,13 +605,13 @@ void *gpu_thread(void *p)
 
 #if GK_GPU_SHOW_FPS
                     {
-                        auto curt = clock_cur_ms();
+                        auto curt = clock_cur_us();
                         auto cticks = curt - last_flip_time;
                         last_flip_time = curt;
                         {
                             CriticalGuard cg(s_rtt);
                             SEGGER_RTT_printf(0, "gpu: cticks: %u, fps: %u\n",
-                                (uint32_t)cticks, 1000U / (uint32_t)cticks);
+                                (uint32_t)cticks, 1000000U / (uint32_t)cticks);
                         }
                     }
 #endif
@@ -786,7 +786,7 @@ void *gpu_thread(void *p)
             {
                 CriticalGuard cg(s_rtt);
                 SEGGER_RTT_printf(0, "gpu: @%u complete\n",
-                    (unsigned int)clock_cur_ms());
+                    (unsigned int)clock_cur_us());
             }
 #endif
         }
@@ -843,7 +843,7 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
 extern "C" void DMA2D_IRQHandler()
 {
 #if GPU_DEBUG
-    SEGGER_RTT_printf(0, "gpuint: @%u\n", clock_cur_ms());
+    SEGGER_RTT_printf(0, "gpuint: @%u\n", clock_cur_us());
 #endif
     DMA2D->IFCR = DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
     gpu_ready.Signal();

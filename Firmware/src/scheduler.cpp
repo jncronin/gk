@@ -125,7 +125,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         {
             if(tthread->is_blocking && tthread->block_until)
             {
-                if(tthread->block_until <= clock_cur_ms())
+                if(tthread->block_until <= clock_cur())
                 {
                     tthread->is_blocking = false;
                     tthread->block_until = 0ULL;
@@ -298,7 +298,7 @@ void Scheduler::unblock_delayer(Thread *t)
         {
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "%d: sched awaken sleeping thread %s\n",
-                (uint32_t)clock_cur_ms(),
+                (uint32_t)clock_cur_us(),
                 t->name.c_str());
         }
 #endif
@@ -324,7 +324,7 @@ void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 {
     CriticalGuard cg(s_rtt);
     SEGGER_RTT_printf(0, "%d: sched core %d: %s (%d) to %s (%d)\n",
-        (uint32_t)clock_cur_ms(),
+        (uint32_t)clock_cur_us(),
         GetCoreID(),
         old_t->name.c_str(), old_t->base_priority,
         new_t->name.c_str(), new_t->base_priority);
