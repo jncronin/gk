@@ -71,6 +71,19 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
             join_thread = nullptr;
         }
 
+        // remove us from the process' thread list
+        {
+            CriticalGuard cg2(p.sl);
+            auto iter = p.threads.begin();
+            while(iter != p.threads.end())
+            {
+                if(*iter == this)
+                    iter = p.threads.erase(iter);
+                else
+                    iter++;
+            }
+        }
+
         CleanupQueue.Push({ .is_thread = true, .t = this });
     }
 }
