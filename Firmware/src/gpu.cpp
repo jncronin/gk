@@ -607,11 +607,24 @@ void *gpu_thread(void *p)
                     {
                         auto curt = clock_cur_us();
                         auto cticks = curt - last_flip_time;
+
+                        static uint64_t cticks_arr[32];
+                        static int cticks_arr_idx = 0;
+
+                        cticks_arr[cticks_arr_idx++] = cticks;
+                        if(cticks_arr_idx >= 32) cticks_arr_idx = 0;
+
+                        uint64_t ticks_avg = 0;
+                        for(int j = 0; j < 32; j++)
+                            ticks_avg += cticks_arr[j];
+                        ticks_avg /= 32;
+
                         last_flip_time = curt;
                         {
                             CriticalGuard cg(s_rtt);
-                            SEGGER_RTT_printf(0, "gpu: cticks: %u, fps: %u\n",
-                                (uint32_t)cticks, 1000000U / (uint32_t)cticks);
+                            SEGGER_RTT_printf(0, "gpu: cticks: %u, fps: %u (%u)\n",
+                                (uint32_t)cticks, 1000000U / (uint32_t)cticks,
+                                1000000U / (uint32_t)ticks_avg);
                         }
                     }
 #endif
