@@ -9,6 +9,8 @@
 #include "i2c.h"
 #include "SEGGER_RTT.h"
 
+#define DEBUG_I2C 0
+
 extern Spinlock s_rtt;
 
 /* The I2C1 bus runs at 400 kHz and contains:
