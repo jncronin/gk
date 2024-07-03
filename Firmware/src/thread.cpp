@@ -41,7 +41,8 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
                             has_nonnull = true;
 
                             // run destructor
-                            d(t_iter->second);
+                            if(d)
+                                d(t_iter->second);
                         }
                     }
                 }
