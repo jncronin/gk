@@ -29,7 +29,7 @@ void init_usb()
     RCC->AHB1RSTR = 0;
     (void)RCC->AHB1RSTR;
 
-    RCC->AHB1ENR = RCC_AHB1ENR_USB1OTGHSEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_USB1OTGHSEN;
     (void)RCC->AHB1ENR;
 
     for(const auto &p : usb_pins)

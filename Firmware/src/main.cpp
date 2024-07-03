@@ -26,6 +26,7 @@
 #include "buttons.h"
 #include "i2c.h"
 #include "cleanup.h"
+#include "sound.h"
 #include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -75,6 +76,7 @@ int main()
     init_ext4();
     init_mdma();
     init_i2c();
+    init_sound();
 
 #if GK_ENABLE_NETWORK
     init_net();
