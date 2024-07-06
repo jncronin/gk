@@ -208,7 +208,7 @@ void *supervisor_thread(void *p)
                 case Event::KeyDown:
                     switch(e.key)
                     {
-                        case ' ':
+                        case GK_SCANCODE_MENU:
                         {
                             if(overlay_visible)
                             {
@@ -230,17 +230,18 @@ void *supervisor_thread(void *p)
                         }
                         break;
 
-                        case (unsigned short)Scancodes::KeyUp:
-                        case (unsigned short)Scancodes::KeyDown:
-                        case (unsigned short)Scancodes::KeyLeft:
-                        case (unsigned short)Scancodes::KeyRight:
-                        case (unsigned short)Scancodes::KeyA:
-                        case (unsigned short)Scancodes::KeyLCtrl:
+                        case GK_SCANCODE_UP:
+                        case GK_SCANCODE_DOWN:
+                        case GK_SCANCODE_LEFT:
+                        case GK_SCANCODE_RIGHT:
+                        case GK_SCANCODE_A:
+                        case GK_SCANCODE_LCTRL:
+                        case GK_SCANCODE_RETURN:
                         {
-                            auto ck = (Scancodes)e.key;
-                            if(ck == Scancodes::KeyA || ck == Scancodes::KeyLCtrl)
+                            auto ck = e.key;
+                            if(ck == GK_SCANCODE_A || ck == GK_SCANCODE_LCTRL)
                             {
-                                ck = Scancodes::KeyEnter;
+                                ck = GK_SCANCODE_RETURN;
                             }
                             cur_scr->KeyPressDown(ck);
                             do_update = true;
@@ -251,17 +252,18 @@ void *supervisor_thread(void *p)
                 case Event::KeyUp:
                     switch(e.key)
                     {
-                        case (unsigned short)Scancodes::KeyUp:
-                        case (unsigned short)Scancodes::KeyDown:
-                        case (unsigned short)Scancodes::KeyLeft:
-                        case (unsigned short)Scancodes::KeyRight:
-                        case (unsigned short)Scancodes::KeyA:
-                        case (unsigned short)Scancodes::KeyLCtrl:
+                        case GK_SCANCODE_UP:
+                        case GK_SCANCODE_DOWN:
+                        case GK_SCANCODE_LEFT:
+                        case GK_SCANCODE_RIGHT:
+                        case GK_SCANCODE_A:
+                        case GK_SCANCODE_LCTRL:
+                        case GK_SCANCODE_RETURN:
                         {
-                            auto ck = (Scancodes)e.key;
-                            if(ck == Scancodes::KeyA || ck == Scancodes::KeyLCtrl)
+                            auto ck = e.key;
+                            if(ck == GK_SCANCODE_A || ck == GK_SCANCODE_LCTRL)
                             {
-                                ck = Scancodes::KeyEnter;
+                                ck = GK_SCANCODE_RETURN;
                             }
                             cur_scr->KeyPressUp(ck);
                             do_update = true;

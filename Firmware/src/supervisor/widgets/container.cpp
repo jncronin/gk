@@ -73,9 +73,9 @@ Widget *GridWidget::GetIndex(GridWidget::row_t &row, unsigned int idx)
     return row[idx];
 }
 
-void GridWidget::KeyPressUp(Scancodes key)
+void GridWidget::KeyPressUp(unsigned short  key)
 {
-    if(key == Scancodes::KeyEnter)
+    if(key == GK_SCANCODE_RETURN)
     {
         auto child = GetHighlightedChild();
         if(child)
@@ -85,10 +85,10 @@ void GridWidget::KeyPressUp(Scancodes key)
     }
 }
 
-void GridWidget::KeyPressDown(Scancodes key)
+void GridWidget::KeyPressDown(unsigned short  key)
 {
     auto child = GetHighlightedChild();
-    if(key == Scancodes::KeyEnter)
+    if(key == GK_SCANCODE_RETURN)
     {
         if(child)
         {
@@ -100,16 +100,16 @@ void GridWidget::KeyPressDown(Scancodes key)
         bool move_succeed = false;
         switch(key)
         {
-            case Scancodes::KeyLeft:
+            case GK_SCANCODE_LEFT:
                 move_succeed = child->HandleMove(-1, 0) || TryMoveHoriz(-1);
                 break;
-            case Scancodes::KeyRight:
+            case GK_SCANCODE_RIGHT:
                 move_succeed = child->HandleMove(1, 0) || TryMoveHoriz(1);
                 break;
-            case Scancodes::KeyUp:
+            case GK_SCANCODE_UP:
                 move_succeed = child->HandleMove(0, -1) || TryMoveVert(-1);
                 break;
-            case Scancodes::KeyDown:
+            case GK_SCANCODE_DOWN:
                 move_succeed = child->HandleMove(0, 1) || TryMoveVert(1);
                 break;
             default:

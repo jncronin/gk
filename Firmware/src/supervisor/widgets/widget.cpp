@@ -76,11 +76,11 @@ bool Widget::IsActivated()
     return false;
 }
 
-void Widget::KeyPressDown(Scancodes key)
+void Widget::KeyPressDown(unsigned short key)
 {
 }
 
-void Widget::KeyPressUp(Scancodes key)
+void Widget::KeyPressUp(unsigned short  key)
 {
 }
 
@@ -99,9 +99,9 @@ bool ClickableWidget::CanHighlight()
     return true;
 }
 
-void ClickableWidget::KeyPressDown(Scancodes key)
+void ClickableWidget::KeyPressDown(unsigned short  key)
 {
-    if(key == Scancodes::KeyEnter)
+    if(key == GK_SCANCODE_RETURN)
     {
         is_clicked = true;
         if(OnClickBegin)
@@ -111,9 +111,9 @@ void ClickableWidget::KeyPressDown(Scancodes key)
     }
 }
 
-void ClickableWidget::KeyPressUp(Scancodes key)
+void ClickableWidget::KeyPressUp(unsigned short  key)
 {
-    if(key == Scancodes::KeyEnter)
+    if(key == GK_SCANCODE_RETURN)
     {
         if(is_clicked)
         {

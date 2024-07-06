@@ -25,21 +25,6 @@ constexpr const color_t default_highlight_border_color = 0xff;
 
 constexpr const coord_t default_border_width = 8;
 
-/* key scancodes */
-enum Scancodes
-{
-    KeyRight = 79,
-    KeyLeft = 80,
-    KeyDown = 81,
-    KeyUp = 82,
-    KeyA = 'a',
-    KeyB = 'b',
-    KeyX = 'x',
-    KeyY = 'y',
-    KeyEnter = 40,
-    KeyLCtrl = 224,
-};
-
 /* blending */
 color_t DoBlend(color_t fg, color_t bg);
 
@@ -78,8 +63,8 @@ class Widget
         virtual bool IsHighlighted();
         virtual bool IsChildHighlighted(const Widget &child);
 
-        virtual void KeyPressDown(Scancodes scancode);
-        virtual void KeyPressUp(Scancodes scancode);
+        virtual void KeyPressDown(unsigned short scancode);
+        virtual void KeyPressUp(unsigned short  scancode);
 
     protected:
         bool is_clicked = false;
@@ -124,8 +109,8 @@ class ClickableWidget : public ActivatableWidget
     public:
         bool CanClick();
         virtual bool CanHighlight();
-        virtual void KeyPressDown(Scancodes key);
-        virtual void KeyPressUp(Scancodes key);
+        virtual void KeyPressDown(unsigned short  key);
+        virtual void KeyPressUp(unsigned short  key);
 };
 
 class TextRenderer
@@ -259,8 +244,8 @@ class GridWidget : public ContainerWidget
         void AddChildOnGrid(Widget &child, int x = -1, int y = -1);
         virtual bool IsChildHighlighted(const Widget &child);
         virtual Widget *GetHighlightedChild();
-        virtual void KeyPressDown(Scancodes scancode);
-        virtual void KeyPressUp(Scancodes scancode);
+        virtual void KeyPressDown(unsigned short  scancode);
+        virtual void KeyPressUp(unsigned short  scancode);
 
     protected:
         using row_t = std::vector<Widget *>;
