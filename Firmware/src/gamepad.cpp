@@ -148,12 +148,14 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
                 events.Push({ Event::event_type_t::KeyUp, .key = scode });
             }
         }
-        else if(key == Process::GamepadKey::VolUp || key == Process::GamepadKey::VolDown)
+        else if(this != &p_supervisor &&
+            (key == Process::GamepadKey::VolUp || key == Process::GamepadKey::VolDown))
         {
             p_supervisor.HandleGamepadEvent(key, pressed, ongoing_press);
         }
     }
-    else if(key == Process::GamepadKey::VolUp || key == Process::GamepadKey::VolDown)
+    else if(this != &p_supervisor &&
+        (key == Process::GamepadKey::VolUp || key == Process::GamepadKey::VolDown))
     {
         p_supervisor.HandleGamepadEvent(key, pressed, ongoing_press);
     }
