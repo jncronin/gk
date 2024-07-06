@@ -71,6 +71,21 @@ void init_sound()
     PCM_MUTE.set();
     PCM_MUTE.set_as_output();
 
+    PCM_ZERO.set_as_input();
+
+    // Set PCM_ZERO IRQ, both edges
+    RCC->APB4ENR |= RCC_APB4ENR_SYSCFGEN;
+    (void)RCC->APB4ENR;
+    SYSCFG->EXTICR[0] &= SYSCFG_EXTICR1_EXTI2_Msk;
+    SYSCFG->EXTICR[0] |= SYSCFG_EXTICR1_EXTI2_PB;
+
+    EXTI->RTSR1 |= EXTI_RTSR1_TR2;
+    EXTI->FTSR1 |= EXTI_FTSR1_TR2;
+    EXTI->IMR1 |= EXTI_IMR1_IM2;
+
+    NVIC_EnableIRQ(EXTI2_IRQn);
+
+
     mr_sound = memblk_allocate(max_buffer_size, MemRegionType::AXISRAM);
     if(!mr_sound.valid)
         mr_sound = memblk_allocate(max_buffer_size, MemRegionType::SDRAM);
@@ -347,5 +362,21 @@ extern "C" void DMA1_Stream0_IRQHandler()
     }
 
     DMA1->LIFCR = DMA_LIFCR_CTCIF0;
+    __DMB();
+}
+
+extern "C" void EXTI2_IRQHandler()
+{
+    CriticalGuard cg(sl_sound);
+    auto v = PCM_ZERO.value();
+    if(!v)
+    {
+        PCM_MUTE.clear();
+    }
+    else if(v)
+    {
+        PCM_MUTE.set();
+    }
+    EXTI->PR1 = EXTI_PR1_PR2;
     __DMB();
 }
