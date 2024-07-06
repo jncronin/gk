@@ -2,6 +2,8 @@
 #include "sound.h"
 #include "pins.h"
 #include <math.h>
+#include "osmutex.h"
+#include <cstring>
 
 static constexpr const pin SAI1_SCK_A { GPIOE, 5, 6 };
 static constexpr const pin SAI1_SD_A { GPIOC, 1, 6 };
@@ -13,14 +15,39 @@ static constexpr const pin PCM_MUTE { GPIOI, 6 };
 static constexpr const pin PCM_ZERO { GPIOB, 2 };   // input
 static constexpr const pin SPKR_NSD { GPIOI, 8 };
 
-// test buffer for sine wave
+// buffer
+struct audio_conf
+{
+    unsigned int nbuffers;
+    unsigned int buf_size_bytes;
+    unsigned int buf_ndtr;
+    unsigned int wr_ptr;
+    unsigned int rd_ptr;
+    unsigned int rd_ready_ptr;
+    uint32_t *silence;
+    bool enabled;
+};
+static SRAM4_DATA MemRegion mr_sound;
+constexpr unsigned int max_buffer_size = 32*1024;
+static SRAM4_DATA Spinlock sl_sound;
+static SRAM4_DATA audio_conf ac;
 
-/* 48kHz, 440 Hz wave -> 109 samples/wave */
-constexpr int fs = 48000;
-constexpr int fwave = 440;
-constexpr int nchan = 2;
-constexpr int nsamps = fs / fwave;
-int16_t sine_wave[nsamps * nchan];
+static void _queue_if_possible();
+
+static void _clear_buffers()
+{
+    ac.wr_ptr = 0;
+    ac.rd_ptr = 0;
+    ac.rd_ready_ptr = 0;
+    ac.enabled = false;
+}
+
+static unsigned int _ptr_plus_one(unsigned int i)
+{
+    i++;
+    if(i >= ac.nbuffers) i = 0;
+    return i;
+}
 
 void init_sound()
 {
@@ -42,8 +69,78 @@ void init_sound()
     PCM_MUTE.set();
     PCM_MUTE.set_as_output();
 
-    /* SAI1 receives 49.152 MHz clock
-        Connected to PCM1754 
+    mr_sound = memblk_allocate(max_buffer_size, MemRegionType::AXISRAM);
+    if(!mr_sound.valid)
+        mr_sound = memblk_allocate(max_buffer_size, MemRegionType::SDRAM);
+
+    RCC->APB2ENR |= RCC_APB2ENR_SAI1EN;
+    (void)RCC->APB2ENR;
+
+    RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
+    (void)RCC->AHB1ENR;
+}
+
+struct pll_setup
+{
+    unsigned int mult;
+    unsigned int mult_frac;
+    unsigned int div;
+};
+
+constexpr pll_setup pll_multiplier(int freq)
+{
+    // frac is out of 8192
+    switch(freq)
+    {
+        case 48000:
+            return { 43, 65, 7 };
+        case 24000:
+            return { 43, 65, 14 };
+        case 12000:
+            return { 43, 65, 28 };
+        case 8000:
+            return { 40, 7864, 40 };
+        case 16000:
+            return { 40, 7864, 20 };
+        case 32000:
+            return { 40, 7864, 10 };
+        case 44100:
+            return { 39, 4208, 7 };
+        case 22050:
+            return { 39, 4208, 14 };
+        case 11025:
+            return { 39, 4208, 28 };
+    }
+
+    return { 0, 0, 0 };
+}
+
+int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
+{
+    /* this should be the first call from any process - stop sound output then reconfigure */
+    PCM_MUTE.set();
+    SAI1_Block_A->CR1 = 0;
+    DMA1_Stream0->CR = 0;
+
+    /* Calculate PLL divisors */
+    const auto mult = pll_multiplier(48000);
+    if(mult.mult == 0)
+    {
+        if(_errno) *_errno = EINVAL;
+        return -1;
+    }
+
+    RCC->CR &= ~RCC_CR_PLL2ON;
+    __DMB();
+    RCC->PLL2FRACR = mult.mult_frac;
+    RCC->PLL2DIVR = (1UL << RCC_PLL2DIVR_R2_Pos) |
+        (0UL << RCC_PLL2DIVR_Q2_Pos) |
+        ((mult.div - 1) << RCC_PLL2DIVR_P2_Pos) |
+        ((mult.mult - 1) << RCC_PLL2DIVR_N2_Pos);
+    RCC->CR |= RCC_CR_PLL2RDY;
+    while(!(RCC->CR & RCC_CR_PLL2RDY));
+
+    /* SAI1 is connected to PCM1754 
 
         This expects 32 bits/channel (we only use 16 of them) 
             thus 64 bits for an entire left/right sample
@@ -57,14 +154,46 @@ void init_sound()
         - Slot3 = right data, Slot 4 = off
     */
     
-    RCC->APB2ENR |= RCC_APB2ENR_SAI1EN;
-    (void)RCC->APB2ENR;
+    unsigned int dsize;
+    switch(nbits)
+    {
+        case 8:
+            dsize = 2;
+            break;
+        case 16:
+            dsize = 4;
+            break;
+        case 24:
+            dsize = 6;
+            break;
+        case 32:
+            dsize = 7;
+            break;
+        default:
+            if(_errno) *_errno = EINVAL;
+            return -1;
+    }
+
+    unsigned int mono = 0;
+    switch(nchan)
+    {
+        case 1:
+            mono = SAI_xCR1_MONO;
+            break;
+        case 2:
+            mono = 0;
+            break;
+        default:
+            if(_errno) *_errno = EINVAL;
+            return -1;
+    }
 
     SAI1_Block_A->CR1 =
         SAI_xCR1_MCKEN |
         SAI_xCR1_OSR |
         (2UL << SAI_xCR1_MCKDIV_Pos) |
-        (4UL << SAI_xCR1_DS_Pos) |
+        (dsize << SAI_xCR1_DS_Pos) |
+        mono |
         SAI_xCR1_DMAEN;
     SAI1_Block_A->CR2 =
         (2UL << SAI_xCR2_FTH_Pos);
@@ -74,66 +203,124 @@ void init_sound()
         (31UL << SAI_xFRCR_FSALL_Pos) |
         (63UL << SAI_xFRCR_FRL_Pos);
 
-    /*
-    SAI1_Block_A->SLOTR =
-        (3UL << SAI_xSLOTR_NBSLOT_Pos) |        // 4x 16-bit slots
-        (5UL << SAI_xSLOTR_SLOTEN_Pos);         // enable slots 1 and 3
-    */
     SAI1_Block_A->SLOTR =
         (1UL << SAI_xSLOTR_NBSLOT_Pos) |        // 2x 32-bit slots
         (3UL << SAI_xSLOTR_SLOTEN_Pos) |
         (2UL << SAI_xSLOTR_SLOTSZ_Pos);
-    
-    PCM_MUTE.clear();
 
-    // generate 440 hz sine wave
-    for(int i = 0; i < nsamps; i++)
+    /* Set up buffers */
+    ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
+    ac.buf_size_bytes = buf_size_bytes;
+    ac.buf_ndtr = buf_size_bytes * 8 / nbits;
+    _clear_buffers();
+
+    if(ac.nbuffers < 2)
     {
-        // i / nsamps = proportion of 2*pi
-        float omega = (float)i / (float)nsamps * 2.0f * 3.14159f;
-        float val = sinf(omega) * 20000.0f;
-        auto ival = (int16_t)roundf(val);
-
-        for(int j = 0; j < nchan; j++)
-        {
-            sine_wave[i * nchan + j] = ival;
-        }
+        *_errno = EINVAL;
+        return -1;
     }
 
-    // DMA setup
-    RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
-    (void)RCC->AHB1ENR;
+    /* Set up silence buffer - last one */
+    ac.silence = (uint32_t *)(mr_sound.address + buf_size_bytes * ac.nbuffers);
+    memset(ac.silence, 0, buf_size_bytes);
 
-
+    /* Prepare DMA for running */
     DMA1_Stream0->CR = (1UL << DMA_SxCR_MSIZE_Pos) |
         (1UL << DMA_SxCR_PSIZE_Pos) |
         DMA_SxCR_MINC |
-        DMA_SxCR_CIRC | 
-        (1UL << DMA_SxCR_DIR_Pos);
-    DMA1_Stream0->NDTR = nsamps * nchan;
-    DMA1_Stream0->M0AR = (uint32_t)(uintptr_t)sine_wave;
+        DMA_SxCR_DBM | 
+        (1UL << DMA_SxCR_DIR_Pos) |
+        DMA_SxCR_TCIE;
+    DMA1_Stream0->NDTR = ac.buf_ndtr;
+    DMA1_Stream0->M0AR = (uint32_t)(uintptr_t)ac.silence;
+    DMA1_Stream0->M1AR = (uint32_t)(uintptr_t)ac.silence;
     DMA1_Stream0->PAR = (uint32_t)(uintptr_t)&SAI1_Block_A->DR;
     //DMA1_Stream0->FCR
 
     // DMAMUX1 request mux input 87
     DMAMUX1_Channel0->CCR = 87UL;
 
-    // enable
-    SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN | SAI_xCR1_DMAEN;
-    DMA1_Stream0->CR |= DMA_SxCR_EN;
+    NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+    
+    return 0;
+}
 
-/*
+int syscall_audioenable(int enable)
+{
+    CriticalGuard cg(sl_sound);
+    if(enable)
+    {
+        _queue_if_possible();
+        DMA1_Stream0->CR |= DMA_SxCR_EN;
+        SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
+        PCM_MUTE.clear();
+    }
+    else
+    {
+        PCM_MUTE.set();
+        SAI1_Block_A->CR1 &= ~SAI_xCR1_SAIEN;
+        DMA1_Stream0->CR &= ~DMA_SxCR_EN;
+    }
+    ac.enabled = enable;
+    return 0;
+}
+
+void _queue_if_possible()
+{
+    uint32_t next_buffer;
+    if(ac.rd_ready_ptr != ac.wr_ptr)
+    {
+        // we can queue the next buffer
+        next_buffer = mr_sound.address + ac.wr_ptr * ac.buf_size_bytes;
+        ac.wr_ptr = _ptr_plus_one(ac.wr_ptr);
+    }
+    else
+    {
+        // queue silence
+        next_buffer = (uint32_t)ac.silence;
+    }
+
+    // handle the unlikely condition that CT changed whilst we were writing
     while(true)
     {
-        for(int i = 0; i < nsamps; i++)
-        {
-            // wait for fifo not 3/4 full
-            while(((SAI1_Block_A->SR & SAI_xSR_FLVL_Msk) >> SAI_xSR_FLVL_Pos) >= 4);
+        auto target = (DMA1_Stream0->CR & DMA_SxCR_CT_Msk) ? &DMA1_Stream0->M0AR : &DMA1_Stream0->M1AR;
+        *target = next_buffer;
+        __DMB();
+        if(*target == next_buffer) break;
+    }
+}
 
-            // left/right
-            SAI1_Block_A->DR = -sine_wave[i];
-            SAI1_Block_A->DR = -sine_wave[i];
+int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno)
+{
+    CriticalGuard cg(sl_sound);
+    if(buffer)
+    {
+        if(!next_buffer)
+        {
+            // cannot allow rd_ptr ready to get ahead of rd_ready_ptr
+            *_errno = EINVAL;
+            return -1;
         }
-    } */
-        
+        ac.rd_ready_ptr = _ptr_plus_one(ac.rd_ready_ptr);        
+    }
+    if(next_buffer)
+    {
+        if(_ptr_plus_one(ac.rd_ptr) == ac.wr_ptr)
+        {
+            // buffers full
+            *_errno = EBUSY;
+            return -3;
+        }
+        *next_buffer = (void *)(mr_sound.address + ac.rd_ptr * ac.buf_size_bytes);
+        ac.rd_ptr = _ptr_plus_one(ac.rd_ptr);
+    }
+    return 0;
+}
+
+extern "C" void DMA1_Stream0_IRQHandler()
+{
+    CriticalGuard cg(sl_sound);
+    _queue_if_possible();
+    DMA1->LIFCR = DMA_LIFCR_CTCIF0;
+    __DMB();
 }
