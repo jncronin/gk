@@ -893,6 +893,12 @@
     (uuid fd72d55d-7679-4c37-a5dc-848bebdc432f)
   )
 
+  (text "TODO consider PCM1789 for programmable voltage control"
+    (at 39.37 21.59 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 08119093-aab8-45ae-a40f-a0ecd3b6486a)
+  )
+
   (global_label "SAI1_SCK_A" (shape input) (at 72.39 49.53 180) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 21db26b0-b91b-49a1-ab19-ef688012d293)
