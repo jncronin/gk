@@ -75,7 +75,7 @@ class UserspaceSemaphore
 
     public:
         bool try_wait(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
-        void post();
+        void post(int n=1, bool add=true);
         bool try_delete(int *reason = nullptr);
         unsigned int get_value();
 

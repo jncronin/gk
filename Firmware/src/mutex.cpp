@@ -619,10 +619,10 @@ bool UserspaceSemaphore::try_wait(int *reason, bool block, kernel_time tout)
     }
 }
 
-void UserspaceSemaphore::post()
+void UserspaceSemaphore::post(int n, bool add)
 {
     CriticalGuard cg(sl);
-    if(val == 0)
+    if(val == 0 && n > 0)
     {
         for(auto wt : waiting_threads)
         {
@@ -634,7 +634,26 @@ void UserspaceSemaphore::post()
         }
         waiting_threads.clear();
     }
-    val++;
+    if(add)
+    {
+        if(n < 0)
+        {
+            if((unsigned int)-n > val)
+                val = 0;
+            else val -= (unsigned int)-n;
+        }
+        else
+        {
+            val += (unsigned int)n;
+        }
+    }
+    else
+    {
+        if(n < 0)
+            val = 0;
+        else
+            val = (unsigned int)n;
+    }
 }
 
 bool UserspaceSemaphore::try_delete(int *reason)
