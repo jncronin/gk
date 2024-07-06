@@ -78,14 +78,16 @@ class Process
             A = GK_KEYA,
             B = GK_KEYB,
             X = GK_KEYX,
-            Y = GK_KEYY
+            Y = GK_KEYY,
+            VolUp = GK_KEYVOLUP,
+            VolDown = GK_KEYVOLDOWN
         };
 
         unsigned int gamepad_buttons = 0;
         unsigned char mouse_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
 
-        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z' };
+        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z', 0, 0 };
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;

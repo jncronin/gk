@@ -1,5 +1,7 @@
 #include "process.h"
 
+extern Process p_supervisor;
+
 static inline short int get_axis_value(unsigned int btns, Process::GamepadKey pos, Process::GamepadKey neg)
 {
     unsigned int _pos = 1U << (int)pos;
@@ -102,6 +104,8 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
                     events.Push({ Event::event_type_t::AxisMotion,
                         .axis_data = { 0, get_axis_value(gamepad_buttons, GamepadKey::Down, GamepadKey::Up) }});
                     break;
+                default:
+                    break;
             }
         }
         else if(!ongoing_press)
@@ -125,6 +129,8 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
                     events.Push({ Event::event_type_t::AxisMotion,
                         .axis_data = { 0, get_axis_value(gamepad_buttons, GamepadKey::Down, GamepadKey::Up) }});
                     break;
+                default:
+                    break;
             }
         }
     }
@@ -142,5 +148,13 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
                 events.Push({ Event::event_type_t::KeyUp, .key = scode });
             }
         }
+        else if(key == Process::GamepadKey::VolUp || key == Process::GamepadKey::VolDown)
+        {
+            p_supervisor.HandleGamepadEvent(key, pressed, ongoing_press);
+        }
+    }
+    else if(key == Process::GamepadKey::VolUp || key == Process::GamepadKey::VolDown)
+    {
+        p_supervisor.HandleGamepadEvent(key, pressed, ongoing_press);
     }
 }

@@ -898,6 +898,10 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 08119093-aab8-45ae-a40f-a0ecd3b6486a)
   )
+  (text "TODO needs ferrite bead between VCC and AVCC" (at 39.37 24.13 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 0c5a2249-f147-4024-89ea-3f169cfb69fd)
+  )
 
   (global_label "SAI1_SCK_A" (shape input) (at 72.39 49.53 180) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify right))

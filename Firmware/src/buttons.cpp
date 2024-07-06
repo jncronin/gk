@@ -2,6 +2,7 @@
 #include "pins.h"
 #include "supervisor.h"
 #include "debounce.h"
+#include "_gk_scancodes.h"
 
 constexpr const pin BTN_MENU { GPIOB, 4 };
 constexpr const pin BTN_VOLUP { GPIOB, 11 };
@@ -82,10 +83,10 @@ static inline void handle_state_change(int exti, bool pressed)
     switch(exti)
     {
         case 3:
-            p_supervisor.events.Push({ et, .key = 0 });
+            p_supervisor.events.Push({ et, .key = GK_SCANCODE_POWER });
             break;
         case 4:
-            p_supervisor.events.Push({ et, .key = ' ' });
+            p_supervisor.events.Push({ et, .key = GK_SCANCODE_MENU });
             break;
         case 5:
             recv_proc().HandleGamepadEvent(Process::GamepadKey::Left, pressed);
@@ -106,15 +107,15 @@ static inline void handle_state_change(int exti, bool pressed)
             recv_proc().HandleGamepadEvent(Process::GamepadKey::B, pressed);
             break;
         case 11:
-            p_supervisor.events.Push({ et, .key = 'u' });
+            recv_proc().HandleGamepadEvent(Process::GamepadKey::VolUp, pressed);
             break;
         case 12:
-            p_supervisor.events.Push({ et, .key = 'd' });
+            recv_proc().HandleGamepadEvent(Process::GamepadKey::VolDown, pressed);
             break;
         case 13:
             recv_proc().HandleGamepadEvent(Process::GamepadKey::X, pressed);
             break;
-        case 14:
+        case 15:
             recv_proc().HandleGamepadEvent(Process::GamepadKey::Y, pressed);
             break;
     }
@@ -157,6 +158,18 @@ template<int tick_period_ms,
                 break;
             case 10:
                 recv_proc().HandleGamepadEvent(Process::GamepadKey::B, false, true);
+                break;
+            case 11:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::VolUp, false, true);
+                break;
+            case 12:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::VolDown, false, true);
+                break;
+            case 13:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::X, false, true);
+                break;
+            case 15:
+                recv_proc().HandleGamepadEvent(Process::GamepadKey::Y, false, true);
                 break;
         }
     }
