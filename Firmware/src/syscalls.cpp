@@ -11,6 +11,7 @@
 #include "SEGGER_RTT.h"
 #include "elf.h"
 #include "cleanup.h"
+#include "sound.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -774,6 +775,35 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 auto p = reinterpret_cast<__syscall_waitpid_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_waitpid(p->pid, p->stat_loc, p->options,
                     reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audioenable:
+            {
+                auto p = reinterpret_cast<int>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audioenable(p, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audioqueuebuffer:
+            {
+                auto p = reinterpret_cast<__syscall_audioqueuebuffer_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audioqueuebuffer(p->buffer, p->next_buffer,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+        
+        case __syscall_audiosetmode:
+            {
+                auto p = reinterpret_cast<__syscall_audiosetmode_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audiosetmode(p->nchan, p->nbits, p->freq, p->buf_size_bytes,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audiowaitfree:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_audiowaitfree(reinterpret_cast<int *>(r3));
             }
             break;
 
