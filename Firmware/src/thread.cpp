@@ -14,6 +14,8 @@
 
 extern Thread dt;
 
+extern MemRegion mr_sound;
+
 Thread::Thread(Process &owning_process) : p(owning_process) {}
 
 void Thread::Cleanup(void *tretval, bool from_cleanup)
@@ -199,10 +201,13 @@ Thread *Thread::Create(std::string name,
     t->tss.mpuss[4] = MPUGenerate(stackblk.address,
         stackblk.length, 4, false,
         RW, RW, WBWA_NS);
+    t->tss.mpuss[5] = MPUGenerate(mr_sound.address,
+        mr_sound.length, 5, false,
+        RW, RW, WT_NS);
     if(owning_process.has_tls)
     {
-        t->tss.mpuss[5] = MPUGenerate(t->mr_tls.address,
-            t->mr_tls.length, 5, false, RW, RW, WBWA_NS);
+        t->tss.mpuss[6] = MPUGenerate(t->mr_tls.address,
+            t->mr_tls.length, 6, false, RW, RW, WBWA_NS);
     }
 
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);

@@ -4,6 +4,7 @@
 #include <math.h>
 #include "osmutex.h"
 #include <cstring>
+#include "scheduler.h"
 
 static constexpr const pin SAI1_SCK_A { GPIOE, 5, 6 };
 static constexpr const pin SAI1_SD_A { GPIOC, 1, 6 };
@@ -25,9 +26,10 @@ struct audio_conf
     unsigned int rd_ptr;
     unsigned int rd_ready_ptr;
     uint32_t *silence;
+    Thread *waiting_thread;
     bool enabled;
 };
-static SRAM4_DATA MemRegion mr_sound;
+SRAM4_DATA MemRegion mr_sound;
 constexpr unsigned int max_buffer_size = 32*1024;
 static SRAM4_DATA Spinlock sl_sound;
 static SRAM4_DATA audio_conf ac;
@@ -137,7 +139,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
         (0UL << RCC_PLL2DIVR_Q2_Pos) |
         ((mult.div - 1) << RCC_PLL2DIVR_P2_Pos) |
         ((mult.mult - 1) << RCC_PLL2DIVR_N2_Pos);
-    RCC->CR |= RCC_CR_PLL2RDY;
+    RCC->CR |= RCC_CR_PLL2ON;
     while(!(RCC->CR & RCC_CR_PLL2RDY));
 
     /* SAI1 is connected to PCM1754 
@@ -245,12 +247,12 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     return 0;
 }
 
-int syscall_audioenable(int enable)
+int syscall_audioenable(int enable, int *_errno)
 {
     CriticalGuard cg(sl_sound);
     if(enable)
     {
-        _queue_if_possible();
+        //_queue_if_possible();
         DMA1_Stream0->CR |= DMA_SxCR_EN;
         SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
         PCM_MUTE.clear();
@@ -317,10 +319,33 @@ int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno
     return 0;
 }
 
+int syscall_audiowaitfree(int *_errno)
+{
+    CriticalGuard cg(sl_sound);
+    if(_ptr_plus_one(ac.rd_ptr) == ac.wr_ptr)
+    {
+        ac.waiting_thread = GetCurrentThreadForCore();
+        return -2;
+    }
+    else
+    {
+        ac.waiting_thread = nullptr;
+        return 0;
+    }
+}
+
 extern "C" void DMA1_Stream0_IRQHandler()
 {
     CriticalGuard cg(sl_sound);
     _queue_if_possible();
+
+    if(ac.waiting_thread && _ptr_plus_one(ac.rd_ptr) != ac.wr_ptr)
+    {
+        ac.waiting_thread->ss_p.ival1 = 0;
+        ac.waiting_thread->ss.Signal();
+        ac.waiting_thread = nullptr;
+    }
+
     DMA1->LIFCR = DMA_LIFCR_CTCIF0;
     __DMB();
 }
