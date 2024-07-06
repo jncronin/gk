@@ -522,8 +522,8 @@
     "netclass_assignments": {
       "GND": "PWR",
       "Net-(D1-A)": "PWR",
-      "Net-(D1-K)": "PWR",
-      "USB_VBUS": "PWR"
+      "USB_VBUS": "PWR",
+      "VREGIN": "PWR"
     },
     "netclass_patterns": [
       {
