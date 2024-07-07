@@ -5,6 +5,7 @@
 #include "osmutex.h"
 #include <cstring>
 #include "scheduler.h"
+#include "SEGGER_RTT.h"
 
 static constexpr const pin SAI1_SCK_A { GPIOE, 5, 6 };
 static constexpr const pin SAI1_SD_A { GPIOC, 1, 6 };
@@ -33,6 +34,8 @@ SRAM4_DATA MemRegion mr_sound;
 constexpr unsigned int max_buffer_size = 32*1024;
 static SRAM4_DATA Spinlock sl_sound;
 static SRAM4_DATA audio_conf ac;
+
+extern Spinlock s_rtt;
 
 static void _queue_if_possible();
 
@@ -134,8 +137,11 @@ constexpr pll_setup pll_multiplier(int freq)
 
 int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
 {
+    CriticalGuard cg(sl_sound);
+
     /* this should be the first call from any process - stop sound output then reconfigure */
     PCM_MUTE.set();
+    SPKR_NSD.clear();
     SAI1_Block_A->CR1 = 0;
     DMA1_Stream0->CR = 0;
 
@@ -258,6 +264,12 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     DMAMUX1_Channel0->CCR = 87UL;
 
     NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+
+    {
+        CriticalGuard cg2(s_rtt);
+        SEGGER_RTT_printf(0, "audiosetmode: set %d hz, %d channels, %d bit\n",
+            freq, nchan, nbits);
+    }
     
     return 0;
 }
@@ -271,9 +283,11 @@ int syscall_audioenable(int enable, int *_errno)
         DMA1_Stream0->CR |= DMA_SxCR_EN;
         SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
         PCM_MUTE.clear();
+        SPKR_NSD.set();
     }
     else
     {
+        SPKR_NSD.clear();
         PCM_MUTE.set();
         SAI1_Block_A->CR1 &= ~SAI_xCR1_SAIEN;
         DMA1_Stream0->CR &= ~DMA_SxCR_EN;
@@ -372,10 +386,12 @@ extern "C" void EXTI2_IRQHandler()
     if(!v)
     {
         PCM_MUTE.clear();
+        SPKR_NSD.set();
     }
     else if(v)
     {
         PCM_MUTE.set();
+        SPKR_NSD.clear();
     }
     EXTI->PR1 = EXTI_PR1_PR2;
     __DMB();
