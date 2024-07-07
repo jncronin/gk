@@ -140,7 +140,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     DMA1_Stream0->CR = 0;
 
     /* Calculate PLL divisors */
-    const auto mult = pll_multiplier(48000);
+    const auto mult = pll_multiplier(freq);
     if(mult.mult == 0)
     {
         if(_errno) *_errno = EINVAL;
