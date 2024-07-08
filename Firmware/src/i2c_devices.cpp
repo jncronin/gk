@@ -14,7 +14,7 @@
 extern Spinlock s_rtt;
 
 /* The I2C1 bus runs at 400 kHz and contains:
-        LSM6DSL gyro/accelerometer:         Address
+        LSM6DSL gyro/accelerometer:         Address 0x6a
         CST340 touch screen controller:     Address 0x1a (see https://sbexr.rabexc.org/latest/sources/b1/4dc8ab017aac8c.html)
         MAX17048 battery charge monitor:    Address
 
@@ -33,7 +33,7 @@ constexpr const pin I2C1_SDA { GPIOB, 7, 4 };
 constexpr const pin I2C1_SCL { GPIOB, 6, 4 };
 
 static void *i2c_thread(void *p);
-static void *lsm_thread(void *p);
+void *lsm_thread(void *p);
 static void *cst_thread(void *p);
 static void *max_thread(void *p);
 
@@ -46,15 +46,28 @@ struct i2c_msg
     bool is_read;
     bool restart_after_read;
     unsigned char i2c_address;
-    char *buf;
-    size_t nbytes;
+    char *buf, *buf2 = nullptr;
+    size_t nbytes, nbytes2 = 0;
     SimpleSignal *ss;
+    uint8_t regaddr_buf[2];
 };
 
 SRAM4_DATA FixedQueue<i2c_msg, 32> i2c_msgs;
 SRAM4_DATA static volatile i2c_msg cur_i2c_msg;
 SRAM4_DATA static volatile unsigned int n_xmit;
 SRAM4_DATA static volatile unsigned int n_tc_end;
+
+static volatile char *cur_buf_p(const i2c_msg *msg, unsigned int n)
+{
+    if(n < msg->nbytes)
+    {
+        return &msg->buf[n];
+    }
+    else
+    {
+        return &msg->buf2[n - msg->nbytes];
+    }
+}
 
 int i2c_xmit(unsigned int addr, void *buf, size_t nbytes, bool is_read)
 {
@@ -67,6 +80,7 @@ int i2c_xmit(unsigned int addr, void *buf, size_t nbytes, bool is_read)
     msg.buf = (char *)buf;
     msg.is_read = is_read;
     msg.nbytes = nbytes;
+    msg.nbytes2 = 0;
     msg.restart_after_read = false;
     msg.ss = ss;
 
@@ -97,6 +111,59 @@ int i2c_read(unsigned int addr, const void *buf, size_t nbytes)
 int i2c_send(unsigned int addr, void *buf, size_t nbytes)
 {
     return i2c_xmit(addr, buf, nbytes, false);
+}
+
+int i2c_register_write(unsigned int addr, uint8_t reg, const void *buf, size_t nbytes)
+{
+    i2c_msg msgs[1];
+
+    msgs[0].i2c_address = addr;
+    msgs[0].regaddr_buf[0] = reg;
+    msgs[0].buf = (char *)msgs[0].regaddr_buf;
+    msgs[0].is_read = false;
+    msgs[0].nbytes = 1;
+    msgs[0].buf2 = (char *)buf;
+    msgs[0].nbytes2 = nbytes;
+    msgs[0].restart_after_read = false;
+    msgs[0].ss = &GetCurrentThreadForCore()->ss;
+
+    if(i2c_msgs.Push(msgs, 1) != 1)
+    {
+        return -1;
+    }
+
+    GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+    return 0;
+}
+
+int i2c_register_read(unsigned int addr, uint8_t reg, void *buf, size_t nbytes)
+{
+    i2c_msg msgs[2];
+
+    msgs[0].i2c_address = addr;
+    msgs[0].regaddr_buf[0] = reg;
+    msgs[0].buf = (char *)msgs[0].regaddr_buf;
+    msgs[0].is_read = false;
+    msgs[0].nbytes = 1;
+    msgs[0].nbytes2 = 0;
+    msgs[0].restart_after_read = true;
+    msgs[0].ss = nullptr;
+
+    msgs[1].i2c_address = addr;
+    msgs[1].buf = (char *)buf;
+    msgs[1].is_read = true;
+    msgs[1].nbytes = nbytes;
+    msgs[1].nbytes2 = 0;
+    msgs[1].restart_after_read = false;
+    msgs[1].ss = &GetCurrentThreadForCore()->ss;
+
+    if(i2c_msgs.Push(msgs, 2) != 2)
+    {
+        return -1;
+    }
+
+    GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+    return 0;
 }
 
 static void reset_i2c()
@@ -191,7 +258,7 @@ void *i2c_thread(void *params)
             n_xmit = 0;
 
             auto cr2 = calc_cr2(cur_i2c_msg.i2c_address, cur_i2c_msg.is_read,
-                cur_i2c_msg.nbytes, n_xmit, cur_i2c_msg.restart_after_read,
+                cur_i2c_msg.nbytes + cur_i2c_msg.nbytes2, n_xmit, cur_i2c_msg.restart_after_read,
                 (unsigned int *)&n_tc_end);
             i2c->CR2 = cr2;
 
@@ -225,7 +292,7 @@ void *i2c_thread(void *params)
                 {
                     while(!(i2c->ISR & wait_flag));
                     auto d = i2c->RXDR;
-                    cur_i2c_msg.buf[n_xmit++] = d;
+                    *cur_buf_p((i2c_msg*)&cur_i2c_msg, n_xmit++) = d;
                     if(n_xmit == n_tc_end)
                     {
                         if(i2c->ISR & I2C_ISR_TC)
@@ -263,7 +330,7 @@ void *i2c_thread(void *params)
                 while(cont)
                 {
                     while(!(i2c->ISR & wait_flag));
-                    auto d = cur_i2c_msg.buf[n_xmit++];
+                    auto d = *cur_buf_p((i2c_msg *)&cur_i2c_msg, n_xmit++);
                     i2c->TXDR = d;
                     if(n_xmit == n_tc_end)
                     {
@@ -327,15 +394,6 @@ void *cst_thread(void *param)
 
         sem_ctp.Wait(clock_cur() + kernel_time::from_ms(100));
         // TODO poll ctp
-    }
-}
-
-void *lsm_thread(void *param)
-{
-    while(true)
-    {
-        // TODO
-        Block();
     }
 }
 
