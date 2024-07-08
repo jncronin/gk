@@ -902,7 +902,7 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 0c5a2249-f147-4024-89ea-3f169cfb69fd)
   )
-  (text "TODO needs active output stage (?use headphone opamp)"
+  (text "TODO needs active output stage (?use headphone opamp) TPA6110A2"
     (at 39.37 19.05 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid b74f68b1-41d0-4eb0-b69d-c2e50e97df5c)
