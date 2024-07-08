@@ -9,7 +9,7 @@
 #include "i2c.h"
 #include "SEGGER_RTT.h"
 
-#define DEBUG_I2C 0
+#define DEBUG_I2C 1
 
 extern Spinlock s_rtt;
 
@@ -20,26 +20,20 @@ extern Spinlock s_rtt;
 
     I2C1 clock is 24 MHz - we can use the 8MHz examples from RM with a /3 prescaler
 
-    The CST340 chip is complex - see https://git.zx2c4.com/linux/plain/drivers/input/touchscreen/hynitron_cstxxx.c
-
 */
 
 #define i2c I2C1
 
-constexpr const pin CTP_NRESET { GPIOC, 13 };
-constexpr const pin CTP_INT { GPIOC, 14 };
 constexpr const pin LSM_INT { GPIOI, 0 };
 constexpr const pin I2C1_SDA { GPIOB, 7, 4 };
 constexpr const pin I2C1_SCL { GPIOB, 6, 4 };
 
 static void *i2c_thread(void *p);
 void *lsm_thread(void *p);
-static void *cst_thread(void *p);
+void *cst_thread(void *p);
 static void *max_thread(void *p);
 
 SRAM4_DATA bool i2c_init = false;
-SRAM4_DATA bool ctp_init = false;
-SRAM4_DATA static BinarySemaphore sem_ctp;
 
 struct i2c_msg
 {
@@ -59,14 +53,20 @@ SRAM4_DATA static volatile unsigned int n_tc_end;
 
 static volatile char *cur_buf_p(const i2c_msg *msg, unsigned int n)
 {
+    char *buf;
     if(n < msg->nbytes)
     {
-        return &msg->buf[n];
+        buf = msg->buf;
     }
     else
     {
-        return &msg->buf2[n - msg->nbytes];
+        buf = msg->buf2;
+        n -= msg->nbytes;
     }
+    if(buf)
+        return &buf[n];
+    else
+        return (char *)&msg->regaddr_buf[n];
 }
 
 int i2c_xmit(unsigned int addr, void *buf, size_t nbytes, bool is_read)
@@ -119,9 +119,33 @@ int i2c_register_write(unsigned int addr, uint8_t reg, const void *buf, size_t n
 
     msgs[0].i2c_address = addr;
     msgs[0].regaddr_buf[0] = reg;
-    msgs[0].buf = (char *)msgs[0].regaddr_buf;
+    msgs[0].buf = nullptr;
     msgs[0].is_read = false;
     msgs[0].nbytes = 1;
+    msgs[0].buf2 = (char *)buf;
+    msgs[0].nbytes2 = nbytes;
+    msgs[0].restart_after_read = false;
+    msgs[0].ss = &GetCurrentThreadForCore()->ss;
+
+    if(i2c_msgs.Push(msgs, 1) != 1)
+    {
+        return -1;
+    }
+
+    GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+    return 0;
+}
+
+int i2c_register_write(unsigned int addr, uint16_t reg, const void *buf, size_t nbytes)
+{
+    i2c_msg msgs[1];
+
+    msgs[0].i2c_address = addr;
+    msgs[0].regaddr_buf[0] = reg & 0xff;
+    msgs[0].regaddr_buf[1] = (reg >> 8) & 0xff;
+    msgs[0].buf = nullptr;
+    msgs[0].is_read = false;
+    msgs[0].nbytes = 2;
     msgs[0].buf2 = (char *)buf;
     msgs[0].nbytes2 = nbytes;
     msgs[0].restart_after_read = false;
@@ -142,9 +166,40 @@ int i2c_register_read(unsigned int addr, uint8_t reg, void *buf, size_t nbytes)
 
     msgs[0].i2c_address = addr;
     msgs[0].regaddr_buf[0] = reg;
-    msgs[0].buf = (char *)msgs[0].regaddr_buf;
+    msgs[0].buf = nullptr;
     msgs[0].is_read = false;
     msgs[0].nbytes = 1;
+    msgs[0].nbytes2 = 0;
+    msgs[0].restart_after_read = true;
+    msgs[0].ss = nullptr;
+
+    msgs[1].i2c_address = addr;
+    msgs[1].buf = (char *)buf;
+    msgs[1].is_read = true;
+    msgs[1].nbytes = nbytes;
+    msgs[1].nbytes2 = 0;
+    msgs[1].restart_after_read = false;
+    msgs[1].ss = &GetCurrentThreadForCore()->ss;
+
+    if(i2c_msgs.Push(msgs, 2) != 2)
+    {
+        return -1;
+    }
+
+    GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+    return 0;
+}
+
+int i2c_register_read(unsigned int addr, uint16_t reg, void *buf, size_t nbytes)
+{
+    i2c_msg msgs[2];
+
+    msgs[0].i2c_address = addr;
+    msgs[0].regaddr_buf[0] = reg & 0xff;
+    msgs[0].regaddr_buf[1] = (reg >> 8) & 0xff;
+    msgs[0].buf = nullptr;
+    msgs[0].is_read = false;
+    msgs[0].nbytes = 2;
     msgs[0].nbytes2 = 0;
     msgs[0].restart_after_read = true;
     msgs[0].ss = nullptr;
@@ -277,10 +332,22 @@ void *i2c_thread(void *params)
                 }
                 if(i2c->ISR & (I2C_ISR_BERR | I2C_ISR_ARLO))
                 {
+#if DEBUG_I2C
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "i2c: transfer failing %x\n", i2c->ISR);
+                    }
+#endif
                     i2c_init = false;
                 }
                 else
                 {
+#if DEBUG_I2C
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "i2c: NACK\n");
+                    }
+#endif
                     i2c->ICR = I2C_ICR_NACKCF;
                 }
             }
@@ -295,7 +362,9 @@ void *i2c_thread(void *params)
                     *cur_buf_p((i2c_msg*)&cur_i2c_msg, n_xmit++) = d;
                     if(n_xmit == n_tc_end)
                     {
-                        if(i2c->ISR & I2C_ISR_TC)
+                        while(!(i2c->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
+                        if((cur_i2c_msg.restart_after_read && (i2c->ISR & I2C_ISR_TC)) ||
+                            (i2c->ISR & I2C_ISR_STOPF))
                         {
                             // finished
                             cont = false;
@@ -313,6 +382,12 @@ void *i2c_thread(void *params)
                         }
                         else
                         {
+#if DEBUG_I2C
+                            {
+                                CriticalGuard cg(s_rtt);
+                                SEGGER_RTT_printf(0, "i2c: early read finish %u, %x\n", n_xmit, i2c->ISR);
+                            }
+#endif
                             // early finish
                             cont = false;
                             if(cur_i2c_msg.ss)
@@ -334,7 +409,9 @@ void *i2c_thread(void *params)
                     i2c->TXDR = d;
                     if(n_xmit == n_tc_end)
                     {
-                        if(i2c->ISR & I2C_ISR_TC)
+                        while(!(i2c->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
+                        if((cur_i2c_msg.restart_after_read && (i2c->ISR & I2C_ISR_TC)) ||
+                            (i2c->ISR & I2C_ISR_STOPF))
                         {
                             // finished
                             cont = false;
@@ -352,6 +429,12 @@ void *i2c_thread(void *params)
                         }
                         else
                         {
+#if DEBUG_I2C
+                            {
+                                CriticalGuard cg(s_rtt);
+                                SEGGER_RTT_printf(0, "i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
+                            }
+#endif
                             // early finish
                             cont = false;
                             if(cur_i2c_msg.ss)
@@ -363,37 +446,6 @@ void *i2c_thread(void *params)
                 }
             }
         }
-    }
-}
-
-void *cst_thread(void *param)
-{
-    while(true)
-    {
-        if(!ctp_init)
-        {
-            CTP_NRESET.set_as_output();
-            CTP_NRESET.clear();
-            Block(clock_cur() + kernel_time::from_ms(50));
-            CTP_NRESET.set();
-            Block(clock_cur() + kernel_time::from_ms(300));
-
-            // check read
-            char buf[4];
-            [[maybe_unused]] auto ret = i2c_read(0x1a, buf, 4);
-
-#if DEBUG_I2C
-            {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "cst: read returned %d\n", ret);
-            }
-#endif
-            
-            // TODO init CTP
-        }
-
-        sem_ctp.Wait(clock_cur() + kernel_time::from_ms(100));
-        // TODO poll ctp
     }
 }
 
