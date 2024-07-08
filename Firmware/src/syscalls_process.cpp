@@ -7,6 +7,7 @@
 #include "SEGGER_RTT.h"
 #include "process.h"
 #include "elf.h"
+#include "tilt.h"
 #include <sys/wait.h>
 
 extern Spinlock s_rtt;
@@ -258,6 +259,8 @@ void *proccreate_thread(void *ptr)
     proc->gamepad_is_joystick = pcinfo->keymap.gamepad_is_joystick != 0;
     proc->gamepad_is_keyboard = pcinfo->keymap.gamepad_is_keyboard != 0;
     proc->gamepad_is_mouse = pcinfo->keymap.gamepad_is_mouse != 0;
+    proc->tilt_is_keyboard = pcinfo->keymap.tilt_is_keyboard != 0;
+    proc->tilt_is_joystick = pcinfo->keymap.tilt_is_joystick != 0;
     memcpy(proc->gamepad_to_scancode, pcinfo->keymap.gamepad_to_scancode,
         GK_NUMKEYS * sizeof(unsigned short int));
 
@@ -265,6 +268,15 @@ void *proccreate_thread(void *ptr)
     if(pcinfo->with_focus)
     {
         focus_process = proc;
+
+        if(proc->tilt_is_keyboard || proc->tilt_is_joystick)
+        {
+            tilt_enable(true);
+        }
+        else
+        {
+            tilt_enable(false);
+        }
 
         p_supervisor.events.Push( { .type = Event::CaptionChange });
     }

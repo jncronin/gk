@@ -1,4 +1,5 @@
 #include "process.h"
+#include "_gk_scancodes.h"
 
 extern Process p_supervisor;
 
@@ -13,6 +14,37 @@ static inline short int get_axis_value(unsigned int btns, Process::GamepadKey po
         return INT16_MAX;
     else
         return INT16_MIN;
+}
+
+void Process::HandleTiltEvent(int x, int y)
+{
+    if(tilt_is_joystick)
+    {
+        events.Push({ Event::event_type_t::AxisMotion, .axis_data = { 0, (short int)x }});
+        events.Push({ Event::event_type_t::AxisMotion, .axis_data = { 1, (short int)y }});
+    }
+    if(tilt_is_keyboard)
+    {
+        char new_state = 0;
+        if(x < 0) new_state |= 1;
+        if(x > 0) new_state |= 2;
+        if(y > 0) new_state |= 4;
+        if(y < 0) new_state |= 8;
+
+        if(new_state != tilt_keyboard_state)
+        {
+            auto state_change = new_state ^ tilt_keyboard_state;
+            for(int i = 0; i < 4; i++)
+            {
+                if(state_change & (1 << i) && gamepad_to_scancode[GK_KEYTILTLEFT + i])
+                {
+                    auto evtype = (new_state & (0x1 << i)) ? Event::event_type_t::KeyDown : Event::event_type_t::KeyUp;
+                    events.Push({ evtype, .key = gamepad_to_scancode[GK_KEYTILTLEFT + i] });
+                }
+            }
+            tilt_keyboard_state = new_state;
+        }
+    }
 }
 
 void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ongoing_press)
@@ -102,7 +134,7 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
                 case GamepadKey::Up:
                 case GamepadKey::Down:
                     events.Push({ Event::event_type_t::AxisMotion,
-                        .axis_data = { 0, get_axis_value(gamepad_buttons, GamepadKey::Down, GamepadKey::Up) }});
+                        .axis_data = { 1, get_axis_value(gamepad_buttons, GamepadKey::Down, GamepadKey::Up) }});
                     break;
                 default:
                     break;

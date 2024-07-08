@@ -70,6 +70,10 @@ class Process
         bool gamepad_is_keyboard = true;
         bool gamepad_is_mouse = false;
 
+        bool tilt_is_joystick = true;
+        bool tilt_is_keyboard = true;
+        char tilt_keyboard_state = 0;
+
         enum GamepadKey {
             Left = GK_KEYLEFT,
             Right = GK_KEYRIGHT,
@@ -86,8 +90,9 @@ class Process
         unsigned int gamepad_buttons = 0;
         unsigned char mouse_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
+        void HandleTiltEvent(int x, int y);
 
-        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z', 0, 0 };
+        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z', 0, 0, 0, 0, 0, 0 };
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
