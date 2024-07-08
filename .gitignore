@@ -185,3 +185,4 @@ Firmware/gk.jdebug
 Firmware/gk.jdebug.user
 Firmware/src/*.bin
 Firmware/inc/wifipasswd.h
+~*.lck
