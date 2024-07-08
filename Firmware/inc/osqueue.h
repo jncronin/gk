@@ -54,20 +54,8 @@ class BaseQueue
             waiting_threads.clear();
         }
 
-    public:
-        inline bool empty()
+        bool _Push(const void *v)
         {
-            return _wptr == _rptr;
-        }
-
-        inline bool full()
-        {
-            return ptr_plus_one(_wptr) == _rptr;
-        }
-
-        bool Push(const void *v)
-        {
-            CriticalGuard cg(sl);
             if(full())
             {
 #if DEBUG_FULLQUEUE
@@ -82,6 +70,23 @@ class BaseQueue
             _wptr = ptr_plus_one(_wptr);
             signal_waiting();
             return true;
+        }
+
+    public:
+        inline bool empty()
+        {
+            return _wptr == _rptr;
+        }
+
+        inline bool full()
+        {
+            return ptr_plus_one(_wptr) == _rptr;
+        }
+
+        bool Push(const void *v)
+        {
+            CriticalGuard cg(sl);
+            return _Push(v);
         }
 
         bool Peek(void *v)
@@ -159,6 +164,17 @@ template <typename T, int _nitems> class FixedQueue : public BaseQueue
         bool Push(const T& v)
         {
             return BaseQueue::Push(&v);
+        }
+
+        size_t Push(const T* v, size_t n)
+        {
+            CriticalGuard cg(sl);
+            for(unsigned int i = 0; i < n; i++)
+            {
+                if(!_Push(&v[i]))
+                    return i;
+            }
+            return n;
         }
 
     protected:
