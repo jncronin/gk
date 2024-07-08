@@ -4,26 +4,43 @@
 #include "thread.h"
 #include "SEGGER_RTT.h"
 #include <cmath>
+#include "tilt.h"
+#include "process.h"
+
+extern Process *focus_process;
 
 // see https://github.com/stm32duino/LSM6DSL/blob/main/src/LSM6DSLSensor.cpp for an example
 
 static bool init_lsm();
-static SRAM4_DATA volatile bool is_running = true;
+static SRAM4_DATA volatile bool is_running = false;
+static SRAM4_DATA volatile bool needs_calib = false;
+static SRAM4_DATA volatile float calib_y = 0;
 static bool Set_X_FS(float fullScale);
 static bool Set_G_FS(float fullScale);
+static SRAM4_DATA BinarySemaphore s_en;
 
 // d6
 static const constexpr unsigned int addr = 0x6a;
+
+static const constexpr unsigned int f_samp = 25;    // tilt sample frequency
+static const constexpr int fsr_deg = 80;            // +/- maximum tilt
+static const constexpr int deadzone_deg = 10;       // +/- deadzone
+static const constexpr int move_deg = 2;            // number of degrees needed to move to report a new sample
 
 extern Spinlock s_rtt;
 
 void *lsm_thread(void *param)
 {
     bool is_init = false;
+    bool last_running = false;
+    float last_x = 0;
+    float last_y = 0;
+
     while(true)
     {
         if(is_running)
         {
+            last_running = true;
             while(!is_init)
             {
                 is_init = init_lsm();
@@ -42,47 +59,97 @@ void *lsm_thread(void *param)
                     else
                     {
                         // enable
-                        LSM6DSL_ACC_GYRO_W_ODR_G(nullptr, LSM6DSL_ACC_GYRO_ODR_G_104Hz);
+                        //LSM6DSL_ACC_GYRO_W_ODR_G(nullptr, LSM6DSL_ACC_GYRO_ODR_G_104Hz);
                         LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_104Hz);
                     }
                 }
             }
 
-            int acc[3] = { 0 }, gy[3] = { 0 };
-            LSM6DSL_ACC_Get_Acceleration(nullptr, acc, 0);
-            LSM6DSL_ACC_Get_AngularRate(nullptr, gy, 0);
-
-            LSM6DSL_ACC_GYRO_ODR_G_t godr;
-            LSM6DSL_ACC_GYRO_R_ODR_G(nullptr, &godr);
-
-            // calc pitch and roll
-            auto fx = (float)acc[0];
-            auto fy = (float)acc[1];
-            auto fz = (float)acc[2];
-            auto g = sqrtf(fx * fx + fy * fy + fz * fz);
-            auto pitch = 180.0f * asinf(fx / g) / (float)M_PI;
-            auto roll = 180.0f * atan2f(fy, fz) / (float)M_PI;
-
+            int acc[3] = { 0 };
+            if(LSM6DSL_ACC_Get_Acceleration(nullptr, acc, 0) == MEMS_SUCCESS)
             {
-                CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "lsm6dsl: %d,%d,%d  %d,%d,%d\n", acc[0], acc[1], acc[2],
-                    gy[0], gy[1], gy[2]);
-                SEGGER_RTT_printf(0, "lsm6dsl: godr: %d\n", (int)godr);
-                SEGGER_RTT_printf(0, "lsm6sdl: pitch %s, roll %s, g %s\n",
-                    std::to_string(pitch).c_str(),
-                    std::to_string(roll).c_str(),
-                    std::to_string(g).c_str());
+                // calc pitch and roll
+                auto fx = (float)acc[0];
+                auto fy = (float)acc[1];
+                auto fz = (float)acc[2];
+                auto g = sqrtf(fx * fx + fy * fy + fz * fz);
+                auto pitch = 180.0f * asinf(fx / g) / (float)M_PI;
+                auto roll = 180.0f * atan2f(fy, fz) / (float)M_PI;
+                auto x = -pitch;
+                auto y = -roll;
+
+                if(needs_calib)
+                {
+                    calib_y = y;
+                }
+
+                y -= calib_y;
+
+                if(std::abs(x) < (float)deadzone_deg) x = 0;
+                if(std::abs(y) < (float)deadzone_deg) y = 0;
+
+
+                bool to_report = false;
+                if(needs_calib)
+                {
+                    to_report = true;
+                    needs_calib = false;
+                    last_x = x;
+                    last_y = y;
+                }
+                else
+                {
+                    if(std::abs(x - last_x) >= (float)move_deg)
+                    {
+                        last_x = x;
+                        to_report = true;
+                    }
+                    if(std::abs(y - last_y) >= (float)move_deg)
+                    {
+                        last_y = y;
+                        to_report = true;
+                    }
+                }
+
+                if(to_report)
+                {
+                    auto joy_x = x * 32767.0f / (float)fsr_deg;
+                    auto joy_y = y * 32767.0f / (float)fsr_deg;
+
+                    focus_process->HandleTiltEvent(joy_x, joy_y);
+
+                    {
+                        CriticalGuard cg(s_rtt);
+                        SEGGER_RTT_printf(0, "lsm6dsl: %d,%d\n", (int)joy_x, (int)joy_y);
+                    }
+                }
             }
 
-            Block(clock_cur() + kernel_time::from_ms(100));
-
-
+            Block(clock_cur() + kernel_time::from_ms(1000 / f_samp));
         }
         else
         {
-            // not running
-            Block(clock_cur() + kernel_time::from_ms(1000));
+            if(last_running)
+            {
+                LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_POWER_DOWN);
+                last_running = false;
+            }
+            s_en.Wait(kernel_time::from_ms(1000));
         }
+    }
+}
+
+void tilt_enable(bool en)
+{
+    if(en)
+    {
+        is_running = true;
+        needs_calib = true;
+        s_en.Signal();
+    }
+    else
+    {
+        is_running = false;
     }
 }
 
