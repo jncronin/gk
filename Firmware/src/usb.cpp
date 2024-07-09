@@ -68,7 +68,6 @@ void init_usb()
 
     // Enable USB power supervisor
     PWR->CR3 |= PWR_CR3_USB33DEN;
-    while(!(PWR->CR3 & PWR_CR3_USB33RDY));
 }
 
 extern "C" void OTG_HS_IRQHandler()
@@ -101,8 +100,10 @@ void *usb_task(void *pvParams)
     }
 #endif
     tusb_init();
+    
+    //NVIC_EnableIRQ(OTG_HS_IRQn);
 
-    NVIC_EnableIRQ(OTG_HS_IRQn);
+    bool is_enabled = false;
 
     while(true)
     {
@@ -112,7 +113,32 @@ void *usb_task(void *pvParams)
             SEGGER_RTT_printf(0, "usb: loop\n");
         }
 #endif
-        tud_task();
+        if(!is_enabled)
+        {
+            if(PWR->CR3 & PWR_CR3_USB33RDY)
+            {
+                is_enabled = true;
+                NVIC_EnableIRQ(OTG_HS_IRQn);
+            }
+            else
+            {
+                Block(clock_cur() + kernel_time::from_ms(500));
+            }
+        }
+        else
+        {
+            if(!(PWR->CR3 & PWR_CR3_USB33RDY))
+            {
+                is_enabled = false;
+                NVIC_DisableIRQ(OTG_HS_IRQn);
+            }
+            else
+            {
+                tud_task();
+            }
+        }
+
+        //tud_task();
     }
 }
 
