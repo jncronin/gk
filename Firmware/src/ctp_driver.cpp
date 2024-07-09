@@ -37,7 +37,7 @@ static bool init_ctp();
 static void cst_read();
 static void ctp_reset(kernel_time delay);
 
-char cst_regs[65536];
+//char cst_regs[65536];
 
 void *cst_thread(void *param)
 {
@@ -179,7 +179,7 @@ void cst_read()
         } // 4360
     } */
 
-    for(int taddr = 0; taddr < 65536; taddr += 32)
+/*  for(int taddr = 0; taddr < 65536; taddr += 32)
     {
         i2c_register_read(addr, (uint16_t)taddr, &cst_regs[taddr], 32);
     }
@@ -190,7 +190,7 @@ void cst_read()
             CriticalGuard cg(s_rtt);
             SEGGER_RTT_printf(0, "cst: touch check at %d\n", i);
         }
-    }
+    } */
 
 
     i2c_register_read(addr, (uint16_t)CST3XX_TOUCH_DATA_PART_REG, buf, 28);
