@@ -35,18 +35,26 @@ void *max_thread(void *param)
             vcell = __bswap16(vcell);
             soc = __bswap16(soc);
             crate = __bswap16(crate);
+            int i_crate = (int)(int16_t)crate;
 
             float f_vcell = (float)vcell * 78.125f / 1000000.0f;
             float f_soc = (float)soc / 256.0f;
-            float f_crate = (float)crate * 0.208f;
+            float f_crate = (float)i_crate * 0.208f;
+
+            bool is_charging = /* !VBAT_STAT.value(); */
+                i_crate > 0;
+
+            auto pct_to_go = is_charging ? (100.0f - f_soc) : f_soc;
+            auto mins_left = pct_to_go * 60.0f / std::abs(f_crate);
 
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "max: vcell: %sV, soc: %s%%, crate: %s%%/hr, charging: %s\n",
+                SEGGER_RTT_printf(0, "max: vcell: %sV, soc: %s%%, crate: %s%%/hr, charging: %s, time remaining: %s mins\n",
                     std::to_string(f_vcell).c_str(),
                     std::to_string(f_soc).c_str(),
                     std::to_string(f_crate).c_str(),
-                    VBAT_STAT.value() ? "no" : "yes");
+                    is_charging ? "yes" : "no",
+                    std::to_string(mins_left).c_str());
             }
         }
         Block(clock_cur() + kernel_time::from_ms(1000));
