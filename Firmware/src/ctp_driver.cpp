@@ -62,7 +62,8 @@ void *cst_thread(void *param)
             ctp_init = init_ctp();
         }
 
-        if(sem_ctp.Wait(clock_cur() + kernel_time::from_ms(2000)))
+        //if(sem_ctp.Wait(clock_cur() + kernel_time::from_ms(2000)))
+        Block(clock_cur() + kernel_time::from_ms(1000));
             cst_read();
     }
 }
@@ -192,7 +193,9 @@ void cst_read()
         }
     } */
 
-
+    // checked with scope - appropriate request however result still 00 a5 a5 a5 ...
+    //  there is some suggestion this is due to buggy firmware:
+    //  https://blog-csdn-net.translate.goog/professionalmcu/article/details/124559206?_x_tr_sl=zh-CN&_x_tr_tl=en&_x_tr_hl=en&_x_tr_pto=sc
     i2c_register_read(addr, (uint16_t)CST3XX_TOUCH_DATA_PART_REG, buf, 28);
 
     {

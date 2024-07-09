@@ -18,6 +18,8 @@
 #define GK_OVERCLOCK                1
 #define GK_TICKLESS                 0
 
+#define GK_ENABLE_CTP340            0
+
 #define GK_SDRAM_BASE               0x60000000
 
 #define GK_NUM_EVENTS_PER_PROCESS   32
