@@ -31,7 +31,7 @@ constexpr const pin I2C1_SCL { GPIOB, 6, 4 };
 static void *i2c_thread(void *p);
 void *lsm_thread(void *p);
 void *cst_thread(void *p);
-static void *max_thread(void *p);
+void *max_thread(void *p);
 
 SRAM4_DATA bool i2c_init = false;
 
@@ -454,14 +454,5 @@ void *i2c_thread(void *params)
                 }
             }
         }
-    }
-}
-
-void *max_thread(void *param)
-{
-    while(true)
-    {
-        // TODO
-        Block();
     }
 }
