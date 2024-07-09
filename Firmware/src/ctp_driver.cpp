@@ -37,6 +37,8 @@ static bool init_ctp();
 static void cst_read();
 static void ctp_reset(kernel_time delay);
 
+char cst_regs[65536];
+
 void *cst_thread(void *param)
 {
     CTP_INT.set_as_input();
@@ -49,7 +51,7 @@ void *cst_thread(void *param)
 
     //EXTI->RTSR1 |= EXTI_RTSR1_TR14;
     EXTI->FTSR1 |= EXTI_FTSR1_TR14;
-    EXTI->IMR1 |= EXTI_IMR1_IM14;
+    //EXTI->IMR1 |= EXTI_IMR1_IM14;
 
     NVIC_EnableIRQ(EXTI15_10_IRQn);
 
@@ -121,12 +123,26 @@ static int ctp_firmware_info()
         SEGGER_RTT_printf(0, "ctp: check %x\n", (uint32_t)chkcode);
     }
 
-    buf = CST3XX_FIRMWARE_INFO_END_CMD;
-    i2c_send(addr, &buf, 2);
+    Block(clock_cur() + kernel_time::from_ms(10));
 
-    Block(clock_cur() + kernel_time::from_us(5000));
+    unsigned int fver;
+    i2c_register_read(addr, (uint16_t)CST3XX_FIRMWARE_VERSION_REG, &fver, 4);
+    {
+        CriticalGuard cg(s_rtt);
+        SEGGER_RTT_printf(0, "ctp: firmware version %x\n", (uint32_t)fver);
+    }
 
-    if((chkcode & 0xffff0000) == 0xcaca0000)
+    Block(clock_cur() + kernel_time::from_ms(10));
+
+    for(int i = 0; i < 3; i++)
+    {
+        buf = CST3XX_FIRMWARE_INFO_END_CMD;
+        i2c_send(addr, &buf, 2);
+
+        Block(clock_cur() + kernel_time::from_us(5000));
+    }
+
+    if((chkcode & 0xffff0000) == 0xcaca0000 && fver != CST3XX_FIRMWARE_VER_INVALID_VAL)
         return 0;
     else
         return -1;
@@ -139,6 +155,9 @@ bool init_ctp()
         return false;
     if(ctp_firmware_info() < 0)
         return false;
+    ctp_reset(kernel_time::from_ms(40));
+
+    EXTI->IMR1 |= EXTI_IMR1_IM14;
     return true;
 }
 
@@ -159,6 +178,20 @@ void cst_read()
             __asm__ volatile("bkpt \n" ::: "memory");
         } // 4360
     } */
+
+    for(int taddr = 0; taddr < 65536; taddr += 32)
+    {
+        i2c_register_read(addr, (uint16_t)taddr, &cst_regs[taddr], 32);
+    }
+    for(int i = 0; i < 65536; i++)
+    {
+        if(cst_regs[i] == CST3XX_TOUCH_DATA_CHK_VAL)
+        {
+            CriticalGuard cg(s_rtt);
+            SEGGER_RTT_printf(0, "cst: touch check at %d\n", i);
+        }
+    }
+
 
     i2c_register_read(addr, (uint16_t)CST3XX_TOUCH_DATA_PART_REG, buf, 28);
 
