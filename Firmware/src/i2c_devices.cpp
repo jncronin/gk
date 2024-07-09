@@ -264,11 +264,13 @@ static void reset_i2c()
 void init_i2c()
 {
     auto t_i2c = Thread::Create("i2c", i2c_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc, PreferM4);
+#if GK_ENABLE_CTP340
     auto t_ctp = Thread::Create("ctp340", cst_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc, PreferM4);
+    Schedule(t_ctp);
+#endif
     auto t_lsm = Thread::Create("lsm6dsl", lsm_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc, PreferM4);
     auto t_max = Thread::Create("max17048", max_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc, PreferM4);
     Schedule(t_i2c);
-    Schedule(t_ctp);
     Schedule(t_lsm);
     Schedule(t_max);
 }
