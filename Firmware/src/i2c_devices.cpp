@@ -288,6 +288,7 @@ static uint32_t calc_cr2(unsigned int i2c_address, bool is_read,
     }
     else
     {
+        to_xmit = 255;
         ret |= (0xffU << I2C_CR2_NBYTES_Pos) |
             I2C_CR2_RELOAD;
     }
@@ -410,6 +411,11 @@ void *i2c_thread(void *params)
                     if(n_xmit == n_tc_end)
                     {
                         while(!(i2c->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
+                        if(i2c->ISR & I2C_ISR_NACKF)
+                        {
+                            CriticalGuard cg(s_rtt);
+                            SEGGER_RTT_printf(0, "i2c: NACKF during write phase\n");
+                        }
                         if((cur_i2c_msg.restart_after_read && (i2c->ISR & I2C_ISR_TC)) ||
                             (i2c->ISR & I2C_ISR_STOPF))
                         {
