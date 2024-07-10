@@ -2500,6 +2500,11 @@
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 454ad86a-7297-448c-a040-a8aa9c449a76)
   )
+  (text "TODO: replace AP62300 - only rated for VIN 4.2-18V therefore unsuitable for battery\nConsider, e.g. LTC3536 with 1.8-5.5V input range - therefore cannot be used for 12V and would need separate, e.g. AP62300 for 12V supply"
+    (at 187.96 34.29 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid 66d524e6-95b6-4ebb-9588-5683ef689958)
+  )
   (text "MCU bypass caps" (at 29.21 124.46 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 82268c17-8cf1-4427-bfe3-887b734a4963)
