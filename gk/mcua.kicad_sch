@@ -3184,6 +3184,12 @@
     (uuid fe4e0d9a-52c0-4d32-8a2b-4d8b7e859c2d)
   )
 
+  (text "TODO connect VCC to VREF+ to allow measurement of VCC supply voltage (by comparison with internal VREFINT)"
+    (at 64.77 189.23 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid a4b89389-b30c-45bd-910a-9b935cb447ab)
+  )
+
   (global_label "FMC_A11" (shape input) (at 160.02 146.05 270) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify right))
     (uuid 02e76a7f-22ed-451d-a037-fc0195b39bac)
