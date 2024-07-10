@@ -134,7 +134,7 @@ void *lsm_thread(void *param)
                 LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_POWER_DOWN);
                 last_running = false;
             }
-            s_en.Wait(kernel_time::from_ms(1000));
+            s_en.Wait(clock_cur() + kernel_time::from_ms(1000));
         }
     }
 }
