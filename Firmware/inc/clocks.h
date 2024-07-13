@@ -59,5 +59,7 @@ void clock_set_timebase(const struct timespec *tp);
 void clock_get_now(struct timespec *tp);
 uint64_t clock_timespec_to_ms(const struct timespec &tp);
 
+int clock_set_rtc_from_timespec(const struct timespec *tp);
+int clock_get_timespec_from_rtc(struct timespec *tp);
 
 #endif
