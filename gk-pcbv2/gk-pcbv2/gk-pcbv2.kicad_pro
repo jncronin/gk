@@ -609,6 +609,22 @@
       {
         "netclass": "MCUPIN",
         "pattern": "SD_PWR"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "PCM*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "SD_*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "MCU_*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "VREG_PWM"
       }
     ]
   },

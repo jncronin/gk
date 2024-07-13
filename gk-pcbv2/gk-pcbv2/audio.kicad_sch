@@ -2409,13 +2409,13 @@
     )
   )
 
-  (symbol (lib_id "power:VCC") (at 69.85 123.19 0) (unit 1)
+  (symbol (lib_id "power:VDDA") (at 69.85 123.19 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
-    (uuid ce70b60a-efc7-41dd-b57b-73353f7206db)
-    (property "Reference" "#PWR076" (at 69.85 127 0)
+    (uuid c4522591-a5d6-46df-9b1d-7a55dc396edd)
+    (property "Reference" "#PWR05" (at 69.85 127 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (property "Value" "VCC" (at 69.85 119.38 0)
+    (property "Value" "VDDA" (at 69.85 118.11 0)
       (effects (font (size 1.27 1.27)))
     )
     (property "Footprint" "" (at 69.85 123.19 0)
@@ -2424,11 +2424,11 @@
     (property "Datasheet" "" (at 69.85 123.19 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 9d361457-9a0f-43ab-a494-bce57a930c79))
+    (pin "1" (uuid 8f912397-e1e1-477a-a5ff-feeee4db9f67))
     (instances
       (project "gk-pcbv2"
         (path "/08730ac6-6084-459f-bdf1-86b322355ede/10bf96f0-351a-4550-b62a-cc824dccdbb6"
-          (reference "#PWR076") (unit 1)
+          (reference "#PWR05") (unit 1)
         )
       )
     )
