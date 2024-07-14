@@ -8,6 +8,10 @@
 #include "thread.h"
 #include "process.h"
 
+#if GK_LOG_USB
+#include "tusb.h"
+#endif
+
 extern Process kernel_proc;
 
 #if !GK_ENABLE_USB
@@ -108,13 +112,49 @@ static void *rtt_logger_task(void *param)
     }
 }
 
+#if GK_LOG_USB
+static void *usb_logger_task(void *param)
+{
+    auto clog = reinterpret_cast<klog_def *>(param);
+    while(true)
+    {
+        if(clog->s_sem->Wait())
+        {
+            CriticalGuard cg(s_log);
+            char c;
+            bool sent = false;
+            while(tud_cdc_n_connected(1) &&
+                tud_cdc_n_write_available(1) &&
+                clog->klog->Read(&c))
+            {
+                if(c == '\n')
+                {
+                    char cr[] = { '\r', '\n' };
+                    tud_cdc_n_write(1, cr, 2);
+                }
+                else
+                {
+                    tud_cdc_n_write(1, &c, 1);
+                }
+                sent = true;
+            }
+            if(sent)
+                tud_cdc_n_write_flush(1);
+        }
+    }
+}
+#endif
+
 int init_log()
 {
 #if GK_LOG_RTT
-    Schedule(Thread::Create("logger", rtt_logger_task, (void *)&klog_def_rtt, true, GK_PRIORITY_VHIGH, kernel_proc,
+    Schedule(Thread::Create("log_rtt", rtt_logger_task, (void *)&klog_def_rtt, true, GK_PRIORITY_VHIGH, kernel_proc,
         CPUAffinity::PreferM4));
 #endif
-
+#if GK_LOG_USB
+    Schedule(Thread::Create("log_usb", usb_logger_task, (void *)&klog_def_usb, true, GK_PRIORITY_VHIGH, kernel_proc,
+        CPUAffinity::PreferM4));
+#endif
     return 0;
 }
 

@@ -50,7 +50,7 @@
 #endif
 
 #define CFG_TUD_HID             0
-#define CFG_TUD_CDC             1
+#define CFG_TUD_CDC             (1 + GK_LOG_USB)
 #define CFG_TUD_MSC             GK_ENABLE_USB_MASS_STORAGE
 #define CFG_TUD_MIDI            0
 #define CFG_TUD_VENDOR          0
