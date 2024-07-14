@@ -20,6 +20,12 @@
 #define GK_OVERCLOCK                1
 #define GK_TICKLESS                 0
 
+#define GK_LOG_RTT                  1
+#define GK_LOG_USB                  1
+#define GK_LOG_FILE                 1
+
+#define GK_LOG_SIZE                 (16*1024)
+
 #define GK_ENABLE_CTP340            0
 
 #define GK_SDRAM_BASE               0x60000000

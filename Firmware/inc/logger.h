@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 int klog(const char *format, ...);
+int init_log();
 void *logger_task(void *param);
 ssize_t log_fwrite(const void *buf, size_t count);
 
