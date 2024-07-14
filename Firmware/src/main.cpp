@@ -93,9 +93,7 @@ int main()
     kernel_proc.name = "kernel";
 
     klog("kernel: starting M7\n");
-
-    Schedule(Thread::Create("logger", logger_task, (void *)0, true, GK_PRIORITY_VHIGH, kernel_proc,
-        CPUAffinity::PreferM4));
+    init_log();
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP

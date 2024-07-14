@@ -293,6 +293,8 @@ SECTIONS
     _ssramcm4 = .;
     *(.sram_data)
     *(.sram_data*)
+    *(.sram_rdata)
+    *(.sram_rdata*)
     _esramcm4 = .;
   } >SRAM AT> FLASH2
   _ssramcm4_flash = LOADADDR(.sram_data);
