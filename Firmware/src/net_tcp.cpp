@@ -42,12 +42,12 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
 {
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "net: tcp: received packet:\n");
+        klog("net: tcp: received packet:\n");
         for(unsigned int i = 0; i < pkt.epacket.link_layer_n; i++)
         {
-            SEGGER_RTT_printf(0, "%02X ", pkt.epacket.link_layer_data[i]);
+            klog("%02X ", pkt.epacket.link_layer_data[i]);
         }
-        SEGGER_RTT_printf(0, "\n");
+        klog("\n");
     }
 
     auto src_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[0]);
@@ -215,7 +215,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
     {
         CriticalGuard cg2(s_rtt);
-        SEGGER_RTT_printf(0, "net: tcpsocket: packet: state %d, flags %x, len %u\n", 
+        klog("net: tcpsocket: packet: state %d, flags %x, len %u\n", 
             (int)state, flags, n);
     }
 

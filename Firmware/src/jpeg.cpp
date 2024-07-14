@@ -129,7 +129,7 @@ void jpeg_test()
     if(f < 0)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "couldn't open file\n");
+        klog("couldn't open file\n");
         return;
     }
 
@@ -138,7 +138,7 @@ void jpeg_test()
     if(!mr_jpeg.valid || !mr_jpegout.valid)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "out of memory\n");
+        klog("out of memory\n");
         memblk_deallocate(mr_jpeg);
         memblk_deallocate(mr_jpegout);
         deferred_call(syscall_close1, f);
@@ -148,7 +148,7 @@ void jpeg_test()
     auto br = deferred_call(syscall_read, f, (char *)mr_jpeg.address, 1024 * 1024);
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "jpeg read %d bytes\n", br);
+        klog("jpeg read %d bytes\n", br);
     }
     deferred_call(syscall_close1, f);
     deferred_call(syscall_close2, f);
@@ -163,7 +163,7 @@ void jpeg_test()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "done\n");
+        klog("done\n");
     }
     memblk_deallocate(mr_jpeg);
 
@@ -171,14 +171,14 @@ void jpeg_test()
     if((confr[1] & JPEG_CONFR1_NF_Msk) != 2U)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "incorrect NF\n");
+        klog("incorrect NF\n");
         return;
     }
 
     if((confr[1] & JPEG_CONFR1_COLORSPACE_Msk) != (1U << JPEG_CONFR1_COLORSPACE_Pos))
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "incorrect colorspace\n");
+        klog("incorrect colorspace\n");
         return;
     }
 
@@ -188,7 +188,7 @@ void jpeg_test()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "%d x %d\n", w, h);
+        klog("%d x %d\n", w, h);
     }
 
     GetCurrentThreadForCore()->p.screen_pf = GK_PIXELFORMAT_RGB565;

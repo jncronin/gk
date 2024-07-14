@@ -100,7 +100,7 @@ static int ctp_bootloader_enter()
 
 	if (buf != CST3XX_BOOTLDR_CHK_VAL) {
 		CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ctp: unable to enter bootloader mode\n");
+        klog("ctp: unable to enter bootloader mode\n");
 		return -1;
 	}
 
@@ -121,7 +121,7 @@ static int ctp_firmware_info()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ctp: check %x\n", (uint32_t)chkcode);
+        klog("ctp: check %x\n", (uint32_t)chkcode);
     }
 
     Block(clock_cur() + kernel_time::from_ms(10));
@@ -130,7 +130,7 @@ static int ctp_firmware_info()
     i2c_register_read(addr, (uint16_t)CST3XX_FIRMWARE_VERSION_REG, &fver, 4);
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ctp: firmware version %x\n", (uint32_t)fver);
+        klog("ctp: firmware version %x\n", (uint32_t)fver);
     }
 
     Block(clock_cur() + kernel_time::from_ms(10));
@@ -171,7 +171,7 @@ void cst_read()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "ctp %d\n", i);
+            klog("ctp %d\n", i);
         }
         i2c_register_read(addr, (uint16_t)i, buf, 1);
         if(buf[0] == CST3XX_TOUCH_DATA_CHK_VAL)
@@ -189,7 +189,7 @@ void cst_read()
         if(cst_regs[i] == CST3XX_TOUCH_DATA_CHK_VAL)
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "cst: touch check at %d\n", i);
+            klog("cst: touch check at %d\n", i);
         }
     } */
 
@@ -200,7 +200,7 @@ void cst_read()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ctp@%u: %x, %x\n",
+        klog("ctp@%u: %x, %x\n",
             (uint32_t)clock_cur_us(), buf[6], buf[0]);
     }
 

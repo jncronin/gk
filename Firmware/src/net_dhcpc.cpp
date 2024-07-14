@@ -179,7 +179,7 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
             // timeout, try again
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "dhcpc: timeout in state %d, restarting\n",
+                klog("dhcpc: timeout in state %d, restarting\n",
                     curreq.state);
             }
             return send_discover(curreq);
@@ -189,7 +189,7 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "dhcpc: new request\n");
+            klog("dhcpc: new request\n");
         }
         // store that we've made a request
         dhcpc_request dr;
@@ -250,7 +250,7 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
 {
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpc: received packet\n");
+        klog("dhcpc: received packet\n");
     }
 
     // see if we have a ongoing request for this iface
@@ -325,7 +325,7 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpc: msg_type: %d, state: %d, yiaddr: %s\n",
+        klog("dhcpc: msg_type: %d, state: %d, yiaddr: %s\n",
             (int)msg_type, (int)dr.state,
             yiaddr.ToString().c_str());
     }
@@ -360,8 +360,8 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
 
                 if(nm == 0UL) nm = 0xffffffff;
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "dhcpc: DHCPACK received\n");
-                SEGGER_RTT_printf(0, "  IP: %s\n  NM: %s\n  GW: %s\n  DNS: %s\n  domain name: %s\n  lease: %d\n",
+                klog("dhcpc: DHCPACK received\n");
+                klog("  IP: %s\n  NM: %s\n  GW: %s\n  DNS: %s\n  domain name: %s\n  lease: %d\n",
                     ip.ToString().c_str(),
                     nm.ToString().c_str(),
                     gw.ToString().c_str(),
@@ -416,7 +416,7 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpc: msg %d in state %d\n",
+        klog("dhcpc: msg %d in state %d\n",
             (int)msg_type, (int)dr.state);
     }
     return NET_NOTSUPP;

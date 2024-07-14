@@ -164,7 +164,7 @@ int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, 
 
     CriticalGuard cg(s_rtt);
     {
-        SEGGER_RTT_printf(0, "msc: unhandled scsi command %x %x %x %x\n",
+        klog("msc: unhandled scsi command %x %x %x %x\n",
             sct.wbuf[0], sct.wbuf[1], sct.wbuf[2], sct.wbuf[3]);
     }
 

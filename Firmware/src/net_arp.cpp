@@ -48,7 +48,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "net: arp packet %s %s(%s) -> %s(%s) on iface %s\n",
+        klog("net: arp packet %s %s(%s) -> %s(%s) on iface %s\n",
             (oper == 1) ? "request" : ((oper == 2) ? "reply" : "unknown"),
             ip_sender.ToString().c_str(),
             hw_sender.ToString().c_str(),

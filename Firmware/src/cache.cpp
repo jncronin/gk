@@ -32,7 +32,7 @@ static inline void wait_completion(SimpleSignal *ss, IpiRingBuffer *rb)
         {
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "cache: M7 didn't signal completion but ring buffer empty - potentially a bug\n");
+                klog("cache: M7 didn't signal completion but ring buffer empty - potentially a bug\n");
             }
             return;
         }

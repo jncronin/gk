@@ -78,7 +78,7 @@ extern "C" void *ext4_user_buf_alloc(size_t n)
 #if EXT4_DEBUG
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: user_buf_alloc %x bytes @%x\n", n, reg.address);
+        klog("ext4: user_buf_alloc %x bytes @%x\n", n, reg.address);
     }
 #endif
 
@@ -96,7 +96,7 @@ extern "C" void ext4_user_buf_free(void *ptr, size_t n)
 #if EXT4_DEBUG
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: user_buf_free %x bytes @%x\n", n, reg.address);
+        klog("ext4: user_buf_free %x bytes @%x\n", n, reg.address);
     }
 #endif
 
@@ -109,7 +109,7 @@ static int get_mbr_entry()
     int r = ext4_mbr_scan(&sd, &bdevs);
     if (r != EOK) {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4_mbr_scan error\n");
+        klog("ext4_mbr_scan error\n");
         return -2;
     }
     r = -1;
@@ -117,10 +117,10 @@ static int get_mbr_entry()
         CriticalGuard cg(s_rtt);
         for (int i = 0; i < 4; i++)
         {
-            SEGGER_RTT_printf(0, "mbr_entry %d:\n", i);
+            klog("mbr_entry %d:\n", i);
             if (!bdevs.partitions[i].bdif)
             {
-                SEGGER_RTT_printf(0, "\tempty/unknown\n");
+                klog("\tempty/unknown\n");
                 continue;
             }
             else if(r == -1)
@@ -129,10 +129,10 @@ static int get_mbr_entry()
                 sd_part = bdevs.partitions[i];
             }
 
-            SEGGER_RTT_printf(0, "\toffeset: 0x%" PRIx32 ", %" PRIu32 "MB\n",
+            klog("\toffeset: 0x%" PRIx32 ", %" PRIu32 "MB\n",
                 (uint32_t)bdevs.partitions[i].part_offset,
                 (uint32_t)(bdevs.partitions[i].part_offset / (1024 * 1024)));
-            SEGGER_RTT_printf(0, "\tsize:    0x%" PRIx32 ", %" PRIu32 "MB\n",
+            klog("\tsize:    0x%" PRIx32 ", %" PRIu32 "MB\n",
                 (uint32_t)bdevs.partitions[i].part_size,
                 (uint32_t)(bdevs.partitions[i].part_size / (1024 * 1024)));
         }
@@ -154,7 +154,7 @@ static int prepare_ext4()
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: register failed %d\n", r);
+        klog("ext4: register failed %d\n", r);
         return r;
     }
 
@@ -173,7 +173,7 @@ static int do_mount()
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: mount failed %d\n", r);
+        klog("ext4: mount failed %d\n", r);
         return r;
     }
 
@@ -183,14 +183,14 @@ static int do_mount()
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: recover failed %d\n", r);
+        klog("ext4: recover failed %d\n", r);
     }
 
     r = ext4_journal_start("/");
     if(r != EOK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: journal_start failed %d\n", r);
+        klog("ext4: journal_start failed %d\n", r);
     }
 #endif
 
@@ -203,7 +203,7 @@ static int do_mount()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: mounted /\n");
+        klog("ext4: mounted /\n");
         return 0;
     }
 }
@@ -262,7 +262,7 @@ static void handle_open_message(ext4_message &msg)
 #if EXT4_DEBUG
                     {
                         CriticalGuard cg_rtt(s_rtt);
-                        SEGGER_RTT_printf(0, "ext4_fopen: open(%s) failing with %d\n",
+                        klog("ext4_fopen: open(%s) failing with %d\n",
                             msg.params.open_params.pathname, extret);
                     }
 #endif
@@ -286,7 +286,7 @@ static void handle_read_message(ext4_message &msg)
 #if EXT4_DEBUG
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4: read(%x, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
+        klog("ext4: read(%x, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
             msg.params.rw_params.nbytes);
     }
 
@@ -350,7 +350,7 @@ static inline void copy_dmaaware(void *dest, const void *src, size_t n)
 #if DEBUG_EXT
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "copy_dmaaware: dest: %x, src: %x, len %d, coreid: %d\n",
+        klog("copy_dmaaware: dest: %x, src: %x, len %d, coreid: %d\n",
             (uint32_t)(uintptr_t)dest, (uint32_t)(uintptr_t)src, n, GetCoreID());
     }
 #endif
@@ -385,7 +385,7 @@ static inline void copy_dmaaware(void *dest, const void *src, size_t n)
 #if DEBUG_EXT
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "copy_dmaaware: cisr: %x\n", dmac->CISR);
+            klog("copy_dmaaware: cisr: %x\n", dmac->CISR);
         }
 #endif
         dmac->CIFCR = 0x1fU;
@@ -430,7 +430,7 @@ static void handle_fstat_message(ext4_message &msg)
     {
 #if DEBUG_EXT
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fstat: %s obtained from cache\n", msg.params.fstat_params.pathname);
+        klog("fstat: %s obtained from cache\n", msg.params.fstat_params.pathname);
 #endif
     }
     else
@@ -477,7 +477,7 @@ static void handle_fstat_message(ext4_message &msg)
 #if DEBUG_EXT
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fstat: precopy\n");
+        klog("fstat: precopy\n");
     }
 #endif
     copy_dmaaware(msg.params.fstat_params.st, &buf, sizeof(struct stat));
@@ -487,7 +487,7 @@ static void handle_fstat_message(ext4_message &msg)
 #if DEBUG_EXT
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fstat: %s: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
+        klog("fstat: %s: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
             msg.params.fstat_params.pathname,
             buf.st_blksize,
             buf.st_blocks,
@@ -502,7 +502,7 @@ static void handle_fstat_message(ext4_message &msg)
 _err:
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "ext4_fstat: fstat(%s) failing\n", msg.params.fstat_params.pathname);
+        klog("ext4_fstat: fstat(%s) failing\n", msg.params.fstat_params.pathname);
     }
     msg.ss_p->ival1 = -1;
     msg.ss_p->ival2 = extret;
@@ -692,7 +692,7 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
 #if EXT4_DEBUG
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "sd_bread: %x, %u, %u\n", (uint32_t)(uintptr_t)buf,
+        klog("sd_bread: %x, %u, %u\n", (uint32_t)(uintptr_t)buf,
             (uint32_t)blk_id, blk_cnt);
     }
 #endif

@@ -35,35 +35,35 @@ int elf_load_memory(const void *e, const std::string &pname,
         ehdr->e_ident[2] != 'L' ||
         ehdr->e_ident[3] != 'F')
     {
-        SEGGER_RTT_printf(0, "invalid magic\n");
+        klog("invalid magic\n");
         return -1;
     }
 
 	// Confirm its a 32 bit file
 	if(ehdr->e_ident[EI_CLASS] != ELFCLASS32)
 	{
-        SEGGER_RTT_printf(0, "invalid elf class\n");
+        klog("invalid elf class\n");
         return -1;
 	}
 
 	// Confirm its a little-endian file
 	if(ehdr->e_ident[EI_DATA] != ELFDATA2LSB)
 	{
-        SEGGER_RTT_printf(0, "not lsb\n");
+        klog("not lsb\n");
         return -1;
 	}
 
 	// Confirm its an executable file
 	if(ehdr->e_type != ET_EXEC)
 	{
-        SEGGER_RTT_printf(0, "not exec\n");
+        klog("not exec\n");
         return -1;
 	}
 
 	// Confirm its for the ARM architecture
 	if(ehdr->e_machine != EM_ARM)
 	{
-        SEGGER_RTT_printf(0, "not arm\n");
+        klog("not arm\n");
         return -1;
 	}
 
@@ -88,7 +88,7 @@ int elf_load_memory(const void *e, const std::string &pname,
     auto arg_offset = max_size;
     max_size += arg_length;
 
-    SEGGER_RTT_printf(0, "need %d bytes\n", max_size);
+    klog("need %d bytes\n", max_size);
 
     // get a relevant memory block AXISRAM > SDRAM
     auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM);
@@ -98,10 +98,10 @@ int elf_load_memory(const void *e, const std::string &pname,
     }
     if(!memblk.valid)
     {
-        SEGGER_RTT_printf(0, "failed to allocate memory\n");
+        klog("failed to allocate memory\n");
         return -1;
     }
-    SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
+    klog("loading to %x\n", memblk.address);
     auto arg_base = memblk.address + arg_offset;
 
     // Create a stack for thread0
@@ -139,7 +139,7 @@ int elf_load_memory(const void *e, const std::string &pname,
         auto shdr = reinterpret_cast<const Elf32_Shdr *>(shdrs + i * ehdr->e_shentsize);
         if(shdr->sh_type != SHT_REL)
             continue;
-        SEGGER_RTT_printf(0, "reloc section %d\n", i);
+        klog("reloc section %d\n", i);
 
         auto symtab_idx = shdr->sh_link;
         auto relsect_idx = shdr->sh_info;
@@ -185,7 +185,7 @@ int elf_load_memory(const void *e, const std::string &pname,
                     {
                         if((base_ptr + rel->r_offset) & 0x3)
                         {
-                            SEGGER_RTT_printf(0, "unaligned reloc at %x\n", base_ptr + rel->r_offset);
+                            klog("unaligned reloc at %x\n", base_ptr + rel->r_offset);
                             __asm__ volatile ("bkpt \n" ::: "memory");
                         }
 
@@ -260,7 +260,7 @@ int elf_load_memory(const void *e, const std::string &pname,
                     break;
 
                 default:
-                    SEGGER_RTT_printf(0, "unknown rel type %d\n", r_type);
+                    klog("unknown rel type %d\n", r_type);
                     return -1;
             }
         }
@@ -325,7 +325,7 @@ int elf_load_memory(const void *e, const std::string &pname,
     }
     if(act_heap_size != heap_size)
     {
-        SEGGER_RTT_printf(0, "elf: couldn't allocate heap size of %u, only %u available\n",
+        klog("elf: couldn't allocate heap size of %u, only %u available\n",
             heap_size, act_heap_size);
     }
     memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
@@ -347,8 +347,8 @@ int elf_load_memory(const void *e, const std::string &pname,
     if(proc_ret)
         *proc_ret = proc;
 
-    SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
-    SEGGER_RTT_printf(0, "%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
+    klog("successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)start);
+    klog("%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
         pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
 
     return 0;
@@ -396,35 +396,35 @@ int elf_load_fildes(int fd,
         ehdr.e_ident[2] != 'L' ||
         ehdr.e_ident[3] != 'F')
     {
-        SEGGER_RTT_printf(0, "invalid magic\n");
+        klog("invalid magic\n");
         return -1;
     }
 
 	// Confirm its a 32 bit file
 	if(ehdr.e_ident[EI_CLASS] != ELFCLASS32)
 	{
-        SEGGER_RTT_printf(0, "invalid elf class\n");
+        klog("invalid elf class\n");
         return -1;
 	}
 
 	// Confirm its a little-endian file
 	if(ehdr.e_ident[EI_DATA] != ELFDATA2LSB)
 	{
-        SEGGER_RTT_printf(0, "not lsb\n");
+        klog("not lsb\n");
         return -1;
 	}
 
 	// Confirm its an executable file
 	if(ehdr.e_type != ET_EXEC)
 	{
-        SEGGER_RTT_printf(0, "not exec\n");
+        klog("not exec\n");
         return -1;
 	}
 
 	// Confirm its for the ARM architecture
 	if(ehdr.e_machine != EM_ARM)
 	{
-        SEGGER_RTT_printf(0, "not arm\n");
+        klog("not arm\n");
         return -1;
 	}
 
@@ -486,7 +486,7 @@ int elf_load_fildes(int fd,
     auto arg_offset = max_size;
     max_size += arg_length;
 
-    SEGGER_RTT_printf(0, "need %d bytes\n", max_size);
+    klog("need %d bytes\n", max_size);
 
     // get a relevant memory block AXISRAM > SDRAM
     auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM);
@@ -496,10 +496,10 @@ int elf_load_fildes(int fd,
     }
     if(!memblk.valid)
     {
-        SEGGER_RTT_printf(0, "failed to allocate memory\n");
+        klog("failed to allocate memory\n");
         return -1;
     }
-    SEGGER_RTT_printf(0, "loading to %x\n", memblk.address);
+    klog("loading to %x\n", memblk.address);
     [[maybe_unused]] auto arg_base = memblk.address + arg_offset;
     p.code_data = memblk;
 
@@ -565,7 +565,7 @@ int elf_load_fildes(int fd,
         }
         if(shdr.sh_type != SHT_REL)
             continue;
-        SEGGER_RTT_printf(0, "reloc section %d\n", i);
+        klog("reloc section %d\n", i);
 
         auto symtab_idx = shdr.sh_link;
         auto relsect_idx = shdr.sh_info;
@@ -642,7 +642,7 @@ int elf_load_fildes(int fd,
                     {
                         if((base_ptr + rel->r_offset) & 0x3)
                         {
-                            SEGGER_RTT_printf(0, "unaligned reloc at %x\n", base_ptr + rel->r_offset);
+                            klog("unaligned reloc at %x\n", base_ptr + rel->r_offset);
                             __asm__ volatile ("bkpt \n" ::: "memory");
                         }
 
@@ -734,7 +734,7 @@ int elf_load_fildes(int fd,
                     break;
 
                 default:
-                    SEGGER_RTT_printf(0, "unknown rel type %d\n", r_type);
+                    klog("unknown rel type %d\n", r_type);
                     return -1;
             }
         }
@@ -790,8 +790,8 @@ int elf_load_fildes(int fd,
     p.argc = *(int *)arg_base;
     p.argv = (char **)(arg_base + 4);
 
-    SEGGER_RTT_printf(0, "successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)base_ptr + ehdr.e_entry);
-    SEGGER_RTT_printf(0, "%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
+    klog("successfully loaded, entry: %x\n", (uint32_t)(uintptr_t)base_ptr + ehdr.e_entry);
+    klog("%s: Exec.Command(\"ReadIntoTraceCache 0x%08x 0x%08x\");\n",
         pname.c_str(), (unsigned long)base_ptr, (unsigned long)max_size);
 
     return 0;

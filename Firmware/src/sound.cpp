@@ -267,7 +267,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 
     {
         CriticalGuard cg2(s_rtt);
-        SEGGER_RTT_printf(0, "audiosetmode: set %d hz, %d channels, %d bit\n",
+        klog("audiosetmode: set %d hz, %d channels, %d bit\n",
             freq, nchan, nbits);
     }
     

@@ -49,7 +49,7 @@ void *max_thread(void *param)
 
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "max: vcell: %sV, soc: %s%%, crate: %s%%/hr, charging: %s, time remaining: %s mins\n",
+                klog("max: vcell: %sV, soc: %s%%, crate: %s%%/hr, charging: %s, time remaining: %s mins\n",
                     std::to_string(f_vcell).c_str(),
                     std::to_string(f_soc).c_str(),
                     std::to_string(f_crate).c_str(),
@@ -69,7 +69,7 @@ bool init_max()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "max: version %x\n", ver);
+        klog("max: version %x\n", ver);
     }    
 
     return true;
