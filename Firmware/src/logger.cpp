@@ -145,6 +145,52 @@ static void *usb_logger_task(void *param)
 }
 #endif
 
+#if GK_LOG_FILE
+// buffer in AXISRAM for SDMMC to read
+static const constexpr unsigned int file_buf_size = 512;
+__attribute__((aligned(32))) char file_buf[file_buf_size];
+
+#include "syscalls_int.h"
+
+extern SimpleSignal fs_provision_complete;
+
+static void *file_logger_task(void *param)
+{
+    int fno = -1;
+    const char log_fname[] = "/syslog";
+
+    while(!fs_provision_complete.Wait());
+
+    while(fno < 0)
+    {
+        fno = deferred_call(syscall_open, log_fname, O_WRONLY | O_CREAT | O_TRUNC, 0);
+    }
+
+    auto clog = reinterpret_cast<klog_def *>(param);
+    while(true)
+    {
+        if(clog->s_sem->Wait())
+        {
+            while(true)
+            {
+                int bw = 0;
+                {
+                    CriticalGuard cg(s_log);
+                    bw = clog->klog->Read(file_buf, file_buf_size);
+                }
+                if(bw)
+                {
+                    deferred_call(syscall_write, fno, file_buf, bw);
+                }
+                else
+                    break;
+            }
+        }
+    }
+}
+#endif
+
+
 int init_log()
 {
 #if GK_LOG_RTT
@@ -153,6 +199,10 @@ int init_log()
 #endif
 #if GK_LOG_USB
     Schedule(Thread::Create("log_usb", usb_logger_task, (void *)&klog_def_usb, true, GK_PRIORITY_VHIGH, kernel_proc,
+        CPUAffinity::PreferM4));
+#endif
+#if GK_LOG_FILE
+    Schedule(Thread::Create("log_file", file_logger_task, (void *)&klog_def_file, true, GK_PRIORITY_VHIGH, kernel_proc,
         CPUAffinity::PreferM4));
 #endif
     return 0;

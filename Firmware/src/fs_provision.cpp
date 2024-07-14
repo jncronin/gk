@@ -15,8 +15,8 @@
 #define FS_PROVISION_BLOCK_SIZE     (4*1024*1024)
 
 #define FS_PROVISION_EXTRACT_FILE 1
-#define FS_PROVISION_EXTRACT_FILE_FROM "/home/user/.mednafen/mednafen.cfg"
-#define FS_PROVISION_EXTRACT_FILE_TO "mednafen.cfg"
+#define FS_PROVISION_EXTRACT_FILE_FROM "/syslog"
+#define FS_PROVISION_EXTRACT_FILE_TO "syslog.txt"
 
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
@@ -39,6 +39,7 @@ char fake_usb_mbr[512];
 SRAM4_DATA static volatile bool fake_mbr_prepped = false;
 SRAM4_DATA static volatile unsigned int fake_mbr_sector_count = 0;
 SRAM4_DATA static volatile unsigned int fake_mbr_lba = 0;
+SRAM4_DATA SimpleSignal fs_provision_complete;
 static FATFS fs;
 static FIL fp;
 extern Spinlock s_rtt;
@@ -534,6 +535,8 @@ int fs_provision()
 #endif
     f_unmount("/");
 
+    fs_provision_complete.Signal();
+
     return 0;
 }
 
@@ -598,21 +601,18 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     int rfd = deferred_call(syscall_open, from.c_str(), O_RDONLY, 0);
     if(rfd == -1)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: couldn't open %s\n", from.c_str());
         return;
     }
 
     if(deferred_call(syscall_fstat, rfd, &_st) < 0)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: fstat failed\n");
         close(rfd);
         return;
     }
 
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: opened %s of size %u\n",
             from.c_str(), _st.st_size);
     }
@@ -622,7 +622,6 @@ void fs_provision_extract(const std::string &from, const std::string &to)
         mr = memblk_allocate(_st.st_size, MemRegionType::SDRAM);
     if(!mr.valid)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: unable to allocate memregion of size %d for %s\n",
             _st.st_size, from.c_str());
         close(rfd);
@@ -633,7 +632,6 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     close(rfd);
     if(br != _st.st_size)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: failed to load entire file: %d\n", br);
         memblk_deallocate(mr);
         return;
@@ -643,7 +641,6 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     auto fr = f_open(&fp, to.c_str(), FA_WRITE | FA_CREATE_ALWAYS);
     if(fr != FR_OK)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: failed to open %s for writing (%d)\n",
             to.c_str(), fr);
         memblk_deallocate(mr);
@@ -656,20 +653,17 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     f_close(&fp);
     if(fr != FR_OK)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: failed to write to %s: %d\n",
             to.c_str(), fr);
         return;
     }
     if(bw != (UINT)_st.st_size)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: failed to write sufficient bytes to %s: %u vs %u\n",
             to.c_str(), bw, (UINT)_st.st_size);
     }
 
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision_extract: successfully extracted %s to %s\n",
             from.c_str(), to.c_str());
     }
