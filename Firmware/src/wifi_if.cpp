@@ -130,7 +130,7 @@ void wifi_connect()
         if(ret != M2M_SUCCESS)
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "wifi: m2m_wifi_connect_psk failed %i\n", ret);
+            klog("wifi: m2m_wifi_connect_psk failed %i\n", ret);
             wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
         }
     }
@@ -437,14 +437,14 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
 #ifdef DEBUG_WIFI
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "wifi: rx packet %d/%d @ %x\n",
+                klog("wifi: rx packet %d/%d @ %x\n",
                     ctrlbuf->u16DataSize, ctrlbuf->u16RemainigDataSize,
                     pvMsg);
                 for(unsigned int i = 0; i < ctrlbuf->u16DataSize; i++)
                 {
-                    SEGGER_RTT_printf(0, "%02X ", reinterpret_cast<char *>(pvMsg)[i]);
+                    klog("%02X ", reinterpret_cast<char *>(pvMsg)[i]);
                 }
-                SEGGER_RTT_printf(0, "\n");
+                klog("\n");
             }
 #endif
 
@@ -564,7 +564,7 @@ void *wifi_task(void *p)
             if(ws != old_state)
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "WIFI state: %d\n", wifi_if.connected);
+                klog("WIFI state: %d\n", wifi_if.connected);
                 old_state = ws;
             }
             if(ws == WincNetInterface::WIFI_UNINIT)
@@ -642,10 +642,10 @@ int WincNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
     *reinterpret_cast<uint32_t *>(&buf[n + 14]) = crc;
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "send wifi packet:\n");
+        klog("send wifi packet:\n");
         for(unsigned int i = 0; i < n + 14; i++)
-            SEGGER_RTT_printf(0, "%02X ", buf[i]);
-        SEGGER_RTT_printf(0, "\nchecksum: %8" PRIx32 "\n", crc);
+            klog("%02X ", buf[i]);
+        klog("\nchecksum: %8" PRIx32 "\n", crc);
     }
 
     winc_mutex.lock();

@@ -338,7 +338,7 @@ void *i2c_thread(void *params)
 #if DEBUG_I2C
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "i2c: transfer failing %x\n", i2c->ISR);
+                        klog("i2c: transfer failing %x\n", i2c->ISR);
                     }
 #endif
                     i2c_init = false;
@@ -348,7 +348,7 @@ void *i2c_thread(void *params)
 #if DEBUG_I2C
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "i2c: NACK\n");
+                        klog("i2c: NACK\n");
                     }
 #endif
                     i2c->ICR = I2C_ICR_NACKCF;
@@ -388,7 +388,7 @@ void *i2c_thread(void *params)
 #if DEBUG_I2C
                             {
                                 CriticalGuard cg(s_rtt);
-                                SEGGER_RTT_printf(0, "i2c: early read finish %u, %x\n", n_xmit, i2c->ISR);
+                                klog("i2c: early read finish %u, %x\n", n_xmit, i2c->ISR);
                             }
 #endif
                             // early finish
@@ -416,7 +416,7 @@ void *i2c_thread(void *params)
                         if(i2c->ISR & I2C_ISR_NACKF)
                         {
                             CriticalGuard cg(s_rtt);
-                            SEGGER_RTT_printf(0, "i2c: NACKF during write phase\n");
+                            klog("i2c: NACKF during write phase\n");
                         }
                         if((cur_i2c_msg.restart_after_read && (i2c->ISR & I2C_ISR_TC)) ||
                             (i2c->ISR & I2C_ISR_STOPF))
@@ -440,7 +440,7 @@ void *i2c_thread(void *params)
 #if DEBUG_I2C
                             {
                                 CriticalGuard cg(s_rtt);
-                                SEGGER_RTT_printf(0, "i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
+                                klog("i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
                             }
 #endif
                             // early finish

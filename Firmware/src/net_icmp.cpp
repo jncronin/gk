@@ -52,7 +52,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "net: received ICMP %s -> %s, type %d code %d checksum %d id %d seq %d\n",
+        klog("net: received ICMP %s -> %s, type %d code %d checksum %d id %d seq %d\n",
             IP4Addr(pkt.src).ToString().c_str(),
             IP4Addr(pkt.dest).ToString().c_str(),
             pkt.contents[0], pkt.contents[1],
@@ -60,12 +60,12 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
             *reinterpret_cast<const uint16_t *>(&pkt.contents[4]),
             *reinterpret_cast<const uint16_t *>(&pkt.contents[6]));
 
-        SEGGER_RTT_printf(0, "net: received packet:\n");
+        klog("net: received packet:\n");
         for(int i = 0; i < (int)pkt.epacket.n + 18; i++)
         {
-            SEGGER_RTT_printf(0, "%02X ", pkt.epacket.contents[i - 14]);
+            klog("%02X ", pkt.epacket.contents[i - 14]);
         }
-        SEGGER_RTT_printf(0, "\n");
+        klog("\n");
     }
 
     IP4Route route;

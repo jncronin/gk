@@ -177,7 +177,7 @@ static size_t direct_fread(void *ptr, size_t size, void *f)
     if(fr != FR_OK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "direct_fread: f_read failed %d\n", fr);
+        klog("direct_fread: f_read failed %d\n", fr);
         return 0;
     }
 
@@ -190,7 +190,7 @@ static ssize_t direct_lseek(void *f, size_t offset)
     if(fr != FR_OK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "direct_lseek: f_lseek failed %d\n", fr);
+        klog("direct_lseek: f_lseek failed %d\n", fr);
         return -1;
     }
     return offset;
@@ -232,7 +232,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
     if(!mem.valid)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: couldn't allocate buffer\n");
+        klog("fs_provision: couldn't allocate buffer\n");
         return -1;
     }
     memset((void *)mem.address, 0, mem.length);
@@ -248,7 +248,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         if(ffret != 512)
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "fs_provision: tar header read failed\n");
+            klog("fs_provision: tar header read failed\n");
             memblk_deallocate(mem);
             return -1;
         }
@@ -273,7 +273,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         if(strncmp("ustar", &tar_header[257], 5))
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "fs_provision: tar not ustar\n");
+            klog("fs_provision: tar not ustar\n");
             memblk_deallocate(mem);
             return -1;
         }
@@ -301,7 +301,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "fs_provision: %s (%d bytes), type %d\n", fname.c_str(),
+            klog("fs_provision: %s (%d bytes), type %d\n", fname.c_str(),
                 (int)fsize, type);
         }
 
@@ -317,7 +317,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             if(fd < 0)
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: fopen failed: %d\n", errno);
+                klog("fs_provision: fopen failed: %d\n", errno);
                 memblk_deallocate(mem);
                 return -1;
             }
@@ -337,7 +337,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 if(ffret != fsize_to_read)
                 {
                     CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "fs_provision: failed to read file: %d\n", ffret);
+                    klog("fs_provision: failed to read file: %d\n", ffret);
                     memblk_deallocate(mem);
                     return -1;
                 }
@@ -352,7 +352,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 if(bw != (int)fsize_to_write)
                 {
                     CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "fs_provision: fwrite failed: %d, expected %d\n",
+                    klog("fs_provision: fwrite failed: %d, expected %d\n",
                         bw, (int)fsize);
                     memblk_deallocate(mem);
                     return -1;
@@ -360,7 +360,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
 
                 {
                     CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "fs_provision: read %d, wrote %d at offset %d\n",
+                    klog("fs_provision: read %d, wrote %d at offset %d\n",
                         (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                 }
 
@@ -382,7 +382,7 @@ int fs_provision()
     if(fr != FR_OK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: f_mount failed %d\n", fr);
+        klog("fs_provision: f_mount failed %d\n", fr);
         return fr;
     }
 
@@ -392,7 +392,7 @@ int fs_provision()
     if(fr != FR_OK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision: f_opendir failed %d\n", fr);
+        klog("fs_provision: f_opendir failed %d\n", fr);
         return fr;
     }
 
@@ -412,7 +412,7 @@ int fs_provision()
         {
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "fs_provision: found file %s (%d bytes)\n", fi.fname, (unsigned int)fi.fsize);
+                klog("fs_provision: found file %s (%d bytes)\n", fi.fname, (unsigned int)fi.fsize);
             }
 
             // Get file type
@@ -432,11 +432,11 @@ int fs_provision()
             {
                 CriticalGuard cg(s_rtt);
                 if(is_tar)
-                    SEGGER_RTT_printf(0, "fs_provision: is_tar\n");
+                    klog("fs_provision: is_tar\n");
                 if(is_targz)
-                    SEGGER_RTT_printf(0, "fs_provision: is_targz\n");
+                    klog("fs_provision: is_targz\n");
                 if(!is_tar && !is_targz)
-                    SEGGER_RTT_printf(0, "fs_provision: unsupported file\n");
+                    klog("fs_provision: unsupported file\n");
             }
 
             // install files
@@ -448,7 +448,7 @@ int fs_provision()
                 if(fr != FR_OK)
                 {
                     CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "fs_provision: couldn't f_open %s: %d\n", fi.fname, fr);
+                    klog("fs_provision: couldn't f_open %s: %d\n", fi.fname, fr);
                     had_failure = true;
                     break;
                 }
@@ -471,7 +471,7 @@ int fs_provision()
                         if(fd < 0)
                         {
                             CriticalGuard cg(s_rtt);
-                            SEGGER_RTT_printf(0, "fs_provision: couldn't assign fildes\n");
+                            klog("fs_provision: couldn't assign fildes\n");
                             f_close(&fp);
                         }
                         else
@@ -486,7 +486,7 @@ int fs_provision()
                         if(gzf == NULL)
                         {
                             CriticalGuard cg(s_rtt);
-                            SEGGER_RTT_printf(0, "fs_provision: gzdopen failed\n");
+                            klog("fs_provision: gzdopen failed\n");
                             close(fd);
                         }
                         else
@@ -504,14 +504,14 @@ int fs_provision()
                 {
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "fs_provision: provisioned %s\n", fi.fname);
+                        klog("fs_provision: provisioned %s\n", fi.fname);
                     }
 
                     // delete file
                     if(f_unlink(fi.fname) != FR_OK)
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "fs_provision: failed to delete %s: %d\n",
+                        klog("fs_provision: failed to delete %s: %d\n",
                             fi.fname, f_unlink(fi.fname));
                     }
                 }
@@ -519,7 +519,7 @@ int fs_provision()
                 {
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "fs_provision: failed to provision %s\n", fi.fname);
+                        klog("fs_provision: failed to provision %s\n", fi.fname);
                     }
                     had_failure = true;
                     break;
@@ -599,21 +599,21 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     if(rfd == -1)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: couldn't open %s\n", from.c_str());
+        klog("fs_provision_extract: couldn't open %s\n", from.c_str());
         return;
     }
 
     if(deferred_call(syscall_fstat, rfd, &_st) < 0)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: fstat failed\n");
+        klog("fs_provision_extract: fstat failed\n");
         close(rfd);
         return;
     }
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: opened %s of size %u\n",
+        klog("fs_provision_extract: opened %s of size %u\n",
             from.c_str(), _st.st_size);
     }
 
@@ -623,7 +623,7 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     if(!mr.valid)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: unable to allocate memregion of size %d for %s\n",
+        klog("fs_provision_extract: unable to allocate memregion of size %d for %s\n",
             _st.st_size, from.c_str());
         close(rfd);
         return;
@@ -634,7 +634,7 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     if(br != _st.st_size)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: failed to load entire file: %d\n", br);
+        klog("fs_provision_extract: failed to load entire file: %d\n", br);
         memblk_deallocate(mr);
         return;
     }
@@ -644,7 +644,7 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     if(fr != FR_OK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: failed to open %s for writing (%d)\n",
+        klog("fs_provision_extract: failed to open %s for writing (%d)\n",
             to.c_str(), fr);
         memblk_deallocate(mr);
         return;
@@ -657,20 +657,20 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     if(fr != FR_OK)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: failed to write to %s: %d\n",
+        klog("fs_provision_extract: failed to write to %s: %d\n",
             to.c_str(), fr);
         return;
     }
     if(bw != (UINT)_st.st_size)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: failed to write sufficient bytes to %s: %u vs %u\n",
+        klog("fs_provision_extract: failed to write sufficient bytes to %s: %u vs %u\n",
             to.c_str(), bw, (UINT)_st.st_size);
     }
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "fs_provision_extract: successfully extracted %s to %s\n",
+        klog("fs_provision_extract: successfully extracted %s to %s\n",
             from.c_str(), to.c_str());
     }
 }

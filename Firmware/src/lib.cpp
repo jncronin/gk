@@ -1,6 +1,9 @@
 /* The following are to avoid linker warnings */
 
 #include "syscalls_int.h"
+#include "logger.h"
+#include <stdio.h>
+#include <unistd.h>
 
 extern "C" {
 int _open(const char *pathname, int flags, mode_t mode)
@@ -48,6 +51,10 @@ int _read(int file, char *ptr, int len)
 
 int _write(int file, char *buf, int nbytes)
 {
+    if(file == STDERR_FILENO)
+    {
+        return log_fwrite(buf, nbytes);
+    }
     return -1;
 }
 }

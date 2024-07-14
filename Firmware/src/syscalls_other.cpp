@@ -228,7 +228,7 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
         {
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "error: SIGKILL sent to kernel process\n");
+                klog("error: SIGKILL sent to kernel process\n");
             }
             while(true)
             {
@@ -263,7 +263,7 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
 #if 1
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "cacheflush: %x, %x, %d\n", (uint32_t)addr, len, is_exec);
+        klog("cacheflush: %x, %x, %d\n", (uint32_t)addr, len, is_exec);
     }
 #endif
     CleanOrInvalidateM7Cache((uint32_t)addr, len, CacheType_t::Data);

@@ -287,6 +287,16 @@ SECTIONS
     _ecm4_stack = .;
   } >SRAM
 
+  .sram_data :
+  {
+    . = ALIGN(16);
+    _ssramcm4 = .;
+    *(.sram_data)
+    *(.sram_data*)
+    _esramcm4 = .;
+  } >SRAM AT> FLASH2
+  _ssramcm4_flash = LOADADDR(.sram_data);
+
   .sram_bss (NOLOAD) :
   {
     /* This is used by the startup in order to initialize the .bss secion */

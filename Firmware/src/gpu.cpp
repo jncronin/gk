@@ -289,7 +289,7 @@ uint32_t mdma_ll[16*16] __attribute__((aligned(32)));
 #if GPU_DEBUG
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "gpu: mdma scale: dest: %x, src: %x, sx: %d, sy: %d, destx: %d, desty: %d, srcx: %d, srcy: %d, dincos: %d, sincos: %d, bpp: %d\n",
+        klog("gpu: mdma scale: dest: %x, src: %x, sx: %d, sy: %d, destx: %d, desty: %d, srcx: %d, srcy: %d, dincos: %d, sincos: %d, bpp: %d\n",
             (uint32_t)g.dest_addr, (uint32_t)g.src_addr_color, sx, sy, g.dx, g.dy, g.sx, g.sy, dincos, sincos, bpp);
     }
 #endif
@@ -572,9 +572,9 @@ void *gpu_thread(void *p)
 #if GPU_DEBUG
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, dw: %x, dh: %x, w: %x, h: %x\n",
+                klog("gpu: @%u type: %d, dest_addr: %x, src_addr_color: %x, dw: %x, dh: %x, w: %x, h: %x\n",
                     (unsigned int)clock_cur_us(), g.g.type, dest_addr, src_addr, dest_w, dest_h, src_w, src_h);
-                SEGGER_RTT_printf(0, "gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
+                klog("gpu: ltdc_fb: %x, scr_fb: %x\n", ltdc_curfb, scr_curfb);
             }
 #endif
             
@@ -622,7 +622,7 @@ void *gpu_thread(void *p)
                         last_flip_time = curt;
                         {
                             CriticalGuard cg(s_rtt);
-                            SEGGER_RTT_printf(0, "gpu: cticks: %u, fps: %u (%u)\n",
+                            klog("gpu: cticks: %u, fps: %u (%u)\n",
                                 (uint32_t)cticks, 1000000U / (uint32_t)cticks,
                                 1000000U / (uint32_t)ticks_avg);
                         }
@@ -798,7 +798,7 @@ void *gpu_thread(void *p)
 #if GPU_DEBUG
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "gpu: @%u complete\n",
+                klog("gpu: @%u complete\n",
                     (unsigned int)clock_cur_us());
             }
 #endif
@@ -856,7 +856,7 @@ size_t GPUEnqueueMessages(const gpu_message *msgs, size_t nmsg)
 extern "C" void DMA2D_IRQHandler()
 {
 #if GPU_DEBUG
-    SEGGER_RTT_printf(0, "gpuint: @%u\n", clock_cur_us());
+    klog("gpuint: @%u\n", clock_cur_us());
 #endif
     DMA2D->IFCR = DMA2D_IFCR_CTCIF | DMA2D_IFCR_CTEIF;
     gpu_ready.Signal();

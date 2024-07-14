@@ -130,7 +130,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 #if 0
                     {
                         CriticalGuard cg2(s_rtt);
-                        SEGGER_RTT_printf(0, "sbrk: nbytes: %d, new_brk: %u, ret: %x, ret@: %x\n",
+                        klog("sbrk: nbytes: %d, new_brk: %u, ret: %x, ret@: %x\n",
                             nbytes, p.brk, *reinterpret_cast<uint32_t *>(r1), reinterpret_cast<uint32_t>(r1));
                     }
 #endif
@@ -169,7 +169,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 #if DEBUG_SYSCALLS
                 {
                     CriticalGuard cg(s_rtt);
-                    SEGGER_RTT_printf(0, "syscall_read: file %d addr: %x, len: %d, ret: %d\n",
+                    klog("syscall_read: file %d addr: %x, len: %d, ret: %d\n",
                         p->file, (uint32_t)(uintptr_t)p->ptr, p->len, ret);
                 }
 #endif
@@ -810,14 +810,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         default:
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "syscall: unhandled syscall %d\n", (int)sno);
+                klog("syscall: unhandled syscall %d\n", (int)sno);
             }
             __asm__ volatile ("bkpt #0\n");
 
             {
                 auto t = GetCurrentThreadForCore();
                 auto &p = t->p;
-                SEGGER_RTT_printf(0, "panic: process %s thread %s unhandled syscall\n",
+                klog("panic: process %s thread %s unhandled syscall\n",
                     p.name.c_str(), t->name.c_str());
                 if(&p != &kernel_proc)
                 {
@@ -844,7 +844,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 #if DEBUG_SYSCALLS
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "syscalls: %d (%x, %x, %x)\n", (int)sno, dr1, dr2, dr3);
+        klog("syscalls: %d (%x, %x, %x)\n", (int)sno, dr1, dr2, dr3);
     }
 #endif
 }

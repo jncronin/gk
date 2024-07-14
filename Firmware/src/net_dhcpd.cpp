@@ -160,10 +160,10 @@ static void handle_dhcpdiscover(int sockfd, const char *buf, const std::map<int,
 {
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpd: DHCPDISCOVER received, options:\n");
+        klog("dhcpd: DHCPDISCOVER received, options:\n");
         for(const auto &opt : options)
         {
-            SEGGER_RTT_printf(0, "  %d\n", opt.first);
+            klog("  %d\n", opt.first);
         }
     }
 
@@ -226,10 +226,10 @@ static void handle_dhcprequest(int sockfd, const char *buf, const std::map<int, 
 {
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpd: DHCPREQUEST received, options:\n");
+        klog("dhcpd: DHCPREQUEST received, options:\n");
         for(const auto &opt : options)
         {
-            SEGGER_RTT_printf(0, "  %d\n", opt.first);
+            klog("  %d\n", opt.first);
         }
     }
 
@@ -293,10 +293,10 @@ static void handle_dhcpinform(int sockfd, const char *buf, const std::map<int, i
 {
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpd: DHCPINFORM received, options:\n");
+        klog("dhcpd: DHCPINFORM received, options:\n");
         for(const auto &opt : options)
         {
-            SEGGER_RTT_printf(0, "  %d\n", opt.first);
+            klog("  %d\n", opt.first);
         }
     }
 
@@ -361,7 +361,7 @@ void *net_dhcpd_thread(void *p)
     if(lsck < 0)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpd: socket failed %d\n", errno);
+        klog("dhcpd: socket failed %d\n", errno);
         return nullptr;
     }
 
@@ -374,7 +374,7 @@ void *net_dhcpd_thread(void *p)
     if(ret < 0)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "dhcpd: bind failed %d\n", errno);
+        klog("dhcpd: bind failed %d\n", errno);
         return nullptr;
     }
 
@@ -388,13 +388,13 @@ void *net_dhcpd_thread(void *p)
         if(ret == -1)
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "dhcpd: recvfrom failed %d\n", errno);
+            klog("dhcpd: recvfrom failed %d\n", errno);
             return nullptr;
         }
         else
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "dhcpd: received %d bytes\n", ret);
+            klog("dhcpd: received %d bytes\n", ret);
         }
 
         // parse fields
@@ -410,13 +410,13 @@ void *net_dhcpd_thread(void *p)
             auto opt_len = ret - OFFSET_OPTIONS;
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "dhcpd: received BOOTREQUEST from %s (%s), giaddr: %s, xid: %x\n",
+                klog("dhcpd: received BOOTREQUEST from %s (%s), giaddr: %s, xid: %x\n",
                     chaddr.ToString().c_str(),
                     ciaddr.ToString().c_str(),
                     giaddr.ToString().c_str(),
                     (unsigned int)xid);
 
-                SEGGER_RTT_printf(0, "dhcpd: magic %d %d %d %d\n", options[0], options[1], options[2], options[3]);
+                klog("dhcpd: magic %d %d %d %d\n", options[0], options[1], options[2], options[3]);
             }
 
             if(options[0] == 99 && options[1] == 130 && options[2] == 83 && options[3] == 99)

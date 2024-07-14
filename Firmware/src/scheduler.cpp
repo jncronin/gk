@@ -40,8 +40,8 @@ Scheduler::Scheduler()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "&dt: %x\n", (uint32_t)(uintptr_t)&dt);
-        SEGGER_RTT_printf(0, "&dt.tss: %x\n", (uint32_t)(uintptr_t)&dt.tss);
+        klog("&dt: %x\n", (uint32_t)(uintptr_t)&dt);
+        klog("&dt.tss: %x\n", (uint32_t)(uintptr_t)&dt.tss);
     }
 
     for(int i = 0; i < ncores; i++)
@@ -142,7 +142,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     if(block_until)
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "sched core %d: set block_until to %d\n", ncore, (uint32_t)block_until);
+        klog("sched core %d: set block_until to %d\n", ncore, (uint32_t)block_until);
     }
 #endif
 #endif
@@ -297,7 +297,7 @@ void Scheduler::unblock_delayer(Thread *t)
 #if DEBUG_SCHEDULER
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "%d: sched awaken sleeping thread %s\n",
+            klog("%d: sched awaken sleeping thread %s\n",
                 (uint32_t)clock_cur_us(),
                 t->name.c_str());
         }
@@ -311,7 +311,7 @@ void Scheduler::unblock_delayer(Thread *t)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "scheduler: spurious blocking on already triggered SimpleSignal for thread %s\n",
+            klog("scheduler: spurious blocking on already triggered SimpleSignal for thread %s\n",
                 t->name.c_str());
         }
         t->is_blocking = false;
@@ -323,7 +323,7 @@ void Scheduler::unblock_delayer(Thread *t)
 void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 {
     CriticalGuard cg(s_rtt);
-    SEGGER_RTT_printf(0, "%d: sched core %d: %s (%d) to %s (%d)\n",
+    klog("%d: sched core %d: %s (%d) to %s (%d)\n",
         (uint32_t)clock_cur_us(),
         GetCoreID(),
         old_t->name.c_str(), old_t->base_priority,

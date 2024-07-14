@@ -141,6 +141,23 @@ LoopCopySram4Init:
   cmp r4, r1
   bcc CopySram4Init
 
+/* Copy the sram1-3 segment initializers from flash to SRAM */  
+  ldr r0, =_ssramcm4
+  ldr r1, =_esramcm4
+  ldr r2, =_ssramcm4_flash
+  movs r3, #0
+  b LoopCopySramcm4Init
+
+CopySramcm4Init:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopySramcm4Init:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopySramcm4Init
+
 /* Load .net_data section */
   ldr r0, =_slwip_data
   ldr r1, =_elwip_init_data

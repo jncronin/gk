@@ -660,7 +660,7 @@ int syscall_set_thread_priority(Thread *t, int priority, int *_errno)
     // don't support user setting priority at this time
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "thread: request from %s to set priority of %s to %d - currently not implemented",
+        klog("thread: request from %s to set priority of %s to %d - currently not implemented",
             GetCurrentThreadForCore()->name.c_str(),
             t->name.c_str(),
             priority);

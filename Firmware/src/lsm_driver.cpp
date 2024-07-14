@@ -52,7 +52,7 @@ void *lsm_thread(void *param)
                     LSM6DSL_ACC_GYRO_R_WHO_AM_I(nullptr, &who);
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "lsm: whoami: %x\n", (uint32_t)who);
+                        klog("lsm: whoami: %x\n", (uint32_t)who);
                     }
                     if(who != 0x6a)
                         is_init = false;
@@ -120,7 +120,7 @@ void *lsm_thread(void *param)
 
                     {
                         CriticalGuard cg(s_rtt);
-                        SEGGER_RTT_printf(0, "lsm6dsl: %d,%d\n", (int)joy_x, (int)joy_y);
+                        klog("lsm6dsl: %d,%d\n", (int)joy_x, (int)joy_y);
                     }
                 }
             }
@@ -161,7 +161,7 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 0\n");
+            klog("lsm6dsl: init failed 0\n");
         }
         return false;
     }
@@ -171,7 +171,7 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 1\n");
+            klog("lsm6dsl: init failed 1\n");
         }
         return false;
     }
@@ -181,7 +181,7 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 2\n");
+            klog("lsm6dsl: init failed 2\n");
         }
         return false;
     }
@@ -191,7 +191,7 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 3\n");
+            klog("lsm6dsl: init failed 3\n");
         }
         return false;
     }
@@ -201,7 +201,7 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 4\n");
+            klog("lsm6dsl: init failed 4\n");
         }
         return false;
     }
@@ -211,7 +211,7 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 5\n");
+            klog("lsm6dsl: init failed 5\n");
         }
         return false;
     }
@@ -221,14 +221,14 @@ bool init_lsm()
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "lsm6dsl: init failed 6\n");
+            klog("lsm6dsl: init failed 6\n");
         }
         return false;
     }
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "lsm6dsl: init success\n");
+        klog("lsm6dsl: init success\n");
     }
 
     return true;

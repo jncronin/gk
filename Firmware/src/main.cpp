@@ -27,6 +27,7 @@
 #include "i2c.h"
 #include "cleanup.h"
 #include "sound.h"
+#include "logger.h"
 #include "gk_conf.h"
 
 __attribute__((section(".sram4"))) Spinlock s_rtt;
@@ -87,10 +88,14 @@ int main()
 
     btnled_setcolor(0x020202UL);
 
-    elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start, "gktest");
+    //elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start, "gktest");
 
     kernel_proc.name = "kernel";
 
+    klog("kernel: starting M7\n");
+
+    Schedule(Thread::Create("logger", logger_task, (void *)0, true, GK_PRIORITY_VHIGH, kernel_proc,
+        CPUAffinity::PreferM4));
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
@@ -157,7 +162,7 @@ extern "C" int main_cm4()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "kernel: M4 awaiting scheduler setup\n");
+        klog("kernel: M4 awaiting scheduler setup\n");
     }
 
     EXTI->C2IMR3 |= EXTI_IMR3_IM80;
@@ -172,7 +177,7 @@ extern "C" int main_cm4()
 
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "kernel: starting M4\n");
+        klog("kernel: starting M4\n");
     }
 
     // Prepare systick
@@ -211,7 +216,7 @@ void *bluescreen_thread(void *p)
         {
             {
                 CriticalGuard cg(s_rtt);
-                SEGGER_RTT_printf(0, "Hello from %s\n",
+                klog("Hello from %s\n",
                     GetCoreID() ? "M4" : "M7");
             }
             last_update = clock_cur_ms();
@@ -259,7 +264,7 @@ void *b_thread(void *p)
     auto sdt = sd_perform_transfer(0, 1, (void*)mbr.address, true);
     {
         CriticalGuard cg(s_rtt);
-        SEGGER_RTT_printf(0, "sdtest: %d, last word: %lx\n", sdt,
+        klog("sdtest: %d, last word: %lx\n", sdt,
             *(uint32_t *)(mbr.address + 508));
     }
 
@@ -278,7 +283,7 @@ void *b_thread(void *p)
 
         {
             CriticalGuard cg(s_rtt);
-            //SEGGER_RTT_printf(0, "nframes: %d\n", nframes);            
+            //klog("nframes: %d\n", nframes);            
         }
 
         int l_val = cur_m - cur_w / 2;
@@ -737,7 +742,7 @@ extern "C" void MemManage_Handler()
 {
     auto t = GetCurrentThreadForCore();
     auto &p = t->p;
-    SEGGER_RTT_printf(0, "panic: process %s thread %s caused memmanage fault\n",
+    klog("panic: process %s thread %s caused memmanage fault\n",
         p.name.c_str(), t->name.c_str());
     {
         for(int i = 0; i < 8; i++)
@@ -747,11 +752,11 @@ extern "C" void MemManage_Handler()
             {
                 auto cstart = cmpu.rbar & ~0x1fU;
                 auto clen = 2U << ((cmpu.rasr >> 1) & 0x1fU);
-                SEGGER_RTT_printf(0, "panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
+                klog("panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
             }
             else
             {
-                SEGGER_RTT_printf(0, "panic: mpu %d: disabled\n", i);
+                klog("panic: mpu %d: disabled\n", i);
             }
         }
 
@@ -765,11 +770,11 @@ extern "C" void MemManage_Handler()
             {
                 auto cstart = cmpu.rbar & ~0x1fU;
                 auto clen = 2U << ((cmpu.rasr >> 1) & 0x1fU);
-                SEGGER_RTT_printf(0, "panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
+                klog("panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
             }
             else
             {
-                SEGGER_RTT_printf(0, "panic: mpu %d: disabled\n", i);
+                klog("panic: mpu %d: disabled\n", i);
             }
         }
     }
@@ -801,7 +806,7 @@ extern "C" void UsageFault_Handler()
 {
     auto t = GetCurrentThreadForCore();
     auto &p = t->p;
-    SEGGER_RTT_printf(0, "panic: process %s thread %s caused usage fault\n",
+    klog("panic: process %s thread %s caused usage fault\n",
         p.name.c_str(), t->name.c_str());
     if(&p != &kernel_proc)
     {

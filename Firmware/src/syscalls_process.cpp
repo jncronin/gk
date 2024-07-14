@@ -95,7 +95,7 @@ void *proccreate_thread(void *ptr)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "process_create: open(%s) failed %d\n", fname, errno);
+            klog("process_create: open(%s) failed %d\n", fname, errno);
         }
         *ss_p = EFAULT;
         ss->Signal();
@@ -132,7 +132,7 @@ void *proccreate_thread(void *ptr)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "process_create: could not allocate stack of %d\n", stack_size);
+            klog("process_create: could not allocate stack of %d\n", stack_size);
         }
         close(fd);
         *ss_p = ENOMEM;
@@ -146,7 +146,7 @@ void *proccreate_thread(void *ptr)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "process_create: could not allocate heap of %d\n", heap_size);
+            klog("process_create: could not allocate heap of %d\n", heap_size);
         }
         close(fd);
         *ss_p = ENOMEM;
@@ -170,7 +170,7 @@ void *proccreate_thread(void *ptr)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "process_create: elf_load_fildes() failed %d\n", eret);
+            klog("process_create: elf_load_fildes() failed %d\n", eret);
         }
         delete proc;
         *ss_p = eret;
@@ -188,7 +188,7 @@ void *proccreate_thread(void *ptr)
     {
         {
             CriticalGuard cg(s_rtt);
-            SEGGER_RTT_printf(0, "process_create: Thread::Create() failed\n");
+            klog("process_create: Thread::Create() failed\n");
         }
         delete proc;
         *ss_p = ENOMEM;
