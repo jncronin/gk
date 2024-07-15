@@ -625,6 +625,10 @@
       {
         "netclass": "MCUPIN",
         "pattern": "VREG_PWM"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "*UART4*"
       }
     ]
   },
