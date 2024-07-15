@@ -27,6 +27,9 @@ MEMORY
     SRAM4 (rwx)         : ORIGIN = 0x38000000, LENGTH = 64K
     BACKUPSRAM (rw)     : ORIGIN = 0x38800000, LENGTH = 4K
     SDRAM (rwx)         : ORIGIN = 0x60000000, LENGTH = 65536K
+
+    /* RTC backup registers */
+    RTCREGS (rw)        : ORIGIN = 0x58004050, LENGTH = 128
 }
 
 SECTIONS
@@ -328,6 +331,14 @@ SECTIONS
     *(.backupsram*)
     _ebackupsram = .;
   } >BACKUPSRAM
+
+  .rtcregs (NOLOAD):
+  {
+    _srtcregs = .;
+    *(.rtcregs)
+    *(.rtcregs*)
+    _ertcregs = .;
+  } >RTCREGS
 
   /* defines for FreeRTOS MPU */
   PROVIDE(__FLASH_segment_start__ = 0x08000000);
