@@ -63,7 +63,8 @@ Reset_Handler:
   /* Enable memories
     RCC = 0x58024400
       AHB3ENR = +0x0d4
-      AHB2ENR = +0x0dc */
+      AHB2ENR = +0x0dc
+      AHB4ENR = +0x0e0  */
   ldr.w r0, =0x580244d4
   ldr.w r1, =0xf0001000
   str r1, [r0]
@@ -71,7 +72,6 @@ Reset_Handler:
   ldr.w r0, =0x580244dc
   ldr.w r1, =0xe0000000
   str r1, [r0]
-
 
 /* Copy the data segment initializers from flash to SRAM */  
   ldr r0, =_sdata

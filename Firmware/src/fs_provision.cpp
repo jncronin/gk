@@ -48,6 +48,10 @@ extern Spinlock s_rtt;
 #if FS_PROVISION_EXTRACT_FILE
 static void fs_provision_extract(const std::string &from, const std::string &to);
 #endif
+#if GK_LOG_PERSISTENT
+static void fs_extract_persistent_log(const std::string &to);
+extern MemRegion memblk_persistent_log;
+#endif
 
 /* Generates a fake MBR which is exported whenever USB MSC asks to read
     sector 0 */
@@ -533,6 +537,10 @@ int fs_provision()
 #if FS_PROVISION_EXTRACT_FILE
     fs_provision_extract(FS_PROVISION_EXTRACT_FILE_FROM, FS_PROVISION_EXTRACT_FILE_TO);
 #endif
+#if GK_LOG_PERSISTENT
+    if(memblk_persistent_log.valid)
+        fs_extract_persistent_log("/kernel_fault.txt");
+#endif
     f_unmount("/");
 
     fs_provision_complete.Signal();
@@ -594,6 +602,41 @@ extern "C" void zcfree(void *opaque, void *ptr)
 }
 
 static struct stat _st;
+
+#if GK_LOG_PERSISTENT
+void fs_extract_persistent_log(const std::string &to)
+{
+    // open fat file
+    auto fr = f_open(&fp, to.c_str(), FA_WRITE | FA_CREATE_ALWAYS);
+    if(fr != FR_OK)
+    {
+        klog("fs_provision_extract: failed to open %s for writing (%d)\n",
+            to.c_str(), fr);
+        return;
+    }
+
+    UINT bw;
+    fr = f_write(&fp, (const void *)memblk_persistent_log.address,
+        (UINT)memblk_persistent_log.length, &bw);
+    f_close(&fp);
+    if(fr != FR_OK)
+    {
+        klog("fs_provision_extract: failed to write to %s: %d\n",
+            to.c_str(), fr);
+        return;
+    }
+    if(bw != (UINT)_st.st_size)
+    {
+        klog("fs_provision_extract: failed to write sufficient bytes to %s: %u vs %u\n",
+            to.c_str(), bw, (UINT)memblk_persistent_log.length);
+    }
+
+    {
+        klog("fs_provision_extract: successfully extracted persistent log to %s\n",
+            to.c_str());
+    }
+}
+#endif
 
 #if FS_PROVISION_EXTRACT_FILE
 void fs_provision_extract(const std::string &from, const std::string &to)

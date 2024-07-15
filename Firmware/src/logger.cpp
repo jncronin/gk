@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "thread.h"
 #include "process.h"
+#include "cache.h"
 
 #if GK_LOG_USB
 #include "tusb.h"
@@ -23,55 +24,75 @@ extern Process kernel_proc;
 
 using klog_t = RingBuffer<char, GK_LOG_SIZE>;
 
+typedef ssize_t (*log_direct_func)(const void *buf, size_t count);
+
 struct klog_def
 {
     klog_t *klog;
+    log_direct_func klog_direct;
     Spinlock *s_log;
     BinarySemaphore *s_sem;
 };
 
 static SRAM4_DATA Spinlock s_log;
 
+#if GK_LOG_PERSISTENT
+static const constexpr unsigned int log_id_persistent = 0;
+static SRAM4_DATA Spinlock s_log_persistent;
+static ssize_t log_persistent(const void *buf, size_t count);
+static const constexpr __attribute__((section(".sram_rdata"))) klog_def klog_def_persistent
+{
+    .klog = nullptr,
+    .klog_direct = log_persistent,
+    .s_log = &s_log_persistent,
+    .s_sem = nullptr,
+};
+#endif
 #if GK_LOG_RTT
-static const constexpr unsigned int log_id_rtt = 0;
-static __attribute__((section(".sram_data"))) klog_t klog_rtt;
+static const constexpr unsigned int log_id_rtt = GK_LOG_PERSISTENT;
 static SRAM4_DATA Spinlock s_log_rtt;
-static SRAM4_DATA BinarySemaphore sem_log_rtt;
+static ssize_t log_rtt(const void *buf, size_t count);
 static const constexpr __attribute__((section(".sram_rdata"))) klog_def klog_def_rtt
 {
-    .klog = &klog_rtt,
+    .klog = nullptr,
+    .klog_direct = log_rtt,
     .s_log = &s_log_rtt,
-    .s_sem = &sem_log_rtt
+    .s_sem = nullptr,
 };
 #endif
 #if GK_LOG_USB
-static const constexpr unsigned int log_id_usb = GK_LOG_RTT;
+static const constexpr unsigned int log_id_usb = GK_LOG_PERSISTENT + GK_LOG_RTT;
 static __attribute__((section(".sram_data"))) klog_t klog_usb;
 static SRAM4_DATA Spinlock s_log_usb;
 static SRAM4_DATA BinarySemaphore sem_log_usb;
 static const constexpr __attribute__((section(".sram_rdata"))) klog_def klog_def_usb
 {
     .klog = &klog_usb,
+    .klog_direct = nullptr,
     .s_log = &s_log_usb,
-    .s_sem = &sem_log_usb
+    .s_sem = &sem_log_usb,
 };
 #endif
 #if GK_LOG_FILE
-static const constexpr unsigned int log_id_file = GK_LOG_RTT + GK_LOG_USB;
+static const constexpr unsigned int log_id_file = GK_LOG_PERSISTENT + GK_LOG_RTT + GK_LOG_USB;
 static __attribute__((section(".sram_data"))) klog_t klog_file;
 static SRAM4_DATA Spinlock s_log_file;
 static SRAM4_DATA BinarySemaphore sem_log_file;
 static const constexpr __attribute__((section(".sram_rdata"))) klog_def klog_def_file
 {
     .klog = &klog_file,
+    .klog_direct = nullptr,
     .s_log = &s_log_file,
-    .s_sem = &sem_log_file
+    .s_sem = &sem_log_file,
 };
 #endif
 
-static const constexpr unsigned int n_logs = GK_LOG_RTT + GK_LOG_USB + GK_LOG_FILE;
+static const constexpr unsigned int n_logs = GK_LOG_PERSISTENT + GK_LOG_RTT + GK_LOG_USB + GK_LOG_FILE;
 
 static const constexpr __attribute__((section(".sram_rdata"))) klog_def *klogs[] {
+#if GK_LOG_PERSISTENT
+    &klog_def_persistent,
+#endif
 #if GK_LOG_RTT
     &klog_def_rtt,
 #endif
@@ -97,20 +118,107 @@ int klog(const char *format, ...)
     return ret;
 }
 
-static void *rtt_logger_task(void *param)
+#if GK_LOG_PERSISTENT
+static const constexpr unsigned int plog_len = 3*1024;
+static __attribute__((section(".backupsram"))) __attribute__((aligned(16))) char plog[plog_len];
+static __attribute__((section(".backupsram"))) __attribute__((aligned(16))) unsigned int plog_ptr;
+__attribute__((section(".backupsram"))) __attribute__((aligned(16))) int plog_frozen;
+
+static void unlock_sram()
 {
-    auto clog = reinterpret_cast<klog_def *>(param);
-    while(true)
+    //PWR->CR1 |= PWR_CR1_DBP;
+    //__DMB();
+    //while(!(PWR->CR1 & PWR_CR1_DBP));
+}
+
+static void lock_sram()
+{
+    //PWR->CR1 &= ~PWR_CR1_DBP;
+    //__DMB();
+}
+
+ssize_t log_persistent(const void *buf, size_t count)
+{
+    unlock_sram();
+    if(plog_frozen)
     {
-        if(clog->s_sem->Wait())
+        lock_sram();
+        return 0;
+    }
+
+    if(plog_ptr > plog_len) plog_ptr = 0;
+
+    memcpy_split_dest(plog, buf, count, plog_ptr, plog_len, true);
+    plog_ptr += count;
+    while(plog_ptr > plog_len)
+        plog_ptr -= plog_len;
+    CleanOrInvalidateM7Cache((uint32_t)&plog_ptr, 16, CacheType_t::Data);
+    lock_sram();
+    return (ssize_t)count;
+}
+
+void log_freeze_persistent_log()
+{
+    unlock_sram();
+    plog_frozen = 1;
+    CleanOrInvalidateM7Cache((uint32_t)&plog_frozen, 16, CacheType_t::Data);
+    __DMB();
+    lock_sram();
+}
+
+void log_unfreeze_persistent_log()
+{
+    unlock_sram();
+    plog_frozen = 0;
+    CleanOrInvalidateM7Cache((uint32_t)&plog_frozen, 16, CacheType_t::Data);
+    __DMB();
+    lock_sram();
+}
+
+MemRegion log_get_persistent()
+{
+    CriticalGuard cg(s_log_persistent);
+    if(plog_frozen)
+    {
+        auto ret = memblk_allocate(plog_len, MemRegionType::SRAM);
+        if(!ret.valid)
+            ret = memblk_allocate(plog_len, MemRegionType::AXISRAM);
+        if(!ret.valid)
+            ret = memblk_allocate(plog_len, MemRegionType::SDRAM);
+
+        if(ret.valid)
         {
-            CriticalGuard cg(s_log);
-            char c;
-            while(clog->klog->Read(&c))
-                SEGGER_RTT_PutChar(0, c);
+            memcpy_split_src((void *)ret.address, plog, plog_len, plog_ptr, plog_len);
+            CleanOrInvalidateM7Cache(ret.address, plog_len, CacheType_t::Data);
         }
+
+        plog_frozen = 0;
+        CleanOrInvalidateM7Cache((uint32_t)&plog_frozen, 16, CacheType_t::Data);
+        plog_ptr = 0;
+        CleanOrInvalidateM7Cache((uint32_t)&plog_ptr, 16, CacheType_t::Data);
+
+        return ret;
+    }
+    else
+    {
+        plog_ptr = 0;
+        CleanOrInvalidateM7Cache((uint32_t)&plog_ptr, 16, CacheType_t::Data);
+        return InvalidMemregion();
     }
 }
+
+#else
+void log_freeze_persistent_log() {}
+void log_unfreeze_persistent_log() {}
+MemRegion log_get_persistent { return InvalidMemregion(); }
+#endif
+
+#if GK_LOG_RTT
+ssize_t log_rtt(const void *buf, size_t count)
+{
+    return SEGGER_RTT_Write(0, buf, count);
+}
+#endif
 
 #if GK_LOG_USB
 static void *usb_logger_task(void *param)
@@ -193,10 +301,6 @@ static void *file_logger_task(void *param)
 
 int init_log()
 {
-#if GK_LOG_RTT
-    Schedule(Thread::Create("log_rtt", rtt_logger_task, (void *)&klog_def_rtt, true, GK_PRIORITY_VHIGH, kernel_proc,
-        CPUAffinity::PreferM4));
-#endif
 #if GK_LOG_USB
     Schedule(Thread::Create("log_usb", usb_logger_task, (void *)&klog_def_usb, true, GK_PRIORITY_VHIGH, kernel_proc,
         CPUAffinity::PreferM4));
@@ -215,9 +319,11 @@ ssize_t log_fwrite(const void *buf, size_t count)
     {
         auto clog = klogs[i];
         CriticalGuard cg(*clog->s_log);
-        auto cwritten = clog->klog->Write((char *)buf, count);
-        if(cwritten > nwritten) nwritten = cwritten;
-        clog->s_sem->Signal();
+        int cwritten_dir = clog->klog_direct ? clog->klog_direct(buf, count) : 0;
+        int cwritten_indir = clog->klog ? clog->klog->Write((char *)buf, count) : 0;
+        if(cwritten_dir > nwritten) nwritten = cwritten_dir;
+        if(cwritten_indir > nwritten) nwritten = cwritten_indir;
+        if(clog->s_sem) clog->s_sem->Signal();
     }
     return nwritten;
 }

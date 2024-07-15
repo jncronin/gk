@@ -38,12 +38,6 @@ Scheduler::Scheduler()
     dt.name = "dummy";
     dt.base_priority = 0;
 
-    {
-        CriticalGuard cg(s_rtt);
-        klog("&dt: %x\n", (uint32_t)(uintptr_t)&dt);
-        klog("&dt.tss: %x\n", (uint32_t)(uintptr_t)&dt.tss);
-    }
-
     for(int i = 0; i < ncores; i++)
     {
         CriticalGuard cg(current_thread[i].m);

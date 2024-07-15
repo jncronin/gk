@@ -61,6 +61,7 @@ extern char _binary__home_jncronin_src_gk_test_build_gk_test_bin_start;
 extern uint32_t m4_wakeup;
 
 SRAM4_DATA std::vector<std::string> empty_string_vector;
+SRAM4_DATA MemRegion memblk_persistent_log;
 
 int main()
 {
@@ -69,8 +70,11 @@ int main()
     __enable_irq();
 
     system_init_cm7();
+
+
     init_memblk();
     init_sdram();
+    memblk_persistent_log = log_get_persistent();
     init_screen();
     init_btnled();
     init_sd();
@@ -93,6 +97,11 @@ int main()
     kernel_proc.name = "kernel";
 
     klog("kernel: starting M7\n");
+    if(memblk_persistent_log.valid)
+    {
+        klog("kernel: a kernel crash log was found from the last session, pasting below:\n%s\n",
+            (char *)memblk_persistent_log.address);
+    }
     init_log();
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
@@ -704,124 +713,6 @@ extern "C" void *sbrksram4(int n);
 extern "C" void * _sbrk(int n)
 {
     return sbrksram4(n);
-}
-
-__attribute__((section(".sram4"))) volatile uint32_t cfsr, hfsr, ret_addr, mmfar;
-__attribute__((section(".sram4"))) volatile mpu_saved_state mpuregs[8];
-__attribute__((section(".sram4"))) volatile Thread *fault_thread;
-extern "C" void HardFault_Handler()
-{
-    /*uint32_t *pcaddr;
-    __asm(  "TST lr, #4\n"
-            "ITE EQ\n"
-            "MRSEQ %0, MSP\n"
-            "MRSNE %0, PSP\n" // stack pointer now in r0
-            "ldr %0, [%0, #0x18]\n" // stored pc now in r0
-            : "=r"(pcaddr));
-
-    ret_addr = *pcaddr;*/
-
-    fault_thread = GetCurrentThreadForCore();
-    for(int i = 0; i < 8; i++)
-    {
-        MPU->RNR = i;
-        mpuregs[i].rbar = MPU->RBAR;
-        mpuregs[i].rasr = MPU->RASR;
-    }
-
-    cfsr = SCB->CFSR;
-    hfsr = SCB->HFSR;
-    mmfar = SCB->MMFAR;
-    
-    while(true);
-}
-
-extern "C" void MemManage_Handler()
-{
-    auto t = GetCurrentThreadForCore();
-    auto &p = t->p;
-    klog("panic: process %s thread %s caused memmanage fault\n",
-        p.name.c_str(), t->name.c_str());
-    {
-        for(int i = 0; i < 8; i++)
-        {
-            auto cmpu = t->tss.mpuss[i];
-            if(cmpu.rasr & 0x1U)
-            {
-                auto cstart = cmpu.rbar & ~0x1fU;
-                auto clen = 2U << ((cmpu.rasr >> 1) & 0x1fU);
-                klog("panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
-            }
-            else
-            {
-                klog("panic: mpu %d: disabled\n", i);
-            }
-        }
-
-        for(int i = 0; i < 8; i++)
-        {
-            mpu_saved_state cmpu;
-            MPU->RNR = i;
-            cmpu.rbar = MPU->RBAR;
-            cmpu.rasr = MPU->RASR;
-            if(cmpu.rasr & 0x1U)
-            {
-                auto cstart = cmpu.rbar & ~0x1fU;
-                auto clen = 2U << ((cmpu.rasr >> 1) & 0x1fU);
-                klog("panic: mpu %d: %8x - %8x\n", i, cstart, cstart + clen);
-            }
-            else
-            {
-                klog("panic: mpu %d: disabled\n", i);
-            }
-        }
-    }
-    if(&p != &kernel_proc)
-    {
-        CriticalGuard cg_p(p.sl);
-        for(auto thr : p.threads)
-        {
-            CriticalGuard cg_t(thr->sl);
-            thr->for_deletion = true;
-        }
-        p.for_deletion = true;
-        Yield();
-    }
-    else
-    {
-        HardFault_Handler();
-        while(true);
-    }
-}
-
-extern "C" void BusFault_Handler()
-{
-    HardFault_Handler();
-    while(true);
-}
-
-extern "C" void UsageFault_Handler()
-{
-    auto t = GetCurrentThreadForCore();
-    auto &p = t->p;
-    klog("panic: process %s thread %s caused usage fault\n",
-        p.name.c_str(), t->name.c_str());
-    if(&p != &kernel_proc)
-    {
-        CriticalGuard cg_p(p.sl);
-        for(auto thr : p.threads)
-        {
-            CriticalGuard cg_t(thr->sl);
-            thr->for_deletion = true;
-        }
-        p.for_deletion = true;
-        Yield();
-    }
-    else
-    {
-        HardFault_Handler();
-        while(true);
-    }
 }
 
 extern "C" void SysTick_Handler()

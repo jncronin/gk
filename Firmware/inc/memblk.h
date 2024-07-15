@@ -5,13 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-struct MemRegion
-{
-    uint32_t address;
-    uint32_t length;
-    MemRegionType rt;
-    bool valid;
-};
+#include "memblk_types.h"
 
 bool operator==(const MemRegion &a, const MemRegion &b);
 bool operator!=(const MemRegion &a, const MemRegion &b);
