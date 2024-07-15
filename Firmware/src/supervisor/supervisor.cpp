@@ -7,6 +7,7 @@
 #include "widgets/widget.h"
 #include "btnled.h"
 #include "brightness.h"
+#include "sound.h"
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
@@ -42,6 +43,8 @@ void init_supervisor()
     p_supervisor.screen_w = 640;
     p_supervisor.gamepad_is_joystick = false;
     p_supervisor.gamepad_is_keyboard = true;
+    p_supervisor.gamepad_to_scancode[GK_KEYVOLUP] = GK_SCANCODE_VOLUMEUP;
+    p_supervisor.gamepad_to_scancode[GK_KEYVOLDOWN] = GK_SCANCODE_VOLUMEDOWN;
     
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
         p_supervisor, PreferM7);
@@ -246,6 +249,16 @@ void *supervisor_thread(void *p)
                             cur_scr->KeyPressDown(ck);
                             do_update = true;
                         }
+                        break;
+
+                        case GK_SCANCODE_VOLUMEDOWN:
+                            sound_set_volume(sound_get_volume() - 10);
+                            // fallthrough
+                        case GK_SCANCODE_VOLUMEUP:
+                            sound_set_volume(sound_get_volume() + 10);
+
+                            klog("supervisor: sound set to %d\n", sound_get_volume());
+                            break;
                     }
                     break;
 
