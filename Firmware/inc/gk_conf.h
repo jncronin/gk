@@ -47,6 +47,7 @@
 
 
 #define SRAM4_DATA __attribute__((section(".sram4")))
+#define RTCREG_DATA __attribute__((section(".rtcregs")))
 
 #define DEBUG_FULLQUEUE     0
 

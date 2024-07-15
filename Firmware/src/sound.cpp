@@ -17,6 +17,8 @@ static constexpr const pin PCM_MUTE { GPIOI, 6 };
 static constexpr const pin PCM_ZERO { GPIOB, 2 };   // input
 static constexpr const pin SPKR_NSD { GPIOI, 8 };
 
+RTCREG_DATA int volume_pct;
+
 // buffer
 struct audio_conf
 {
@@ -383,16 +385,44 @@ extern "C" void EXTI2_IRQHandler()
 {
     CriticalGuard cg(sl_sound);
     auto v = PCM_ZERO.value();
-    if(!v)
+    if(!v && volume_pct)
     {
         PCM_MUTE.clear();
         SPKR_NSD.set();
     }
-    else if(v)
+    else
     {
         PCM_MUTE.set();
         SPKR_NSD.clear();
     }
     EXTI->PR1 = EXTI_PR1_PR2;
     __DMB();
+}
+
+int sound_set_volume(int new_vol_pct)
+{
+    if(new_vol_pct < 0 || new_vol_pct > 100)
+        return -1;
+    
+    volume_pct = new_vol_pct;
+
+    if(!PCM_ZERO.value() && volume_pct)
+    {
+        PCM_MUTE.clear();
+        SPKR_NSD.set();
+    }
+    else
+    {
+        PCM_MUTE.set();
+        SPKR_NSD.clear();
+    }
+
+    // TODO: set volume on PCM
+
+    return 0;
+}
+
+int sound_get_volume()
+{
+    return volume_pct;
 }
