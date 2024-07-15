@@ -6,7 +6,7 @@
 
 constexpr const pin BTN_MENU { GPIOB, 4 };
 constexpr const pin BTN_VOLUP { GPIOB, 11 };
-constexpr const pin BTN_VOLDOWN { GPIOB, 12 };
+constexpr const pin BTN_VOLDOWN { GPIOB, 12 };      // TODO changed to PA12 in v2
 constexpr const pin BTN_ONOFF { GPIOH, 3 };
 constexpr const pin BTN_L { GPIOH, 5 };
 constexpr const pin BTN_R { GPIOH, 6 };
