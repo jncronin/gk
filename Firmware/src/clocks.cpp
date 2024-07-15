@@ -380,7 +380,10 @@ void enable_backup_domain()
         RTC->WPR = 0x53;
         RTC->ISR &= ~RTC_ISR_RSF;
         RTC->WPR = 0xff;
-        PWR->CR1 &= ~PWR_CR1_DBP;
+        //PWR->CR1 &= ~PWR_CR1_DBP;
+
+        RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
+        (void)RCC->AHB4ENR;
 
         timespec cts;
         if(clock_get_timespec_from_rtc(&cts) == 0)
@@ -403,7 +406,10 @@ void enable_backup_domain()
         (3UL << RCC_BDCR_RTCSEL_Pos);
 
     // Disallow write access to backup domain
-    PWR->CR1 &= ~PWR_CR1_DBP;
+    //PWR->CR1 &= ~PWR_CR1_DBP;
+
+    RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
+    (void)RCC->AHB4ENR;
 
     // Set up basic RTC time - changed later by network time or user
 
@@ -531,7 +537,7 @@ int clock_set_rtc_from_timespec(const timespec *ts)
     RTC->WPR = 0xff;
 
     // Disable write access to backup domain
-    PWR->CR1 &= ~PWR_CR1_DBP;
+    //PWR->CR1 &= ~PWR_CR1_DBP;
 
     return 0;
 }

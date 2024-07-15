@@ -20,6 +20,7 @@
 #define GK_OVERCLOCK                1
 #define GK_TICKLESS                 0
 
+#define GK_LOG_PERSISTENT           1
 #define GK_LOG_RTT                  1
 #define GK_LOG_USB                  1
 #define GK_LOG_FILE                 1

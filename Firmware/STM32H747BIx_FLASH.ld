@@ -321,6 +321,14 @@ SECTIONS
   } >SRAM4 AT> FLASH1
   _ssram4_flash = LOADADDR(.sram4);
 
+  .backupsram (NOLOAD):
+  {
+    _sbackupsram = .;
+    *(.backupsram)
+    *(.backupsram*)
+    _ebackupsram = .;
+  } >BACKUPSRAM
+
   /* defines for FreeRTOS MPU */
   PROVIDE(__FLASH_segment_start__ = 0x08000000);
   PROVIDE(__FLASH_segment_end__ = 0x08200000);
