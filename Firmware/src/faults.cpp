@@ -19,6 +19,7 @@
 #include "thread.h"
 #include "scheduler.h"
 #include "process.h"
+#include "cleanup.h"
 
 struct gk_aapcs_regs
 {
@@ -147,6 +148,26 @@ extern "C" void UsageFault_Handler()
     ::: "memory");
 }
 
+static void end_process(Process &p)
+{
+    CriticalGuard cg(p.sl);
+    for(auto pt : p.threads)
+    {
+        CriticalGuard cg2(pt->sl);
+        pt->for_deletion = true;
+        pt->is_blocking = true;
+    }
+
+    p.rc = 0;
+    p.for_deletion = true;
+
+    proc_list.DeleteProcess(p.pid, 0);
+
+    CleanupQueue.Push({ .is_thread = false, .p = &p });
+
+    Yield();
+}
+
 static void log_regs(gk_regs *r, const char *fault_type)
 {
     auto t = GetCurrentThreadForCore();
@@ -214,8 +235,7 @@ static void handle_fault()
     else if(p)
     {
         klog("Terminating process %s\n", p->name.c_str());
-        extern ProcessList proc_list;
-        proc_list.DeleteProcess(p->pid, 0);
+        end_process(*p);
         Yield();
     }
     else if(t)
