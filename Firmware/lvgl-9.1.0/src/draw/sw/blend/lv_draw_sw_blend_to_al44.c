@@ -75,18 +75,23 @@ static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
     uint32_t src_g = (src_rgb >> 8) & 0xff;
     uint32_t src_b = src_rgb & 0xff;
 
-    uint32_t dest_r = src_rgb >> 16;
-    uint32_t dest_g = (src_rgb >> 8) & 0xff;
-    uint32_t dest_b = src_rgb & 0xff;
+    uint32_t dest_r = dest_rgb >> 16;
+    uint32_t dest_g = (dest_rgb >> 8) & 0xff;
+    uint32_t dest_b = dest_rgb & 0xff;
 
     uint32_t out_r = ((src_r * src_a) + (dest_r * (16U - src_a))) / 16;
     uint32_t out_g = ((src_g * src_a) + (dest_g * (16U - src_a))) / 16;
-    uint32_t out_b = ((src_r * src_a) + (dest_b * (16U - src_a))) / 16;
+    uint32_t out_b = ((src_b * src_a) + (dest_b * (16U - src_a))) / 16;
 
     uint32_t out_crgb = ((out_r / 64) << 4) | ((out_g / 64) << 2) | (out_b / 64);
 
     unsigned char out_c = crgb_to_cga[out_crgb];
     return (src & 0xf) | out_c;
+}
+
+void lv_draw_sw_blend_image_to_al44(_lv_draw_sw_blend_image_dsc_t * dsc)
+{
+    __asm__ volatile("bkpt \n" ::: "memory");
 }
 
 void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
@@ -100,15 +105,10 @@ void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
 
     if(!dsc->mask_buf)
     {
-        if(opa >= LV_OPA_MAX || opa < LV_OPA_MIN)
+        if(opa >= LV_OPA_MAX)
         {
             // don't blend
-            unsigned char c = 0;
-            if(opa >= LV_OPA_MAX)
-            {
-                c = col_to_cga(dsc->color);
-                c |= 0xf0;
-            }
+            unsigned char c = col_to_cga(dsc->color) | 0xf0;
 
             for(int y = 0; y < h; y++)
             {
@@ -118,7 +118,7 @@ void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
                 }
             }
         }
-        else
+        else if(opa >= LV_OPA_MIN)
         {
             unsigned char c = col_to_cga(dsc->color) | a_to_cga(opa);
 
@@ -157,11 +157,11 @@ void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
                     c = col_to_cga(dsc->color) | a;
                 }
 
-                if((c & 0xf0) == 0xf0 || (c & 0xf0) == 0)
+                if((c & 0xf0) == 0xf0)
                 {
                     dest_buf[x + y * dsc->dest_stride] = c;
                 }
-                else
+                else if(c & 0xf0)
                 {
                     // blend
                     dest_buf[x + y * dsc->dest_stride] = al44_blend(
