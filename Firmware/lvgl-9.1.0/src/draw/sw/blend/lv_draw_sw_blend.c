@@ -146,6 +146,9 @@ void lv_draw_sw_blend(lv_draw_unit_t * draw_unit, const lv_draw_sw_blend_dsc_t *
             case LV_COLOR_FORMAT_XRGB8888:
                 lv_draw_sw_blend_image_to_rgb888(&image_dsc, 4);
                 break;
+            case LV_COLOR_FORMAT_AL44:
+                lv_draw_sw_blend_image_to_al44(&image_dsc);
+                break;
             default:
                 break;
         }
