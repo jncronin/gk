@@ -124,6 +124,8 @@ void *supervisor_thread(void *p)
     auto scr = lv_obj_create(lv_screen_active());
     lv_obj_set_size(scr, LV_PCT(100), 300);
     lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_50, 0);
+    lv_obj_set_y(scr, 480 - 300);
 
     // process messages
     while(true)
