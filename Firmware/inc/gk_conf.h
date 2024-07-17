@@ -49,6 +49,13 @@
 #define SRAM4_DATA __attribute__((section(".sram4")))
 #define RTCREG_DATA __attribute__((section(".rtcregs")))
 
+// TODO: check presence of debugger and if not show message on screen
+#ifdef BKPT
+#undef BKPT
+#endif
+#define BKPT() \
+    __asm__ volatile("bkpt \n" ::: "memory")
+
 #define DEBUG_FULLQUEUE     0
 
 #endif

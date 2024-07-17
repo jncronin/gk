@@ -11,6 +11,7 @@
 
 SRAM4_DATA static BinarySemaphore gpu_ready;
 SRAM4_DATA static BinarySemaphore mdma_ready;
+extern Process p_supervisor;
 
 struct gpu_message_int
 {
@@ -488,7 +489,22 @@ void *gpu_thread(void *p)
             uint32_t src_w, src_h;
             if(g.g.dest_addr == 0)
             {
-                if(cur_process->screen_w == 640 && cur_process->screen_h == 480)
+                if(cur_process == &p_supervisor)
+                {
+                    dest_addr = (uint32_t)(uintptr_t)screen_get_overlay_frame_buffer();
+                    dest_pitch = 640 * bpp;
+                    if(g.g.dw == 0 && g.g.dh == 0)
+                    {
+                        dest_w = 640;
+                        dest_h = 480;
+                    }
+                    else
+                    {
+                        dest_w = g.g.dw;
+                        dest_h = g.g.dh;
+                    }
+                }
+                else if(cur_process->screen_w == 640 && cur_process->screen_h == 480)
                 {
                     dest_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer();
                     dest_pitch = 640 * bpp;
@@ -529,7 +545,22 @@ void *gpu_thread(void *p)
 
             if(g.g.src_addr_color == 0)
             {
-                if(cur_process->screen_w == 640 && cur_process->screen_h == 480)
+                if(cur_process == &p_supervisor)
+                {
+                    src_addr = (uint32_t)(uintptr_t)screen_get_overlay_frame_buffer(false);
+                    src_pitch = 640 * bpp;
+                    if(g.g.w == 0 && g.g.h == 0)
+                    {
+                        src_w = 640;
+                        src_h = 480;
+                    }
+                    else
+                    {
+                        src_w = g.g.w;
+                        src_h = g.g.h;
+                    }
+                }
+                else if(cur_process->screen_w == 640 && cur_process->screen_h == 480)
                 {
                     src_addr = (uint32_t)(uintptr_t)screen_get_frame_buffer(false);
                     src_pitch = 640 * bpp;
@@ -586,8 +617,15 @@ void *gpu_thread(void *p)
                         wait_dma2d();
                     }
                     {
-                        void *old_buf;
-                        auto new_buf = screen_flip(&old_buf);
+                        void *old_buf, *new_buf;
+                        if(cur_process == &p_supervisor)
+                        {
+                            new_buf = screen_flip_overlay(&old_buf, true, 255);
+                        }
+                        else
+                        {
+                            new_buf = screen_flip(&old_buf);
+                        }
                         if(g.g.dest_addr)
                         {
                             *(void **)g.g.dest_addr = new_buf;
