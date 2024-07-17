@@ -1,6 +1,12 @@
 #include "lv_draw_sw_blend_to_argb8888.h"
 #if LV_USE_DRAW_SW
 
+#define FLOAT_ARITHMETIC 1
+
+#if FLOAT_ARITHMETIC
+#include <math.h>
+#endif
+
 /* The following from the R source:
 
 pals <- c(0x000000, 0x0000aa, 0x00aa00, 0x00aaaa,
@@ -65,8 +71,46 @@ static inline unsigned char col_to_cga(lv_color_t rgb)
     return crgb_to_cga[crgb];
 }
 
+int klog(const char *format, ...);
+
+#if FLOAT_ARITHMETIC
 static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
 {
+    /* src * src_alpha + dest * (1-dest_alpha) 
+        used floating point maths */
+    uint32_t src_rgb = cga_palette[src & 0xf];
+    uint32_t dest_rgb = cga_palette[dest & 0xf];
+    float src_a = (float)((src >> 4) & 0xf) / 15.0f;
+
+    float src_r = (float)(src_rgb >> 16) / 255.0f;
+    float src_g = (float)((src_rgb >> 8) & 0xff) / 255.0f;
+    float src_b = (float)(src_rgb & 0xff) / 255.0f;
+
+    float dest_r = (float)(dest_rgb >> 16) / 255.0f;
+    float dest_g = (float)((dest_rgb >> 8) & 0xff) / 255.0f;
+    float dest_b = (float)(dest_rgb & 0xff) / 255.0f;
+
+    float out_r = (src_r * src_a) + (dest_r * (1.0f - src_a));
+    float out_g = (src_g * src_a) + (dest_g * (1.0f - src_a));
+    float out_b = (src_b * src_a) + (dest_b * (1.0f - src_a));
+
+    uint32_t out_crgb = ((uint32_t)rintf(out_r * 15.0f) << 4) |
+        ((uint32_t)rintf(out_g * 15.0f) << 2) |
+        (uint32_t)rintf(out_b * 15.0f);
+
+    unsigned char out_c = crgb_to_cga[out_crgb];
+    unsigned char ret = (src & 0xf0) | out_c;
+
+    //klog("al44_blend: %02x, %02x ((%f,%f,%f),(%f,%f,%f)) to %02x (%f,%f,%f)\n",
+    //    src, dest, src_r, src_g, src_b, dest_r, dest_g, dest_b, ret, out_r, out_g, out_b);
+
+    return ret;
+}
+#else
+static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
+{
+    /* src * src_alpha + dest * (1-dest_alpha) 
+        given integer arithmetic tends to round down towards darker colours */
     uint32_t src_rgb = cga_palette[src & 0xf];
     uint32_t dest_rgb = cga_palette[dest & 0xf];
     uint32_t src_a = (src >> 4) & 0xf;
@@ -86,8 +130,9 @@ static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
     uint32_t out_crgb = ((out_r / 64) << 4) | ((out_g / 64) << 2) | (out_b / 64);
 
     unsigned char out_c = crgb_to_cga[out_crgb];
-    return (src & 0xf) | out_c;
+    return (src & 0xf0) | out_c;
 }
+#endif
 
 void lv_draw_sw_blend_image_to_al44(_lv_draw_sw_blend_image_dsc_t * dsc)
 {
@@ -151,9 +196,16 @@ void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
                 }
                 else
                 {
+#if FLOAT_ARITHMETIC
+                    float op_a = (float)opa / 255.0f;
+                    float mask_a = (float)dsc->mask_buf[x + y * dsc->mask_stride] / 15.0f;
+                    unsigned int a = ((unsigned int)rintf((op_a * mask_a) * 15.0f)) << 4;
+
+#else
                     unsigned int opa_a = a_to_cga(opa);
                     unsigned int mask_a = a_to_cga(dsc->mask_buf[x + y * dsc->mask_stride]);
                     unsigned int a = ((opa_a >> 4) * (mask_a >> 4)) & 0xf0;
+#endif
                     c = col_to_cga(dsc->color) | a;
                 }
 

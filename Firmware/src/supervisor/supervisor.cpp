@@ -124,14 +124,14 @@ void *supervisor_thread(void *p)
     auto scr = lv_obj_create(lv_screen_active());
     lv_obj_set_size(scr, LV_PCT(100), 300);
     lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_50, 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_80, 0);
     lv_obj_set_y(scr, 480 - 300);
 
     // process messages
     while(true)
     {
         Event e;
-        bool do_update = false;
+        [[maybe_unused]] bool do_update = false;
         bool has_event = p_supervisor.events.Pop(&e, kernel_time::from_ms(lv_timer_handler()));
 
         if(has_event)
@@ -243,6 +243,7 @@ void *supervisor_thread(void *p)
             }
         }
 
+/*
         if(overlay_visible && do_update)
         {
             auto fb = (color_t *)screen_get_overlay_frame_buffer();
@@ -259,7 +260,9 @@ void *supervisor_thread(void *p)
             //screen_flip_overlay(true, scr_alpha);
             //scr_vsync.Wait();
         }
+*/    
     }
+
 
     return nullptr;
 }
