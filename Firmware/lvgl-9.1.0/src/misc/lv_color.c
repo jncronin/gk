@@ -56,6 +56,7 @@ uint8_t lv_color_format_get_bpp(lv_color_format_t cf)
         case LV_COLOR_FORMAT_L8:
         case LV_COLOR_FORMAT_A8:
         case LV_COLOR_FORMAT_I8:
+        case LV_COLOR_FORMAT_AL44:
             return 8;
 
         case LV_COLOR_FORMAT_RGB565A8:

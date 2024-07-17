@@ -4,25 +4,21 @@
 #include "screen.h"
 #include "cache.h"
 #include "_gk_event.h"
-#include "widgets/widget.h"
 #include "btnled.h"
 #include "brightness.h"
 #include "sound.h"
+#include "lvgl.h"
+#include "lv_drivers/lv_gk_display.h"
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
 SRAM4_DATA static bool overlay_visible = false;
-SRAM4_DATA static WidgetAnimationList wl;
 
 extern Condition scr_vsync;
 
 static void *supervisor_thread(void *p);
 
-ButtonWidget rw_test, rw_test2;
-ImageButtonWidget imb_bright_up, imb_bright_down;
-GridWidget scr_test;
-LabelWidget lab_caption;
-KeyboardWidget kw;
+
 static unsigned int scr_alpha = 0;
 
 void init_supervisor()
@@ -41,6 +37,7 @@ void init_supervisor()
         p_supervisor.open_files[i] = nullptr;
     p_supervisor.screen_h = 480;
     p_supervisor.screen_w = 640;
+    p_supervisor.screen_pf = GK_PIXELFORMAT_L8;
     p_supervisor.gamepad_is_joystick = false;
     p_supervisor.gamepad_is_keyboard = true;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLUP] = GK_SCANCODE_VOLUMEUP;
@@ -103,18 +100,6 @@ bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
     return false;
 }
 
-void imb_brightness_click(Widget *w, coord_t x, coord_t y)
-{
-    if(w == &imb_bright_down)
-    {
-        screen_set_brightness(screen_get_brightness() - 10);
-    }
-    else
-    {
-        screen_set_brightness(screen_get_brightness() + 10);
-    }
-}
-
 void kbd_click_up(Widget *w, coord_t x, coord_t y, int key)
 {
     focus_process->events.Push({ .type = Event::KeyUp, .key = (unsigned short)key });
@@ -127,82 +112,25 @@ void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
 
 void *supervisor_thread(void *p)
 {
-    rw_test.x = 32;
-    rw_test.w = 200;
-    rw_test.y = 64;
-    rw_test.h = 100;
-    rw_test.text = "Hi there";
-    rw_test.OnClick = test_onclick;
+    lv_init();
 
-    rw_test2.x = 264;
-    rw_test2.w = 200;
-    rw_test2.y = 64;
-    rw_test2.h = 100;
-    rw_test2.text = "Eh?";
+    auto display = lv_gk_display_create();
+    lv_display_set_default(display);
 
-    imb_bright_down.x = 640-80-16-80-16;
-    imb_bright_down.w = 80;
-    imb_bright_down.y = 64;
-    imb_bright_down.h = 80;
-    imb_bright_down.image = brightness_down;
-    imb_bright_down.img_w = 64;
-    imb_bright_down.img_h = 64;
-    imb_bright_down.OnClick = imb_brightness_click;
+    /* Set transparent screen */
+    lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(lv_layer_bottom(), LV_OPA_TRANSP, LV_PART_MAIN);
 
-    imb_bright_up.x = 640-80-16;
-    imb_bright_up.w = 80;
-    imb_bright_up.y = 64;
-    imb_bright_up.h = 80;
-    imb_bright_up.image = brightness_up;
-    imb_bright_up.img_w = 64;
-    imb_bright_up.img_h = 64;
-    imb_bright_up.OnClick = imb_brightness_click;
-
-    lab_caption.x = 16;
-    lab_caption.y = 16;
-    lab_caption.w = 640 - 32;
-    lab_caption.h = 32;
-    lab_caption.text = "GK";
-
-    scr_test.x = 0;
-    scr_test.y = 240;
-    scr_test.w = 640;
-    scr_test.h = 240;
-
-    RectangleWidget rw;
-    rw.x = 0;
-    rw.y = 0;
-    rw.w = fb_w;
-    rw.h = fb_h/2;
-    rw.bg_inactive_color = 0x87;
-    rw.border_width = 0;
-
-    scr_test.AddChild(rw);
-    //scr_test.AddChildOnGrid(rw_test);
-    //scr_test.AddChildOnGrid(rw_test2);
-    //scr_test.AddChildOnGrid(imb_bright_down);
-    //scr_test.AddChildOnGrid(imb_bright_up);
-    //scr_test.AddChild(lab_caption);
-
-    kw.x = (640 - kw.w) / 2;
-    kw.y = 8;
-    kw.OnKeyboardButtonClick = kbd_click_up;
-    kw.OnKeyboardButtonClickBegin = kbd_click_down;
-    scr_test.AddChildOnGrid(kw);
-
-    Widget *cur_scr = &scr_test;
+    auto scr = lv_obj_create(lv_screen_active());
+    lv_obj_set_size(scr, LV_PCT(100), 300);
+    lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
 
     // process messages
     while(true)
     {
         Event e;
         bool do_update = false;
-        bool has_event = p_supervisor.events.Pop(&e,
-            HasAnimations(wl) ? kernel_time::from_ms(1000ULL / 60ULL) : kernel_time());
-        if(RunAnimations(wl, clock_cur_ms()))
-        {
-            do_update = true;
-        }
+        bool has_event = p_supervisor.events.Pop(&e, kernel_time::from_ms(lv_timer_handler()));
 
         if(has_event)
         {
@@ -215,11 +143,17 @@ void *supervisor_thread(void *p)
                         {
                             if(overlay_visible)
                             {
-                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)0);
+                                //AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)0);
+                                overlay_visible = false;
+                                //lv_obj_add_flag(scr, LV_OBJ_FLAG_HIDDEN);
+                                lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
                             }
                             else
                             {
-                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)1);
+                                //AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)1);
+                                overlay_visible = true;
+                                lv_obj_set_style_bg_color(scr, lv_color_make(0, 255, 0), 0);
+                                //lv_obj_clear_flag(scr, LV_OBJ_FLAG_HIDDEN);
                             }
                             /*overlay_visible = !overlay_visible;
                             if(overlay_visible)
@@ -246,7 +180,7 @@ void *supervisor_thread(void *p)
                             {
                                 ck = GK_SCANCODE_RETURN;
                             }
-                            cur_scr->KeyPressDown(ck);
+                            //cur_scr->KeyPressDown(ck);
                             do_update = true;
                         }
                         break;
@@ -278,7 +212,7 @@ void *supervisor_thread(void *p)
                             {
                                 ck = GK_SCANCODE_RETURN;
                             }
-                            cur_scr->KeyPressUp(ck);
+                            //cur_scr->KeyPressUp(ck);
                             do_update = true;
                         }
                     }
@@ -296,7 +230,7 @@ void *supervisor_thread(void *p)
                             (" (" + std::to_string(focus_process->screen_w) + "x" +
                             std::to_string(focus_process->screen_h) + ")") : "";
 
-                        lab_caption.text = capt + scr_capt;
+                        //lab_caption.text = capt + scr_capt;
                         do_update = true;
                     }
                     break;
@@ -319,9 +253,9 @@ void *supervisor_thread(void *p)
                 }
             }
 
-            cur_scr->Update();
-            screen_flip_overlay(true, scr_alpha);
-            scr_vsync.Wait();
+            //cur_scr->Update();
+            //screen_flip_overlay(true, scr_alpha);
+            //scr_vsync.Wait();
         }
     }
 

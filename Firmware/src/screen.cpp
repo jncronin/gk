@@ -36,13 +36,20 @@ void *screen_get_frame_buffer(bool back_buf)
     }
 }
 
-void *screen_get_overlay_frame_buffer()
+void *screen_get_overlay_frame_buffer(bool back_buf)
 {
     CriticalGuard cg(s_scrbuf_overlay);
-    return scr_bufs_overlay[scr_cbuf_overlay & 0x1];
+    if(back_buf)
+    {
+        return scr_bufs_overlay[scr_cbuf_overlay & 0x1];
+    }
+    else
+    {
+        return scr_bufs_overlay[(scr_cbuf_overlay + 1) & 0x1];
+    }
 }
 
-void *screen_flip_overlay(bool visible, int alpha)
+void *screen_flip_overlay(void **old_buf, bool visible, int alpha)
 {
     CriticalGuard cg(s_scrbuf_overlay);
     scr_cbuf_overlay++;
@@ -62,6 +69,10 @@ void *screen_flip_overlay(bool visible, int alpha)
         LTDC_Layer2->CACR = (unsigned int)alpha;
     }
     LTDC->SRCR = LTDC_SRCR_VBR;
+    if(old_buf)
+    {
+        *old_buf = scr_bufs_overlay[rbuf];
+    }
     return scr_bufs_overlay[wbuf];
 }
 

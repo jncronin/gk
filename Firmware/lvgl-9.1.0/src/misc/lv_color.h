@@ -125,6 +125,7 @@ enum _lv_color_format_t {
     LV_COLOR_FORMAT_I4                = 0x09,
     LV_COLOR_FORMAT_I8                = 0x0A,
     LV_COLOR_FORMAT_A8                = 0x0E,
+    LV_COLOR_FORMAT_AL44              = 0x40,   // used for GK
 
     /*2 byte (+alpha) formats*/
     LV_COLOR_FORMAT_RGB565            = 0x12,

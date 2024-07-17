@@ -74,7 +74,8 @@
         "iostream": "cpp",
         "istream": "cpp",
         "fstream": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "lv_draw_sw_blend_to_argb8888.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": false,
 }
