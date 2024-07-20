@@ -143,9 +143,111 @@ static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
 }
 #endif
 
+static void argb8888_image_blend(_lv_draw_sw_blend_image_dsc_t *dsc)
+{
+    int32_t w = dsc->dest_w;
+    int32_t h = dsc->dest_h;
+    lv_opa_t opa = dsc->opa;
+    unsigned char * dest_buf = dsc->dest_buf;
+    int32_t dest_stride = dsc->dest_stride;
+    const lv_color32_t * src_buf_c32 = (const lv_color32_t *) dsc->src_buf;
+    int32_t src_stride = dsc->src_stride;
+    const lv_opa_t * mask_buf = dsc->mask_buf;
+    int32_t mask_stride = dsc->mask_stride;
+
+    if(mask_buf == NULL)
+    {
+        if(opa >= LV_OPA_MAX)
+        {
+            for(int y = 0; y < h; y++)
+            {
+                for(int x = 0; x < w; x++)
+                {
+                    const lv_color32_t cc = src_buf_c32[x + y * src_stride];
+
+                    lv_color_t c = { .red =  cc.red, .green = cc.green, .blue = cc.blue };
+                    unsigned char new_val = col_to_cga(c) | a_to_cga(cc.alpha);
+                    dest_buf[x + y * dest_stride] = al44_blend(new_val,
+                        dest_buf[x + y * dest_stride]);
+                }
+            }
+        }
+        else
+        {
+            for(int y = 0; y < h; y++)
+            {
+                for(int x = 0; x < w; x++)
+                {
+                    lv_color32_t cc = src_buf_c32[x + y * src_stride];
+                    cc.alpha = LV_OPA_MIX2(cc.alpha, opa);
+
+                    lv_color_t c = { .red =  cc.red, .green = cc.green, .blue = cc.blue };
+                    unsigned char new_val = col_to_cga(c) | a_to_cga(cc.alpha);
+                    dest_buf[x + y * dest_stride] = al44_blend(new_val,
+                        dest_buf[x + y * dest_stride]);
+                }
+            }
+        }
+    }
+    else
+    {
+        if(opa >= LV_OPA_MAX)
+        {
+            for(int y = 0; y < h; y++)
+            {
+                for(int x = 0; x < w; x++)
+                {
+                    lv_color32_t cc = src_buf_c32[x + y * src_stride];
+                    cc.alpha = LV_OPA_MIX2(cc.alpha, mask_buf[x + y * mask_stride]);
+
+                    lv_color_t c = { .red =  cc.red, .green = cc.green, .blue = cc.blue };
+                    unsigned char new_val = col_to_cga(c) | a_to_cga(cc.alpha);
+                    dest_buf[x + y * dest_stride] = al44_blend(new_val,
+                        dest_buf[x + y * dest_stride]);
+                }
+            }
+        }
+        else
+        {
+            for(int y = 0; y < h; y++)
+            {
+                for(int x = 0; x < w; x++)
+                {
+                    lv_color32_t cc = src_buf_c32[x + y * src_stride];
+                    cc.alpha = LV_OPA_MIX3(cc.alpha, opa, mask_buf[x + y * mask_stride]);
+
+                    lv_color_t c = { .red =  cc.red, .green = cc.green, .blue = cc.blue };
+                    unsigned char new_val = col_to_cga(c) | a_to_cga(cc.alpha);
+                    dest_buf[x + y * dest_stride] = al44_blend(new_val,
+                        dest_buf[x + y * dest_stride]);
+                }
+            }
+        }
+    }
+}
+
 void lv_draw_sw_blend_image_to_al44(_lv_draw_sw_blend_image_dsc_t * dsc)
 {
-    __asm__ volatile("bkpt \n" ::: "memory");
+    switch(dsc->src_color_format) {
+        case LV_COLOR_FORMAT_RGB565:
+            __asm__ volatile("bkpt \n" ::: "memory");
+            //rgb565_image_blend(dsc);
+            break;
+        case LV_COLOR_FORMAT_RGB888:
+            __asm__ volatile("bkpt \n" ::: "memory");
+            //rgb888_image_blend(dsc, 3);
+            break;
+        case LV_COLOR_FORMAT_XRGB8888:
+            __asm__ volatile("bkpt \n" ::: "memory");
+            //rgb888_image_blend(dsc, 4);
+            break;
+        case LV_COLOR_FORMAT_ARGB8888:
+            argb8888_image_blend(dsc);
+            break;
+        default:
+            LV_LOG_WARN("Not supported source color format");
+            break;
+    }
 }
 
 void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
