@@ -135,11 +135,15 @@ void *supervisor_thread(void *p)
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(lv_layer_bottom(), LV_OPA_TRANSP, LV_PART_MAIN);
 
+    /* Remove scroll bars */
+    lv_obj_set_scrollbar_mode(lv_screen_active(), LV_SCROLLBAR_MODE_OFF);
+
     auto scr = lv_obj_create(lv_screen_active());
     lv_obj_set_size(scr, LV_PCT(100), 300);
     lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_80, 0);
-    lv_obj_set_y(scr, 480 - 300);
+    lv_obj_set_y(scr, 480);
+
 
     // process messages
     while(true)
