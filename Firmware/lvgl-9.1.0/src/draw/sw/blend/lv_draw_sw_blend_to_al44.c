@@ -1,6 +1,9 @@
 #include "lv_draw_sw_blend_to_argb8888.h"
 #if LV_USE_DRAW_SW
 
+// Modified for GK
+
+
 #define FLOAT_ARITHMETIC 1
 
 #if FLOAT_ARITHMETIC
@@ -174,6 +177,21 @@ void lv_draw_sw_blend_color_to_al44(_lv_draw_sw_blend_fill_dsc_t * dsc)
                     // blend
                     dest_buf[x + y * dsc->dest_stride] = al44_blend(
                         c, dest_buf[x + y * dsc->dest_stride]);
+                }
+            }
+        }
+        else
+        {
+            // completely transparent rectangles _shouldn't_ get through to this part unless
+            //  they are the bottom layer - therefore special case and just write them direct
+            //  to the buffer
+            unsigned char c = col_to_cga(dsc->color);
+
+            for(int y = 0; y < h; y++)
+            {
+                for(int x = 0; x < w; x++)
+                {
+                    dest_buf[x + y * dsc->dest_stride] = c;
                 }
             }
         }

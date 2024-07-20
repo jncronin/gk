@@ -40,7 +40,8 @@
 void lv_draw_sw_blend(lv_draw_unit_t * draw_unit, const lv_draw_sw_blend_dsc_t * blend_dsc)
 {
     /*Do not draw transparent things*/
-    if(blend_dsc->opa <= LV_OPA_MIN) return;
+    // Modified for GK
+    //if(blend_dsc->opa <= LV_OPA_MIN) return;
     if(blend_dsc->mask_buf && blend_dsc->mask_res == LV_DRAW_SW_MASK_RES_TRANSP) return;
 
     lv_area_t blend_area;
