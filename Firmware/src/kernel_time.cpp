@@ -53,6 +53,21 @@ kernel_time kernel_time::from_us(uint64_t us)
     return kernel_time(us);
 }
 
+uint64_t kernel_time::to_ms() const
+{
+    return _us / 1000ULL;
+}
+
+uint64_t kernel_time::to_us() const
+{
+    return _us;
+}
+
+uint64_t kernel_time::to_ns() const
+{
+    return _us * 1000ULL;
+}
+
 bool kernel_time::is_valid() const
 {
     return _us != 0ULL;

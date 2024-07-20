@@ -26,10 +26,10 @@ class kernel_time
         static kernel_time from_ms(uint64_t ms);
         static kernel_time from_timespec(const timespec *ts, int clock_id = CLOCK_MONOTONIC);
 
-        uint64_t to_ns();
-        uint64_t to_us();
-        uint64_t to_ms();
-        void to_timespec(timespec *ts, int clock_id = CLOCK_MONOTONIC);
+        uint64_t to_ns() const;
+        uint64_t to_us() const;
+        uint64_t to_ms() const;
+        void to_timespec(timespec *ts, int clock_id = CLOCK_MONOTONIC) const;
 
         kernel_time(uint64_t us = 0ULL);
 
