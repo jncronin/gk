@@ -155,6 +155,31 @@ void *supervisor_thread(void *p)
     [[maybe_unused]] auto kbd = lv_keyboard_create(scr);
     lv_group_add_obj(grp, kbd);
 
+    static lv_style_t style_bg;
+    lv_style_init(&style_bg);
+    lv_style_set_pad_all(&style_bg, 0);
+    lv_style_set_pad_gap(&style_bg, 0);
+    lv_style_set_radius(&style_bg, 0);
+    lv_style_set_border_width(&style_bg, 0);
+    lv_style_set_outline_width(&style_bg, 0);
+    lv_style_set_bg_opa(&style_bg, LV_OPA_0);
+
+    static lv_style_t style_btn;
+    lv_style_init(&style_btn);
+    lv_style_set_radius(&style_btn, 0);
+    lv_style_set_border_width(&style_btn, 1);
+    lv_style_set_border_opa(&style_btn, LV_OPA_100);
+    lv_style_set_border_color(&style_btn, lv_color_black());
+    lv_style_set_border_side(&style_btn, LV_BORDER_SIDE_INTERNAL);
+    lv_style_set_bg_opa(&style_btn, LV_OPA_50);
+    lv_style_set_radius(&style_btn, 0);
+
+    lv_obj_add_style(kbd, &style_bg, 0);
+    lv_obj_add_style(kbd, &style_bg, LV_STATE_FOCUSED);
+    lv_obj_add_style(kbd, &style_bg, LV_STATE_FOCUS_KEY);
+    lv_obj_add_style(kbd, &style_btn, LV_PART_ITEMS);
+    lv_obj_add_style(kbd, &style_btn, LV_PART_ITEMS | LV_STATE_CHECKED);
+
     // process messages
     while(true)
     {
