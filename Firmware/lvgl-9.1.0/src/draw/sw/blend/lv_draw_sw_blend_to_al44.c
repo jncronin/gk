@@ -79,11 +79,17 @@ int klog(const char *format, ...);
 #if FLOAT_ARITHMETIC
 static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
 {
-    /* src * src_alpha + dest * (1-dest_alpha) 
-        used floating point maths */
+    /* blend as per DMA2D to allow white completely transparent bottom layer to be properly overwritten
+    
+        amult = afg * abg / 255
+        aout = afg + abg - amult
+        cout = (cfg * afg + cbg * abg - cbg * amult) / aout */
     uint32_t src_rgb = cga_palette[src & 0xf];
     uint32_t dest_rgb = cga_palette[dest & 0xf];
     float src_a = (float)((src >> 4) & 0xf) / 15.0f;
+    float dest_a = (float)((dest >> 4) & 0xf) / 15.0f;
+    float amult = src_a * dest_a;
+    float aout = src_a + dest_a - amult;
 
     float src_r = (float)(src_rgb >> 16) / 255.0f;
     float src_g = (float)((src_rgb >> 8) & 0xff) / 255.0f;
@@ -93,16 +99,16 @@ static inline unsigned char al44_blend(unsigned int src, unsigned int dest)
     float dest_g = (float)((dest_rgb >> 8) & 0xff) / 255.0f;
     float dest_b = (float)(dest_rgb & 0xff) / 255.0f;
 
-    float out_r = (src_r * src_a) + (dest_r * (1.0f - src_a));
-    float out_g = (src_g * src_a) + (dest_g * (1.0f - src_a));
-    float out_b = (src_b * src_a) + (dest_b * (1.0f - src_a));
+    float out_r = (src_r * src_a + dest_r * (dest_a - amult)) / aout;
+    float out_g = (src_g * src_a + dest_g * (dest_a - amult)) / aout;
+    float out_b = (src_b * src_a + dest_b * (dest_a - amult)) / aout;
 
-    uint32_t out_crgb = ((uint32_t)rintf(out_r * 15.0f) << 4) |
-        ((uint32_t)rintf(out_g * 15.0f) << 2) |
-        (uint32_t)rintf(out_b * 15.0f);
+    uint32_t out_crgb = ((uint32_t)rintf(out_r * 3.0f) << 4) |
+        ((uint32_t)rintf(out_g * 3.0f) << 2) |
+        (uint32_t)rintf(out_b * 3.0f);
 
     unsigned char out_c = crgb_to_cga[out_crgb];
-    unsigned char ret = (src & 0xf0) | out_c;
+    unsigned char ret = (((unsigned char)rintf(aout * 15.0f) & 0xf) << 4) | out_c;
 
     //klog("al44_blend: %02x, %02x ((%f,%f,%f),(%f,%f,%f)) to %02x (%f,%f,%f)\n",
     //    src, dest, src_r, src_g, src_b, dest_r, dest_g, dest_b, ret, out_r, out_g, out_b);

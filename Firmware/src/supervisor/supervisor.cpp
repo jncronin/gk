@@ -149,6 +149,7 @@ void *supervisor_thread(void *p)
                                 overlay_visible = false;
                                 //lv_obj_add_flag(scr, LV_OBJ_FLAG_HIDDEN);
                                 lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
+                                klog("red\n");
                             }
                             else
                             {
@@ -156,6 +157,7 @@ void *supervisor_thread(void *p)
                                 overlay_visible = true;
                                 lv_obj_set_style_bg_color(scr, lv_color_make(0, 255, 0), 0);
                                 //lv_obj_clear_flag(scr, LV_OBJ_FLAG_HIDDEN);
+                                klog("green\n");
                             }
                             /*overlay_visible = !overlay_visible;
                             if(overlay_visible)
