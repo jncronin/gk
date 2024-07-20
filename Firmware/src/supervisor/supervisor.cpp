@@ -174,11 +174,19 @@ void *supervisor_thread(void *p)
     lv_style_set_bg_opa(&style_btn, LV_OPA_50);
     lv_style_set_radius(&style_btn, 0);
 
+    static lv_style_t style_btn_focus;
+    lv_style_init(&style_btn_focus);
+    lv_style_set_border_color(&style_btn_focus, lv_color_white());
+
     lv_obj_add_style(kbd, &style_bg, 0);
     lv_obj_add_style(kbd, &style_bg, LV_STATE_FOCUSED);
     lv_obj_add_style(kbd, &style_bg, LV_STATE_FOCUS_KEY);
     lv_obj_add_style(kbd, &style_btn, LV_PART_ITEMS);
     lv_obj_add_style(kbd, &style_btn, LV_PART_ITEMS | LV_STATE_CHECKED);
+    lv_obj_add_style(kbd, &style_btn_focus, LV_PART_ITEMS | LV_STATE_FOCUSED);
+    lv_obj_add_style(kbd, &style_btn_focus, LV_PART_ITEMS | LV_STATE_FOCUS_KEY);
+    lv_obj_add_style(kbd, &style_btn_focus, LV_PART_ITEMS | LV_STATE_CHECKED | LV_STATE_FOCUSED);
+    lv_obj_add_style(kbd, &style_btn_focus, LV_PART_ITEMS | LV_STATE_CHECKED | LV_STATE_FOCUS_KEY);
 
     // process messages
     while(true)
