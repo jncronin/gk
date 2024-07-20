@@ -19,7 +19,7 @@ static constexpr MemRegion InvalidMemregion()
     return ret;
 }
 
-void init_memblk();
+extern "C" void init_memblk();
 MemRegion memblk_allocate(size_t n, MemRegionType rtype);
 MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity);
 void memblk_deallocate(struct MemRegion &r);

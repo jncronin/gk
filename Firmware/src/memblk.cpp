@@ -12,6 +12,7 @@ __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_ax
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x30000000> b_sram;
 __attribute__((section(".sram4"))) BuddyAllocator<512*1024, 65536*1024, GK_SDRAM_BASE> b_sdram;
+__attribute__((section(".sram4"))) static bool inited = false;
 
 // The following are the ends of all the input sections in the
 //  relevant memory region.  We choose the highest to init the
@@ -71,8 +72,16 @@ template<typename T> constexpr static T align_up(T val, T align)
     return val;
 }
 
-void init_memblk()
+extern "C" void init_memblk()
 {
+    if(inited)
+        return;
+
+    b_axisram.init();
+    b_dtcm.init();
+    b_sdram.init();
+    b_sram.init();
+    
     uintptr_t eaxisram = 0;
     uintptr_t edtcm = 0;
     uintptr_t esram = 0;
@@ -110,6 +119,8 @@ void init_memblk()
     add_memory_region(esram, 0x30048000 - esram, MemRegionType::SRAM);
     add_memory_region(esdram, GK_SDRAM_BASE + 64 * 1024 * 1024 - esdram, MemRegionType::SDRAM);
     //add_memory_region(0x38000000UL, 0x10000);   // SRAM4 - handled separately by malloc interface
+
+    inited = true;
 }
 
 MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)

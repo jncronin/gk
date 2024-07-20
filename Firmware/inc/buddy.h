@@ -293,9 +293,12 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
             return ret;
         }
 
-        BuddyAllocator()
+        void init()
         {
             // init buddy to zero, get start values
+            // can't use constructor here because needs to be set up prior to malloc, which
+            //  may be used in another constructor, and there is no guarantee of order of calling
+            //  static constructors
             memset(b, 0, 4*total_words());
             uint32_t cur_start = 0;
             for(uint32_t i = 0; i < num_levels(); i++)

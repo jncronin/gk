@@ -1,6 +1,7 @@
 /* malloc interface */
 #include "osmutex.h"
 #include "region_allocator.h"
+#include "memblk.h"
 __attribute__((section(".sram4"))) static Spinlock sl_sram4;
 
 extern "C"
@@ -74,20 +75,48 @@ void *calloc_region(size_t nmemb, size_t size, int reg_id)
 /* sbrk implementation for sram4 */
 static constexpr uint32_t max_sbrk4 = 0x38000000UL + 64*1024UL;
 extern char _esram4;
-__attribute__((section(".sram4"))) static uint32_t cur_sbrk4 = (uint32_t)(uintptr_t)&_esram4;
 
 extern "C" void *sbrksram4(int n)
 {
-    if(n < 0) n = 0;
-    auto nn = static_cast<uint32_t>(n);
+    static MemRegion mr = InvalidMemregion();
+    static size_t mr_top = 0;
 
-    if((n + cur_sbrk4) > max_sbrk4)
+    if(!mr.valid)
     {
-        return (void *)-1;
+        extern void init_memblk();
+        init_memblk();
+
+        mr = memblk_allocate(128*1024, MemRegionType::AXISRAM);
+        if(!mr.valid)
+        {
+            __asm__ volatile("bkpt \n" ::: "memory");
+            while(true);
+        }
     }
-    auto old_brk = cur_sbrk4;
 
-    cur_sbrk4 += nn;
-
-    return (void *)(uintptr_t)old_brk;
+    auto ret = (void *)(mr.address + mr_top);
+    if(n == 0)
+    {
+        return ret;
+    }
+    else if(n > 0)
+    {
+        auto free_space = mr.length - mr_top;
+        if((size_t)n > free_space)
+        {
+            return (void *)-1;
+        }
+        mr_top += n;
+        return ret;
+    }
+    else
+    {
+        auto to_reduce = (size_t)(-n);
+        if(to_reduce > mr_top)
+        {
+            return (void *)-1;
+        }
+        mr_top -= to_reduce;
+        return ret;
+    }
 }

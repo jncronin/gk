@@ -116,12 +116,12 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
     return ret;
 }
 
-constexpr mpu_saved_state mpu_sram4 = MPUGenerate(0x38000000, 0x10000, 0, false, RW, RO, N_NC_S);
+constexpr mpu_saved_state mpu_sram = MPUGenerate(0x30000000, 0x10000000, 0, false, RW, RO, N_NC_S);
 constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 1, false, RW, RW, WT_NS);
 
 constexpr mpu_saved_state mpu_default[8] =
 {
-    mpu_sram4,
+    mpu_sram,
     mpu_fb0,
     MPUGenerateNonValid(2),
     MPUGenerateNonValid(3),
