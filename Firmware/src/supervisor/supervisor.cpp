@@ -12,7 +12,7 @@
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
-SRAM4_DATA static bool overlay_visible = false;
+SRAM4_DATA bool overlay_visible = false;
 
 extern Condition scr_vsync;
 
@@ -110,6 +110,20 @@ void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
     focus_process->events.Push({ .type = Event::KeyDown, .key = (unsigned short)key });
 }
 
+static void scr_anim_set_y_cb(void *var, int32_t v)
+{
+    klog("cb: %d\n", v);
+    lv_obj_set_y((lv_obj_t *)var, v);
+    if(v >= 480 && overlay_visible)
+    {
+        overlay_visible = false;
+    }
+    else if(v < 480 && !overlay_visible)
+    {
+        overlay_visible = true;
+    }
+}
+
 void *supervisor_thread(void *p)
 {
     lv_init();
@@ -132,7 +146,11 @@ void *supervisor_thread(void *p)
     {
         Event e;
         [[maybe_unused]] bool do_update = false;
-        bool has_event = p_supervisor.events.Pop(&e, kernel_time::from_ms(lv_timer_handler()));
+        auto thandler_delay = kernel_time::from_ms(lv_timer_handler());
+        klog("supervisor: thandler_delay: %llu\n", thandler_delay.to_us());
+
+        bool has_event = thandler_delay.is_valid() ? p_supervisor.events.Pop(&e, thandler_delay) :
+            p_supervisor.events.TryPop(&e);
 
         if(has_event)
         {
@@ -145,19 +163,26 @@ void *supervisor_thread(void *p)
                         {
                             if(overlay_visible)
                             {
-                                //AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)0);
-                                overlay_visible = false;
-                                //lv_obj_add_flag(scr, LV_OBJ_FLAG_HIDDEN);
-                                lv_obj_set_style_bg_color(scr, lv_color_make(255, 0, 0), 0);
-                                klog("red\n");
+                                lv_anim_t a;
+                                lv_anim_init(&a);
+                                lv_anim_set_var(&a, scr);
+                                lv_anim_set_duration(&a, 500);
+                                lv_anim_set_exec_cb(&a, scr_anim_set_y_cb);
+                                lv_anim_set_values(&a, lv_obj_get_y(scr), 480);
+                                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                                lv_anim_start(&a);
+
                             }
                             else
                             {
-                                //AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)1);
-                                overlay_visible = true;
-                                lv_obj_set_style_bg_color(scr, lv_color_make(0, 255, 0), 0);
-                                //lv_obj_clear_flag(scr, LV_OBJ_FLAG_HIDDEN);
-                                klog("green\n");
+                                lv_anim_t a;
+                                lv_anim_init(&a);
+                                lv_anim_set_var(&a, scr);
+                                lv_anim_set_duration(&a, 500);
+                                lv_anim_set_exec_cb(&a, scr_anim_set_y_cb);
+                                lv_anim_set_values(&a,  lv_obj_get_y(scr), 480 - lv_obj_get_height(scr));
+                                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+                                lv_anim_start(&a);
                             }
                             /*overlay_visible = !overlay_visible;
                             if(overlay_visible)
