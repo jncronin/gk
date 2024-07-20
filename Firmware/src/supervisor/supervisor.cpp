@@ -10,6 +10,7 @@
 #include "lvgl.h"
 #include "lv_drivers/lv_gk_display.h"
 #include "gk_conf.h"
+#include "lv_drivers/lv_gk_input.h"
 
 SRAM4_DATA Process p_supervisor;
 SRAM4_DATA bool overlay_visible = false;
@@ -131,6 +132,11 @@ void *supervisor_thread(void *p)
     auto display = lv_gk_display_create();
     lv_display_set_default(display);
 
+    auto indev_k = lv_gk_kbd_create();
+    auto grp = lv_group_create();
+    lv_indev_set_group(indev_k, grp);
+    lv_group_set_wrap(grp, false);
+
     /* Set transparent screen */
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_TRANSP, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(lv_layer_bottom(), LV_OPA_TRANSP, LV_PART_MAIN);
@@ -144,6 +150,9 @@ void *supervisor_thread(void *p)
     lv_obj_set_style_bg_opa(scr, LV_OPA_80, 0);
     lv_obj_set_y(scr, 480);
 
+    /* keyboard test */
+    [[maybe_unused]] auto kbd = lv_keyboard_create(scr);
+    lv_group_add_obj(grp, kbd);
 
     // process messages
     while(true)
@@ -208,13 +217,7 @@ void *supervisor_thread(void *p)
                         case GK_SCANCODE_LCTRL:
                         case GK_SCANCODE_RETURN:
                         {
-                            auto ck = e.key;
-                            if(ck == GK_SCANCODE_A || ck == GK_SCANCODE_LCTRL)
-                            {
-                                ck = GK_SCANCODE_RETURN;
-                            }
-                            //cur_scr->KeyPressDown(ck);
-                            do_update = true;
+                            lv_gk_input_push_event(e);
                         }
                         break;
 
@@ -240,13 +243,7 @@ void *supervisor_thread(void *p)
                         case GK_SCANCODE_LCTRL:
                         case GK_SCANCODE_RETURN:
                         {
-                            auto ck = e.key;
-                            if(ck == GK_SCANCODE_A || ck == GK_SCANCODE_LCTRL)
-                            {
-                                ck = GK_SCANCODE_RETURN;
-                            }
-                            //cur_scr->KeyPressUp(ck);
-                            do_update = true;
+                            lv_gk_input_push_event(e);
                         }
                     }
                     break;
@@ -269,7 +266,7 @@ void *supervisor_thread(void *p)
                     break;
 
                 default:
-                    // ignore
+                    lv_gk_input_push_event(e);
                     break;
             }
         }
