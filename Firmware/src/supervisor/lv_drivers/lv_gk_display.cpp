@@ -107,8 +107,8 @@ void flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * color_p)
         cgmsg->dp = dd->stride;
         cgmsg->dx = area->x1;
         cgmsg->dy = area->y1;
-        cgmsg->dw = area->x2 - area->x1;
-        cgmsg->dh = area->y2 - area->y1;
+        cgmsg->dw = area->x2 - area->x1 + 1;
+        cgmsg->dh = area->y2 - area->y1 + 1;
         cgmsg->src_addr_color = 0;
         cgmsg->src_pf = 0;
         cgmsg->sp = 0;
