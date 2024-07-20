@@ -44,7 +44,8 @@
 
 void lv_draw_sw_fill(lv_draw_unit_t * draw_unit, const lv_draw_fill_dsc_t * dsc, const lv_area_t * coords)
 {
-    if(dsc->opa <= LV_OPA_MIN) return;
+    // Modified for GK
+    //if(dsc->opa <= LV_OPA_MIN) return;
 
     lv_area_t bg_coords;
     lv_area_copy(&bg_coords, coords);

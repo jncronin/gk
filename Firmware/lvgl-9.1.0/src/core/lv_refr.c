@@ -893,7 +893,8 @@ void refr_obj(lv_layer_t * layer, lv_obj_t * obj)
     }
     else {
         lv_opa_t opa = lv_obj_get_style_opa_layered(obj, 0);
-        if(opa < LV_OPA_MIN) return;
+        // Modified for GK
+        if(opa < LV_OPA_MIN && obj != lv_layer_bottom()) return;
 
         lv_area_t layer_area_full;
         lv_area_t obj_draw_size;

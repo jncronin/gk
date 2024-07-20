@@ -112,7 +112,8 @@ void lv_draw_rect(lv_layer_t * layer, const lv_draw_rect_dsc_t * dsc, const lv_a
         has_shadow = true;
     }
 
-    if(dsc->bg_opa <= LV_OPA_MIN) has_fill = false;
+    // Modified for GK
+    if(dsc->bg_opa <= LV_OPA_MIN && dsc->base.obj != lv_layer_bottom()) has_fill = false;
     else has_fill = true;
 
     if(dsc->bg_image_opa <= LV_OPA_MIN || dsc->bg_image_src == NULL) has_bg_img = false;
