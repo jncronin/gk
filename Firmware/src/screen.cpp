@@ -68,6 +68,8 @@ void *screen_flip_overlay(void **old_buf, bool visible, int alpha)
     {
         LTDC_Layer2->CACR = (unsigned int)alpha;
     }
+    screen_flip_in_progress = true;
+    __DMB();
     LTDC->SRCR = LTDC_SRCR_VBR;
     if(old_buf)
     {
