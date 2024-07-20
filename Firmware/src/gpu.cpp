@@ -620,7 +620,8 @@ void *gpu_thread(void *p)
                         void *old_buf, *new_buf;
                         if(cur_process == &p_supervisor)
                         {
-                            new_buf = screen_flip_overlay(&old_buf, true, 255);
+                            extern bool overlay_visible;
+                            new_buf = screen_flip_overlay(&old_buf, true, overlay_visible ? 255 : 0);
                         }
                         else
                         {
