@@ -86,7 +86,7 @@ void system_init_cm7()
 #if GK_USE_CACHE
 #if GK_USE_MPU
     // Enable SRAM4 as noncacheable for setup
-    auto mpu_val = mpu_sram4;
+    auto mpu_val = mpu_sram;
     MPU->RBAR = mpu_val.rbar;
     MPU->RASR = mpu_val.rasr;
     MPU->CTRL = MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk;

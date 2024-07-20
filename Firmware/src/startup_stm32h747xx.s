@@ -240,6 +240,7 @@ LoopFillZerosram_bss:
   
 /* Initialise FreeRTOS malloc */
   /* bl init_malloc */
+  bl init_memblk
 
 /* Call the clock system intitialization function.*/
   /* bl  SystemInit TODO: review system_dualcore functions */
