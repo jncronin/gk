@@ -151,6 +151,7 @@ void flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * color_p)
         cgmsg->src_addr_color = 0;
 
         GPUEnqueueMessages(dd->cmsgs, dd->cmsgs_count);
+        GetCurrentThreadForCore()->ss.Wait(SimpleSignal::Set, 0);
 
         /* reset ready for next frame */
         dd->cmsgs_count = 0;
