@@ -43,6 +43,7 @@ void init_supervisor()
     p_supervisor.gamepad_is_keyboard = true;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLUP] = GK_SCANCODE_VOLUMEUP;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLDOWN] = GK_SCANCODE_VOLUMEDOWN;
+    p_supervisor.gamepad_to_scancode[GK_KEYA] = GK_SCANCODE_RETURN;
     
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
         p_supervisor, PreferM7);
