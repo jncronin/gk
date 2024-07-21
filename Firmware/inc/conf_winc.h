@@ -15,10 +15,10 @@
 #ifdef __cplusplus
 extern "C"
 #endif
-int rtt_printf_wrapper(const char *format, ...);
+int klog(const char *format, ...);
 
 #define CONF_WINC_DEBUG         1
-#define CONF_WINC_PRINTF        rtt_printf_wrapper
+#define CONF_WINC_PRINTF        klog
 #define CONF_WINC_USE_SPI       1
 #define CONF_WINC_SPI_CLOCK     48000000
 #define NM_EDGE_INTERRUPT       1

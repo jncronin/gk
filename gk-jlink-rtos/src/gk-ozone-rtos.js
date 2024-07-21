@@ -252,7 +252,7 @@ function add_threads_for_scheduler(csaddr, tottime, coreid, curt, ncores)
 
             if(coreid == undefined)
             {
-                Threads.add((t - 0x38000000).toString(16), namestr, i,
+                Threads.add((t - 0x30000000).toString(16), namestr, i,
                     getregs(t)[15].toString(16), t_status,
                     blocking_on(t),
                     sp.toString(16) + " (" + stack_start.toString(16) + "-" + stack_end.toString(16) + ")",
@@ -261,7 +261,7 @@ function add_threads_for_scheduler(csaddr, tottime, coreid, curt, ncores)
             }
             else
             {
-                Threads.add((t - 0x38000000).toString(16), namestr, coreid, i,
+                Threads.add((t - 0x30000000).toString(16), namestr, coreid, i,
                     getregs(t)[15].toString(16), t_status,
                     blocking_on(t),
                     sp.toString(16) + " (" + stack_start.toString(16) + "-" + stack_end.toString(16) + ")",

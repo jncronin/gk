@@ -72,10 +72,7 @@ void *calloc_region(size_t nmemb, size_t size, int reg_id)
     }
 }
 
-/* sbrk implementation for sram4 */
-static constexpr uint32_t max_sbrk4 = 0x38000000UL + 64*1024UL;
-extern char _esram4;
-
+/* sbrk implementation for sram */
 extern "C" void *sbrksram4(int n)
 {
     static MemRegion mr = InvalidMemregion();
@@ -86,7 +83,7 @@ extern "C" void *sbrksram4(int n)
         extern void init_memblk();
         init_memblk();
 
-        mr = memblk_allocate(128*1024, MemRegionType::AXISRAM);
+        mr = memblk_allocate(128*1024, MemRegionType::SRAM);
         if(!mr.valid)
         {
             __asm__ volatile("bkpt \n" ::: "memory");

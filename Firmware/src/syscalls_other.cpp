@@ -207,7 +207,14 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
         *_errno = ESRCH;
         return -1;
     }
-    auto p = reinterpret_cast<Process *>((unsigned int)pid + 0x38000000U);
+
+    auto p = proc_list.GetProcess(pid);
+    if(!p)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    
     if(sig == SIGKILL)
     {
         if(p != &kernel_proc)

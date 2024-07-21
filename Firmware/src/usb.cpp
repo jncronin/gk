@@ -141,14 +141,3 @@ void *usb_task(void *pvParams)
         //tud_task();
     }
 }
-
-extern "C" int rtt_printf_wrapper(const char *format, ...)
-{
-    CriticalGuard cg(s_rtt);
-    int r;
-    va_list ParamList;
-    va_start(ParamList, format);
-    r = SEGGER_RTT_vprintf(0, format, &ParamList);
-    va_end(ParamList);
-    return r;
-}
