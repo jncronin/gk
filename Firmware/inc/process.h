@@ -124,6 +124,7 @@ class ProcessList
         pid_t RegisterProcess(Process *p);
         void DeleteProcess(pid_t pid, int retval);
         int GetReturnValue(pid_t pid, int *retval, bool wait = false);
+        Process *GetProcess(pid_t pid);
 
     private:
         struct pval

@@ -479,7 +479,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
         break;
 
         default:
-            rtt_printf_wrapper("wifi: eth: %u\n", msgType);
+            klog("wifi: eth: %u\n", msgType);
             break;
     }
 }
@@ -501,14 +501,14 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
                 {
                     case M2M_WIFI_CONNECTED:
                         wifi_if.connected = WincNetInterface::WIFI_AWAIT_IP;
-                        rtt_printf_wrapper("WIFI Connected\n");
+                        klog("WIFI Connected\n");
 
                         break;
 
                     case M2M_WIFI_DISCONNECTED:
                         wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
                         //socket_wifi_disconnect();
-                        rtt_printf_wrapper("WIFI Disconnected %i\n", state->u8ErrCode);
+                        klog("WIFI Disconnected %i\n", state->u8ErrCode);
 
                         break;
                 }
@@ -591,7 +591,7 @@ void *wifi_task(void *p)
                     if(m2m_wifi_get_mac_address(hwaddr) == M2M_SUCCESS)
                     {
                         wifi_if.hwaddr = HwAddr(reinterpret_cast<char *>(hwaddr));
-                        rtt_printf_wrapper("wifi: hwaddr: %s\n", wifi_if.GetHwAddr().ToString().c_str());
+                        klog("wifi: hwaddr: %s\n", wifi_if.GetHwAddr().ToString().c_str());
                     }
                 }
             }

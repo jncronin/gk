@@ -61,9 +61,9 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         return -1;
     }
 
-    auto id = (uint32_t)(uintptr_t)t - 0x38000000U;
+    auto id = (uint32_t)(uintptr_t)t;
     char tname[32];
-    snprintf(tname, 31, "%s_%4X", p.name.c_str(), (unsigned int)id);
+    snprintf(tname, 31, "%s_%8X", p.name.c_str(), (unsigned int)id);
     tname[31] = 0;
 
     t->name = std::string(tname);
@@ -108,7 +108,7 @@ static bool check_mutex(pthread_mutex_t *mutex)
     {
         syscall_pthread_mutex_init(mutex, nullptr, nullptr);
     }
-    if(*mutex < 0x38000000U || *mutex >= 0x38010000u)
+    if(*mutex < 0x30000000U || *mutex >= 0x38010000u)
         return false;
     return true;    // TODO: check against list of mutexes this process can access
 }
@@ -121,7 +121,7 @@ static bool check_rwlock(pthread_rwlock_t *lock)
     {
         syscall_pthread_rwlock_init(lock, nullptr, nullptr);
     }
-    if(*lock < 0x38000000U || *lock >= 0x38010000u)
+    if(*lock < 0x30000000U || *lock >= 0x38010000u)
         return false;
     return true;
 }
@@ -650,7 +650,7 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
-    auto t = reinterpret_cast<Thread *>(0x38000000U + thread);
+    auto t = reinterpret_cast<Thread *>(thread);
     t->name = std::string(name);
     return 0;
 }

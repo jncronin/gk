@@ -69,3 +69,11 @@ int ProcessList::GetReturnValue(pid_t pid, int *retval, bool wait)
         *retval = pvals[pid].retval;
     return 0;
 }
+
+Process *ProcessList::GetProcess(pid_t pid)
+{
+    CriticalGuard cg(sl);
+    if(pid < 0 || pid >= (pid_t)pvals.size())
+        return nullptr;
+    return pvals[pid].p;
+}

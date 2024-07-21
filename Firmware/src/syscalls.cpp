@@ -551,8 +551,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             {
                 auto t = GetCurrentThreadForCore();
                 auto &p = t->p;
-                int pid = (int)((uint32_t)(uintptr_t)&p - 0x38000000U);
-                *reinterpret_cast<int *>(r1) = pid;
+                *reinterpret_cast<pid_t *>(r1) = p.pid;
             }
             break;
 
