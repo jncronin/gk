@@ -221,6 +221,7 @@ void *supervisor_thread(void *p)
     lv_obj_set_style_bg_opa(vctrl, LV_OPA_80, 0);
     lv_obj_set_pos(vctrl, 560, 60);
     lv_obj_set_style_opa(vctrl, LV_OPA_0, 0);
+    lv_obj_set_scrollbar_mode(vctrl, LV_SCROLLBAR_MODE_OFF);
 
     auto vol = lv_bar_create(vctrl);
     lv_bar_set_range(vol, 0, 100);
@@ -269,7 +270,7 @@ void *supervisor_thread(void *p)
                     {
                         case GK_SCANCODE_MENU:
                         {
-                            if(overlay_visible)
+                            if(main_visible)
                             {
                                 lv_anim_t a;
                                 lv_anim_init(&a);
