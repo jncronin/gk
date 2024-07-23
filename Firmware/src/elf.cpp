@@ -820,7 +820,7 @@ void handle_newlibinithook(uint32_t lr, uint32_t *retaddr)
         //  fix this
         auto lr_cache_line_start = lr & ~0x1fU;
         auto lr_cache_line_end = (lr + 4 + 0x1fU) & ~0x1fU;
-        auto lr_cache_size = lr_cache_line_start - lr_cache_line_end;
+        auto lr_cache_size = lr_cache_line_end - lr_cache_line_start;
         {
             SharedMemoryGuard smg((const void *)lr, 4, false, true);
             *(uint32_t *)lr = 0xbf00bf00U;
