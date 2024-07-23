@@ -131,15 +131,33 @@ extern "C" void PendSV_Handler()
 #if GK_USE_MPU
         "add r0, r1, #" xstr(GK_TSS_MPUSS_OFFSET) "           \n"     // R0 = &mpuss[0]
 
+// load mputss entries with mpu enabled (so cache disabled)
+// store them to MPU with mpu disabled
+        "ldmia r0!, {r5-r12}        \n"
+
         "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
-        "ldr r5, [r4]               \n"
-        "bic r5, #1                 \n"     // disable mpu
-        "str r5, [r4]               \n"
+        "ldr r2, [r4]               \n"
+        "bic r2, #1                 \n"     // disable mpu
+        "str r2, [r4]               \n"
 
         "ldr r4, =0xe000ed9c        \n"     // R4 = RBAR
-        "ldmia r0!, {r5-r12}        \n"
         "stmia r4, {r5-r12}         \n"     // first 4 mpu regions
+
+        "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
+        "ldr r5, [r4]               \n"
+        "orr r5, #5                 \n"     // enable mpu, default background map
+        "str r5, [r4]               \n"
+        "dsb                        \n"
+        "isb                        \n"
+
         "ldmia r0!, {r5-r12}        \n"
+
+        "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
+        "ldr r2, [r4]               \n"
+        "bic r2, #1                 \n"     // disable mpu
+        "str r2, [r4]               \n"
+
+        "ldr r4, =0xe000ed9c        \n"     // R4 = RBAR
         "stmia r4, {r5-r12}         \n"     // second 4 mpu regions
 
         "ldr r4, =0xe000ed94        \n"     // MPU_CTRL
@@ -148,6 +166,7 @@ extern "C" void PendSV_Handler()
         "str r5, [r4]               \n"
         "dsb                        \n"
         "isb                        \n"
+
 #endif
 
         /* Load saved tss registers */
