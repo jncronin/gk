@@ -266,7 +266,6 @@ void *b_thread(void *p)
 
     // try and load mbr
     auto mbr = memblk_allocate(512, MemRegionType::AXISRAM);
-    //SCB_CleanInvalidateDCache();
     memset((void*)mbr.address, 0, 512);
     auto sdt = sd_perform_transfer(0, 1, (void*)mbr.address, true);
     {
@@ -324,7 +323,6 @@ void *b_thread(void *p)
                     row[i] = 0xff00ff00;
                 }
             }
-            SCB_CleanDCache_by_Addr(row, 640*4);
 
             if(cur_y >= 480) cur_y = 0;
         }
@@ -400,7 +398,6 @@ void *b_thread(void *p)
                 DMA2D_CR_START;
 
             while(DMA2D->CR & DMA2D_CR_START);
-            //SCB_CleanDCache_by_Addr(fbuf, 640*480*4);
             __syscall_FlipFrameBuffer(); */
             cc++;
             if(cc >= 256) cc = 0;

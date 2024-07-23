@@ -271,14 +271,18 @@ int elf_load_memory(const void *e, const std::string &pname,
     {
         auto phdr = reinterpret_cast<const Elf32_Phdr *>(phdrs + i * ehdr->e_phentsize);
 
+        auto cache_line_start = phdr->p_vaddr & ~0x1fU;
+        auto cache_line_end = (phdr->p_vaddr + phdr->p_memsz + 0x1fU) & ~0x1fU;
+        auto cache_size = cache_line_end - cache_line_start;
+
         if(phdr->p_flags & PF_X)
         {
-            CleanOrInvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Data);
-            InvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Instruction);
+            CleanOrInvalidateM7Cache(cache_line_start, cache_size, CacheType_t::Data);
+            InvalidateM7Cache(cache_line_start, cache_size, CacheType_t::Instruction);
         }
         else if(phdr->p_flags & (PF_R | PF_W))
         {
-            CleanOrInvalidateM7Cache(base_ptr + phdr->p_vaddr, phdr->p_memsz, CacheType_t::Data);
+            CleanOrInvalidateM7Cache(cache_line_start, cache_size, CacheType_t::Data);
         }
     }
 
@@ -757,14 +761,18 @@ int elf_load_fildes(int fd,
             return -1;
         }
 
+        auto cache_line_start = phdr.p_vaddr & ~0x1fU;
+        auto cache_line_end = (phdr.p_vaddr + phdr.p_memsz + 0x1fU) & ~0x1fU;
+        auto cache_size = cache_line_end - cache_line_start;
+
         if(phdr.p_flags & PF_X)
         {
-            CleanOrInvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Data);
-            InvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Instruction);
+            CleanOrInvalidateM7Cache(cache_line_start, cache_size, CacheType_t::Data);
+            InvalidateM7Cache(cache_line_start, cache_size, CacheType_t::Instruction);
         }
         else if(phdr.p_flags & (PF_R | PF_W))
         {
-            CleanOrInvalidateM7Cache(base_ptr + phdr.p_vaddr, phdr.p_memsz, CacheType_t::Data);
+            CleanOrInvalidateM7Cache(cache_line_start, cache_size, CacheType_t::Data);
         }
     }
 
@@ -810,14 +818,19 @@ void handle_newlibinithook(uint32_t lr, uint32_t *retaddr)
     {
         // we are being called by a newlib _mainCRTStartup which explicitly sets argc/arvg to zero
         //  fix this
+        auto lr_cache_line_start = lr & ~0x1fU;
+        auto lr_cache_line_end = (lr + 4 + 0x1fU) & ~0x1fU;
+        auto lr_cache_size = lr_cache_line_start - lr_cache_line_end;
         {
             SharedMemoryGuard smg((const void *)lr, 4, false, true);
             *(uint32_t *)lr = 0xbf00bf00U;
 #if !GK_DUAL_CORE && !GK_DUAL_CORE_AMP
-            CleanM7Cache((uint32_t)lr, 4, CacheType_t::Data);
+            // SharedMemoryGuard will do nothing in unicore
+
+            CleanM7Cache(lr_cache_line_start, lr_cache_size, CacheType_t::Data);
 #endif
         }
-        InvalidateM7Cache(lr, 4, CacheType_t::Instruction);
+        InvalidateM7Cache(lr_cache_line_start, lr_cache_size, CacheType_t::Instruction);
 
         // now return argc:arvg as r1:r0
         auto &p = GetCurrentThreadForCore()->p;

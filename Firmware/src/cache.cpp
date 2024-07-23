@@ -10,7 +10,7 @@
 #if DEBUG_CACHE
 static inline void check_ptr(uint32_t base, uint32_t length)
 {
-#if 0
+#if 1
     if(base & 0x1fU || (base + length) & 0x1fU)
     {
         __asm__ volatile("bkpt \n" ::: "memory");
@@ -42,6 +42,7 @@ static inline void wait_completion(SimpleSignal *ss, IpiRingBuffer *rb)
 void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
 #if GK_USE_CACHE
+    if(base >= 0x30000000 && base < 0x40000000) return;
 #if DEBUG_CACHE
     check_ptr(base, length);
 #endif
@@ -100,6 +101,7 @@ void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
 #if GK_USE_CACHE
+    if(base >= 0x30000000 && base < 0x40000000) return;
 #if DEBUG_CACHE
     check_ptr(base, length);
 #endif
@@ -148,16 +150,20 @@ void CleanM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 
 void CleanOrInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
+#if GK_USE_CACHE
+    if(base >= 0x30000000 && base < 0x40000000) return;
     // Called after write to cached memory.  If M7 wrote then clean cache, if M4 wrote then invalidate cache
     if(GetCoreID() == 0)
         CleanM7Cache(base, length, ctype);
     else
         InvalidateM7Cache(base, length, ctype);
+#endif
 }
 
 void CleanAndInvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
 {
 #if GK_USE_CACHE
+    if(base >= 0x30000000 && base < 0x40000000) return;
 #if DEBUG_CACHE
     check_ptr(base, length);
 #endif

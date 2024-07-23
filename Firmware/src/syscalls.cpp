@@ -54,10 +54,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             scheduler_running() = true;
             Yield();
 
-#if GK_USE_CACHE
-            if(GetCoreID() == 0)
-                SCB_CleanInvalidateDCache();
-#endif
             break;
 
         case GetThreadHandle:
