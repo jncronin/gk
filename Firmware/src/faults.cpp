@@ -215,7 +215,7 @@ static void log_regs(gk_regs *r, const char *fault_type)
         auto t_rasr = t->tss.mpuss[i].rasr;
 
         // RBAR.VALID always reads as 0
-        auto match = ((rbar & ~0x10U) == (t_rbar & 0x10U)) && (rasr == t_rasr);
+        auto match = ((rbar & ~0x10U) == (t_rbar & ~0x10U)) && (rasr == t_rasr);
 
         klog("MPU    : %d: RBAR: 0x%08x, RASR: 0x%08x%s\n",
             i, rbar, rasr, match ? "" : " *** DIFFERENT FROM TSS ***");
