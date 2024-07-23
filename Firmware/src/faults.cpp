@@ -177,8 +177,8 @@ static void log_regs(gk_regs *r, const char *fault_type)
 
     klog("%s at %x called from %x\n"
         "\n"
-        "Process: %s\n"
-        "Thread: %s\n"
+        "Process: %s (0x%08x - 0x%08x)\n"
+        "Thread: %s (0x%08x - 0x%08x)\n"
         "cfsr:  0x%08x        hfsr:  0x%08x\n"
         "mmfar: 0x%08x\n"
         "\n"
@@ -191,8 +191,8 @@ static void log_regs(gk_regs *r, const char *fault_type)
         "r12:   0x%08x        sp:    0x%08x\n"
         "xpsr:  0x%08x\n",
         fault_type, r->r->ret_addr, r->r->lr,
-        pname,
-        tname,
+        pname, p->code_data.address, p->code_data.address + p->code_data.length,
+        tname, t->stack.address, t->stack.address + t->stack.length,
         *(volatile uint32_t *)0xe000ed28, *(volatile uint32_t *)0xe000ed2c,
         *(volatile uint32_t *)0xe000ed34,
         r->r->r0, r->r->r1,
