@@ -56,6 +56,31 @@ SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_
         // Signal the M7 to clean its cache prior to either a write or read from the M4
         CleanM7Cache(start, len, CacheType_t::Data);
     }
+#else
+    // single core
+    is_dma = _is_dma;
+    if(is_dma)
+    {
+        start = (uint32_t)(uintptr_t)_start;
+        len = _len;
+        is_read = will_read;
+        is_write = will_write;
+
+        [[maybe_unused]] bool is_unaligned = false;
+        if((start & 0x1f) || ((start + _len) & 0x1f))
+        {
+            is_unaligned = true;
+            auto end = start + _len;
+            start &= ~0x1fU;
+            end = (end + 0x1fU) & ~0x1fU;
+            len = end - start;
+        }
+        __BKPT();
+        if(will_write)
+        {
+
+        }
+    }
 #endif
 #endif
 }

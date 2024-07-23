@@ -110,11 +110,9 @@ Thread *Thread::Create(std::string name,
             MemRegion stackblk,
             const mpu_saved_state *defmpu)
 {
-    SRAM4RegionAllocator<Thread> alloc;
-    auto tloc = alloc.allocate(1);
-    if(!tloc)
-        return nullptr;
-    auto t = new(tloc) Thread(owning_process);
+    auto t = new Thread(owning_process);
+    if(!t) return nullptr;
+    
     memset(&t->tss, 0, sizeof(thread_saved_state));
 
     t->tss.affinity = affinity;
@@ -311,13 +309,6 @@ void SetNextThreadForCore(Thread *t, int coreid)
 
         current_thread(coreid).v = t;
     }
-
-#if GK_USE_CACHE
-    if(flush_cache && coreid == 0)
-    {
-        SCB_CleanInvalidateDCache();
-    }
-#endif
 }
 
 std::map<uint32_t, Process::mmap_region>::iterator Process::get_mmap_region(uint32_t addr, uint32_t len)
