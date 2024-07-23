@@ -645,13 +645,27 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
         *_errno = ERANGE;
         return -1;
     }
-    if(thread > 64*1024U)
+
+    /* Check we can access the thread */
+    auto treq = (Thread *)thread;
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    bool has_thread = false;
+    for(const auto &tcheck : p.threads)
+    {
+        if(tcheck == treq)
+        {
+            has_thread = true;
+            break;
+        }
+    }
+    if(!has_thread)
     {
         *_errno = EINVAL;
         return -1;
     }
-    auto t = reinterpret_cast<Thread *>(thread);
-    t->name = std::string(name);
+
+    treq->name = std::string(name);
     return 0;
 }
 
