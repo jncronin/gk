@@ -39,10 +39,10 @@ static inline void wait_completion(SimpleSignal *ss, IpiRingBuffer *rb)
     }
 }
 
-void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype)
+void InvalidateM7Cache(uint32_t base, uint32_t length, CacheType_t ctype, bool override_sram_check)
 {
 #if GK_USE_CACHE
-    if(base >= 0x30000000 && base < 0x40000000) return;
+    if(!override_sram_check && base >= 0x30000000 && base < 0x40000000) return;
 #if DEBUG_CACHE
     check_ptr(base, length);
 #endif
