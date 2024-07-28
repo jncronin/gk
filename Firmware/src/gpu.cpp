@@ -733,9 +733,32 @@ void *gpu_thread(void *p)
                     {
                         auto start_addr = dest_addr + g.g.dx * bpp + g.g.dy * dest_pitch;
                         auto len = g.g.h * dest_pitch + g.g.w * bpp;
-                        if(start_addr < 0x60000000 || start_addr >= 0x60400000)
+
+                        auto cache_line_start = start_addr & ~0x1fU;
+                        auto cache_line_end = (start_addr + len + 0x1fU) & ~0x1fU;
+
+                        auto need_to_clean = true;
+                        if((cache_line_start >= 0x60000000) && (cache_line_end < 0x60400000))
                         {
-                            CleanM7Cache(start_addr, len, CacheType_t::Data);
+                            need_to_clean = false;
+                        }
+                        else
+                        {
+                            for(const auto &mr : cur_process->mmap_regions)
+                            {
+                                if(mr.second.is_sync &&
+                                    (cache_line_start >= mr.second.mr.address) &&
+                                    (cache_line_end < (mr.second.mr.address + mr.second.mr.length)))
+                                {
+                                    need_to_clean = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if(need_to_clean)
+                        {
+                            CleanM7Cache(cache_line_start, cache_line_start + cache_line_end, CacheType_t::Data);
                         }
                     }
                     break;
