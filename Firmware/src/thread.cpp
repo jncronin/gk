@@ -191,22 +191,34 @@ Thread *Thread::Create(std::string name,
     
     /* Create mpu regions */
     memcpy(t->tss.mpuss, defmpu, sizeof(mpu_default));
-    t->tss.mpuss[2] = MPUGenerate(owning_process.code_data.address,
-        owning_process.code_data.length, 2, true,
+    int next_mpu = 2;
+    t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.code_data.address,
+        owning_process.code_data.length, next_mpu, true,
         RW, RW, WBWA_NS);
-    t->tss.mpuss[3] = MPUGenerate(owning_process.heap.address,
-        owning_process.heap.length, 3, owning_process.heap_is_exec,
+    next_mpu++;
+    t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.heap.address,
+        owning_process.heap.length, next_mpu, owning_process.heap_is_exec,
         RW, RW, WBWA_NS);
-    t->tss.mpuss[4] = MPUGenerate(stackblk.address,
-        stackblk.length, 4, false,
+    next_mpu++;
+    t->tss.mpuss[next_mpu] = MPUGenerate(t->stack.address,
+        t->stack.length, next_mpu, false,
         RW, RW, WBWA_NS);
-    t->tss.mpuss[5] = MPUGenerate(mr_sound.address,
-        mr_sound.length, 5, false,
+    next_mpu++;
+    t->tss.mpuss[next_mpu] = MPUGenerate(mr_sound.address,
+        mr_sound.length, next_mpu, false,
         RW, RW, WT_NS);
+    next_mpu++;
     if(owning_process.has_tls)
     {
-        t->tss.mpuss[6] = MPUGenerate(t->mr_tls.address,
-            t->mr_tls.length, 6, false, RW, RW, WBWA_NS);
+        t->tss.mpuss[next_mpu] = MPUGenerate(t->mr_tls.address,
+            t->mr_tls.length, next_mpu, false, RW, RW, WBWA_NS);
+        next_mpu++;
+    }
+
+    if(t->stack.rt == MemRegionType::SRAM)
+    {
+        // stack is uncached at time of set up but will be cached when used - handle this
+        InvalidateM7Cache(t->stack.address, t->stack.length, CacheType_t::Data, true);
     }
 
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
