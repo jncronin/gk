@@ -143,7 +143,7 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
         case CPUAffinity::Either:
         case CPUAffinity::PreferM7:
             rtlist[nrts++] = MemRegionType::AXISRAM;
-            rtlist[nrts++] = MemRegionType::SRAM;
+            //rtlist[nrts++] = MemRegionType::SRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;
             break;
 #endif
@@ -162,7 +162,7 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
         case CPUAffinity::M7Only:
             rtlist[nrts++] = MemRegionType::DTCM;
             rtlist[nrts++] = MemRegionType::AXISRAM;
-            rtlist[nrts++] = MemRegionType::SRAM;
+            //rtlist[nrts++] = MemRegionType::SRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;
             break;
     }
