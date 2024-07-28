@@ -78,7 +78,7 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
         auto &p = t->p;
 
         CriticalGuard cg_p(p.sl);
-        p.mmap_regions[mr.address] = Process::mmap_region { mr, -1, 1, 1, 0 };
+        p.mmap_regions[mr.address] = Process::mmap_region { mr, -1, 1, 1, 0, is_sync != 0 };
 
         // set mpu region for this thread and all others
         auto mpur = MPUGenerate(mr.address, mr.length, mpu_slot, false,
@@ -91,8 +91,9 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
             // Invalidate here on the off-chance the M7 cache has entries for the 0x38000000 range
             // When MPU is disabled in task switch, cache may be re-enabled for reads from this
             //  region
-            InvalidateM7Cache((uint32_t)(uintptr_t)&curt->tss.mpuss[0],
-                8 * sizeof(mpu_saved_state), CacheType_t::Data);
+            // No longer required with MPU-safe switch
+            //InvalidateM7Cache((uint32_t)(uintptr_t)&curt->tss.mpuss[0],
+            //    8 * sizeof(mpu_saved_state), CacheType_t::Data);
         }
 
         // and for this thread
