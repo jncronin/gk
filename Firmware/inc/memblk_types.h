@@ -17,6 +17,8 @@ struct MemRegion
     uint32_t length;
     enum MemRegionType rt;
     bool valid;
+
+    bool is_cacheable() const;
 };
 
 #endif

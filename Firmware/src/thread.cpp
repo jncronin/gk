@@ -174,7 +174,8 @@ Thread *Thread::Create(std::string name,
     auto cleanup_func = is_priv ? reinterpret_cast<uint32_t>(thread_cleanup) : owning_process.thread_finalizer;
     
     {
-        SharedMemoryGuard sg((const void *)(t->stack.address + t->stack.length - 8*4), 8*4, false, true);
+        SharedMemoryGuard sg((const void *)(t->stack.address + t->stack.length - 8*4),
+            t->stack.is_cacheable() ? 8*4 : 0, false, true);
         stack[--top_stack] = 1UL << 24; // THUMB mode
         stack[--top_stack] = reinterpret_cast<uint32_t>(func) | 1UL;
         stack[--top_stack] = cleanup_func | 1UL;

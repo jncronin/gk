@@ -72,6 +72,15 @@ template<typename T> constexpr static T align_up(T val, T align)
     return val;
 }
 
+bool MemRegion::is_cacheable() const
+{
+    if(rt == MemRegionType::DTCM)
+        return false;
+    if(rt == MemRegionType::SRAM)
+        return false;
+    return true;
+}
+
 extern "C" void init_memblk()
 {
     if(inited)
@@ -134,7 +143,7 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
         case CPUAffinity::Either:
         case CPUAffinity::PreferM7:
             rtlist[nrts++] = MemRegionType::AXISRAM;
-            rtlist[nrts++] = MemRegionType::SRAM;
+            //rtlist[nrts++] = MemRegionType::SRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;
             break;
 #endif
@@ -153,7 +162,7 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
         case CPUAffinity::M7Only:
             rtlist[nrts++] = MemRegionType::DTCM;
             rtlist[nrts++] = MemRegionType::AXISRAM;
-            rtlist[nrts++] = MemRegionType::SRAM;
+            //rtlist[nrts++] = MemRegionType::SRAM;
             rtlist[nrts++] = MemRegionType::SDRAM;
             break;
     }
