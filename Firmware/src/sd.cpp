@@ -1019,22 +1019,34 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     req.completion_event = cond;
     req.res_out = ret;
 
-    /* need cache lines are 32 bytes, so on an unaligned read the subsequent invalidate will
+    /* M7 cache lines are 32 bytes, so on an unaligned read the subsequent invalidate will
         delete valid data in the cache - often this is part of the lwext4 structs, so
         is vaguely important.
 
         To avoid this, if we are unaligned then also clean the cache here so that the memory
         has the correct data once we invalidate it again later (after a read). */
-    auto cache_start = (uint32_t)mem_address;
-    auto cache_end = cache_start + block_count * 512U;
-    if(!is_read || cache_start & 0x1f || cache_end & 0x1f)    
+    auto mem_start = (uint32_t)mem_address;
+    auto mem_end = mem_start + block_count * 512U;
+    auto cache_start = mem_start & ~0x1fU;
+    auto cache_end = (mem_end + 0x1fU) & ~0x1fU;
+
+    if(!is_read)
     {
-        cache_start &= ~0x1fU;
-        if(cache_end & 0x1fU)
-        {
-            cache_end = (cache_end + 0x1fU) & ~0x1fU;
-        }
+        // writes need to commit all cache contents to ram first
         CleanM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
+    }
+    else
+    {
+        if(cache_start != mem_start)
+        {
+            // commit first cache line for unaligned reads
+            CleanM7Cache(cache_start, 32, CacheType_t::Data);
+        }
+        if(cache_end != mem_end)
+        {
+            // commit last cache line for unaligned reads
+            CleanM7Cache(cache_end - 32, 32, CacheType_t::Data);
+        }
     }
 
     auto send_ret = sd_perform_transfer_async(req);
@@ -1047,6 +1059,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
     if(is_read)
     {
+        // bring data back into cache if necessary
         InvalidateM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
 
