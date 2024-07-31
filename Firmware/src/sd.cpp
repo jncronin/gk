@@ -122,7 +122,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         ITM_SendChar('m');
         if(tcnt > 0)
         {
-            CriticalGuard cg(s_rtt);
             klog("sd_issue_command: retry %d for command %lu, sta: %lx\n", tcnt, command,
                 SDMMC1->STA);
         }
@@ -133,7 +132,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
         if(SDMMC1->STA & cmd_flags)
         {
-            CriticalGuard cg(s_rtt);
             klog("sd_issue_command: unhandled flags: %lx\n", SDMMC1->STA);
             return -1;
         }
@@ -187,7 +185,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         {
             while(!(SDMMC1->STA & CMDSENT));      // TODO: WFI
 #if DEBUG_SD
-            CriticalGuard cg(s_rtt);
             klog("sd_issue_command: sent %lu no response expected\n", command);
 #endif
             SDMMC1->ICR = CMDSENT;
@@ -208,7 +205,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                 }
 
 #if DEBUG_SD
-                CriticalGuard cg(s_rtt);
                 klog("sd_issue_command: sent %lu invalid crc response\n", command);
 #endif
                 SDMMC1->ICR = CCRCFAIL;
@@ -227,7 +223,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         {
 #if DEBUG_SD
             {
-                CriticalGuard cg(s_rtt);
                 klog("sd_issue_command: timeout, sta: %lx, cmdr: %lx, dctrl: %lx\n",
                     SDMMC1->STA, SDMMC1->CMD, SDMMC1->DCTRL);
             }
@@ -257,7 +252,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
 #if DEBUG_SD
         {
-            CriticalGuard cg(s_rtt);
             klog("sd_issue_command: sent %lu received reponse", command);
         }
 #endif
@@ -270,7 +264,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                 resp[nresp - i - 1] = (&SDMMC1->RESP1)[i];
 #if DEBUG_SD
                 {
-                    CriticalGuard cg(s_rtt);
                     klog(" %lx", resp[nresp - i - 1]);
                 }
 #endif
@@ -280,7 +273,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         
 #if DEBUG_SD
         {
-            CriticalGuard cg(s_rtt);
             klog("\n");
         }
 #endif
@@ -291,7 +283,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
 
     // timeout
     {
-        CriticalGuard cg(s_rtt);
         klog("sd_issue_command: sent %lu command timeout\n", command);
     }
     return CTIMEOUT;
@@ -327,7 +318,6 @@ static void SDMMC_set_clock(int freq)
 
     clock_speed = (div == 0) ? SDCLK : (SDCLK / (div * 2));
     {
-        CriticalGuard cg(s_rtt);
         klog("SDIO clock set to %d (div = %d)\n", clock_speed, div);
     }
 
@@ -411,7 +401,6 @@ void sd_reset()
     if(ret == CTIMEOUT)
     {
         is_v2 = false;
-        CriticalGuard cg(s_rtt);
         klog("init_sd: CMD8 timed out - assuming <v2 card\n");
     }
     else if(ret == 0)
@@ -422,7 +411,6 @@ void sd_reset()
         }
         else
         {
-            CriticalGuard cg(s_rtt);
             klog("init_sd: CMD8 invalid response %lx\n", resp[0]);
             return;
         }
@@ -444,7 +432,6 @@ void sd_reset()
     // We can promise ~3.1-3.4 V
     if(!(resp[0] & 0x380000))
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: invalid voltage range\n");
         return;
     }
@@ -472,7 +459,6 @@ void sd_reset()
             }
 
             {
-                CriticalGuard cg(s_rtt);
                 klog("init_sd: %s capacity card ready\n", is_hc ? "high" : "normal");
             }
             is_ready = true;
@@ -494,13 +480,11 @@ void sd_reset()
 
     if(cmd3_ret & (7UL << 13))
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: card error %lx\n", cmd3_ret & 0xffff);
         return;
     }
     if(!(cmd3_ret & (1UL << 8)))
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: card not ready for data\n");
         return;
     }
@@ -516,7 +500,6 @@ void sd_reset()
     
     if(resp[0] != 0x700)
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: card not in standby state\n");
         return;
     }
@@ -527,7 +510,6 @@ void sd_reset()
         return;
 
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: CSD: %lx, %lx, %lx, %lx\n", csd[0], csd[1], csd[2], csd[3]);
         klog("init_sd: sd card size %lu kB\n", sd_get_size() / 1024);
     }
@@ -545,7 +527,6 @@ void sd_reset()
     
     if(resp[0] != 0x900)
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: card not in transfer state\n");
         return;
     }
@@ -584,13 +565,11 @@ void sd_reset()
     {
         if(SDMMC1->STA & DCRCFAIL)
         {
-            CriticalGuard cg(s_rtt);
             klog("init_sd: dcrc fail\n");
             return;
         }
         if(SDMMC1->STA & DTIMEOUT)
         {
-            CriticalGuard cg(s_rtt);
             klog("init_sd: dtimeout\n");
             return;
         }
@@ -603,7 +582,6 @@ void sd_reset()
     SDMMC1->ICR = DBCKEND | DATAEND;
     
     {
-        CriticalGuard cg(s_rtt);
         klog("init_sd: scr %lx %lx, dcount %lx, sta %lx\n", scr[0], scr[1], SDMMC1->DCOUNT, SDMMC1->STA);
     }
 
@@ -618,7 +596,7 @@ void sd_reset()
             return;
 
         {
-            CriticalGuard cg(s_rtt);
+            
             klog("init_sd: set to 4-bit mode\n");
         }
         is_4bit = true;
@@ -646,19 +624,19 @@ void sd_reset()
         {
             if(SDMMC1->STA & DCRCFAIL)
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("dcrcfail\n");
                 return;
             }
             if(SDMMC1->STA & DTIMEOUT)
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("dtimeout\n");
                 return;
             }
             if(SDMMC1->STA & SDMMC_STA_RXOVERR)
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("rxoverr\n");
                 return;
             }
@@ -674,7 +652,7 @@ void sd_reset()
         // can we enable high speed mode? - check bits 415:400
         auto fg1_support = (cmd6_buf[12] >> 16) & 0xffffUL;
         {
-            CriticalGuard cg(s_rtt);
+            
             klog("init_sd: cmd6: fg1_support: %lx\n", fg1_support);
         }
 
@@ -696,19 +674,19 @@ void sd_reset()
             {
                 if(SDMMC1->STA & DCRCFAIL)
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("dcrcfail\n");
                     return;
                 }
                 if(SDMMC1->STA & DTIMEOUT)
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("dtimeout\n");
                     return;
                 }
                 if(SDMMC1->STA & SDMMC_STA_RXOVERR)
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("rxoverr\n");
                     return;
                 }
@@ -722,7 +700,7 @@ void sd_reset()
 
             auto fg1_setting = (cmd6_buf[11] >> 24) & 0xfUL;
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("init_sd: cmd6: fg1_setting: %lx\n", fg1_setting);
             }
 
@@ -732,7 +710,7 @@ void sd_reset()
                 SDMMC_set_clock(SDCLK_HS);
                 SDMMC1->DTIMER = timeout_ns / clock_period_ns;
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("init_sd: set to high speed mode\n");
                 }
             }
@@ -749,7 +727,7 @@ void sd_reset()
     NVIC_EnableIRQ(SDMMC1_IRQn);
     
     {
-        CriticalGuard cg(s_rtt);
+        
         klog("init_sd: success\n");
     }
     tfer_inprogress = false;
@@ -851,7 +829,7 @@ void *sd_thread(void *param)
 
 #if PROFILE_SDT
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("sdt: %s block %d, block_len %d\n",
                     sdr.is_read ? "read " : "write", sdr.block_start, sdr.block_count);
             }
@@ -905,7 +883,7 @@ void *sd_thread(void *param)
 
 #if DEBUG_SD
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("sd: pre-command: STA: %x, DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
                     SDMMC1->STA, SDMMC1->DCTRL, SDMMC1->DCOUNT, SDMMC1->DLEN, SDMMC1->IDMACTRL, SDMMC1->IDMABASE0);
             }
@@ -931,7 +909,7 @@ void *sd_thread(void *param)
             {
 #if DEBUG_SD
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("sd: post-command FAIL: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
                         SDMMC1->STA, sd_status, SDMMC1->DCTRL, SDMMC1->DCOUNT, SDMMC1->DLEN, SDMMC1->IDMACTRL, SDMMC1->IDMABASE0);
                 }
@@ -941,7 +919,7 @@ void *sd_thread(void *param)
 #if DEBUG_SD
             else
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("sd: post-command SUCCESS: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
                     SDMMC1->STA, sd_status, SDMMC1->DCTRL, SDMMC1->DCOUNT, SDMMC1->DLEN, SDMMC1->IDMACTRL, SDMMC1->IDMABASE0);
             }
@@ -962,7 +940,7 @@ void *sd_thread(void *param)
                         }
                         if(resp != 0xd00)
                         {
-                            CriticalGuard cg(s_rtt);
+                            
                             klog("sd: not in rcv state: %x\n", resp);
                         }
                         else
@@ -976,7 +954,7 @@ void *sd_thread(void *param)
                 [[maybe_unused]] int stop_ret = sd_issue_command(12, resp_type::R1b);
 #if DEBUG_SD
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("sd: post-stop command: ret: %x, STA: %x\n",
                         stop_ret, SDMMC1->STA);
                 }
@@ -1067,7 +1045,6 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 
     if(cret != 0)
     {
-        CriticalGuard cg(s_rtt);
         klog("sd_perform_transfer %s of %d blocks at %x failed: %x, DCOUNT: %x, DCTRL: %x, IDMACTRL: %x, IDMABASE: %x, IDMASIZE: %x, retrying\n",
             is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret,
             sd_dcount, sd_dctrl, sd_idmactrl, sd_idmabase, sd_idmasize);
@@ -1099,7 +1076,6 @@ static int sd_perform_unaligned_transfer(uint32_t block_start, uint32_t block_co
 
         if(failed)
         {
-            CriticalGuard cg(s_rtt);
             klog("sd_perform_unaligned_transfer %s of %d blocks at %x failed: %x\n",
                 is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, ret);
             return ret;
@@ -1118,7 +1094,6 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     if(!is_valid_dma(mem_address, block_count))
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("sd_perform_transfer: unaligned transfer\n");
         }
         return sd_perform_unaligned_transfer(block_start, block_count,
@@ -1138,7 +1113,6 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     }
 
     {
-        CriticalGuard cg(s_rtt);
         klog("sd_perform_transfer %s of %d blocks at %x failed: %x\n",
             is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, ret);
     }
