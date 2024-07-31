@@ -16,6 +16,7 @@ static constexpr const pin VBAT_STAT = { GPIOE, 3 };
 void *max_thread(void *param)
 {
     bool is_init = false;
+    uint64_t last_dump = 0;
 
     VBAT_STAT.set_as_input();
 
@@ -47,14 +48,15 @@ void *max_thread(void *param)
             auto pct_to_go = is_charging ? (100.0f - f_soc) : f_soc;
             auto mins_left = pct_to_go * 60.0f / std::abs(f_crate);
 
+            if(!last_dump || clock_cur_ms() >= (last_dump + 60000))
             {
-                CriticalGuard cg(s_rtt);
                 klog("max: vcell: %sV, soc: %s%%, crate: %s%%/hr, charging: %s, time remaining: %s mins\n",
                     std::to_string(f_vcell).c_str(),
                     std::to_string(f_soc).c_str(),
                     std::to_string(f_crate).c_str(),
                     is_charging ? "yes" : "no",
                     std::to_string(mins_left).c_str());
+                last_dump = clock_cur_ms();
             }
         }
         Block(clock_cur() + kernel_time::from_ms(1000));
