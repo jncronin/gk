@@ -1076,79 +1076,6 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     return cret;
 }
 
-static int sd_perform_unaligned_transfer_int(uint32_t block_start, uint32_t block_count,
-    void *mem_address, bool is_read)
-{
-    auto t = GetCurrentThreadForCore();
-    auto cond = &t->ss;
-    auto ret = (int *)&t->ss_p.ival1;
-    *ret = -4;
-
-    sd_request req;
-    req.block_start = block_start;
-    req.block_count = block_count;
-    req.mem_address = mem_address;
-    req.is_read = is_read;
-    req.completion_event = cond;
-    req.res_out = ret;
-
-    /* M7 cache lines are 32 bytes, so on an unaligned read the subsequent invalidate will
-        delete valid data in the cache - often this is part of the lwext4 structs, so
-        is vaguely important.
-
-        To avoid this, if we are unaligned then also clean the cache here so that the memory
-        has the correct data once we invalidate it again later (after a read). */
-    auto mem_start = (uint32_t)mem_address;
-    auto mem_end = mem_start + block_count * 512U;
-    auto cache_start = mem_start & ~0x1fU;
-    auto cache_end = (mem_end + 0x1fU) & ~0x1fU;
-
-    if(!is_read)
-    {
-        // writes need to commit all cache contents to ram first
-        CleanM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
-    }
-    else
-    {
-        if(cache_start != mem_start)
-        {
-            // commit first cache line for unaligned reads
-            CleanM7Cache(cache_start, 32, CacheType_t::Data);
-        }
-        if(cache_end != mem_end)
-        {
-            // commit last cache line for unaligned reads
-            CleanM7Cache(cache_end - 32, 32, CacheType_t::Data);
-        }
-    }
-
-    auto send_ret = sd_perform_transfer_async(req);
-    if(send_ret)
-    {
-        return send_ret;
-    }
-    
-    cond->Wait(SimpleSignal::Set, 0UL);
-
-    if(is_read)
-    {
-        InvalidateM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
-    }
-
-    int cret = *ret;
-
-    if(cret != 0)
-    {
-        CriticalGuard cg(s_rtt);
-        klog("sd_perform_transfer %s of %d blocks at %x failed: %x, DCOUNT: %x, DCTRL: %x, IDMACTRL: %x, IDMABASE: %x, IDMASIZE: %x, retrying\n",
-            is_read ? "read" : "write", block_count, (uint32_t)(uintptr_t)mem_address, cret,
-            sd_dcount, sd_dctrl, sd_idmactrl, sd_idmabase, sd_idmasize);
-    }
-
-    return cret;
-}
-
-
 static int sd_perform_unaligned_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries)
 {
@@ -1160,7 +1087,7 @@ static int sd_perform_unaligned_transfer(uint32_t block_start, uint32_t block_co
         // only ever one block at a time for unaligned transfers
         for(int i = 0; i < nretries; i++)
         {
-            ret = sd_perform_unaligned_transfer_int(block_start + nblocks_sent, 1,
+            ret = sd_perform_transfer_int(block_start + nblocks_sent, 1,
                 (void *)(((char *)mem_address) + (512U * nblocks_sent)), is_read);
             
             if(ret == 0)
