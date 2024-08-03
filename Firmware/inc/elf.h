@@ -162,6 +162,7 @@ typedef struct
 #define SHF_WRITE	0x1
 #define SHF_ALLOC	0x2
 #define SHF_EXECINSTR	0x4
+#define SHF_TLS (1 << 10)
 
 typedef struct
 {

@@ -100,7 +100,8 @@ class Process
         /* TLS segment, if any */
         bool has_tls = false;
         size_t tls_base = 0;
-        size_t tls_len = 0;
+        size_t tls_filsz = 0;
+        size_t tls_memsz = 0;
 
         /* PID support */
         pid_t pid;
