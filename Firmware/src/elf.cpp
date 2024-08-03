@@ -739,6 +739,8 @@ int elf_load_fildes(int fd,
 
                 default:
                     klog("unknown rel type %d\n", r_type);
+                    memblk_deallocate(mr_shdr);
+                    memblk_deallocate(mr_symtab);
                     return -1;
             }
         }
