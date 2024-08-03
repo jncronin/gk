@@ -458,15 +458,10 @@ int elf_load_fildes(int fd,
         else if(phdr.p_type == PT_TLS)
         {
             p.has_tls = true;
-            p.tls_len = phdr.p_memsz;
+            p.tls_base = phdr.p_vaddr;
+            p.tls_memsz = phdr.p_memsz;
+            p.tls_filsz = phdr.p_filesz;
         }
-    }
-
-    // allocate space for TLS
-    if(p.has_tls)
-    {
-        p.tls_base = max_size;
-        max_size += p.tls_len;
     }
 
     // Create region for userspace thread finalizer code, aligned on 32-byte boundary
@@ -509,6 +504,11 @@ int elf_load_fildes(int fd,
 
     // Load segments
     auto base_ptr = memblk.address;
+    if(p.has_tls)
+    {
+        p.tls_base += base_ptr;
+    }
+
     for(unsigned int i = 0; i < ehdr.e_phnum; i++)
     {
         Elf32_Phdr phdr;
@@ -523,15 +523,8 @@ int elf_load_fildes(int fd,
         }
 
         if(phdr.p_type == PT_LOAD ||
-            phdr.p_type == PT_ARM_EXIDX ||
-            phdr.p_type == PT_TLS)
+            phdr.p_type == PT_ARM_EXIDX)
         {
-            if(phdr.p_type == PT_TLS)
-            {
-                // store at end of executable - current p.tls_base is not offset by base_ptr - fix this
-                phdr.p_vaddr = p.tls_base;                
-                p.tls_base = base_ptr + phdr.p_vaddr;
-            }
             if(phdr.p_filesz)
             {
                 if(deferred_call(syscall_lseek, fd, phdr.p_offset, SEEK_SET) == (off_t)-1)
@@ -617,9 +610,14 @@ int elf_load_fildes(int fd,
             return -1;
         }
 
+        if(relsect.sh_flags & SHF_TLS)
+        {
+            BKPT();
+        }
+
         for(unsigned int j = 0; j < nentries; j++)
         {
-            auto rel = reinterpret_cast<const Elf32_Rel *>(mr_shdr.address + j * entsize);
+            auto rel = reinterpret_cast<Elf32_Rel *>(mr_shdr.address + j * entsize);
 
             auto r_sym_idx = rel->r_info >> 8;
             auto r_type = rel->r_info & 0xff;
@@ -723,12 +721,20 @@ int elf_load_fildes(int fd,
 
                     break;
 
+                case R_ARM_TLS_LE32:
+                    // recalculate to be relative to thread pointer (for some reason off by 8 by default)
+                    *(uint32_t *)(base_ptr + rel->r_offset) = r_sym->st_value;
+
+                    break;
+
+
+
                 case R_ARM_THM_JUMP24:
                 case R_ARM_THM_CALL:
                 case R_ARM_PREL31:
                 case R_ARM_TARGET2:
                 case R_ARM_REL32:
-                case R_ARM_TLS_LE32:
+                //case R_ARM_TLS_LE32:
                 case R_ARM_TLS_LE12:
                     /* relative reloc, do nothing */
                     break;

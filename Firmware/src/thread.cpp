@@ -126,10 +126,10 @@ Thread *Thread::Create(std::string name,
     /* Create TLS, if any */
     if(owning_process.has_tls)
     {
-        t->mr_tls = memblk_allocate(owning_process.tls_len, MemRegionType::AXISRAM);
+        t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::AXISRAM);
         if(!t->mr_tls.valid)
         {
-            t->mr_tls = memblk_allocate(owning_process.tls_len, MemRegionType::SDRAM);
+            t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::SDRAM);
         }
         if(!t->mr_tls.valid)
         {
@@ -138,9 +138,11 @@ Thread *Thread::Create(std::string name,
 
         // initialize TLS segment
         {
-            SharedMemoryGuard smg_write((void *)t->mr_tls.address, owning_process.tls_len, false, true);
-            SharedMemoryGuard smg_read((void *)owning_process.tls_base, owning_process.tls_len, true, false);
-            memcpy((void *)t->mr_tls.address, (void *)owning_process.tls_base, owning_process.tls_len);
+            SharedMemoryGuard smg_write((void *)t->mr_tls.address, owning_process.tls_memsz, false, true);
+            SharedMemoryGuard smg_read((void *)owning_process.tls_base, owning_process.tls_filsz, true, false);
+            memcpy((void *)t->mr_tls.address, (void *)owning_process.tls_base, owning_process.tls_filsz);
+            memset((void *)(t->mr_tls.address + owning_process.tls_filsz), 0,
+                owning_process.tls_memsz - owning_process.tls_filsz);
         }
     }
 
