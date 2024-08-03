@@ -610,11 +610,6 @@ int elf_load_fildes(int fd,
             return -1;
         }
 
-        if(relsect.sh_flags & SHF_TLS)
-        {
-            BKPT();
-        }
-
         for(unsigned int j = 0; j < nentries; j++)
         {
             auto rel = reinterpret_cast<Elf32_Rel *>(mr_shdr.address + j * entsize);
@@ -727,6 +722,10 @@ int elf_load_fildes(int fd,
 
                     break;
 
+                case R_ARM_TLS_LE12:
+                    // unsupported
+                    BKPT();
+                    break;
 
 
                 case R_ARM_THM_JUMP24:
