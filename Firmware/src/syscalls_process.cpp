@@ -172,6 +172,8 @@ void *proccreate_thread(void *ptr)
             CriticalGuard cg(s_rtt);
             klog("process_create: elf_load_fildes() failed %d\n", eret);
         }
+        memblk_deallocate(heap);
+        memblk_deallocate(stack);
         delete proc;
         *ss_p = eret;
         ss->Signal();
@@ -190,6 +192,8 @@ void *proccreate_thread(void *ptr)
             CriticalGuard cg(s_rtt);
             klog("process_create: Thread::Create() failed\n");
         }
+        memblk_deallocate(heap);
+        memblk_deallocate(stack);
         delete proc;
         *ss_p = ENOMEM;
         ss->Signal();
