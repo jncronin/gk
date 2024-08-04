@@ -734,7 +734,7 @@ int elf_load_fildes(int fd,
                 case R_ARM_TARGET2:
                 case R_ARM_REL32:
                 //case R_ARM_TLS_LE32:
-                case R_ARM_TLS_LE12:
+                //case R_ARM_TLS_LE12:
                     /* relative reloc, do nothing */
                     break;
 
