@@ -183,9 +183,10 @@ void *proccreate_thread(void *ptr)
     // create startup thread
     auto start_t = Thread::Create(cpname + "_0",
         (Thread::threadstart_t)(uintptr_t)epoint,
-        nullptr, is_priv, GK_PRIORITY_NORMAL,
+        (void *)proc->argc, is_priv, GK_PRIORITY_NORMAL,
         *proc, (CPUAffinity)core_affinity,
-        stack);
+        stack, mpu_default,
+        (void *)proc->argv);
     if(start_t == nullptr)
     {
         {
