@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <_sys_dirent.h>
 
-#define EXT4_DEBUG      1
+#define EXT4_DEBUG      0
 
 // checks lwext remains in sync with our exported dir types
 static_assert(EXT4_DE_UNKNOWN == DT_UNKNOWN);
