@@ -99,6 +99,8 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno);
 
 int syscall_waitpid(pid_t pid, int *status, int options, int *_errno);
 
+void syscall_getheap(void **addr, size_t *sz);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)

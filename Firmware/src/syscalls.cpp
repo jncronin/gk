@@ -802,6 +802,12 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_getheap:
+            {
+                syscall_getheap(reinterpret_cast<void **>(r1), reinterpret_cast<size_t *>(r2));
+            }
+            break;
+
         default:
             {
                 CriticalGuard cg(s_rtt);

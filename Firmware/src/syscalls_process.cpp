@@ -319,3 +319,12 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
     }
     return pid;
 }
+
+void syscall_getheap(void **ptr, size_t *sz)
+{
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+
+    if(ptr) *ptr = (void *)p.heap.address;
+    if(sz) *sz = (size_t)p.heap.length;
+}
