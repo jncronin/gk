@@ -108,7 +108,8 @@ Thread *Thread::Create(std::string name,
             Process &owning_process,
             CPUAffinity affinity,
             MemRegion stackblk,
-            const mpu_saved_state *defmpu)
+            const mpu_saved_state *defmpu,
+            void *p_r1)
 {
     auto t = new Thread(owning_process);
     if(!t) return nullptr;
@@ -184,7 +185,7 @@ Thread *Thread::Create(std::string name,
         stack[--top_stack] = 0UL;
         stack[--top_stack] = 0UL;
         stack[--top_stack] = 0UL;
-        stack[--top_stack] = 0UL;
+        stack[--top_stack] = reinterpret_cast<uint32_t>(p_r1);
         stack[--top_stack] = reinterpret_cast<uint32_t>(p);
     }
 
