@@ -323,6 +323,9 @@ void SetNextThreadForCore(Thread *t, int coreid)
         }
 
         current_thread(coreid).v = t;
+
+        extern uint32_t _tls_pointers[];
+        _tls_pointers[coreid] = t->mr_tls.address;
     }
 }
 
