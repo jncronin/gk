@@ -63,6 +63,8 @@ extern uint32_t m4_wakeup;
 SRAM4_DATA std::vector<std::string> empty_string_vector;
 SRAM4_DATA MemRegion memblk_persistent_log;
 
+extern uint32_t _tls_pointers[2];
+
 int main()
 {
     EXTI->C2IMR3 |= EXTI_IMR3_IM79;
@@ -148,6 +150,15 @@ int main()
     ipi_messages[1].Write( { ipi_message::M4Wakeup, nullptr });
     __SEV();
 #endif
+
+    // Check _tls_pointers[] is valid
+    klog("kernel: _tls_pointers[] at %x\n", (uint32_t)(uintptr_t)_tls_pointers);
+    if((uint32_t)(uintptr_t)_tls_pointers != GK_TLS_POINTER_ADDRESS)
+    {
+        klog("kernel: _tls_pointers[] is invalid\n");
+        __BKPT();
+        while(true);
+    }
 
     // Prepare systick
     SysTick->CTRL = 0;

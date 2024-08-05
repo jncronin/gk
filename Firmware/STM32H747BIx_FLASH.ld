@@ -288,6 +288,11 @@ SECTIONS
     _scm4_stack = .;
     . = . + 4K;
     _ecm4_stack = .;
+
+    /* fast access to TLS pointer(s) */
+    _tls_pointers = .;
+    QUAD(0);
+    QUAD(0);
   } >SRAM
 
   .sram_data :

@@ -20,7 +20,7 @@
 #include <sys/stat.h>
 #include <_sys_dirent.h>
 
-#define EXT4_DEBUG      0
+#define EXT4_DEBUG      1
 
 // checks lwext remains in sync with our exported dir types
 static_assert(EXT4_DE_UNKNOWN == DT_UNKNOWN);
@@ -50,7 +50,7 @@ static int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_i
 static int sd_close(struct ext4_blockdev *bdev);
 
 // override the definition from lwext4 here
-#define static EXT4_DATA static
+#define static EXT4_DATA __attribute__((aligned(32))) static
 EXT4_BLOCKDEV_STATIC_INSTANCE(sd, 512, 0, sd_open, sd_bread, sd_bwrite, sd_close, nullptr, nullptr);
 #undef static
 
@@ -689,7 +689,7 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
     if(!blk_cnt)
         return EOK;
     
-#if EXT4_DEBUG
+#if EXT4_DEBUG >= 2
     {
         CriticalGuard cg(s_rtt);
         klog("sd_bread: %x, %u, %u\n", (uint32_t)(uintptr_t)buf,
