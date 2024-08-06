@@ -20,3 +20,6 @@
 [submodule "Firmware/lwip"]
 	path = Firmware/lwip
 	url = https://github.com/lwip-tcpip/lwip.git
+[submodule "Firmware/gkos-core/gk-userlandinterface"]
+	path = Firmware/gkos-core/gk-userlandinterface
+	url = https://github.com/jncronin/gk-userlandinterface
