@@ -8,7 +8,8 @@ enum MemRegionType
     AXISRAM = 0,
     SRAM = 1,
     DTCM = 2,
-    SDRAM = 3
+    SDRAM = 3,
+    ITCM = 4
 };
 
 struct MemRegion

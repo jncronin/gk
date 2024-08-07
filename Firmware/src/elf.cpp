@@ -546,6 +546,106 @@ int elf_load_fildes(int fd,
         }
     }
 
+    // see if we have a hot section to handle separately (i.e. load to ITCM)
+    // they are currently stored within the main .text section bounded by __start_hot and __end_hot
+    unsigned int shot = 0;
+    unsigned int ehot = 0;
+    for(unsigned int i = 0; i < ehdr.e_shnum; i++)
+    {
+        Elf32_Shdr shdr;
+        if(load_from(fd, ehdr.e_shoff + i * ehdr.e_shentsize, &shdr) != sizeof(shdr))
+        {
+            return -1;
+        }
+        if(shdr.sh_type != SHT_SYMTAB)
+            continue;
+
+        auto strtab_idx = shdr.sh_link;
+        auto first_glob = shdr.sh_info;
+        auto entsize = shdr.sh_entsize;
+        auto nentries = shdr.sh_size / entsize;
+
+        Elf32_Shdr strtab;
+        if(load_from(fd, ehdr.e_shoff + strtab_idx * ehdr.e_shentsize, &strtab) != sizeof(strtab))
+        {
+            return -1;
+        }
+
+        // load symtab and strtab in full
+        auto mr_shdr = memblk_allocate_for_elf(shdr.sh_size);
+        if(!mr_shdr.valid)
+        {
+            return -1;
+        }
+        auto mr_strtab = memblk_allocate_for_elf(strtab.sh_size);
+        if(!mr_strtab.valid)
+        {
+            memblk_deallocate(mr_shdr);
+            return -1;
+        }
+
+        if(load_from(fd, shdr.sh_offset, (void *)mr_shdr.address, shdr.sh_size) != (int)shdr.sh_size)
+        {
+            memblk_deallocate(mr_shdr);
+            memblk_deallocate(mr_strtab);
+            return -1;
+        }
+        if(load_from(fd, strtab.sh_offset, (void *)mr_strtab.address, strtab.sh_size) != (int)strtab.sh_size)
+        {
+            memblk_deallocate(mr_shdr);
+            memblk_deallocate(mr_strtab);
+            return -1;
+        }
+
+        for(unsigned int j = first_glob; j < nentries; j++)
+        {
+            auto sym = reinterpret_cast<Elf32_Sym *>(mr_shdr.address + j * entsize);
+            if(!strcmp("__start_hot", (char *)(mr_strtab.address + sym->st_name)))
+            {
+                shot = sym->st_value;
+            }
+            if(!strcmp("__end_hot", (char *)(mr_strtab.address + sym->st_name)))
+            {
+                ehot = sym->st_value;
+            }
+            if(shot && ehot)
+                break;
+        }
+
+        memblk_deallocate(mr_shdr);
+        memblk_deallocate(mr_strtab);
+
+        if(shot && ehot)
+            break;
+    }
+
+    MemRegion mr_itcm = InvalidMemregion();
+    if(shot && shot != ehot)
+    {
+        klog("elf: found hot section: %x to %x\n", shot, ehot);
+
+        if(GetCoreID() == 0)
+        {
+            mr_itcm = memblk_allocate(ehot - shot, MemRegionType::ITCM, pname + " .text.hot");
+
+            if(mr_itcm.valid)
+            {
+                klog("elf: loading hot section to %08x\n", mr_itcm.address);
+                memcpy((void *)mr_itcm.address, (void *)(base_ptr + shot), ehot - shot);
+            }
+            else
+            {
+                klog("elf: unable to allocate ITCM memory for hot section\n");
+                // TODO: can try other internal memories here if rest is loaded to SDRAM...
+            }
+        }
+        else
+        {
+            klog("elf: ignoring hot section because we are loading from M4\n");
+            // TODO: can still try loading to other internal memories here
+        }
+    }
+
     // provide entry point
     if(epoint)
     {
@@ -798,6 +898,10 @@ int elf_load_fildes(int fd,
 
         CleanOrInvalidateM7Cache(p.thread_finalizer, 32, CacheType_t::Data);
         InvalidateM7Cache(p.thread_finalizer, 32, CacheType_t::Instruction);
+    }
+    if(mr_itcm.valid)
+    {
+        InvalidateM7Cache(mr_itcm.address, mr_itcm.length, CacheType_t::Instruction);
     }
 
     // setup args
