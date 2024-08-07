@@ -19,6 +19,7 @@ __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_ax
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x30000000> b_sram;
 __attribute__((section(".sram4"))) BuddyAllocator<4*1024, 65536*1024, GK_SDRAM_BASE> b_sdram;
+SRAM4_DATA BuddyAllocator<1024, 64*1024, 0> b_itcm;
 __attribute__((section(".sram4"))) static bool inited = false;
 
 // The following are the ends of all the input sections in the
@@ -41,6 +42,9 @@ extern int _ecm4_stack;
 
 // sdram
 extern int _esdram;
+
+// itcm
+extern int _eitcm;
 
 static void add_memory_region(uintptr_t base, uintptr_t size, MemRegionType type)
 {
@@ -65,6 +69,10 @@ static void add_memory_region(uintptr_t base, uintptr_t size, MemRegionType type
         case MemRegionType::SRAM:
             be.valid = is_power_of_2(size) && is_multiple_of(base, b_sram.MinBuddySize());
             b_sram.release(be);
+            break;
+        case MemRegionType::ITCM:
+            be.valid = is_power_of_2(size) && is_multiple_of(base, b_itcm.MinBuddySize());
+            b_itcm.release(be);
             break;
     }
 }
@@ -97,11 +105,13 @@ extern "C" void init_memblk()
     b_dtcm.init();
     b_sdram.init();
     b_sram.init();
+    b_itcm.init();
     
     uintptr_t eaxisram = 0;
     uintptr_t edtcm = 0;
     uintptr_t esram = 0;
     uintptr_t esdram = 0;
+    uintptr_t eitcm = 0;
 
     if((uintptr_t)&_edata > eaxisram)
         eaxisram = (uintptr_t)&_edata;
@@ -125,15 +135,20 @@ extern "C" void init_memblk()
     if((uintptr_t)&_esdram > esdram)
         esdram = (uintptr_t)&_esdram;
 
+    if((uintptr_t)&_eitcm > eitcm)
+        eitcm = (uintptr_t)&_eitcm;
+
     eaxisram = align_up(eaxisram, 1024U);
     edtcm = align_up(edtcm, 1024U);
     esram = align_up(esram, 1024U);
     esdram = align_up(esdram, 1024U);
+    eitcm = align_up(eitcm, 1024U);
 
     add_memory_region(eaxisram, 0x24080000UL - eaxisram, MemRegionType::AXISRAM);
     add_memory_region(edtcm, 0x20020000 - edtcm, MemRegionType::DTCM);
     add_memory_region(esram, 0x30048000 - esram, MemRegionType::SRAM);
     add_memory_region(esdram, GK_SDRAM_BASE + 64 * 1024 * 1024 - esdram, MemRegionType::SDRAM);
+    add_memory_region(eitcm, 64*1024 - eitcm, MemRegionType::ITCM);
     //add_memory_region(0x38000000UL, 0x10000);   // SRAM4 - handled separately by malloc interface
 
     inited = true;
@@ -231,6 +246,11 @@ void memblk_deallocate(MemRegion &r)
             b_sram.release(be);
             r.valid = false;
             break;
+
+        case MemRegionType::ITCM:
+            b_itcm.release(be);
+            r.valid = false;
+            break;
     }
 
 #if GK_MEMBLK_STATS
@@ -283,6 +303,10 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
 
         case MemRegionType::SRAM:
             ret = b_sram.acquire(n);
+            break;
+
+        case MemRegionType::ITCM:
+            ret = b_itcm.acquire(n);
             break;
 
         default:
