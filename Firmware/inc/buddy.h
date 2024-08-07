@@ -227,7 +227,18 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
 
             if(be.valid)
             {
-                auto level = buddy_size_to_level(be.length);
+                auto length = be.length;
+                // round up to a buddy size
+                if(!is_power_of_2(length))
+                {
+                    length = length == 1UL ? 1UL : 1UL << (32-__CLZ(length - 1UL));
+                }
+                while(length < min_buddy_size)
+                {
+                    length <<= 1;
+                }
+
+                auto level = buddy_size_to_level(length);
                 release_at_level(level,
                     addr_to_bitidx_at_level(level, be.base - base_addr));
             }
