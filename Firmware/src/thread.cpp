@@ -127,10 +127,10 @@ Thread *Thread::Create(std::string name,
     /* Create TLS, if any */
     if(owning_process.has_tls)
     {
-        t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::AXISRAM);
+        t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::AXISRAM, "tls");
         if(!t->mr_tls.valid)
         {
-            t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::SDRAM);
+            t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::SDRAM, "tls");
         }
         if(!t->mr_tls.valid)
         {
@@ -154,7 +154,7 @@ Thread *Thread::Create(std::string name,
     }
     else
     {
-        t->stack = memblk_allocate_for_stack(4096U, affinity);
+        t->stack = memblk_allocate_for_stack(4096U, affinity, name + " stack");
     }
     if(!t->stack.valid)
         return nullptr;

@@ -51,9 +51,9 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, pid_t *pid
     param->pid_out = pid;
 
     // ensure pct stack is not in DTCM as this isn't handled by ext4_read yet
-    auto pct_stack = memblk_allocate(4096, MemRegionType::AXISRAM);
-    if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SRAM);
-    if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SDRAM);
+    auto pct_stack = memblk_allocate(4096, MemRegionType::AXISRAM, "pct_stack");
+    if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SRAM, "pct_stack");
+    if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SDRAM, "pct_stack");
 
     auto pct = Thread::Create(t->name + "_proccreate", proccreate_thread,
         param, true, t->base_priority, t->p, t->tss.affinity,
@@ -127,7 +127,7 @@ void *proccreate_thread(void *ptr)
     }
 
     // create stack and heap
-    auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity);
+    auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity, std::string(pname) + " main thread stack");
     if(!stack.valid)
     {
         {
@@ -139,9 +139,9 @@ void *proccreate_thread(void *ptr)
         ss->Signal();
         return nullptr;
     }
-    auto heap = memblk_allocate(heap_size, MemRegionType::AXISRAM);
-    if(!heap.valid) heap = memblk_allocate(heap_size, MemRegionType::SRAM);
-    if(!heap.valid) heap = memblk_allocate(heap_size, MemRegionType::SDRAM);
+    auto heap = memblk_allocate(heap_size, MemRegionType::AXISRAM, "process heap");
+    if(!heap.valid) heap = memblk_allocate(heap_size, MemRegionType::SRAM, "process heap");
+    if(!heap.valid) heap = memblk_allocate(heap_size, MemRegionType::SDRAM, "process heap");
     if(!heap.valid)
     {
         {
@@ -286,8 +286,9 @@ void *proccreate_thread(void *ptr)
         p_supervisor.events.Push( { .type = Event::CaptionChange });
     }
 
-    // schedule startup thread
-    Schedule(start_t);
+#if GK_MEMBLK_STATS
+    memblk_stats();
+#endif
 
     // bind to parent and report back if requested
     if(t)
@@ -300,6 +301,9 @@ void *proccreate_thread(void *ptr)
 
     *ss_p = 0;
     ss->Signal();
+
+    // schedule startup thread
+    Schedule(start_t);
 
     return nullptr;
 }

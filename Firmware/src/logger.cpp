@@ -180,11 +180,11 @@ MemRegion log_get_persistent()
     CriticalGuard cg(s_log_persistent);
     if(plog_frozen)
     {
-        auto ret = memblk_allocate(plog_len, MemRegionType::SRAM);
+        auto ret = memblk_allocate(plog_len, MemRegionType::SRAM, "persistent log");
         if(!ret.valid)
-            ret = memblk_allocate(plog_len, MemRegionType::AXISRAM);
+            ret = memblk_allocate(plog_len, MemRegionType::AXISRAM, "persistent log");
         if(!ret.valid)
-            ret = memblk_allocate(plog_len, MemRegionType::SDRAM);
+            ret = memblk_allocate(plog_len, MemRegionType::SDRAM, "persistent log");
 
         if(ret.valid)
         {

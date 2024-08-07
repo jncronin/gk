@@ -91,9 +91,9 @@ void init_sound()
     NVIC_EnableIRQ(EXTI2_IRQn);
 
 
-    mr_sound = memblk_allocate(max_buffer_size, MemRegionType::AXISRAM);
+    mr_sound = memblk_allocate(max_buffer_size, MemRegionType::AXISRAM, "sound buffer");
     if(!mr_sound.valid)
-        mr_sound = memblk_allocate(max_buffer_size, MemRegionType::SDRAM);
+        mr_sound = memblk_allocate(max_buffer_size, MemRegionType::SDRAM, "sound buffer");
 
     RCC->APB2ENR |= RCC_APB2ENR_SAI1EN;
     (void)RCC->APB2ENR;

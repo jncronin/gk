@@ -69,9 +69,9 @@ SRAM4_DATA static LRUCacheRegion<unsigned int, struct stat, 0> fstat_cache(4096/
 
 extern "C" void *ext4_user_buf_alloc(size_t n)
 {
-    auto reg = memblk_allocate(n, AXISRAM);
+    auto reg = memblk_allocate(n, AXISRAM, "ext4 buffer");
     if(!reg.valid)
-        reg = memblk_allocate(n, SDRAM);
+        reg = memblk_allocate(n, SDRAM, "ext4 buffer");
     if(!reg.valid)
         return nullptr;
 

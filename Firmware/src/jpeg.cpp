@@ -133,8 +133,8 @@ void jpeg_test()
         return;
     }
 
-    auto mr_jpeg = memblk_allocate(1024 * 1024, MemRegionType::SDRAM);
-    auto mr_jpegout = memblk_allocate(4096 * 1024, MemRegionType::SDRAM);
+    auto mr_jpeg = memblk_allocate(1024 * 1024, MemRegionType::SDRAM, "jpeg data");
+    auto mr_jpegout = memblk_allocate(4096 * 1024, MemRegionType::SDRAM, "jpeg data");
     if(!mr_jpeg.valid || !mr_jpegout.valid)
     {
         CriticalGuard cg(s_rtt);

@@ -106,7 +106,7 @@ int main()
     }
     init_log();
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
-        memblk_allocate_for_stack(512, CPUAffinity::M7Only)));
+        memblk_allocate_for_stack(512, CPUAffinity::M7Only, "idle_cm7 stack")));
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M4Only,
         memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
@@ -133,7 +133,7 @@ int main()
     s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
-    auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM);
+    auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
 
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
@@ -255,7 +255,7 @@ void *b_thread(void *p)
 {
     (void)p;
 
-    auto bb = memblk_allocate(0x200000, MemRegionType::SDRAM);
+    auto bb = memblk_allocate(0x200000, MemRegionType::SDRAM, "b_thread");
 
     if(!bb.valid)
         return nullptr;
@@ -276,7 +276,7 @@ void *b_thread(void *p)
     RNG->CR = RNG_CR_RNGEN;
 
     // try and load mbr
-    auto mbr = memblk_allocate(512, MemRegionType::AXISRAM);
+    auto mbr = memblk_allocate(512, MemRegionType::AXISRAM, "b_thread mbr");
     memset((void*)mbr.address, 0, 512);
     auto sdt = sd_perform_transfer(0, 1, (void*)mbr.address, true);
     {

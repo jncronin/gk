@@ -796,7 +796,7 @@ void *sd_thread(void *param)
 {
     (void)param;
 
-    mr_unaligned_buf = memblk_allocate(512U, MemRegionType::AXISRAM);
+    mr_unaligned_buf = memblk_allocate(512U, MemRegionType::AXISRAM, "sd unaligned buffer");
 
     RCC->AHB3ENR |= RCC_AHB3ENR_MDMAEN;
     (void)RCC->AHB3ENR;

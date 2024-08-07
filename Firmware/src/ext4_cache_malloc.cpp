@@ -3,9 +3,9 @@
 
 extern "C" void *ECMsbrk(int n);
 
-#include "dlmalloc.h"
 #include "osallocator.h"
 #include "memblk.h"
+#include "dlmalloc.h"
 
 template <> void region_free<0>(void *ptr)
 {
@@ -24,7 +24,7 @@ void *ECMsbrk(int n)
 
     if(!mr.valid)
     {
-        mr = memblk_allocate(8192, MemRegionType::AXISRAM);
+        mr = memblk_allocate(8192, MemRegionType::AXISRAM, "ext4_cache");
         if(!mr.valid)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
