@@ -729,6 +729,15 @@ int elf_load_fildes(int fd,
                 );
             }*/
 
+            bool reldest_is_hot =  mr_itcm.valid && (rel->r_offset >= shot) && (rel->r_offset < ehot);
+            bool relsym_is_hot = mr_itcm.valid && (r_sym->st_value >= shot) && (r_sym->st_value < ehot);
+
+            if(reldest_is_hot || relsym_is_hot)
+            {
+                klog("elf: hot relocation required type %d targeting %x at %x\n", r_type,
+                    r_sym->st_value, rel->r_offset);
+            }
+
             /* We generate executables with the -q option, therefore relocations are already applied
                 The only changes we need to make are to absolute relocations where we add base_ptr */
 
@@ -741,6 +750,12 @@ int elf_load_fildes(int fd,
                         {
                             klog("unaligned reloc at %x\n", base_ptr + rel->r_offset);
                             __asm__ volatile ("bkpt \n" ::: "memory");
+                        }
+
+                        if(reldest_is_hot || relsym_is_hot)
+                        {
+                            // TODO
+                            BKPT();
                         }
 
                         void *dest = (void *)(base_ptr + rel->r_offset);
@@ -818,7 +833,17 @@ int elf_load_fildes(int fd,
 
                 case R_ARM_TLS_LE32:
                     // recalculate to be relative to thread pointer (for some reason off by 8 by default)
-                    *(uint32_t *)(base_ptr + rel->r_offset) = r_sym->st_value;
+                    if(reldest_is_hot)
+                        *(uint32_t *)(mr_itcm.address + rel->r_offset - shot) = r_sym->st_value;
+                    else if(relsym_is_hot)
+                    {
+                        // unsupported
+                        BKPT();
+                    }
+                    else
+                    {
+                        *(uint32_t *)(base_ptr + rel->r_offset) = r_sym->st_value;
+                    }
 
                     break;
 
@@ -836,6 +861,12 @@ int elf_load_fildes(int fd,
                 //case R_ARM_TLS_LE32:
                 //case R_ARM_TLS_LE12:
                     /* relative reloc, do nothing */
+
+                    if((reldest_is_hot && !relsym_is_hot) || (relsym_is_hot && !reldest_is_hot))
+                    {
+                        // TODO - may need to inject extra code here to handle ARM BL limits
+                        BKPT();
+                    }
                     break;
 
                 case R_ARM_NONE:
