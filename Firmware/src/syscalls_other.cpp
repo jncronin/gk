@@ -63,10 +63,10 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
         return -1;
     }
 
-    auto mr = memblk_allocate(len, MemRegionType::AXISRAM);
+    auto mr = memblk_allocate(len, MemRegionType::AXISRAM, "mmap");
     if(!mr.valid)
     {
-        mr = memblk_allocate(len, MemRegionType::SDRAM);
+        mr = memblk_allocate(len, MemRegionType::SDRAM, "mmap");
         if(!mr.valid)
         {
             *_errno = ENOMEM;

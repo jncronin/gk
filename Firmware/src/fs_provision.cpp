@@ -233,7 +233,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
     int n_zero_sectors = 0;
 
     // Get scratch region for transferring data
-    auto mem = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM);
+    auto mem = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM, "fs_provision scratch");
     if(!mem.valid)
     {
         CriticalGuard cg(s_rtt);
@@ -555,9 +555,9 @@ SRAM4_DATA static std::map<uint32_t, MemRegion> gz_malloc_regions;
 
 extern "C" void *gz_malloc_buffer(size_t n)
 {
-    auto mr = memblk_allocate(n, MemRegionType::SDRAM);
+    auto mr = memblk_allocate(n, MemRegionType::SDRAM, "gz_malloc buffer");
     if(!mr.valid)
-        mr = memblk_allocate(n, MemRegionType::SDRAM);
+        mr = memblk_allocate(n, MemRegionType::SDRAM, "gz_malloc buffer");
     if(!mr.valid)
     {
         __asm__ volatile ("bkpt \n" ::: "memory");
@@ -660,9 +660,9 @@ void fs_provision_extract(const std::string &from, const std::string &to)
             from.c_str(), _st.st_size);
     }
 
-    auto mr = memblk_allocate(_st.st_size, MemRegionType::AXISRAM);
+    auto mr = memblk_allocate(_st.st_size, MemRegionType::AXISRAM, "fs_provision_extract buffer");
     if(!mr.valid)
-        mr = memblk_allocate(_st.st_size, MemRegionType::SDRAM);
+        mr = memblk_allocate(_st.st_size, MemRegionType::SDRAM, "fs_provision_extract buffer");
     if(!mr.valid)
     {
         klog("fs_provision_extract: unable to allocate memregion of size %d for %s\n",

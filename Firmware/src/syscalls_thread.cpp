@@ -41,16 +41,16 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     if(stack_size > 65536)
         stack_size = 65536;
     
-    auto stack = memblk_allocate_for_stack((size_t)stack_size, CPUAffinity::Either);
+    auto curt = GetCurrentThreadForCore();
+    auto &p = curt->p;
+
+    auto stack = memblk_allocate_for_stack((size_t)stack_size, CPUAffinity::Either, p.name + " new thread stack");
     if(!stack.valid)
     {
         // cannot allocate stack
         *_errno = EAGAIN;
         return -1;
     }
-
-    auto curt = GetCurrentThreadForCore();
-    auto &p = curt->p;
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
         curt->base_priority, p, p.default_affinity, stack, curt->tss.mpuss);

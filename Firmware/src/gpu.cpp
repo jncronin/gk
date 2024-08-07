@@ -397,7 +397,7 @@ void *gpu_thread(void *p)
     (void)p;
 
     // Init framebuffer - 640x480 x 32bpp
-    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM);
+    auto fb = memblk_allocate(0x400000, MemRegionType::SDRAM, "framebuffer");
     screen_set_frame_buffer((void *)fb.address, (void *)(fb.address + 0x200000));
 
     // Clear to black

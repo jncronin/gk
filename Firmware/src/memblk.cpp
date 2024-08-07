@@ -8,6 +8,13 @@
 
 #define DEBUG_MEMBLK        0
 
+#if GK_MEMBLK_STATS
+struct memblk_stats_t { MemRegion mr; std::string tag; };
+SRAM4_DATA static std::map<uint32_t, memblk_stats_t> memblk_tags;
+SRAM4_DATA static Spinlock sl_ms;
+SRAM4_DATA static MemRegion memblk_usage[GK_MEMBLK_USAGE_MAX] = { 0 }; 
+#endif
+
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_axisram;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x30000000> b_sram;
@@ -132,7 +139,11 @@ extern "C" void init_memblk()
     inited = true;
 }
 
+#if GK_MEMBLK_STATS
+MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, const std::string &tag)
+#else
 MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
+#endif
 {
     MemRegionType rtlist[4];
     int nrts = 0;
@@ -169,7 +180,11 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
 
     for(int i = 0; i < nrts; i++)
     {
-        auto r = memblk_allocate(n, rtlist[i]);
+        auto r = memblk_allocate(n, rtlist[i]
+#if GK_MEMBLK_STATS
+            , tag
+#endif
+        );
         if(r.valid)
         {
             return r;
@@ -216,6 +231,17 @@ void memblk_deallocate(MemRegion &r)
             break;
     }
 
+#if GK_MEMBLK_STATS
+    {
+        CriticalGuard cg_ms(sl_ms);
+        auto iter = memblk_tags.find(r.address);
+        if(iter != memblk_tags.end())
+        {
+            memblk_tags.erase(iter);
+        }
+    }
+#endif
+
 #if DEBUG_MEMBLK
     if(!r.valid)
     {
@@ -225,7 +251,11 @@ void memblk_deallocate(MemRegion &r)
 #endif
 }
 
+#if GK_MEMBLK_STATS
+static MemRegion _memblk_allocate(size_t n, MemRegionType rtype)
+#else
 MemRegion memblk_allocate(size_t n, MemRegionType rtype)
+#endif
 {
     BuddyEntry ret;
     if(!n)
@@ -279,6 +309,34 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype)
     return mr;
 }
 
+#if GK_MEMBLK_STATS
+MemRegion memblk_allocate(size_t n, MemRegionType rtype, const std::string &tag)
+{
+    auto mr = _memblk_allocate(n, rtype);
+    if(mr.valid)
+    {
+        memblk_stats_t ms { .mr = mr, .tag = tag };
+        CriticalGuard cg_ms(sl_ms);
+        memblk_tags[mr.address] = ms;
+    }
+    return mr;
+}
+
+MemRegion memblk_allocate(size_t n, MemRegionType rtype, int usage)
+{
+    auto mr = _memblk_allocate(n, rtype);
+    if(mr.valid)
+    {
+        if(usage < GK_MEMBLK_USAGE_MAX)
+        {
+            CriticalGuard cg_ms(sl_ms);
+            memblk_usage[usage] = mr;
+        }
+    }
+    return mr;
+}
+#endif
+
 bool operator==(const MemRegion &a, const MemRegion &b)
 {
     if(!a.valid && !b.valid) return true;
@@ -293,3 +351,35 @@ bool operator!=(const MemRegion &a, const MemRegion &b)
 {
     return !(a == b);
 }
+
+#if GK_MEMBLK_STATS
+void memblk_stats()
+{
+    CriticalGuard cg(sl_ms);
+    // add usage values back as strings
+    for(int i = 0; i < GK_MEMBLK_USAGE_MAX; i++)
+    {
+        if(memblk_usage[i].valid)
+        {
+            switch(i)
+            {
+                case GK_MEMBLK_USAGE_KERNEL_HEAP:
+                    memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i].address, .tag = "kernel heap" };
+                    break;
+                default:
+                    memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i].address, .tag = "unknown" };
+                    break;
+            }
+            memblk_usage[i].valid = false;
+        }
+    }
+
+    klog("memblk: current regions:\n");
+    for(const auto &[mr, mst] : memblk_tags)
+    {
+        klog("%08x-%08x: %s\n", mst.mr.address, mst.mr.address + mst.mr.length, mst.tag.c_str());
+    }
+    klog("memblk: end of current region dump\n");
+}
+
+#endif

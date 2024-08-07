@@ -83,7 +83,7 @@ extern "C" void *sbrksram4(int n)
         extern void init_memblk();
         init_memblk();
 
-        mr = memblk_allocate(128*1024, MemRegionType::SRAM);
+        mr = memblk_allocate(128*1024, MemRegionType::SRAM, GK_MEMBLK_USAGE_KERNEL_HEAP);
         if(!mr.valid)
         {
             __asm__ volatile("bkpt \n" ::: "memory");

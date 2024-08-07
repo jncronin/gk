@@ -91,10 +91,10 @@ int elf_load_memory(const void *e, const std::string &pname,
     klog("need %d bytes\n", max_size);
 
     // get a relevant memory block AXISRAM > SDRAM
-    auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM);
+    auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM, pname + " code/data");
     if(!memblk.valid)
     {
-        memblk = memblk_allocate(max_size, MemRegionType::SDRAM);
+        memblk = memblk_allocate(max_size, MemRegionType::SDRAM, pname + " code/data");
     }
     if(!memblk.valid)
     {
@@ -106,7 +106,7 @@ int elf_load_memory(const void *e, const std::string &pname,
 
     // Create a stack for thread0
     if(!stack.valid)
-        stack = memblk_allocate_for_stack(4096, affinity);
+        stack = memblk_allocate_for_stack(4096, affinity, "stack");
     auto stack_end = stack.address + stack.length;
 
     // Load segments
@@ -307,10 +307,10 @@ int elf_load_memory(const void *e, const std::string &pname,
     uint32_t act_heap_size = heap_size;
     while(true)
     {
-        proc->heap = memblk_allocate(act_heap_size, MemRegionType::AXISRAM);
+        proc->heap = memblk_allocate(act_heap_size, MemRegionType::AXISRAM, "heap");
         if(!proc->heap.valid)
         {
-            proc->heap = memblk_allocate(act_heap_size, MemRegionType::SDRAM);
+            proc->heap = memblk_allocate(act_heap_size, MemRegionType::SDRAM, "heap");
         }
         if(!proc->heap.valid)
         {
@@ -375,9 +375,9 @@ template<typename T> static int load_from(int fd, unsigned int offset, T* buf)
 
 static MemRegion memblk_allocate_for_elf(size_t nbytes)
 {
-    auto mr = memblk_allocate(nbytes, MemRegionType::AXISRAM);
+    auto mr = memblk_allocate(nbytes, MemRegionType::AXISRAM, "elf structure");
     //if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SRAM);
-    if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SDRAM);
+    if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SDRAM, "elf structure");
     return mr;
 }
 
@@ -488,10 +488,10 @@ int elf_load_fildes(int fd,
     klog("need %d bytes\n", max_size);
 
     // get a relevant memory block AXISRAM > SDRAM
-    auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM);
+    auto memblk = memblk_allocate(max_size, MemRegionType::AXISRAM, pname + " code/data");
     if(!memblk.valid)
     {
-        memblk = memblk_allocate(max_size, MemRegionType::SDRAM);
+        memblk = memblk_allocate(max_size, MemRegionType::SDRAM, pname + " code/data");
     }
     if(!memblk.valid)
     {
