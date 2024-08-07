@@ -18,7 +18,7 @@ SRAM4_DATA static MemRegion memblk_usage[GK_MEMBLK_USAGE_MAX] = { 0 };
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x24000000> b_axisram;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x20000, 0x20000000> b_dtcm;
 __attribute__((section(".sram4"))) BuddyAllocator<256, 0x80000, 0x30000000> b_sram;
-__attribute__((section(".sram4"))) BuddyAllocator<512*1024, 65536*1024, GK_SDRAM_BASE> b_sdram;
+__attribute__((section(".sram4"))) BuddyAllocator<4*1024, 65536*1024, GK_SDRAM_BASE> b_sdram;
 __attribute__((section(".sram4"))) static bool inited = false;
 
 // The following are the ends of all the input sections in the
@@ -202,6 +202,8 @@ void memblk_deallocate(MemRegion &r)
 {
     if(!r.valid)
         return;
+
+    if(r.address == 0x60000000) BKPT();
     
     BuddyEntry be;
     be.base = r.address;
@@ -366,7 +368,7 @@ void memblk_stats()
                 case GK_MEMBLK_USAGE_KERNEL_HEAP:
                     memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i], .tag = "kernel heap" };
                     break;
-                default:
+                default:   
                     memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i], .tag = "unknown" };
                     break;
             }
