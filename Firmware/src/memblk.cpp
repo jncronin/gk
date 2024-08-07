@@ -364,10 +364,10 @@ void memblk_stats()
             switch(i)
             {
                 case GK_MEMBLK_USAGE_KERNEL_HEAP:
-                    memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i].address, .tag = "kernel heap" };
+                    memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i], .tag = "kernel heap" };
                     break;
                 default:
-                    memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i].address, .tag = "unknown" };
+                    memblk_tags[memblk_usage[i].address] = { .mr = memblk_usage[i], .tag = "unknown" };
                     break;
             }
             memblk_usage[i].valid = false;
