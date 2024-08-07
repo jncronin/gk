@@ -113,6 +113,9 @@ class Process
         std::unordered_set<Condition *> owned_conditions;
         std::unordered_set<RwLock *> owned_rwlocks;
         std::unordered_set<UserspaceSemaphore *> owned_semaphores;
+
+        /* default stack size for new threads */
+        size_t default_stack_size = 0;
 };
 
 extern Process *focus_process;

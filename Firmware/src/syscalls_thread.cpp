@@ -35,15 +35,18 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         return -1;
     }
 
-    auto stack_size = attr ? attr->stacksize : 0;
-    if(!stack_size)
-        stack_size = 65536;
-    if(stack_size > 65536)
-        stack_size = 65536;
-    
     auto curt = GetCurrentThreadForCore();
     auto &p = curt->p;
 
+    auto stack_size = attr ? attr->stacksize : 0;
+    if(!stack_size)
+    {
+        if(p.default_stack_size)
+            stack_size = p.default_stack_size;
+        else
+            stack_size = 65536;
+    }
+    
     auto stack = memblk_allocate_for_stack((size_t)stack_size, CPUAffinity::Either, p.name + " new thread stack");
     if(!stack.valid)
     {
