@@ -223,7 +223,7 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
     public:
         void release(const BuddyEntry &be)
         {
-            auto cpsr = lock();
+            uint32_t cpsr;
 
             if(be.valid)
             {
@@ -239,6 +239,8 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                 }
 
                 auto level = buddy_size_to_level(length);
+
+                cpsr = lock();
                 release_at_level(level,
                     addr_to_bitidx_at_level(level, be.base - base_addr));
             }
@@ -247,6 +249,8 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                 // block is not aligned with a buddy level
                 uint32_t cur_addr = be.base - base_addr;
                 uint32_t max_addr = be.base - base_addr + be.length;
+
+                cpsr = lock();
                 while(true)
                 {
                     uint32_t cur_buddy_size = get_smallest_buddy_size_for_block(&cur_addr);
