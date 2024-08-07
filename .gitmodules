@@ -23,3 +23,9 @@
 [submodule "Firmware/gkos-core/gk-userlandinterface"]
 	path = Firmware/gkos-core/gk-userlandinterface
 	url = https://github.com/jncronin/gk-userlandinterface
+[submodule "Firmware/gkos-core/cmsis_device_h7"]
+	path = Firmware/gkos-core/cmsis_device_h7
+	url = https://github.com/STMicroelectronics/cmsis_device_h7.git
+[submodule "Firmware/gkos-core/cmsis_core"]
+	path = Firmware/gkos-core/cmsis_core
+	url = https://github.com/STMicroelectronics/cmsis_core.git

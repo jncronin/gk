@@ -52,50 +52,12 @@ class GKOS_FUNC(Process)
         std::map<uint32_t, mmap_region> mmap_regions;
         std::map<uint32_t, mmap_region>::iterator get_mmap_region(uint32_t addr, uint32_t len);
 
-        /* display modes */
-        uint16_t screen_w = 640;
-        uint16_t screen_h = 480;
-        uint8_t screen_pf = 0;
-        bool screen_ignore_vsync = false;
-
         /* current working directory */
         std::string cwd = "/";
 
         /* parameters passed to program */
         int argc;
         char **argv;
-
-        /* gamepad mapping */
-        bool gamepad_is_joystick = true;
-        bool gamepad_is_keyboard = true;
-        bool gamepad_is_mouse = false;
-
-        bool tilt_is_joystick = true;
-        bool tilt_is_keyboard = true;
-        char tilt_keyboard_state = 0;
-
-        enum GamepadKey {
-            Left = GK_KEYLEFT,
-            Right = GK_KEYRIGHT,
-            Up = GK_KEYUP,
-            Down = GK_KEYDOWN,
-            A = GK_KEYA,
-            B = GK_KEYB,
-            X = GK_KEYX,
-            Y = GK_KEYY,
-            VolUp = GK_KEYVOLUP,
-            VolDown = GK_KEYVOLDOWN
-        };
-
-        unsigned int gamepad_buttons = 0;
-        unsigned char mouse_buttons = 0;
-        void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
-        void HandleTiltEvent(int x, int y);
-
-        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z', 0, 0, 0, 0, 0, 0 };
-
-        /* Events */
-        FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
 
         /* TLS segment, if any */
         bool has_tls = false;
@@ -113,6 +75,9 @@ class GKOS_FUNC(Process)
         std::unordered_set<GKOS_FUNC(Condition) *> owned_conditions;
         std::unordered_set<GKOS_FUNC(RwLock) *> owned_rwlocks;
         std::unordered_set<GKOS_FUNC(UserspaceSemaphore) *> owned_semaphores;
+
+        /* noncore data for process */
+        void *noncore_data;
 };
 
 extern GKOS_FUNC(Process) kernel_proc;

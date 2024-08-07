@@ -1,9 +1,11 @@
+#include "gkos.h"
 #include "kernel_time.h"
 #include <sys/time.h>
 #include "syscalls.h"
 #include "syscalls_int.h"
 #include "memblk.h"
 #include <errno.h>
+#include <sys/times.h>
 //#include "gpu.h"
 #include "process.h"
 #include "scheduler.h"
@@ -140,35 +142,6 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
     return 0;
 }
 
-int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int *_errno)
-{
-    if(!msgs || !nsent)
-    {
-        *_errno = EINVAL;
-        return -1;
-    }
-
-    *nsent = GPUEnqueueMessages(msgs, nmsg);
-    if(*nsent == nmsg && nmsg && msgs[nmsg - 1].type == gpu_message_type::SignalThread)
-        return -2;  // deferred return
-    
-    return 0;
-}
-
-int syscall_peekevent(Event *ev, int *_errno)
-{
-    auto &p = GetCurrentThreadForCore()->p;
-    CriticalGuard cg(p.sl);
-    if(p.events.TryPop(ev))
-    {
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
-}
-
 clock_t syscall_times(tms *buf, int *_errno)
 {
     if(!buf)
@@ -243,25 +216,6 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
             }
         }
     }
-    return 0;
-}
-
-int syscall_setwindowtitle(const char *title, int *_errno)
-{
-    if(!title)
-    {
-        *_errno = EINVAL;
-        return -1;
-    }
-
-    auto &p = GetCurrentThreadForCore()->p;
-    {
-        CriticalGuard c_p(p.sl);
-        p.window_title = std::string(title, GK_MAX_WINDOW_TITLE);
-        p.events.Push({ .type = Event::CaptionChange });
-    }
-    extern Process p_supervisor;
-    p_supervisor.events.Push({ .type = Event::CaptionChange });
     return 0;
 }
 

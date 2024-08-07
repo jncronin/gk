@@ -1,5 +1,5 @@
 #include "osringbuffer.h"
-#include "clocks.h"
+#include "kernel_time.h"
 #include <stdarg.h>
 #include "gk_conf.h"
 #include "osmutex.h"

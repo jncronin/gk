@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}/Firmware",
+    "cmake.sourceDirectory": "${workspaceFolder}/Firmware/gkos-core",
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/Firmware/cmake/toolchain.cmake"
     },

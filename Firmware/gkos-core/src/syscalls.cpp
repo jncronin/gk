@@ -1,3 +1,4 @@
+#include "gkos.h"
 #include <stm32h7xx.h>
 #include "syscalls.h"
 #include "thread.h"
@@ -11,6 +12,7 @@
 #include "SEGGER_RTT.h"
 #include "elf.h"
 #include "cleanup.h"
+#include "gkos.h"
 //#include "sound.h"
 
 #define DEBUG_SYSCALLS  0
@@ -773,35 +775,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
-        case __syscall_audioenable:
-            {
-                auto p = reinterpret_cast<int>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audioenable(p, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audioqueuebuffer:
-            {
-                auto p = reinterpret_cast<__syscall_audioqueuebuffer_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audioqueuebuffer(p->buffer, p->next_buffer,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-        
-        case __syscall_audiosetmode:
-            {
-                auto p = reinterpret_cast<__syscall_audiosetmode_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audiosetmode(p->nchan, p->nbits, p->freq, p->buf_size_bytes,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audiowaitfree:
-            {
-                *reinterpret_cast<int *>(r1) = syscall_audiowaitfree(reinterpret_cast<int *>(r3));
-            }
-            break;
-
         case __syscall_getheap:
             {
                 syscall_getheap(reinterpret_cast<void **>(r1), reinterpret_cast<size_t *>(r2));
@@ -810,30 +783,33 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         default:
             {
-                CriticalGuard cg(s_rtt);
-                klog("syscall: unhandled syscall %d\n", (int)sno);
-            }
-            __asm__ volatile ("bkpt #0\n");
+                auto ret = gkos_noncore_handle_syscall(sno, r1, r2, r3);
+                if(ret != 0)
+                {
+                    klog("syscall: unhandled syscall %d\n", (int)sno);
+                    __asm__ volatile ("bkpt #0\n");
 
-            {
-                auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
-                klog("panic: process %s thread %s unhandled syscall\n",
-                    p.name.c_str(), t->name.c_str());
-                if(&p != &kernel_proc)
-                {
-                    CriticalGuard cg_p(p.sl);
-                    for(auto thr : p.threads)
                     {
-                        CriticalGuard cg_t(thr->sl);
-                        thr->for_deletion = true;
+                        auto t = GetCurrentThreadForCore();
+                        auto &p = t->p;
+                        klog("panic: process %s thread %s unhandled syscall\n",
+                            p.name.c_str(), t->name.c_str());
+                        if(&p != &kernel_proc)
+                        {
+                            CriticalGuard cg_p(p.sl);
+                            for(auto thr : p.threads)
+                            {
+                                CriticalGuard cg_t(thr->sl);
+                                thr->for_deletion = true;
+                            }
+                            p.for_deletion = true;
+                            Yield();
+                        }
+                        else
+                        {
+                            while(true);
+                        }
                     }
-                    p.for_deletion = true;
-                    Yield();
-                }
-                else
-                {
-                    while(true);
                 }
             }
 
