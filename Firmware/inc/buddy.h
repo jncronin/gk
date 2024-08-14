@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "util.h"
+#include "SEGGER_RTT.h"
 
 struct BuddyEntry
 {
@@ -231,10 +232,12 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                 // round up to a buddy size
                 if(!is_power_of_2(length))
                 {
+                    BKPT();
                     length = length == 1UL ? 1UL : 1UL << (32-__CLZ(length - 1UL));
                 }
                 while(length < min_buddy_size)
                 {
+                    BKPT();
                     length <<= 1;
                 }
 
@@ -261,7 +264,7 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                         return;
                     }
 
-                    while((cur_addr + cur_buddy_size) >= max_addr)
+                    while((cur_addr + cur_buddy_size) > max_addr)
                     {
                         cur_buddy_size >>= 1;
                     }
