@@ -260,6 +260,16 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                         unlock(cpsr);
                         return;
                     }
+
+                    while((cur_addr + cur_buddy_size) >= max_addr)
+                    {
+                        cur_buddy_size >>= 1;
+                    }
+                    if(cur_buddy_size < min_buddy_size)
+                    {
+                        unlock(cpsr);
+                        return;
+                    }
                     
                     auto level = buddy_size_to_level(cur_buddy_size);
                     release_at_level(level, addr_to_bitidx_at_level(level, cur_addr));
