@@ -31,7 +31,7 @@ enum CPUAffinity
     M7Only = 1,
     M4Only = 1,
     PreferM7 = 1,
-    PreferM4 = 1
+    PreferM4 = 2
 #endif
 };
 
