@@ -119,6 +119,7 @@ class Process
 
         /* hot code region */
         MemRegion mr_hot = InvalidMemregion();
+        bool use_hot_region = true;
 };
 
 extern Process *focus_process;
