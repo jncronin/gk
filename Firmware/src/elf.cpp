@@ -651,8 +651,6 @@ int elf_load_fildes(int fd,
         klog("elf: found hot section: %x to %x\n", shot, ehot);
 
         auto hot_len = ehot - shot;
-        // give us a bit more for trampoline code
-        hot_len = (hot_len * 3) / 2;
 
         if(GetCoreID() == 0)
         {
