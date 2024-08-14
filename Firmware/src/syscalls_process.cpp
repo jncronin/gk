@@ -51,7 +51,6 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, pid_t *pid
     param->pid_out = pid;
 
     // ensure pct stack is not in DTCM as this isn't handled by ext4_read yet
-    memblk_stats();
     auto pct_stack = memblk_allocate(4096, MemRegionType::AXISRAM, "pct_stack");
     if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SRAM, "pct_stack");
     if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SDRAM, "pct_stack");
@@ -128,7 +127,6 @@ void *proccreate_thread(void *ptr)
     }
 
     // create stack and heap
-    memblk_stats();
     auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity, std::string(pname) + " main thread stack");
     if(!stack.valid)
     {
