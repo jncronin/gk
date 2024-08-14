@@ -19,6 +19,32 @@ static size_t get_arg_length(const std::string &pname, const std::vector<std::st
 static void init_args(const std::string &pname, const std::vector<std::string> &params,
     void *buf);
 
+class trampoline_provider
+{
+    private:
+        std::map<uint32_t, uint32_t> registered_trampolines;
+        uint32_t max_trampoline;
+        uint32_t cur_trampoline;
+
+    public:
+        trampoline_provider(uint32_t _cur_trampoline, uint32_t _max_trampoline) :
+            max_trampoline(_max_trampoline), cur_trampoline(_cur_trampoline) {}
+        uint32_t alloc(uint32_t target)
+        {
+            auto iter = registered_trampolines.find(target);
+            if(iter != registered_trampolines.end())
+            {
+                return iter->second;
+            }
+            cur_trampoline += 12U;
+            if(cur_trampoline > max_trampoline)
+                return 0U;
+            registered_trampolines[target] = cur_trampoline - 12U;
+            return cur_trampoline - 12U;
+        }
+        uint32_t get_cur() { return cur_trampoline; }
+};
+
 int elf_load_memory(const void *e, const std::string &pname,
     const std::vector<std::string> &params,
     uint32_t heap_size, CPUAffinity affinity,
@@ -663,6 +689,8 @@ int elf_load_fildes(int fd,
     unsigned int normal_section_end = max_size;
     hot_section_end = (hot_section_end + 0x3U) & ~0x3U;
     normal_section_end = (normal_section_end + 0x3U) & ~0x3U;
+    trampoline_provider tp_hot(mr_itcm.address + hot_section_end, mr_itcm.address + mr_itcm.length);
+    trampoline_provider tp_norm(base_ptr + normal_section_end, base_ptr + memblk.length);
 
     // perform relocations
     for(unsigned int i = 0; i < ehdr.e_shnum; i++)
@@ -894,30 +922,26 @@ int elf_load_fildes(int fd,
                             unsigned int trampoline_addr;
                             if(relsrc_is_hot)
                             {
-                                trampoline_addr = hot_section_end;
-                                hot_section_end += 12;
-                                if(hot_section_end >= mr_itcm.length)
+                                trampoline_addr = tp_hot.alloc(target);
+                                if(trampoline_addr == 0)
                                 {
                                     // fail
                                     klog("elf: not enough space to generate hot section trampoline code\n");
                                     // TODO cleanup
                                     return -1;
                                 }
-                                trampoline_addr += mr_itcm.address;
                             }
                             else
                             {
                                 // reltarget is hot
-                                trampoline_addr = normal_section_end;
-                                normal_section_end += 12;
-                                if(normal_section_end >= memblk.address)
+                                trampoline_addr = tp_norm.alloc(target);
+                                if(trampoline_addr == 0)
                                 {
                                     // fail
                                     klog("elf: not enough space to generate normal section trampoline code\n");
                                     // TODO cleanup
                                     return -1;
                                 }
-                                trampoline_addr += base_ptr;
                             }
 
                             klog("elf: creating trampoline at %08x for %08x to %08x\n",
@@ -990,6 +1014,13 @@ int elf_load_fildes(int fd,
 
         memblk_deallocate(mr_shdr);
         memblk_deallocate(mr_symtab);
+    }
+
+    if(mr_itcm.valid)
+    {
+        hot_section_end = tp_hot.get_cur() - mr_itcm.address;
+        klog("elf: total hot size %d bytes (%d code and %d trampoline)\n",
+            hot_section_end, ehot - shot, hot_section_end - ehot + shot);
     }
 
     // Invalidate I-Cache for the appropriate region(s)
