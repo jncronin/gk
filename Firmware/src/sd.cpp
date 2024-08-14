@@ -30,6 +30,9 @@ extern Process kernel_proc;
 
 #define SDT_DATA    __attribute__((section(".sdt_data")))
 
+static const constexpr unsigned int unaligned_buf_size = 512;
+SDT_DATA __attribute__((aligned(32))) char unaligned_buf[unaligned_buf_size];
+
 SDT_DATA static int clock_speed = 0;
 SDT_DATA static int clock_period_ns = 0;
 
@@ -56,8 +59,6 @@ __attribute__((section(".sram4"))) volatile uint64_t sd_size = 0;
 SDT_DATA static uint32_t cmd6_buf[512/32];
 
 extern char _ssdt_data, _esdt_data;
-
-SRAM4_DATA MemRegion mr_unaligned_buf;
 
 static constexpr pin sd_pins[] =
 {
@@ -796,8 +797,6 @@ void *sd_thread(void *param)
 {
     (void)param;
 
-    mr_unaligned_buf = memblk_allocate(512U, MemRegionType::AXISRAM, "sd unaligned buffer");
-
     RCC->AHB3ENR |= RCC_AHB3ENR_MDMAEN;
     (void)RCC->AHB3ENR;
 
@@ -837,12 +836,12 @@ void *sd_thread(void *param)
 
             bool is_valid = is_valid_dma(sdr.mem_address, sdr.block_count);
             uint32_t mem_len = sdr.block_count * 512U;
-            uint32_t mem_start = is_valid ? (uint32_t)(uintptr_t)sdr.mem_address : mr_unaligned_buf.address;
+            uint32_t mem_start = is_valid ? (uint32_t)(uintptr_t)sdr.mem_address : (uint32_t)(uintptr_t)unaligned_buf;
 
             if(!is_valid && !sdr.is_read)
             {
                 // need to copy memory to the sram buffer
-                do_mdma_transfer((uint32_t)(uintptr_t)sdr.mem_address, mr_unaligned_buf.address);
+                do_mdma_transfer((uint32_t)(uintptr_t)sdr.mem_address, (uint32_t)(uintptr_t)unaligned_buf);
             }
 
             SDMMC1->DCTRL = 0;
@@ -965,7 +964,7 @@ void *sd_thread(void *param)
             if(!is_valid && sdr.is_read)
             {
                 // need to copy memory from the sram buffer
-                do_mdma_transfer(mr_unaligned_buf.address, (uint32_t)(uintptr_t)sdr.mem_address);
+                do_mdma_transfer((uint32_t)(uintptr_t)unaligned_buf, (uint32_t)(uintptr_t)sdr.mem_address);
             }
 
             if(sdr.completion_event)

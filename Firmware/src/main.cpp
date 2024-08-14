@@ -134,6 +134,7 @@ int main()
     s.Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
+    memblk_stats();
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
 
