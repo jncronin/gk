@@ -127,7 +127,11 @@ Thread *Thread::Create(std::string name,
     /* Create TLS, if any */
     if(owning_process.has_tls)
     {
-        t->mr_tls = memblk_allocate(owning_process.tls_memsz + 8, MemRegionType::AXISRAM, "tls");
+        t->mr_tls = InvalidMemregion();
+        if(affinity == CPUAffinity::M4Only || affinity == CPUAffinity::PreferM4)
+            t->mr_tls = memblk_allocate(owning_process.tls_memsz + 8, MemRegionType::SRAM, "tls");
+        if(!t->mr_tls.valid)
+            t->mr_tls = memblk_allocate(owning_process.tls_memsz + 8, MemRegionType::AXISRAM, "tls");
         if(!t->mr_tls.valid)
         {
             t->mr_tls = memblk_allocate(owning_process.tls_memsz + 8, MemRegionType::SDRAM, "tls");
@@ -159,6 +163,10 @@ Thread *Thread::Create(std::string name,
     {
         t->stack = memblk_allocate_for_stack(4096U, affinity, name + " stack");
     }
+#if !GK_DUAL_CORE_AMP && !GK_DUAL_CORE
+    // we keep PreferM4 as a separate option until now to allow better stack placement for low priority tasks
+    affinity = CPUAffinity::M7Only;
+#endif
     if(!t->stack.valid)
         return nullptr;
 

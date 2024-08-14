@@ -106,14 +106,15 @@ int main()
     }
     init_log();
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
-        memblk_allocate_for_stack(512, CPUAffinity::M7Only, "idle_cm7 stack")));
+        memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "idle_cm7 stack")));
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     Schedule(Thread::Create("idle_cm4", idle_thread, (void*)1, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M4Only,
         memblk_allocate_for_stack(512, CPUAffinity::M4Only)));
 #endif
 
     Schedule(Thread::Create("cleanup", cleanup_thread, (void*)0, true, GK_PRIORITY_VHIGH, kernel_proc,
-        CPUAffinity::M7Only));
+        CPUAffinity::M7Only,
+        memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "cleanup stack")));
 
 #if GK_ENABLE_TEST_THREADS
     Schedule(Thread::Create("blue", bluescreen_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc));
