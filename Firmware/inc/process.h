@@ -116,6 +116,9 @@ class Process
 
         /* default stack size for new threads */
         size_t default_stack_size = 0;
+
+        /* hot code region */
+        MemRegion mr_hot = InvalidMemregion();
 };
 
 extern Process *focus_process;

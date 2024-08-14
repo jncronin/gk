@@ -624,25 +624,31 @@ int elf_load_fildes(int fd,
     {
         klog("elf: found hot section: %x to %x\n", shot, ehot);
 
+        auto hot_len = ehot - shot;
+        // give us a bit more for trampoline code
+        hot_len = (hot_len * 3) / 2;
+
         if(GetCoreID() == 0)
         {
-            mr_itcm = memblk_allocate(ehot - shot, MemRegionType::ITCM, pname + " .text.hot");
+            mr_itcm = memblk_allocate(hot_len, MemRegionType::ITCM, pname + " .text.hot");
+        }
+        if(!mr_itcm.valid)
+        {
+            mr_itcm = memblk_allocate(hot_len, MemRegionType::AXISRAM, pname + " .text.hot");
+        }
+        if(!mr_itcm.valid)
+        {
+            mr_itcm = memblk_allocate(hot_len, MemRegionType::SRAM, pname + " .text.hot");
+        }
 
-            if(mr_itcm.valid)
-            {
-                klog("elf: loading hot section to %08x\n", mr_itcm.address);
-                memcpy((void *)mr_itcm.address, (void *)(base_ptr + shot), ehot - shot);
-            }
-            else
-            {
-                klog("elf: unable to allocate ITCM memory for hot section\n");
-                // TODO: can try other internal memories here if rest is loaded to SDRAM...
-            }
+        if(mr_itcm.valid)
+        {
+            klog("elf: loading hot section to %08x\n", mr_itcm.address);
+            memcpy((void *)mr_itcm.address, (void *)(base_ptr + shot), ehot - shot);
         }
         else
         {
-            klog("elf: ignoring hot section because we are loading from M4\n");
-            // TODO: can still try loading to other internal memories here
+            klog("elf: unable to allocate ITCM memory for hot section\n");
         }
     }
 
@@ -651,6 +657,12 @@ int elf_load_fildes(int fd,
     {
         *epoint = base_ptr + ehdr.e_entry;
     }
+
+    // hope we have enough space to add inter-section trampoline code
+    unsigned int hot_section_end = ehot - shot;
+    unsigned int normal_section_end = max_size;
+    hot_section_end = (hot_section_end + 0x3U) & ~0x3U;
+    normal_section_end = (normal_section_end + 0x3U) & ~0x3U;
 
     // perform relocations
     for(unsigned int i = 0; i < ehdr.e_shnum; i++)
@@ -717,26 +729,109 @@ int elf_load_fildes(int fd,
             auto r_sym_idx = rel->r_info >> 8;
             auto r_type = rel->r_info & 0xff;
 
-            auto r_sym = reinterpret_cast<const Elf32_Sym *>(mr_symtab.address + r_sym_idx *
+            if(r_type == R_ARM_NONE)
+                continue;
+
+            [[maybe_unused]] auto r_sym = reinterpret_cast<const Elf32_Sym *>(mr_symtab.address + r_sym_idx *
                 symtab.sh_entsize);
 
-            /*if((uint32_t)dest >= 0x240020d4 && (uint32_t)dest <= 0x240020d8)
+            uint32_t src = rel->r_offset;
+            auto orig_reloc_val = *(volatile uint32_t *)(src + base_ptr);
+            uint32_t target;
+
+            switch(r_type)
             {
-                __asm volatile
-                (
-                    "bkpt  \n"
-                    ::: "memory"
-                );
-            }*/
+                case R_ARM_TARGET1:
+                case R_ARM_ABS32:
+                    target = orig_reloc_val;
+                    break;
 
-            bool reldest_is_hot =  mr_itcm.valid && (rel->r_offset >= shot) && (rel->r_offset < ehot);
-            bool relsym_is_hot = mr_itcm.valid && (r_sym->st_value >= shot) && (r_sym->st_value < ehot);
+                case R_ARM_TARGET2:
+                case R_ARM_REL32:
+                case R_ARM_PREL31:
+                    // ((S + A) | T) - P
+                    {
+                        uint32_t se_reloc_val;
+                        if(r_type == R_ARM_REL32 || r_type == R_ARM_TARGET2)
+                        {
+                            se_reloc_val = orig_reloc_val;
+                        }
+                        else if((orig_reloc_val >> 30) & 0x1)
+                        {
+                            se_reloc_val = orig_reloc_val | 0x80000000U;
+                        }
+                        else
+                        {
+                            se_reloc_val = orig_reloc_val;
+                        }
 
-            if(reldest_is_hot || relsym_is_hot)
+                        target = se_reloc_val + src;
+                    }
+                    break;
+
+                case R_ARM_THM_CALL:
+                case R_ARM_THM_JUMP24:
+                    /* Interpret BL/B opcode */
+                    {
+                        auto J1 = (orig_reloc_val >> (13+16)) & 0x1U;
+                        auto J2 = (orig_reloc_val >> (11+16)) & 0x1U;
+                        auto imm11 = (orig_reloc_val >> (16)) & 0x7ffU;
+                        auto S = (orig_reloc_val >> 10) & 0x1U;
+                        auto imm10 = (orig_reloc_val) & 0x3ffU;
+
+                        auto I1 = (J1 ^ S) ? 0U : 1U;
+                        auto I2 = (J2 ^ S) ? 0U : 1U;
+
+                        auto imm32 = (imm11 << 1) |
+                            (imm10 << 12) |
+                            (I2 << 22) |
+                            (I1 << 23) |
+                            (S << 24);
+                        if(S) imm32 |= 0xff000000U;
+
+                        target = rel->r_offset + 4 + imm32;
+                    }
+                    break;
+
+                case R_ARM_TLS_LE32:
+                    target = orig_reloc_val;
+                    break;
+
+                default:
+                    // for now...
+                    klog("elf: cannot deal with target from %d yet\n", r_type);
+                    target = orig_reloc_val;
+                    BKPT();
+                    break;
+            }
+
+            bool relsrc_is_hot = mr_itcm.valid && (src >= shot) && (src < ehot);
+            bool reltarget_is_hot = mr_itcm.valid && (r_type != R_ARM_TLS_LE32) &&
+                (target >= shot) && (target < ehot);
+
+            if(relsrc_is_hot)
+            {
+                src += mr_itcm.address - shot;
+            }
+            else
+            {
+                src += base_ptr;
+            }
+            if(reltarget_is_hot)
+            {
+                target += mr_itcm.address - shot;
+            }
+            else if(r_type != R_ARM_TLS_LE32)
+            {
+                target += base_ptr;
+            }
+
+            if(relsrc_is_hot || reltarget_is_hot)
             {
                 klog("elf: hot relocation required type %d targeting %x at %x\n", r_type,
-                    r_sym->st_value, rel->r_offset);
+                    target, src);
             }
+
 
             /* We generate executables with the -q option, therefore relocations are already applied
                 The only changes we need to make are to absolute relocations where we add base_ptr */
@@ -745,106 +840,8 @@ int elf_load_fildes(int fd,
             {
                 case R_ARM_TARGET1:
                 case R_ARM_ABS32:
-                    {
-                        if((base_ptr + rel->r_offset) & 0x3)
-                        {
-                            klog("unaligned reloc at %x\n", base_ptr + rel->r_offset);
-                            __asm__ volatile ("bkpt \n" ::: "memory");
-                        }
-
-                        if(reldest_is_hot || relsym_is_hot)
-                        {
-                            // TODO
-                            BKPT();
-                        }
-
-                        void *dest = (void *)(base_ptr + rel->r_offset);
-                        uint32_t A = *(uint32_t *)dest;
-                        uint32_t P = (uint32_t)dest;
-                        [[maybe_unused]] uint32_t Pa = P & 0xfffffffc;
-                        [[maybe_unused]] uint32_t T = ((r_sym->st_info & 0xf) == STT_FUNC) ? 1 : 0;
-                        [[maybe_unused]] uint32_t S = base_ptr + r_sym->st_value;
-                        uint32_t mask = 0xffffffff;
-                        uint32_t value = 0;
-
-                        bool is_stack = false;
-                        bool is_software_init_hook = false;
-
-                        if(r_sym->st_shndx == SHN_UNDEF && r_sym->st_name)
-                        {
-                            // need to special-case "_stack" and "software_init_hook" labels
-                            auto strtab_idx = symtab.sh_link;
-                            Elf32_Shdr strtab;
-                            if(load_from(fd, ehdr.e_shoff + strtab_idx * ehdr.e_shentsize, &strtab) != sizeof(shdr))
-                            {
-                                memblk_deallocate(mr_shdr);
-                                memblk_deallocate(mr_symtab);
-                                return -1;
-                            }
-
-                            // get a short name (just enough for comparison purposes)
-                            char cname[32];
-                            if(load_from(fd, strtab.sh_offset + r_sym->st_name, cname, 32) < 0)
-                            {
-                                memblk_deallocate(mr_shdr);
-                                memblk_deallocate(mr_symtab);
-                                return -1;
-                            }
-                            cname[31] = 0;
-
-                            if(strcmp("__stack", cname) == 0)
-                            {
-                                is_stack = true;
-                            }
-                            if(strcmp("software_init_hook", cname) == 0)
-                            {
-                                is_software_init_hook = true;
-                            }
-
-                            if(!is_stack && !is_software_init_hook)
-                            {
-                                break;      // leave as zero
-                            }
-                        }
-                    
-                        mask = 0xffffffffUL;
-                        A &= mask;
-                        value = A + base_ptr;
-
-                        if(is_stack)
-                        {
-                            value = stack_end;
-                        }
-                        else if(is_software_init_hook)
-                        {
-                            value = (uint32_t)(uintptr_t)prog_software_init_hook;
-                            value |= 0x1;
-                        }
-
-                        {
-                            auto cval = *(uint32_t *)dest;
-                            cval &= ~mask;
-                            cval |= (value & mask);
-                            *(uint32_t *)dest = cval;
-                        }
-                    }
-
-                    break;
-
                 case R_ARM_TLS_LE32:
-                    // recalculate to be relative to thread pointer (for some reason off by 8 by default)
-                    if(reldest_is_hot)
-                        *(uint32_t *)(mr_itcm.address + rel->r_offset - shot) = r_sym->st_value;
-                    else if(relsym_is_hot)
-                    {
-                        // unsupported
-                        BKPT();
-                    }
-                    else
-                    {
-                        *(uint32_t *)(base_ptr + rel->r_offset) = r_sym->st_value;
-                    }
-
+                    *(volatile uint32_t *)src = target;
                     break;
 
                 case R_ARM_TLS_LE12:
@@ -852,25 +849,135 @@ int elf_load_fildes(int fd,
                     BKPT();
                     break;
 
-
-                case R_ARM_THM_JUMP24:
-                case R_ARM_THM_CALL:
                 case R_ARM_PREL31:
-                case R_ARM_TARGET2:
-                case R_ARM_REL32:
-                //case R_ARM_TLS_LE32:
-                //case R_ARM_TLS_LE12:
-                    /* relative reloc, do nothing */
-
-                    if((reldest_is_hot && !relsym_is_hot) || (relsym_is_hot && !reldest_is_hot))
                     {
-                        // TODO - may need to inject extra code here to handle ARM BL limits
-                        BKPT();
+                        auto old_val = *(volatile uint32_t *)src;
+                        old_val &= 0x80000000U;
+                        old_val |= ((target - src) & 0x7fffffffU);
+                        *(volatile uint32_t *)src = old_val;
                     }
                     break;
 
-                case R_ARM_NONE:
-                    /* do nothing */
+                case R_ARM_TARGET2:
+                case R_ARM_REL32:
+                    *(volatile uint32_t *)src = target - src;
+                    break;
+
+                case R_ARM_THM_JUMP24:
+                case R_ARM_THM_CALL:
+                    /* relative reloc, do nothing unless normal->hot or hot->norma; */
+
+                    if((relsrc_is_hot && !reltarget_is_hot) || (reltarget_is_hot && !relsrc_is_hot))
+                    {
+                        // may need to inject extra code here to handle ARM BL limits
+                        // can use R12 for this so ldr r12, [pc + ...]; bx r12; .short pad; .word (target | 0x1)
+                        // 0xf8df, 0xc004
+                        // 0x4760
+                        // 0x0000
+                        // target | 0x1
+
+                        src += 4;
+
+                        auto adjust = (target > src) ? (target - src) : (src - target);
+                        bool is_positive = target > src;
+                        bool can_fit = is_positive ? (adjust <= 16777214) : (adjust <= 16777216);
+
+                        if(can_fit)
+                        {
+                            klog("elf: hot reloc: can fit in current reloc\n");
+                            // TODO
+                            BKPT();
+                        }
+                        else
+                        {
+                            // get some space - hopefully
+                            unsigned int trampoline_addr;
+                            if(relsrc_is_hot)
+                            {
+                                trampoline_addr = hot_section_end;
+                                hot_section_end += 12;
+                                if(hot_section_end >= mr_itcm.length)
+                                {
+                                    // fail
+                                    klog("elf: not enough space to generate hot section trampoline code\n");
+                                    // TODO cleanup
+                                    return -1;
+                                }
+                                trampoline_addr += mr_itcm.address;
+                            }
+                            else
+                            {
+                                // reltarget is hot
+                                trampoline_addr = normal_section_end;
+                                normal_section_end += 12;
+                                if(normal_section_end >= memblk.address)
+                                {
+                                    // fail
+                                    klog("elf: not enough space to generate normal section trampoline code\n");
+                                    // TODO cleanup
+                                    return -1;
+                                }
+                                trampoline_addr += base_ptr;
+                            }
+
+                            klog("elf: creating trampoline at %08x for %08x to %08x\n",
+                                trampoline_addr, src, target);
+
+                            // trampoline
+                            auto trampoline = (volatile uint32_t *)trampoline_addr;
+                            trampoline[0] = 0xc004f8df;
+                            trampoline[1] = 0x00004760;
+                            trampoline[2] = target | 0x1U;
+
+                            // get new adjust - in theory always positive
+                            auto new_adjust = trampoline_addr - src;
+
+                            // check fits
+                            if(new_adjust > 16777214U)
+                            {
+                                klog("elf: new trampoline too far from BL instruction!\n");
+                                BKPT();
+                                // TODO cleanup
+                                return -1;
+                            }
+
+                            // rewrite current reloc
+                            switch(r_type)
+                            {
+                                case R_ARM_THM_CALL:
+                                case R_ARM_THM_JUMP24:
+                                    {
+                                        [[maybe_unused]] unsigned int S = 0; // always positive
+                                        unsigned int imm11 = (new_adjust >> 1) & 0x7ff;
+                                        unsigned int imm10 = (new_adjust >> 12) & 0x3ff;
+                                        unsigned int I2 = (new_adjust >> 22) & 0x1;
+                                        unsigned int I1 = (new_adjust >> 23) & 0x1;
+                                        unsigned int J1 = I1 ? 0U : 1U;
+                                        unsigned int J2 = I2 ? 0U : 1U;
+
+                                        // second word in ARM is highest in memory
+                                        auto old_inst = *(volatile uint32_t *)(src - 4);
+                                        old_inst &= 0xd000f800U;
+                                        uint32_t new_bl = old_inst |
+                                            (J1 << (13+16)) |
+                                            (J2 << (11+16)) |
+                                            (imm11 << 16) |
+                                            (S << 10) |
+                                            (imm10);
+                                        *(volatile uint32_t *)(src - 4) = new_bl;
+                                    }
+
+                                    break;
+
+                                default:
+                                    // unsupported for now
+                                    klog("elf: unsupported trampoline reloc type\n");
+                                    // TODO cleanup
+                                    BKPT();
+                                    return -1;
+                            }
+                        }
+                    }
                     break;
 
                 default:
@@ -930,9 +1037,15 @@ int elf_load_fildes(int fd,
         CleanOrInvalidateM7Cache(p.thread_finalizer, 32, CacheType_t::Data);
         InvalidateM7Cache(p.thread_finalizer, 32, CacheType_t::Instruction);
     }
+    if(mr_itcm.valid && mr_itcm.address >= 0x20000000)
+    {
+        // not needed for ITCM
+        CleanOrInvalidateM7Cache(mr_itcm.address, mr_itcm.length, CacheType_t::Data);
+        InvalidateM7Cache(mr_itcm.address, mr_itcm.length, CacheType_t::Instruction);
+    }
     if(mr_itcm.valid)
     {
-        InvalidateM7Cache(mr_itcm.address, mr_itcm.length, CacheType_t::Instruction);
+        p.mr_hot = mr_itcm;
     }
 
     // setup args

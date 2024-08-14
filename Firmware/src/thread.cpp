@@ -127,10 +127,10 @@ Thread *Thread::Create(std::string name,
     /* Create TLS, if any */
     if(owning_process.has_tls)
     {
-        t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::AXISRAM, "tls");
+        t->mr_tls = memblk_allocate(owning_process.tls_memsz + 8, MemRegionType::AXISRAM, "tls");
         if(!t->mr_tls.valid)
         {
-            t->mr_tls = memblk_allocate(owning_process.tls_memsz, MemRegionType::SDRAM, "tls");
+            t->mr_tls = memblk_allocate(owning_process.tls_memsz + 8, MemRegionType::SDRAM, "tls");
         }
         if(!t->mr_tls.valid)
         {
@@ -141,8 +141,11 @@ Thread *Thread::Create(std::string name,
         {
             SharedMemoryGuard smg_write((void *)t->mr_tls.address, owning_process.tls_memsz, false, true);
             SharedMemoryGuard smg_read((void *)owning_process.tls_base, owning_process.tls_filsz, true, false);
-            memcpy((void *)t->mr_tls.address, (void *)owning_process.tls_base, owning_process.tls_filsz);
-            memset((void *)(t->mr_tls.address + owning_process.tls_filsz), 0,
+            // ARM32 has TLS segments starting 8 bytes after tp.  We can use these for other things
+            *(volatile uint32_t *)(t->mr_tls.address + 0) = (uint32_t)owning_process.pid;   // proc ID
+            *(volatile uint32_t *)(t->mr_tls.address + 4) = (uint32_t)(uintptr_t)t;         // thread ID
+            memcpy((void *)(t->mr_tls.address + 8), (void *)owning_process.tls_base, owning_process.tls_filsz);
+            memset((void *)(t->mr_tls.address + 8 + owning_process.tls_filsz), 0,
                 owning_process.tls_memsz - owning_process.tls_filsz);
         }
     }
@@ -215,6 +218,12 @@ Thread *Thread::Create(std::string name,
     {
         t->tss.mpuss[next_mpu] = MPUGenerate(t->mr_tls.address,
             t->mr_tls.length, next_mpu, false, RW, RW, WBWA_NS);
+        next_mpu++;
+    }
+    if(owning_process.mr_hot.valid)
+    {
+        t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.mr_hot.address,
+            owning_process.mr_hot.length, next_mpu, true, RW, RW, WBWA_NS);
         next_mpu++;
     }
 
