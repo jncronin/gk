@@ -24,7 +24,11 @@ void *ECMsbrk(int n)
 
     if(!mr.valid)
     {
-        mr = memblk_allocate(8192, MemRegionType::AXISRAM, "ext4_cache");
+        mr = memblk_allocate(8192, MemRegionType::SRAM, "ext4_cache");
+        if(!mr.valid)
+            mr = memblk_allocate(8192, MemRegionType::SDRAM, "ext4_cache");
+        if(!mr.valid)
+            mr = memblk_allocate(8192, MemRegionType::AXISRAM, "ext4_cache");
         if(!mr.valid)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
