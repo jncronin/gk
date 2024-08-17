@@ -243,6 +243,7 @@ int elf_load_fildes(int fd,
             Elf32_Shdr shdr;
             if(load_from(fd, ehdr.e_shoff + i * ehdr.e_shentsize, &shdr) != sizeof(shdr))
             {
+                klog("elf: couldn't load section header\n");
                 return -1;
             }
             if(shdr.sh_type != SHT_SYMTAB)
@@ -256,6 +257,7 @@ int elf_load_fildes(int fd,
             Elf32_Shdr strtab;
             if(load_from(fd, ehdr.e_shoff + strtab_idx * ehdr.e_shentsize, &strtab) != sizeof(strtab))
             {
+                klog("elf: couldn't load .strtab section header\n");
                 return -1;
             }
 
@@ -263,23 +265,27 @@ int elf_load_fildes(int fd,
             auto mr_shdr = memblk_allocate_for_elf(shdr.sh_size);
             if(!mr_shdr.valid)
             {
+                klog("elf: couldn't allocate %d bytes for section\n", shdr.sh_size);
                 return -1;
             }
             auto mr_strtab = memblk_allocate_for_elf(strtab.sh_size);
             if(!mr_strtab.valid)
             {
+                klog("elf: couldn't allocate %d bytes for strtab\n", shdr.sh_size);
                 memblk_deallocate(mr_shdr);
                 return -1;
             }
 
             if(load_from(fd, shdr.sh_offset, (void *)mr_shdr.address, shdr.sh_size) != (int)shdr.sh_size)
             {
+                klog("elf: couldn't load section %d\n", i);
                 memblk_deallocate(mr_shdr);
                 memblk_deallocate(mr_strtab);
                 return -1;
             }
             if(load_from(fd, strtab.sh_offset, (void *)mr_strtab.address, strtab.sh_size) != (int)strtab.sh_size)
             {
+                klog("elf: couldn't load strtab %d\n", strtab_idx);
                 memblk_deallocate(mr_shdr);
                 memblk_deallocate(mr_strtab);
                 return -1;
@@ -363,22 +369,17 @@ int elf_load_fildes(int fd,
         }
         if(shdr.sh_type != SHT_REL)
             continue;
-        klog("reloc section %d\n", i);
+        klog("elf: reloc section %u\n", i);
 
-        auto symtab_idx = shdr.sh_link;
+        //auto symtab_idx = shdr.sh_link;
         auto relsect_idx = shdr.sh_info;
         auto entsize = shdr.sh_entsize;
         auto nentries = shdr.sh_size / entsize;
 
-        Elf32_Shdr symtab;
-        if(load_from(fd, ehdr.e_shoff + symtab_idx * ehdr.e_shentsize, &symtab) != sizeof(symtab))
-        {
-            return -1;
-        }
-
         Elf32_Shdr relsect;
         if(load_from(fd, ehdr.e_shoff + relsect_idx * ehdr.e_shentsize, &relsect) != sizeof(relsect))
         {
+            klog("elf: couldn't load relsect section header %u\n", relsect_idx);
             return -1;
         }
 
@@ -391,23 +392,12 @@ int elf_load_fildes(int fd,
         auto mr_shdr = memblk_allocate_for_elf(shdr.sh_size);
         if(!mr_shdr.valid)
         {
-            return -1;
-        }
-        auto mr_symtab = memblk_allocate_for_elf(symtab.sh_size);
-        if(!mr_symtab.valid)
-        {
+            klog("elf: couldn't allocate %u bytes for reloc section %u\n", shdr.sh_size, i);
             return -1;
         }
         if(load_from(fd, shdr.sh_offset, (void *)mr_shdr.address, shdr.sh_size) != (int)shdr.sh_size)
         {
             memblk_deallocate(mr_shdr);
-            memblk_deallocate(mr_symtab);
-            return -1;
-        }
-        if(load_from(fd, symtab.sh_offset, (void *)mr_symtab.address, symtab.sh_size) != (int)symtab.sh_size)
-        {
-            memblk_deallocate(mr_shdr);
-            memblk_deallocate(mr_symtab);
             return -1;
         }
 
@@ -415,14 +405,11 @@ int elf_load_fildes(int fd,
         {
             auto rel = reinterpret_cast<Elf32_Rel *>(mr_shdr.address + j * entsize);
 
-            auto r_sym_idx = rel->r_info >> 8;
+            //auto r_sym_idx = rel->r_info >> 8;
             auto r_type = rel->r_info & 0xff;
 
             if(r_type == R_ARM_NONE)
                 continue;
-
-            [[maybe_unused]] auto r_sym = reinterpret_cast<const Elf32_Sym *>(mr_symtab.address + r_sym_idx *
-                symtab.sh_entsize);
 
             uint32_t src = rel->r_offset;
             auto orig_reloc_val = *(volatile uint32_t *)(src + base_ptr);
@@ -666,15 +653,13 @@ int elf_load_fildes(int fd,
                     break;
 
                 default:
-                    klog("unknown rel type %d\n", r_type);
+                    klog("elf: unknown rel type %d\n", r_type);
                     memblk_deallocate(mr_shdr);
-                    memblk_deallocate(mr_symtab);
                     return -1;
             }
         }
 
         memblk_deallocate(mr_shdr);
-        memblk_deallocate(mr_symtab);
     }
 
     if(mr_itcm.valid)
