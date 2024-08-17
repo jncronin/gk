@@ -48,7 +48,7 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
     // get free mpu slot
     auto t = GetCurrentThreadForCore();
     int mpu_slot = -1;
-    for(int i = 0; i < 8; i++)
+    for(int i = 0; i < 16; i++)
     {
         if(!(t->tss.mpuss[i].rasr & 0x1U))
         {

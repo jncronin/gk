@@ -63,7 +63,7 @@ struct thread_saved_state
     uint32_t lr;
 
     uint32_t fpuregs[16];
-    struct mpu_saved_state mpuss[8];
+    struct mpu_saved_state mpuss[16];
 
     enum CPUAffinity affinity;           
     int running_on_core = 0;
@@ -72,13 +72,13 @@ struct thread_saved_state
     int pinned_on_core = 0;
 };
 
-#define GK_TSS_SIZE                 192
+#define GK_TSS_SIZE                 256
 #define GK_TSS_MPUSS_OFFSET         108
-#define GK_TSS_AFFINITY_OFFSET      172
-#define GK_TSS_ROC_OFFSET           176
-#define GK_TSS_CFC_OFFSET           180
-#define GK_TSS_DFC_OFFSET           184
-#define GK_TSS_POC_OFFSET           188
+#define GK_TSS_AFFINITY_OFFSET      236
+#define GK_TSS_ROC_OFFSET           240
+#define GK_TSS_CFC_OFFSET           244
+#define GK_TSS_DFC_OFFSET           248
+#define GK_TSS_POC_OFFSET           252
 
 #ifdef __cplusplus
 static_assert(sizeof(thread_saved_state) == GK_TSS_SIZE);

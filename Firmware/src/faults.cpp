@@ -205,7 +205,7 @@ static void log_regs(gk_regs *r, const char *fault_type)
         r->r->xpsr
         );
 
-    for(unsigned int i = 0; i < 8; i++)
+    for(unsigned int i = 0; i < 16; i++)
     {
         MPU->RNR = i;
         auto rbar = MPU->RBAR;

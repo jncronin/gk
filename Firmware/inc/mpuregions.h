@@ -61,7 +61,7 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     base_addr &= ~(length - 1);             // Recheck alignment as length may have increased in previous step
     length = align_up(end - base_addr);
 
-    ret.rbar = (reg_id & 0x7UL) | (1UL << 4) | (base_addr & ~0x1fUL);
+    ret.rbar = (reg_id & 0xfUL) | (1UL << 4) | (base_addr & ~0x1fUL);
 
     // encode size
     uint32_t cur_size = 32;
@@ -111,7 +111,7 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
 constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
 {
     mpu_saved_state ret { 0, 0 };
-    ret.rbar = (reg_id & 0x7UL) | (1UL << 4);
+    ret.rbar = (reg_id & 0xfUL) | (1UL << 4);
     ret.rasr = 0UL;
     return ret;
 }
@@ -119,7 +119,7 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
 constexpr mpu_saved_state mpu_sram = MPUGenerate(0x30000000, 0x10000000, 0, false, RW, RO, N_NC_S);
 constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 1, false, RW, RW, WT_NS);
 
-constexpr mpu_saved_state mpu_default[8] =
+constexpr mpu_saved_state mpu_default[16] =
 {
     mpu_sram,
     mpu_fb0,
@@ -128,7 +128,15 @@ constexpr mpu_saved_state mpu_default[8] =
     MPUGenerateNonValid(4),
     MPUGenerateNonValid(5),
     MPUGenerateNonValid(6),
-    MPUGenerateNonValid(7)
+    MPUGenerateNonValid(7),
+    MPUGenerateNonValid(8),
+    MPUGenerateNonValid(9),
+    MPUGenerateNonValid(10),
+    MPUGenerateNonValid(11),
+    MPUGenerateNonValid(12),
+    MPUGenerateNonValid(13),
+    MPUGenerateNonValid(14),
+    MPUGenerateNonValid(15)
 };
 
 #endif
