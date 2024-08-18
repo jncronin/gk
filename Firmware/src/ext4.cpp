@@ -465,7 +465,7 @@ static void handle_fstat_message(ext4_message &msg)
         buf.st_gid = static_cast<gid_t>(gid);
 
         buf.st_rdev = 0;
-        buf.st_size = f ? f->fsize : 0;
+        buf.st_size = f ? f->fsize : d->f.fsize;
         buf.st_blksize = 512;
         buf.st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
 
