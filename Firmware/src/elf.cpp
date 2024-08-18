@@ -412,6 +412,17 @@ int elf_load_fildes(int fd,
                 continue;
 
             uint32_t src = rel->r_offset;
+
+            // handle some odd PREL31 relocations with src outside the exidx segment
+            if(r_type == R_ARM_PREL31)
+            {
+                if(src < relsect.sh_addr || src >= (relsect.sh_addr + relsect.sh_size))
+                {
+                    klog("elf: R_ARM_PREL31 relocation (%u,%u) with src outside relsect\n",
+                        i, j);
+                    continue;
+                }
+            }
             auto orig_reloc_val = *(volatile uint32_t *)(src + base_ptr);
             uint32_t target;
 
