@@ -414,7 +414,7 @@ int elf_load_fildes(int fd,
             uint32_t src = rel->r_offset;
 
             // handle some odd PREL31 relocations with src outside the exidx segment
-            if(r_type == R_ARM_PREL31)
+            if(r_type == R_ARM_PREL31 && mr_itcm.valid)
             {
                 if(src < relsect.sh_addr || src >= (relsect.sh_addr + relsect.sh_size))
                 {
