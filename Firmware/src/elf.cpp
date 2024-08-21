@@ -3,6 +3,7 @@
 #include "memblk.h"
 
 #include <cstring>
+#include <set>
 
 #include "thread.h"
 #include "scheduler.h"
@@ -65,6 +66,39 @@ static MemRegion memblk_allocate_for_elf(size_t nbytes)
     //if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SRAM);
     if(!mr.valid) mr = memblk_allocate(nbytes, MemRegionType::SDRAM, "elf structure");
     return mr;
+}
+
+static MemRegion load_section(int fd, const Elf32_Shdr &shdr, const Elf32_Ehdr &ehdr)
+{
+    auto mr = memblk_allocate_for_elf(shdr.sh_size);
+    if(!mr.valid)
+    {
+        klog("elf: couldn't allocate %u bytes for section\n", shdr.sh_size);
+        return InvalidMemregion();
+    }
+
+    if(load_from(fd, shdr.sh_offset, (void *)mr.address, shdr.sh_size) != (int)shdr.sh_size)
+    {
+        klog("elf: couldn't load section\n");
+        memblk_deallocate(mr);
+        return InvalidMemregion();
+    }
+
+    return mr;
+}
+
+[[maybe_unused]] static MemRegion load_section(int fd, unsigned int sect_id, const Elf32_Ehdr &ehdr, Elf32_Shdr *shdr)
+{
+    Elf32_Shdr temp_hdr;
+    if(!shdr) shdr = &temp_hdr;
+
+    if(load_from(fd, ehdr.e_shoff + sect_id * ehdr.e_shentsize, shdr) != sizeof(shdr))
+    {
+        klog("elf: couldn't load shdr for section %u\n", sect_id);
+        return InvalidMemregion();
+    }
+
+    return load_section(fd, *shdr, ehdr);
 }
 
 int elf_load_fildes(int fd,
@@ -351,6 +385,40 @@ int elf_load_fildes(int fd,
         *epoint = base_ptr + ehdr.e_entry;
     }
 
+    // make a note of all valid symtab/symidx pairs that point to address 0 - used later
+    std::set<uint64_t> addr0;
+    for(unsigned int i = 0; i < ehdr.e_shnum; i++)
+    {
+        Elf32_Shdr shdr;
+        if(load_from(fd, ehdr.e_shoff + i * ehdr.e_shentsize, &shdr) != sizeof(shdr))
+        {
+            // TODO cleanup
+            return -1;
+        }
+
+        if(shdr.sh_type != SHT_SYMTAB || shdr.sh_entsize == 0)
+            continue;
+
+        auto mr_shdr = load_section(fd, shdr, ehdr);
+        if(!mr_shdr.valid)
+            continue;
+
+        for(unsigned int j = 0; j < shdr.sh_size / shdr.sh_entsize; j++)
+        {
+            auto sym = reinterpret_cast<Elf32_Sym *>(mr_shdr.address + j * shdr.sh_entsize);
+            if(sym->st_value == 0 && ((sym->st_info >> 4) != 2) && sym->st_shndx != 0)
+            {
+                // zero address, not weak
+                uint64_t pr = (((uint64_t)i) << 32) | (((uint64_t)j));
+                addr0.insert(pr);
+            }
+        }
+
+        memblk_deallocate(mr_shdr);
+    }
+
+    klog("elf: found %u symbols with address 0\n", addr0.size());
+
     // hope we have enough space to add inter-section trampoline code
     unsigned int hot_section_end = ehot - shot;
     unsigned int normal_section_end = max_size;
@@ -492,6 +560,16 @@ int elf_load_fildes(int fd,
                     break;
             }
 
+            /* Special case things targeting 0 - may either by a valid call to _init or
+                an unbound weak symbol.  */
+            if(target == 0)
+            {
+                uint64_t pr = (((uint64_t)relsect.sh_link) << 32) |
+                    ((uint64_t)(rel->r_info >> 8));
+                if(addr0.find(pr) == addr0.end())
+                    continue;
+            }
+
             bool relsrc_is_hot = mr_itcm.valid && (src >= shot) && (src < ehot);
             bool reltarget_is_hot = mr_itcm.valid && (r_type != R_ARM_TLS_LE32) &&
                 (target >= shot) && (target < ehot);
@@ -539,15 +617,21 @@ int elf_load_fildes(int fd,
                 case R_ARM_PREL31:
                     {
                         auto old_val = *(volatile uint32_t *)src;
-                        old_val &= 0x80000000U;
-                        old_val |= ((target - src) & 0x7fffffffU);
-                        *(volatile uint32_t *)src = old_val;
+                        auto new_val = old_val & 0x80000000U;
+                        new_val |= ((target - src) & 0x7fffffffU);
+                        *(volatile uint32_t *)src = new_val;
+                        //if(new_val != old_val) BKPT();
                     }
                     break;
 
                 case R_ARM_TARGET2:
                 case R_ARM_REL32:
-                    *(volatile uint32_t *)src = target - src;
+                    {
+                        [[maybe_unused]] auto old_val = *(volatile uint32_t *)src;
+                        auto new_val = target - src;
+                        *(volatile uint32_t *)src = new_val;
+                        //if(new_val != old_val) BKPT();
+                    }
                     break;
 
                 case R_ARM_THM_JUMP24:
