@@ -103,6 +103,8 @@ void cleanup(Process *p)
     }
     memblk_deallocate(p->heap);
     memblk_deallocate(p->code_data);
+    if(p->mr_hot.valid)
+        memblk_deallocate(p->mr_hot);
 
     /* cleanup mutexes etc */
     delete_all_process_sync_primitives(p->owned_conditions, p);
