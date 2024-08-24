@@ -26,10 +26,11 @@ static void *supervisor_thread(void *p);
 
 static const constexpr coord_t btn_overlay_h = 208;
 static const constexpr coord_t btn_overlay_y = 480 - btn_overlay_h;
+static const constexpr coord_t status_h = 32;
 
 ButtonWidget rw_test, rw_test2;
 ImageButtonWidget imb_bright_up, imb_bright_down;
-GridWidget scr_test;
+GridWidget scr_overlay, scr_status;
 LabelWidget lab_caption;
 KeyboardWidget kw;
 ProgressBarWidget pb_volume;
@@ -122,32 +123,38 @@ bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
         // final position
         if(is_show)
         {
-            wdg->y = btn_overlay_y;
+            scr_overlay.y = btn_overlay_y;
+            scr_status.y = 0;
             scr_alpha = 0xffU;
         }
         else
         {
             //screen_set_overlay_alpha(0x0U);
-            wdg->y = 480;
+            scr_overlay.y = 480;
+            scr_status.y = -scr_status.h;
             overlay_visible = false;
         }
         return true;
     }
 
     coord_t yadj = btn_overlay_h * t / tot_time;
+    coord_t yadj_status = scr_status.h * t / tot_time;
     unsigned long aadj = 0x100UL * t / tot_time;
     if(aadj > 0xffU) aadj = 0xffU;
 
     if(is_show)
     {
         yadj = 480 - yadj;
+        yadj_status = -status_h + yadj_status;
     }
     else
     {
         yadj = btn_overlay_y + yadj;
+        yadj_status = -yadj_status;
         aadj = 0xffU - aadj;
     }
-    wdg->y = yadj;
+    scr_overlay.y = yadj;
+    scr_status.y = yadj_status;
     scr_alpha = aadj;
     return false;
 }
@@ -213,14 +220,19 @@ void *supervisor_thread(void *p)
     lab_caption.h = 32;
     lab_caption.text = "GK";
 
-    scr_test.x = 0;
-    scr_test.y = btn_overlay_y;
-    scr_test.w = 640;
-    scr_test.h = btn_overlay_h;
+    scr_overlay.x = 0;
+    scr_overlay.y = btn_overlay_y;
+    scr_overlay.w = 640;
+    scr_overlay.h = btn_overlay_h;
+
+    scr_status.x = 0;
+    scr_status.y = -status_h;
+    scr_status.w = 640;
+    scr_status.h = status_h;
 
     pb_volume.x = 640-64-32;
     pb_volume.w = 64;
-    pb_volume.y = 32;
+    pb_volume.y = 48;
     pb_volume.h = 192;
     pb_volume.bg_inactive_color = 0x87;
     pb_volume.border_width = 0;
@@ -232,43 +244,65 @@ void *supervisor_thread(void *p)
     RectangleWidget rw;
     rw.x = 0;
     rw.y = 0;
-    rw.w = scr_test.w;
-    rw.h = scr_test.h;
+    rw.w = scr_overlay.w;
+    rw.h = scr_overlay.h;
     rw.bg_inactive_color = 0x87;
     rw.border_width = 0;
 
     RectangleWidget rw2;
     rw2.x = 640;
     rw2.y = 0;
-    rw2.w = scr_test.w;
-    rw2.h = scr_test.h;
+    rw2.w = scr_overlay.w;
+    rw2.h = scr_overlay.h;
     rw2.bg_inactive_color = 0x71;
     rw2.border_width = 0;
 
-    scr_test.AddChild(rw);
-    scr_test.AddChild(rw2);
-    //scr_test.AddChildOnGrid(rw_test);
-    //scr_test.AddChildOnGrid(rw_test2);
-    //scr_test.AddChildOnGrid(imb_bright_down);
-    //scr_test.AddChild(lab_caption);
+    scr_overlay.AddChild(rw);
+    scr_overlay.AddChild(rw2);
+    //scr_overlay.AddChildOnGrid(rw_test);
+    //scr_overlay.AddChildOnGrid(rw_test2);
+    //scr_overlay.AddChildOnGrid(imb_bright_down);
+    //scr_overlay.AddChild(lab_caption);
 
     kw.x = (640 - kw.w) / 2;
     kw.y = 8;
     kw.OnKeyboardButtonClick = kbd_click_up;
     kw.OnKeyboardButtonClickBegin = kbd_click_down;
-    scr_test.AddChildOnGrid(kw);
-    scr_test.AddChildOnGrid(imb_bright_up);
+    scr_overlay.AddChildOnGrid(kw);
+    scr_overlay.AddChildOnGrid(imb_bright_up);
 
-    Widget *cur_scr = &scr_test;
+    Widget *cur_scr = &scr_overlay;
+
+    // Status bar
+    RectangleWidget rw_status;
+    rw_status.x = 0;
+    rw_status.y = 0;
+    rw_status.w = scr_status.w;
+    rw_status.h = scr_status.h;
+    rw_status.bg_inactive_color = 0x87;
+    rw_status.border_width = 0;
+
+    LabelWidget l_time;
+    l_time.x = 0;
+    l_time.y = 0;
+    l_time.h = scr_status.h;
+    l_time.w = 320;
+    l_time.text_hoffset = HOffset::Left;
+    l_time.text = "Unknown";
+    l_time.border_width = 0;
+    l_time.bg_inactive_color = 0x87;
+
+    scr_status.AddChild(rw_status);
+    scr_status.AddChild(l_time);
 
     // process messages
     while(true)
     {
         Event e;
-        bool do_update = false;
+        [[maybe_unused]] bool do_update = false;
         bool do_volume_update = false;
         bool has_event = p_supervisor.events.Pop(&e,
-            HasAnimations(wl) ? kernel_time::from_ms(1000ULL / 60ULL) : kernel_time());
+            HasAnimations(wl) ? kernel_time::from_ms(1000ULL / 60ULL) : kernel_time::from_ms(1000));
         if(RunAnimations(wl, clock_cur_ms()))
         {
             do_update = true;
@@ -286,11 +320,11 @@ void *supervisor_thread(void *p)
                         {
                             if(overlay_visible)
                             {
-                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)0);
+                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_overlay, (void*)0);
                             }
                             else
                             {
-                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_test, (void*)1);
+                                AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_overlay, (void*)1);
                             }
                             /*overlay_visible = !overlay_visible;
                             if(overlay_visible)
@@ -386,7 +420,7 @@ void *supervisor_thread(void *p)
             }
         }
 
-        if((overlay_visible && do_update) || (volume_visible && do_volume_update))
+        if(overlay_visible || (volume_visible && do_volume_update))
         {
             auto fb = (color_t *)screen_get_overlay_frame_buffer();
             // clear screen
@@ -399,7 +433,19 @@ void *supervisor_thread(void *p)
             }
 
             if(overlay_visible)
+            {
+                // update time/date
+                timespec tp;
+                clock_get_now(&tp);
+                auto t = localtime(&tp.tv_sec);
+                char buf[64];
+                strftime(buf, 63, "%F %T", t);
+                buf[63] = 0;
+                l_time.text = std::string(buf);
+
                 cur_scr->Update(scr_alpha);
+                scr_status.Update(scr_alpha);
+            }
             if(volume_visible)
                 pb_volume.Update(volume_alpha);
             screen_flip_overlay(nullptr, true, 255);
