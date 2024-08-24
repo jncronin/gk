@@ -152,7 +152,7 @@ void *supervisor_thread(void *p)
     imb_bright_down.img_h = 64;
     imb_bright_down.OnClick = imb_brightness_click;
 
-    imb_bright_up.x = 640-80-16;
+    imb_bright_up.x = 640 + 32;
     imb_bright_up.w = 80;
     imb_bright_up.y = 64;
     imb_bright_up.h = 80;
@@ -175,16 +175,24 @@ void *supervisor_thread(void *p)
     RectangleWidget rw;
     rw.x = 0;
     rw.y = 0;
-    rw.w = fb_w;
-    rw.h = fb_h/2;
+    rw.w = scr_test.w;
+    rw.h = scr_test.h;
     rw.bg_inactive_color = 0x87;
     rw.border_width = 0;
 
+    RectangleWidget rw2;
+    rw2.x = 640;
+    rw2.y = 0;
+    rw2.w = scr_test.w;
+    rw2.h = scr_test.h;
+    rw2.bg_inactive_color = 0x71;
+    rw2.border_width = 0;
+
     scr_test.AddChild(rw);
+    scr_test.AddChild(rw2);
     //scr_test.AddChildOnGrid(rw_test);
     //scr_test.AddChildOnGrid(rw_test2);
     //scr_test.AddChildOnGrid(imb_bright_down);
-    //scr_test.AddChildOnGrid(imb_bright_up);
     //scr_test.AddChild(lab_caption);
 
     kw.x = (640 - kw.w) / 2;
@@ -192,6 +200,7 @@ void *supervisor_thread(void *p)
     kw.OnKeyboardButtonClick = kbd_click_up;
     kw.OnKeyboardButtonClickBegin = kbd_click_down;
     scr_test.AddChildOnGrid(kw);
+    scr_test.AddChildOnGrid(imb_bright_up);
 
     Widget *cur_scr = &scr_test;
 

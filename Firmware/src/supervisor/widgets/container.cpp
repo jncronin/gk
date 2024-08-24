@@ -116,7 +116,12 @@ void GridWidget::KeyPressDown(unsigned short  key)
                 break;
         }
 
-        if(!move_succeed)
+        if(move_succeed)
+        {
+            // ensure newly selected object is visible
+            ScrollToSelected();
+        }
+        else
         {
             // TODO - move out to higher level container
         }
@@ -217,6 +222,32 @@ bool GridWidget::TryMoveVert(int dir)
                 curx = nearest_left;
             cury = newy;
             return true;
+        }
+    }
+}
+
+void ContainerWidget::ScrollToSelected()
+{
+    // we scroll all items by the current size of the container for now
+    coord_t x_scroll = 0;
+    coord_t y_scroll = 0;
+
+    auto sel = GetHighlightedChild();
+    auto sel_x = sel->x;
+    auto sel_y = sel->y;
+
+    while((sel_x + x_scroll) < 0) x_scroll += w;
+    while((sel_x + x_scroll) >= w) x_scroll -= w;
+    while((sel_y + y_scroll) < 0) y_scroll += h;
+    while((sel_y + y_scroll) >= h) y_scroll -= h;
+
+    if(x_scroll || y_scroll)
+    {
+        // TODO: make an animation
+        for(auto c : children)
+        {
+            c->x += x_scroll;
+            c->y += y_scroll;
         }
     }
 }

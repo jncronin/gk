@@ -236,6 +236,7 @@ class ContainerWidget : public NonactivatableWidget
     protected:
         std::vector<Widget *> children;
         ContainerWidget() {}
+        void ScrollToSelected();
 };
 
 class GridWidget : public ContainerWidget
