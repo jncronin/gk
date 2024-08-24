@@ -92,6 +92,7 @@ int syscall_closedir(int dirfd, int *_errno);
 int syscall_chdir(const char *path, int *_errno);
 
 int syscall_peekevent(Event *ev, int *_errno);
+int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno);
 
 int syscall_setwindowtitle(const char *title, int *_errno);
 
@@ -100,6 +101,11 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno);
 int syscall_waitpid(pid_t pid, int *status, int options, int *_errno);
 
 void syscall_getheap(void **addr, size_t *sz);
+
+// needed for supervisor
+pid_t syscall_get_focus_pid(int *_errno);
+pid_t syscall_get_proc_ppid(pid_t pid, int *_errno);
+int syscall_get_pid_valid(pid_t pid, int *_errno);
 
 static inline int deferred_return(int ret, int _errno)
 {
