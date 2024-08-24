@@ -1,4 +1,5 @@
 #include "widget.h"
+#include <cmath>
 
 static const constexpr float btn_w = 32.0f;
 static const constexpr float btn_h = 32.0f;
@@ -40,8 +41,8 @@ KeyboardWidget::Keybutton::Keybutton(int _key, std::string _text, float _x, floa
     y = _y * btn_h;
     w = _w * btn_w;
     h = _h * btn_h;
-    gx = ((_x + _w/2.0f) * btn_w) / 4.0f;
-    gy = ((_y + _h/2.0f) * btn_h) / 4.0f;
+    gx = std::rint(((_x + _w/2.0f) * btn_w) / 4.0f);
+    gy = std::rint(((_y + _h/2.0f) * btn_h) / 4.0f);
     OnClick = _OnClick;
     OnClickBegin = _OnClickBegin;
     border_width = 1.0f;
