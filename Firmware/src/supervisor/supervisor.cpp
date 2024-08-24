@@ -205,15 +205,14 @@ void *supervisor_thread(void *p)
     //  the game name and an exit button.
     coord_t cur_scr = 0;
 
-    LabelWidget l_gamename;
-    l_gamename.x = cur_scr;
-    l_gamename.y = 0;
-    l_gamename.w = scr_overlay.w;
-    l_gamename.h = 32;
-    l_gamename.bg_inactive_color = 0x87;
-    l_gamename.border_width = 0;
-    l_gamename.text = "GKMenu";
-    scr_overlay.AddChild(l_gamename);
+    lab_caption.x = cur_scr;
+    lab_caption.y = 0;
+    lab_caption.w = scr_overlay.w;
+    lab_caption.h = 32;
+    lab_caption.bg_inactive_color = 0x87;
+    lab_caption.border_width = 0;
+    lab_caption.text = "GKMenu";
+    scr_overlay.AddChild(lab_caption);
 
     // TODO: game customisation
     ButtonWidget bw_exit;
