@@ -183,20 +183,61 @@ void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
 
 void *supervisor_thread(void *p)
 {
-    rw_test.x = 32;
-    rw_test.w = 200;
-    rw_test.y = 64;
-    rw_test.h = 100;
-    rw_test.text = "Hi there";
-    rw_test.OnClick = test_onclick;
+    // Set up widgets
 
-    rw_test2.x = 264;
-    rw_test2.w = 200;
-    rw_test2.y = 64;
-    rw_test2.h = 100;
-    rw_test2.text = "Eh?";
+    // Main overlay screen:
+    scr_overlay.x = 0;
+    scr_overlay.y = btn_overlay_y;
+    scr_overlay.w = 640;
+    scr_overlay.h = btn_overlay_h;
 
-    imb_bright_down.x = 640-80-16-80-16;
+    RectangleWidget rw;
+    rw.x = 0;
+    rw.y = 0;
+    rw.w = scr_overlay.w * 3;
+    rw.h = scr_overlay.h;
+    rw.bg_inactive_color = 0x87;
+    rw.border_width = 0;
+
+    scr_overlay.AddChild(rw);
+
+    // Screen 0 is specific to the game.  Without any extra customisation, it simply shows
+    //  the game name and an exit button.
+    coord_t cur_scr = 0;
+
+    LabelWidget l_gamename;
+    l_gamename.x = cur_scr;
+    l_gamename.y = 0;
+    l_gamename.w = scr_overlay.w;
+    l_gamename.h = 32;
+    l_gamename.bg_inactive_color = 0x87;
+    l_gamename.border_width = 0;
+    l_gamename.text = "GKMenu";
+    scr_overlay.AddChild(l_gamename);
+
+    // TODO: game customisation
+    ButtonWidget bw_exit;
+    bw_exit.w = 80;
+    bw_exit.h = 80;
+    bw_exit.x = cur_scr + (scr_overlay.w - bw_exit.w) / 2;
+    bw_exit.y = (scr_overlay.h - bw_exit.h) / 2;
+    bw_exit.text = "Quit";
+    scr_overlay.AddChildOnGrid(bw_exit);
+
+    // Screen 2 is options
+    cur_scr += 640;
+
+    LabelWidget l_options;
+    l_options.x = cur_scr;
+    l_options.y = 0;
+    l_options.w = scr_overlay.w;
+    l_options.h = 32;
+    l_options.bg_inactive_color = 0x87;
+    l_options.border_width = 0;
+    l_options.text = "Options";
+    scr_overlay.AddChild(l_options);
+
+    imb_bright_down.x = cur_scr + 64;
     imb_bright_down.w = 80;
     imb_bright_down.y = 64;
     imb_bright_down.h = 80;
@@ -204,8 +245,9 @@ void *supervisor_thread(void *p)
     imb_bright_down.img_w = 64;
     imb_bright_down.img_h = 64;
     imb_bright_down.OnClick = imb_brightness_click;
+    scr_overlay.AddChildOnGrid(imb_bright_down);
 
-    imb_bright_up.x = 640 + 32;
+    imb_bright_up.x = imb_bright_down.x + imb_bright_down.w + 32;
     imb_bright_up.w = 80;
     imb_bright_up.y = 64;
     imb_bright_up.h = 80;
@@ -213,23 +255,18 @@ void *supervisor_thread(void *p)
     imb_bright_up.img_w = 64;
     imb_bright_up.img_h = 64;
     imb_bright_up.OnClick = imb_brightness_click;
+    scr_overlay.AddChildOnGrid(imb_bright_up);
 
-    lab_caption.x = 16;
-    lab_caption.y = 16;
-    lab_caption.w = 640 - 32;
-    lab_caption.h = 32;
-    lab_caption.text = "GK";
+    // Screen 3 is an on-screen keyboard
+    cur_scr += 640;
 
-    scr_overlay.x = 0;
-    scr_overlay.y = btn_overlay_y;
-    scr_overlay.w = 640;
-    scr_overlay.h = btn_overlay_h;
+    kw.x = cur_scr + (scr_overlay.w - kw.w) / 2;
+    kw.y = 8;
+    kw.OnKeyboardButtonClick = kbd_click_up;
+    kw.OnKeyboardButtonClickBegin = kbd_click_down;
+    scr_overlay.AddChildOnGrid(kw);
 
-    scr_status.x = 0;
-    scr_status.y = -status_h;
-    scr_status.w = 640;
-    scr_status.h = status_h;
-
+    // Volume control    
     pb_volume.x = 640-64-32;
     pb_volume.w = 64;
     pb_volume.y = 48;
@@ -241,39 +278,12 @@ void *supervisor_thread(void *p)
     pb_volume.SetCurValue(sound_get_volume());
     pb_volume.pad = 12;
 
-    RectangleWidget rw;
-    rw.x = 0;
-    rw.y = 0;
-    rw.w = scr_overlay.w;
-    rw.h = scr_overlay.h;
-    rw.bg_inactive_color = 0x87;
-    rw.border_width = 0;
-
-    RectangleWidget rw2;
-    rw2.x = 640;
-    rw2.y = 0;
-    rw2.w = scr_overlay.w;
-    rw2.h = scr_overlay.h;
-    rw2.bg_inactive_color = 0x71;
-    rw2.border_width = 0;
-
-    scr_overlay.AddChild(rw);
-    scr_overlay.AddChild(rw2);
-    //scr_overlay.AddChildOnGrid(rw_test);
-    //scr_overlay.AddChildOnGrid(rw_test2);
-    //scr_overlay.AddChildOnGrid(imb_bright_down);
-    //scr_overlay.AddChild(lab_caption);
-
-    kw.x = (640 - kw.w) / 2;
-    kw.y = 8;
-    kw.OnKeyboardButtonClick = kbd_click_up;
-    kw.OnKeyboardButtonClickBegin = kbd_click_down;
-    scr_overlay.AddChildOnGrid(kw);
-    scr_overlay.AddChildOnGrid(imb_bright_up);
-
-    Widget *cur_scr = &scr_overlay;
-
     // Status bar
+    scr_status.x = 0;
+    scr_status.y = -status_h;
+    scr_status.w = 640;
+    scr_status.h = status_h;
+
     RectangleWidget rw_status;
     rw_status.x = 0;
     rw_status.y = 0;
@@ -351,7 +361,7 @@ void *supervisor_thread(void *p)
                             {
                                 ck = GK_SCANCODE_RETURN;
                             }
-                            cur_scr->KeyPressDown(ck);
+                            scr_overlay.KeyPressDown(ck);
                             do_update = true;
                         }
                         break;
@@ -391,7 +401,7 @@ void *supervisor_thread(void *p)
                             {
                                 ck = GK_SCANCODE_RETURN;
                             }
-                            cur_scr->KeyPressUp(ck);
+                            scr_overlay.KeyPressUp(ck);
                             do_update = true;
                         }
                     }
@@ -443,7 +453,7 @@ void *supervisor_thread(void *p)
                 buf[63] = 0;
                 l_time.text = std::string(buf);
 
-                cur_scr->Update(scr_alpha);
+                scr_overlay.Update(scr_alpha);
                 scr_status.Update(scr_alpha);
             }
             if(volume_visible)
