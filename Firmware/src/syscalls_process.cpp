@@ -349,13 +349,7 @@ pid_t syscall_get_focus_pid(int *_errno)
 
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
 {
-    const auto p = proc_list.GetProcess(pid);
-    if(!p)
-    {
-        *_errno = EINVAL;
-        return (pid_t)-1;
-    }
-    return p->ppid;
+    return proc_list.GetParentProcess(pid);
 }
 
 int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno)
@@ -367,4 +361,9 @@ int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno)
         return (pid_t)-1;
     }
     return p->events.Push(e, nevents);
+}
+
+int syscall_get_pid_valid(pid_t pid, int *_errno)
+{
+    return proc_list.GetProcess(pid) ? 1 : 0;
 }
