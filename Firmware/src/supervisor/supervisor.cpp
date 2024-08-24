@@ -18,6 +18,9 @@ extern Condition scr_vsync;
 
 static void *supervisor_thread(void *p);
 
+static const constexpr coord_t btn_overlay_h = 208;
+static const constexpr coord_t btn_overlay_y = 480 - btn_overlay_h;
+
 ButtonWidget rw_test, rw_test2;
 ImageButtonWidget imb_bright_up, imb_bright_down;
 GridWidget scr_test;
@@ -74,7 +77,7 @@ bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
         // final position
         if(is_show)
         {
-            wdg->y = 240;
+            wdg->y = btn_overlay_y;
             scr_alpha = 0xffU;
         }
         else
@@ -85,7 +88,7 @@ bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
         return true;
     }
 
-    coord_t yadj = 240ULL * t / tot_time;
+    coord_t yadj = btn_overlay_h * t / tot_time;
     unsigned long aadj = 0x100UL * t / tot_time;
     if(aadj > 0xffU) aadj = 0xffU;
 
@@ -95,7 +98,7 @@ bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
     }
     else
     {
-        yadj = 240 + yadj;
+        yadj = btn_overlay_y + yadj;
         aadj = 0xffU - aadj;
     }
     wdg->y = yadj;
@@ -165,9 +168,9 @@ void *supervisor_thread(void *p)
     lab_caption.text = "GK";
 
     scr_test.x = 0;
-    scr_test.y = 240;
+    scr_test.y = btn_overlay_y;
     scr_test.w = 640;
-    scr_test.h = 240;
+    scr_test.h = btn_overlay_h;
 
     RectangleWidget rw;
     rw.x = 0;
