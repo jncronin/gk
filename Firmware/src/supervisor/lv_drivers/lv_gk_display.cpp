@@ -1,3 +1,5 @@
+#if 0
+
 #include "../lvgl-9.1.0/src/core/lv_refr.h"
 #include "../lvgl-9.1.0/src/stdlib/lv_string.h"
 #include "../lvgl-9.1.0/src/core/lv_global.h"
@@ -205,3 +207,5 @@ uint32_t get_ticks()
 {
     return clock_cur_ms();
 }
+
+#endif

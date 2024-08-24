@@ -1,3 +1,5 @@
+#if 0
+
 #include "lvgl.h"
 #include "thread.h"
 #include "osmutex.h"
@@ -162,3 +164,4 @@ lv_result_t lv_thread_sync_delete(lv_thread_sync_t * sync)
     return LV_RESULT_OK;
 }
 
+#endif
