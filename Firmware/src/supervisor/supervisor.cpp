@@ -11,8 +11,14 @@
 #include "gk_conf.h"
 
 SRAM4_DATA Process p_supervisor;
-SRAM4_DATA bool overlay_visible = false;
+static SRAM4_DATA bool overlay_visible = false;
+static SRAM4_DATA bool volume_visible = false;
 SRAM4_DATA static WidgetAnimationList wl;
+
+bool is_overlay_visible()
+{
+    return overlay_visible | volume_visible;
+}
 
 extern Condition scr_vsync;
 
@@ -26,6 +32,8 @@ ImageButtonWidget imb_bright_up, imb_bright_down;
 GridWidget scr_test;
 LabelWidget lab_caption;
 KeyboardWidget kw;
+RectangleWidget rw_volume;
+
 static unsigned int scr_alpha = 0;
 
 void init_supervisor()
@@ -87,7 +95,8 @@ bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
         }
         else
         {
-            screen_set_overlay_alpha(0x0U);
+            //screen_set_overlay_alpha(0x0U);
+            wdg->y = 480;
             overlay_visible = false;
         }
         return true;
@@ -177,6 +186,13 @@ void *supervisor_thread(void *p)
     scr_test.w = 640;
     scr_test.h = btn_overlay_h;
 
+    rw_volume.x = 640-64-32;
+    rw_volume.w = 64;
+    rw_volume.y = 32;
+    rw_volume.h = 192;
+    rw_volume.bg_inactive_color = 0x87;
+    rw_volume.border_width = 0;
+
     RectangleWidget rw;
     rw.x = 0;
     rw.y = 0;
@@ -214,6 +230,7 @@ void *supervisor_thread(void *p)
     {
         Event e;
         bool do_update = false;
+        bool do_volume_update = false;
         bool has_event = p_supervisor.events.Pop(&e,
             HasAnimations(wl) ? kernel_time::from_ms(1000ULL / 60ULL) : kernel_time());
         if(RunAnimations(wl, clock_cur_ms()))
@@ -274,6 +291,9 @@ void *supervisor_thread(void *p)
                         case GK_SCANCODE_VOLUMEUP:
                             sound_set_volume(sound_get_volume() + 10);
 
+                            volume_visible = true;
+                            do_volume_update = true;
+
                             klog("supervisor: sound set to %d\n", sound_get_volume());
                             break;
                     }
@@ -324,7 +344,7 @@ void *supervisor_thread(void *p)
             }
         }
 
-        if(overlay_visible && do_update)
+        if((overlay_visible && do_update) || (volume_visible && do_volume_update))
         {
             auto fb = (color_t *)screen_get_overlay_frame_buffer();
             // clear screen
@@ -336,9 +356,16 @@ void *supervisor_thread(void *p)
                 }
             }
 
-            cur_scr->Update();
-            screen_flip_overlay(nullptr, true, scr_alpha);
+            if(overlay_visible)
+                cur_scr->Update(scr_alpha);
+            if(volume_visible)
+                rw_volume.Update();
+            screen_flip_overlay(nullptr, true, 255);
             scr_vsync.Wait();
+        }
+        else if(!is_overlay_visible())
+        {
+            screen_flip_overlay(nullptr, false, 0);
         }
     }
 

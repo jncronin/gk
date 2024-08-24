@@ -4,8 +4,10 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <limits>
 
 typedef unsigned char color_t;
+typedef unsigned char alpha_t;
 typedef short int coord_t;
 typedef unsigned long long int time_ms_t;
 constexpr const coord_t fb_w = 640;
@@ -28,6 +30,7 @@ constexpr const coord_t default_border_width = 8;
 
 /* blending */
 color_t DoBlend(color_t fg, color_t bg);
+template <typename Tc, typename Ta> Tc MultiplyAlpha(Tc col, Ta alp);
 
 enum HOffset { Left, Centre, Right };
 enum VOffset { Top, Middle, Bottom };
@@ -35,7 +38,7 @@ enum VOffset { Top, Middle, Bottom };
 class Widget
 {
     public:
-        virtual void Update() = 0;
+        virtual void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max()) = 0;
 
         virtual void StartHover();
         virtual void EndHover();
@@ -134,21 +137,21 @@ class TextRenderer
             const std::string &text,
             color_t fg_color, color_t bg_color,
             HOffset hoffset, VOffset voffset,
-            int font);
+            int font, alpha_t alpha);
 };
 
 class BorderRenderer
 {
     protected:
         void RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
-            color_t border_color, coord_t border_width);
+            color_t border_color, coord_t border_width, alpha_t alpha);
 };
 
 class BackgroundRenderer
 {
     protected:
         void RenderBackground(coord_t x, coord_t y, coord_t w, coord_t h,
-            color_t bg_color);
+            color_t bg_color, alpha_t alpha);
 };
 
 class ImageRenderer
@@ -157,7 +160,7 @@ class ImageRenderer
         void RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
             coord_t img_w, coord_t img_h,
             HOffset hoffset, VOffset voffset,
-            const color_t *img, color_t bg_color);
+            const color_t *img, color_t bg_color, alpha_t alpha);
 };
 
 class DynamicTextProvider
@@ -208,7 +211,7 @@ class RectangleWidget : public NonactivatableWidget, public BorderRenderer, publ
     public StaticBorderProvider, public StaticBackgroundProvider
 {
     public:
-        void Update();
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
 };
 
 class LabelWidget : public NonactivatableWidget, public BorderRenderer, public BackgroundRenderer,
@@ -216,7 +219,7 @@ class LabelWidget : public NonactivatableWidget, public BorderRenderer, public B
     public StaticBorderProvider, public StaticBackgroundProvider, public StaticTextProvider
 {
     public:
-        void Update();
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
 };
 
 class ButtonWidget : public ClickableWidget, public BorderRenderer, public BackgroundRenderer,
@@ -224,7 +227,7 @@ class ButtonWidget : public ClickableWidget, public BorderRenderer, public Backg
     public StaticBorderProvider, public StaticBackgroundProvider, public StaticTextProvider
 {
     public:
-        void Update();
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
 };
 
 class ImageButtonWidget : public ClickableWidget, public BorderRenderer, public BackgroundRenderer,
@@ -232,13 +235,13 @@ class ImageButtonWidget : public ClickableWidget, public BorderRenderer, public 
     public StaticBorderProvider, public StaticBackgroundProvider, public StaticImageProvider
 {
     public:
-        void Update();
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
 };
 
 class ContainerWidget : public NonactivatableWidget
 {
     public:
-        void Update();
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
         virtual Widget *GetHighlightedChild() = 0;
         virtual bool CanHighlight();
         void AddChild(Widget &child);

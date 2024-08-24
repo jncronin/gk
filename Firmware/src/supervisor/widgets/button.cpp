@@ -1,6 +1,6 @@
 #include "widget.h"
 
-void ButtonWidget::Update()
+void ButtonWidget::Update(alpha_t alpha)
 {
     coord_t actx, acty;
     GetAbsolutePosition(&actx, &acty);
@@ -26,12 +26,12 @@ void ButtonWidget::Update()
         text_color = text_inactive_color;
     }
 
-    RenderBackground(actx, acty, w, h, bg_color);
-    RenderBorder(actx, acty, w, h, border_color, border_width);
-    RenderText(actx, acty, w, h, text, text_color, bg_color, text_hoffset, text_voffset, Font);
+    RenderBackground(actx, acty, w, h, bg_color, alpha);
+    RenderBorder(actx, acty, w, h, border_color, border_width, alpha);
+    RenderText(actx, acty, w, h, text, text_color, bg_color, text_hoffset, text_voffset, Font, alpha);
 }
 
-void ImageButtonWidget::Update()
+void ImageButtonWidget::Update(alpha_t alpha)
 {
     coord_t actx, acty;
     GetAbsolutePosition(&actx, &acty);
@@ -54,7 +54,7 @@ void ImageButtonWidget::Update()
         border_color = border_inactive_color;
     }
 
-    RenderBackground(actx, acty, w, h, bg_color);
-    RenderBorder(actx, acty, w, h, border_color, border_width);
-    RenderImage(actx, acty, w, h, img_w, img_h, img_hoffset, img_voffset, image, bg_color);
+    RenderBackground(actx, acty, w, h, bg_color, alpha);
+    RenderBorder(actx, acty, w, h, border_color, border_width, alpha);
+    RenderImage(actx, acty, w, h, img_w, img_h, img_hoffset, img_voffset, image, bg_color, alpha);
 }

@@ -8,11 +8,11 @@ struct scroll_params
     unsigned int tot_t;
 };
 
-void ContainerWidget::Update()
+void ContainerWidget::Update(alpha_t alpha)
 {
     for(auto &child : children)
     {
-        child->Update();
+        child->Update(alpha);
     }
 }
 
