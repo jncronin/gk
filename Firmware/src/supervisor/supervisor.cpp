@@ -9,6 +9,7 @@
 #include "brightness.h"
 #include "sound.h"
 #include "gk_conf.h"
+#include "syscalls_int.h"
 
 SRAM4_DATA Process p_supervisor;
 static SRAM4_DATA bool overlay_visible = false;
@@ -68,15 +69,6 @@ void init_supervisor()
 WidgetAnimationList *GetAnimationList()
 {
     return &wl;
-}
-
-void test_onclick(Widget *w, coord_t x, coord_t y)
-{
-    static int col = 0;
-    
-    btnled_setcolor(0x0fU << (col * 8));
-    col++;
-    if(col >= 3) col = 0;
 }
 
 bool anim_handle_volume_change(Widget *wdg, void *p, time_ms_t t)
@@ -159,6 +151,47 @@ bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
     return false;
 }
 
+bool anim_handle_quit_failed(Widget *wdg, void *p, time_ms_t t)
+{
+    const constexpr time_ms_t quit_delay = 5000;
+    
+    if(t < quit_delay)
+        return false;
+
+    auto pid = (pid_t)p;
+    
+    if(deferred_call(syscall_get_pid_valid, pid))
+    {
+        klog("supervisor: request to quit pid %u failed, force-quitting\n", pid);
+
+        // TODO
+    }
+
+    return true;
+}
+
+void btn_exit_click(Widget *w, coord_t x, coord_t y)
+{
+    auto fpid = deferred_call(syscall_get_focus_pid);
+    if(fpid)
+    {
+        auto fppid = deferred_call(syscall_get_proc_ppid, fpid);
+        extern pid_t pid_gkmenu;
+
+        // only quit processes started by gkmenu
+        if(fppid && fppid == pid_gkmenu)
+        {
+            // TODO: make game-specific
+            Event e[2];
+            e[0].type = Event::KeyDown;
+            e[0].key = GK_SCANCODE_F12;
+            e[1].type = Event::KeyUp;
+            e[1].key = GK_SCANCODE_F12;
+            deferred_call(syscall_pushevents, fpid, e, 2);
+        }
+    }
+}
+
 void imb_brightness_click(Widget *w, coord_t x, coord_t y)
 {
     if(w == &imb_bright_down)
@@ -221,6 +254,7 @@ void *supervisor_thread(void *p)
     bw_exit.x = cur_scr + (scr_overlay.w - bw_exit.w) / 2;
     bw_exit.y = (scr_overlay.h - bw_exit.h) / 2;
     bw_exit.text = "Quit";
+    bw_exit.OnClick = btn_exit_click;
     scr_overlay.AddChildOnGrid(bw_exit);
 
     // Screen 2 is options

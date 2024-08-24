@@ -63,6 +63,8 @@ extern uint32_t m4_wakeup;
 SRAM4_DATA std::vector<std::string> empty_string_vector;
 SRAM4_DATA MemRegion memblk_persistent_log;
 
+SRAM4_DATA pid_t pid_gkmenu = 0;
+
 extern uint32_t _tls_pointers[2];
 
 int main()
@@ -646,7 +648,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
 
-    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, nullptr);
+    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
 #endif
 #if 0
     // gkmusic

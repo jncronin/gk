@@ -75,5 +75,7 @@ Process *ProcessList::GetProcess(pid_t pid)
     CriticalGuard cg(sl);
     if(pid < 0 || pid >= (pid_t)pvals.size())
         return nullptr;
+    if(!pvals[pid].is_alive)
+        return nullptr;
     return pvals[pid].p;
 }

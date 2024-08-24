@@ -333,3 +333,38 @@ void syscall_getheap(void **ptr, size_t *sz)
     if(ptr) *ptr = (void *)p.heap.address;
     if(sz) *sz = (size_t)p.heap.length;
 }
+
+pid_t syscall_get_focus_pid(int *_errno)
+{
+    if(!focus_process)
+    {
+        *_errno = EFAULT;
+        return (pid_t)-1;
+    }
+    else
+    {
+        return focus_process->pid;
+    }
+}
+
+pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
+{
+    const auto p = proc_list.GetProcess(pid);
+    if(!p)
+    {
+        *_errno = EINVAL;
+        return (pid_t)-1;
+    }
+    return p->ppid;
+}
+
+int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno)
+{
+    auto p = proc_list.GetProcess(pid);
+    if(!p)
+    {
+        *_errno = EINVAL;
+        return (pid_t)-1;
+    }
+    return p->events.Push(e, nevents);
+}
