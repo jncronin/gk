@@ -35,6 +35,8 @@ KeyboardWidget kw;
 RectangleWidget rw_volume;
 
 static unsigned int scr_alpha = 0;
+static alpha_t volume_alpha = 0;
+static kernel_time last_volume_change = kernel_time();
 
 void init_supervisor()
 {
@@ -74,6 +76,36 @@ void test_onclick(Widget *w, coord_t x, coord_t y)
     btnled_setcolor(0x0fU << (col * 8));
     col++;
     if(col >= 3) col = 0;
+}
+
+bool anim_handle_volume_change(Widget *wdg, void *p, time_ms_t t)
+{
+    /* We may have more than one of these running at once if user keeps clicking button
+        Therefore don't use the 't' variable but just base on absolute times.
+        Delete ourselves if > valid time */
+    const constexpr time_ms_t solid_time = 2000;
+    const constexpr time_ms_t fade_time = 150;
+    const constexpr time_ms_t valid_time = solid_time + fade_time;
+
+    auto tdiff = (clock_cur() - last_volume_change).to_ms();
+
+    if(tdiff < solid_time)
+    {
+        volume_alpha = 255;
+        volume_visible = true;
+    }
+    else if(tdiff >= valid_time)
+    {
+        volume_alpha = 0;
+        volume_visible = false;
+    }
+    else
+    {
+        volume_alpha = Anim_Interp_Linear(255, 0, tdiff - solid_time, fade_time);
+        volume_visible = true;
+    }
+
+    return t >= valid_time;
 }
 
 bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
@@ -236,6 +268,7 @@ void *supervisor_thread(void *p)
         if(RunAnimations(wl, clock_cur_ms()))
         {
             do_update = true;
+            do_volume_update = true;
         }
 
         if(has_event)
@@ -293,6 +326,9 @@ void *supervisor_thread(void *p)
 
                             volume_visible = true;
                             do_volume_update = true;
+                            last_volume_change = clock_cur();
+
+                            AddAnimation(wl, clock_cur_ms(), anim_handle_volume_change, &rw_volume, nullptr);
 
                             klog("supervisor: sound set to %d\n", sound_get_volume());
                             break;
@@ -359,7 +395,7 @@ void *supervisor_thread(void *p)
             if(overlay_visible)
                 cur_scr->Update(scr_alpha);
             if(volume_visible)
-                rw_volume.Update();
+                rw_volume.Update(volume_alpha);
             screen_flip_overlay(nullptr, true, 255);
             scr_vsync.Wait();
         }
