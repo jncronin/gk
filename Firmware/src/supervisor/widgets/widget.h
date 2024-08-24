@@ -26,6 +26,10 @@ constexpr const color_t default_inactive_border_color = 0xf0;
 constexpr const color_t default_clicked_border_color = 0xff;
 constexpr const color_t default_highlight_border_color = 0xff;
 
+constexpr const color_t default_inactive_fg_color = 0xd1;
+constexpr const color_t default_clicked_fg_color = 0xdf;
+constexpr const color_t default_highlight_fg_color = 0xd1;
+
 constexpr const coord_t default_border_width = 8;
 
 /* blending */
@@ -186,6 +190,14 @@ class StaticBackgroundProvider
         color_t bg_highlight_color = default_highlight_bg_color;
 };
 
+class StaticForegreoundProvider
+{
+    public:
+        color_t fg_inactive_color = default_inactive_fg_color;
+        color_t fg_clicked_color = default_clicked_fg_color;
+        color_t fg_highlight_color = default_highlight_fg_color;
+};
+
 class StaticTextProvider
 {
     public:
@@ -274,6 +286,36 @@ class GridWidget : public ContainerWidget
 
         bool TryMoveVert(int change);
         bool TryMoveHoriz(int change);
+};
+
+class StaticPadProvider
+{
+    public:
+        unsigned int pad = 2;
+};
+
+class ProgressBarWidget : public NonactivatableWidget,
+    public BackgroundRenderer, public BorderRenderer,
+    public StaticPadProvider, public StaticBorderProvider,
+    public StaticBackgroundProvider, public StaticForegreoundProvider
+{
+    public:
+        enum Orientation_t { RightToLeft, LeftToRight, BottomToTop, TopToBottom };
+
+        Orientation_t GetOrientation();
+        unsigned int GetMaxValue();
+        unsigned int GetCurValue();
+
+        void SetOrientation(Orientation_t orientation);
+        void SetMaxValue(unsigned int max_value);
+        void SetCurValue(unsigned int cur_value);
+
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
+
+    protected:
+        Orientation_t o = RightToLeft;
+        unsigned int cur_value = 50;
+        unsigned int max_value = 100;
 };
 
 #include "widget_keyboard.h"
