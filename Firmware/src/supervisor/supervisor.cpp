@@ -32,7 +32,7 @@ ImageButtonWidget imb_bright_up, imb_bright_down;
 GridWidget scr_test;
 LabelWidget lab_caption;
 KeyboardWidget kw;
-RectangleWidget rw_volume;
+ProgressBarWidget pb_volume;
 
 static unsigned int scr_alpha = 0;
 static alpha_t volume_alpha = 0;
@@ -218,12 +218,16 @@ void *supervisor_thread(void *p)
     scr_test.w = 640;
     scr_test.h = btn_overlay_h;
 
-    rw_volume.x = 640-64-32;
-    rw_volume.w = 64;
-    rw_volume.y = 32;
-    rw_volume.h = 192;
-    rw_volume.bg_inactive_color = 0x87;
-    rw_volume.border_width = 0;
+    pb_volume.x = 640-64-32;
+    pb_volume.w = 64;
+    pb_volume.y = 32;
+    pb_volume.h = 192;
+    pb_volume.bg_inactive_color = 0x87;
+    pb_volume.border_width = 0;
+    pb_volume.SetOrientation(ProgressBarWidget::Orientation_t::BottomToTop);
+    pb_volume.SetMaxValue(100);
+    pb_volume.SetCurValue(sound_get_volume());
+    pb_volume.pad = 12;
 
     RectangleWidget rw;
     rw.x = 0;
@@ -328,7 +332,9 @@ void *supervisor_thread(void *p)
                             do_volume_update = true;
                             last_volume_change = clock_cur();
 
-                            AddAnimation(wl, clock_cur_ms(), anim_handle_volume_change, &rw_volume, nullptr);
+                            pb_volume.SetCurValue(sound_get_volume());
+
+                            AddAnimation(wl, clock_cur_ms(), anim_handle_volume_change, &pb_volume, nullptr);
 
                             klog("supervisor: sound set to %d\n", sound_get_volume());
                             break;
@@ -395,7 +401,7 @@ void *supervisor_thread(void *p)
             if(overlay_visible)
                 cur_scr->Update(scr_alpha);
             if(volume_visible)
-                rw_volume.Update(volume_alpha);
+                pb_volume.Update(volume_alpha);
             screen_flip_overlay(nullptr, true, 255);
             scr_vsync.Wait();
         }
