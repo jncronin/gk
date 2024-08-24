@@ -209,12 +209,14 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
 
 void kbd_click_up(Widget *w, coord_t x, coord_t y, int key)
 {
-    focus_process->events.Push({ .type = Event::KeyUp, .key = (unsigned short)key });
+    Event e { .type = Event::KeyUp, .key = (unsigned short)key };
+    deferred_call(syscall_pushevents, deferred_call(syscall_get_focus_pid), &e, 1);
 }
 
 void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
 {
-    focus_process->events.Push({ .type = Event::KeyDown, .key = (unsigned short)key });
+    Event e { .type = Event::KeyDown, .key = (unsigned short)key };
+    deferred_call(syscall_pushevents, deferred_call(syscall_get_focus_pid), &e, 1);
 }
 
 void *supervisor_thread(void *p)
