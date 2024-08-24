@@ -1,3 +1,5 @@
+#if 0
+
 #include "../lvgl-9.1.0/src/core/lv_refr.h"
 #include "../lvgl-9.1.0/src/stdlib/lv_string.h"
 #include "../lvgl-9.1.0/src/core/lv_global.h"
@@ -206,3 +208,5 @@ enum _lv_key_t gk_key_to_lv(unsigned short gkkey)
             return (_lv_key_t)0;
     }
 }
+
+#endif
