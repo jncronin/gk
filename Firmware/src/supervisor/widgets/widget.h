@@ -7,6 +7,7 @@
 
 typedef unsigned char color_t;
 typedef short int coord_t;
+typedef unsigned long long int time_ms_t;
 constexpr const coord_t fb_w = 640;
 constexpr const coord_t fb_h = 480;
 constexpr const unsigned int fb_stride = fb_w * sizeof(color_t);
@@ -74,21 +75,30 @@ class Widget
 };
 
 // Animations
-typedef bool (*WidgetAnimation)(Widget *wdg, void *p, unsigned long long int ms_since_start);
+typedef bool (*WidgetAnimation)(Widget *wdg, void *p, time_ms_t ms_since_start);
 struct WidgetAnimation_t
 {
     WidgetAnimation anim;
     Widget *w;
     void *p;
-    unsigned long long int start_time;
+    time_ms_t start_time;
 };
 using WidgetAnimationList = std::list<WidgetAnimation_t>;
 
-bool RunAnimations(WidgetAnimationList &wl, unsigned long int cur_ms);
+bool RunAnimations(WidgetAnimationList &wl, time_ms_t cur_ms);
 bool HasAnimations(WidgetAnimationList &wl);
-void AddAnimation(WidgetAnimationList &wl, unsigned long int cur_ms,
+void AddAnimation(WidgetAnimationList &wl, time_ms_t cur_ms,
     WidgetAnimation anim, Widget *wdg, void *p);
-
+WidgetAnimationList *GetAnimationList();
+template<typename T> T Anim_Interp_Linear(T from, T to, time_ms_t t_into, time_ms_t t_tot)
+{
+    if(t_into >= t_tot)
+        return to;
+    
+    // integer maths for now, need to get t_into/t_tot as signed otherwise will not support negative movements
+    auto t_x_256 = (int)((t_into * 256) / t_tot);
+    return from + (to - from) * t_x_256 / 256;
+}
 
 // Derived widget classes
 

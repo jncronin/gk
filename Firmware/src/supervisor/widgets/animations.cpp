@@ -1,7 +1,7 @@
 #include "widget.h"
 #include <list>
 
-void AddAnimation(WidgetAnimationList &wl, unsigned long int cur_ms,
+void AddAnimation(WidgetAnimationList &wl, time_ms_t cur_ms,
     WidgetAnimation anim, Widget *wdg, void *p)
 {
     WidgetAnimation_t wa;
@@ -17,7 +17,7 @@ bool HasAnimations(WidgetAnimationList &wl)
     return wl.size() != 0;
 }
 
-bool RunAnimations(WidgetAnimationList &wl, unsigned long int cur_ms)
+bool RunAnimations(WidgetAnimationList &wl, time_ms_t cur_ms)
 {
     if(wl.size() == 0)
         return false;
@@ -36,4 +36,9 @@ bool RunAnimations(WidgetAnimationList &wl, unsigned long int cur_ms)
         }
     }
     return true;
+}
+
+__attribute__((weak)) WidgetAnimationList *GetAnimationList()
+{
+    return nullptr;
 }
