@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "cache.h"
 #include "SEGGER_RTT.h"
+#include "cleanup.h"
 
 extern Spinlock s_rtt;
 extern Process kernel_proc;
@@ -212,39 +213,51 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
     auto p = proc_list.GetProcess(pid);
     if(!p)
     {
-        *_errno = EINVAL;
+        *_errno = ESRCH;
+        return -1;
+    }
+
+    // unless we are the kernel, we can only send signals to child processes
+    bool is_valid = false;
+    if(&GetCurrentThreadForCore()->p == &kernel_proc)
+    {
+        is_valid = true;
+    }
+    else if(proc_list.IsChildOf(pid, GetCurrentThreadForCore()->p.pid))
+    {
+        is_valid = true;
+    }
+
+    if(!is_valid)
+    {
+        *_errno = EPERM;
         return -1;
     }
     
     if(sig == SIGKILL)
     {
-        if(p != &kernel_proc)
+        CriticalGuard cg(p->sl);
+        for(auto pt : p->threads)
         {
-            CriticalGuard cg_p(p->sl);
-            for(auto thr : p->threads)
-            {
-                CriticalGuard cg_t(thr->sl);
-                thr->for_deletion = true;
-                if(thr == GetCurrentThreadForCore())
-                {
-                    Yield();
-                }
-            }
-            p->for_deletion = true;
+            CriticalGuard cg2(pt->sl);
+            pt->for_deletion = true;
+            pt->is_blocking = true;
         }
-        else
-        {
-            {
-                CriticalGuard cg(s_rtt);
-                klog("error: SIGKILL sent to kernel process\n");
-            }
-            while(true)
-            {
-                __asm__ volatile("bkpt \n" ::: "memory");
-            }
-        }
+
+        p->for_deletion = true;
+
+        proc_list.DeleteProcess(pid, 0);
+
+        extern CleanupQueue_t CleanupQueue;
+        CleanupQueue.Push({ .is_thread = false, .p = p });
+
+        return 0;
     }
-    return 0;
+    else
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
 }
 
 int syscall_setwindowtitle(const char *title, int *_errno)

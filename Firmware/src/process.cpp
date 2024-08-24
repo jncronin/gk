@@ -79,3 +79,34 @@ Process *ProcessList::GetProcess(pid_t pid)
         return nullptr;
     return pvals[pid].p;
 }
+
+pid_t ProcessList::GetParentProcess(pid_t pid)
+{
+    CriticalGuard cg(sl);
+    if(pid < 0 || pid >= (pid_t)pvals.size())
+        return (pid_t)-1;
+    if(!pvals[pid].is_alive || !pvals[pid].p)
+        return (pid_t)-1;
+    return pvals[pid].p->ppid;
+}
+
+bool ProcessList::IsChildOf(pid_t child, pid_t parent)
+{
+    CriticalGuard cg(sl);
+    while(true)
+    {
+        if(child < 0 || child >= (pid_t)pvals.size())
+            return false;
+
+        if(!pvals[child].is_alive || !pvals[child].p)
+            return false;
+
+        if(child == parent)
+            return true;
+
+        if(child == pvals[child].p->ppid)
+            return false;       // circular reference, typically kernel_proc
+        
+        child = pvals[child].p->ppid;
+    }
+}

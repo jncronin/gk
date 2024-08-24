@@ -164,7 +164,7 @@ bool anim_handle_quit_failed(Widget *wdg, void *p, time_ms_t t)
     {
         klog("supervisor: request to quit pid %u failed, force-quitting\n", pid);
 
-        // TODO
+        deferred_call(syscall_kill, pid, SIGKILL);
     }
 
     return true;
@@ -173,13 +173,13 @@ bool anim_handle_quit_failed(Widget *wdg, void *p, time_ms_t t)
 void btn_exit_click(Widget *w, coord_t x, coord_t y)
 {
     auto fpid = deferred_call(syscall_get_focus_pid);
-    if(fpid)
+    if(fpid >= 0)
     {
         auto fppid = deferred_call(syscall_get_proc_ppid, fpid);
         extern pid_t pid_gkmenu;
 
         // only quit processes started by gkmenu
-        if(fppid && fppid == pid_gkmenu)
+        if(fppid >= 0 && fppid == pid_gkmenu)
         {
             // TODO: make game-specific
             Event e[2];
@@ -188,6 +188,9 @@ void btn_exit_click(Widget *w, coord_t x, coord_t y)
             e[1].type = Event::KeyUp;
             e[1].key = GK_SCANCODE_F12;
             deferred_call(syscall_pushevents, fpid, e, 2);
+
+            // backup quit incase the above didn't work
+            AddAnimation(wl, clock_cur_ms(), anim_handle_quit_failed, nullptr, (void *)fpid);
         }
     }
 }

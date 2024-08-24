@@ -133,6 +133,8 @@ class ProcessList
         void DeleteProcess(pid_t pid, int retval);
         int GetReturnValue(pid_t pid, int *retval, bool wait = false);
         Process *GetProcess(pid_t pid);
+        pid_t GetParentProcess(pid_t pid);
+        bool IsChildOf(pid_t child, pid_t parent);
 
     private:
         struct pval
