@@ -4,7 +4,7 @@
 void ImageRenderer::RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
             coord_t img_w, coord_t img_h,
             HOffset hoffset, VOffset voffset,
-            const color_t *img, color_t bg_color)
+            const color_t *img, color_t bg_color, alpha_t alpha)
 {
     auto fb = (color_t *)screen_get_overlay_frame_buffer();
 
@@ -40,7 +40,7 @@ void ImageRenderer::RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
             if(actx < 0 || actx >= fb_w || acty < 0 || acty >= fb_h)
                 continue;
 
-            auto cv = img[cx + cy * img_w];
+            auto cv = MultiplyAlpha(img[cx + cy * img_w], alpha);
             fb[actx + acty * fb_stride] = DoBlend(cv, bg_color);
         }
     }

@@ -7,7 +7,7 @@ void TextRenderer::RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
             const std::string &text,
             color_t fg_color, color_t bg_color,
             HOffset hoffset, VOffset voffset,
-            int font)
+            int font, alpha_t alpha)
 {
     (void)w;
     (void)h;
@@ -16,6 +16,7 @@ void TextRenderer::RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
     const char *fontbuf;
 
     auto fb = (color_t *)screen_get_overlay_frame_buffer();
+    auto _fg_color = MultiplyAlpha(fg_color, alpha);
 
     switch(font)
     {
@@ -79,7 +80,7 @@ void TextRenderer::RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
                 char f = fnt[fy * fs + fx / 8];
                 if(f & (1UL << fx % 8))
                 {
-                    fb[cx + cy * fb_stride] = fg_color;
+                    fb[cx + cy * fb_stride] = _fg_color;
                 }
             }
         }
