@@ -4,7 +4,7 @@
 #include "osmutex.h"
 
 SRAM4_DATA ProcessList proc_list;
-
+extern Process p_supervisor;
 
 Process::Process()
 {
@@ -38,7 +38,10 @@ void ProcessList::DeleteProcess(pid_t pid, int retval)
     auto &cpval = pvals[pid];
     auto p = cpval.p;
     if(p == focus_process && p->ppid && pvals[p->ppid].is_alive)
+    {
         focus_process = pvals[p->ppid].p;
+        p_supervisor.events.Push({.type = Event::CaptionChange });
+    }
 
     for(const auto &wait_t : cpval.waiting_threads)
     {
