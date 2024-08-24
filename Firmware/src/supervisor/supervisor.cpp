@@ -54,6 +54,11 @@ void init_supervisor()
     Schedule(t);
 }
 
+WidgetAnimationList *GetAnimationList()
+{
+    return &wl;
+}
+
 void test_onclick(Widget *w, coord_t x, coord_t y)
 {
     static int col = 0;
@@ -63,7 +68,7 @@ void test_onclick(Widget *w, coord_t x, coord_t y)
     if(col >= 3) col = 0;
 }
 
-bool anim_showhide_overlay(Widget *wdg, void *p, unsigned long long int t)
+bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
 {
     bool is_show = p != nullptr;
     if(is_show)

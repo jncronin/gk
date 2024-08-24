@@ -1,5 +1,13 @@
 #include "widget.h"
 
+unsigned long int clock_cur_ms();
+
+struct scroll_params
+{
+    coord_t x_from, x_to, y_from, y_to;
+    unsigned int tot_t;
+};
+
 void ContainerWidget::Update()
 {
     for(auto &child : children)
@@ -226,6 +234,24 @@ bool GridWidget::TryMoveVert(int dir)
     }
 }
 
+static bool anim_scroll(Widget *w, void *p, time_ms_t ms_since_start)
+{
+    auto sp = reinterpret_cast<scroll_params *>(p);
+    if(ms_since_start >= sp->tot_t)
+    {
+        w->x = sp->x_to;
+        w->y = sp->y_to;
+        delete sp;
+        return true;
+    }
+    else
+    {
+        w->x = Anim_Interp_Linear(sp->x_from, sp->x_to, ms_since_start, sp->tot_t);
+        w->y = Anim_Interp_Linear(sp->y_from, sp->y_to, ms_since_start, sp->tot_t);
+        return false;
+    }
+}
+
 void ContainerWidget::ScrollToSelected()
 {
     // we scroll all items by the current size of the container for now
@@ -243,11 +269,25 @@ void ContainerWidget::ScrollToSelected()
 
     if(x_scroll || y_scroll)
     {
-        // TODO: make an animation
+        auto al = GetAnimationList();
+
         for(auto c : children)
         {
-            c->x += x_scroll;
-            c->y += y_scroll;
+            if(al)
+            {
+                auto sp = new scroll_params();
+                sp->x_from = c->x;
+                sp->x_to = c->x + x_scroll;
+                sp->y_from = c->y;
+                sp->y_to = c->y + y_scroll;
+                sp->tot_t = 150UL;
+                AddAnimation(*al, clock_cur_ms(), anim_scroll, c, sp);
+            }
+            else
+            {
+                c->x += x_scroll;
+                c->y += y_scroll;
+            }
         }
     }
 }
