@@ -15,9 +15,9 @@ constexpr const color_t default_inactive_bg_color = 0xd4;
 constexpr const color_t default_clicked_bg_color = 0xd1;
 constexpr const color_t default_highlight_bg_color = 0xd4;
 
-constexpr const color_t default_inactive_text_color = 0xf0;
+constexpr const color_t default_inactive_text_color = 0xff;
 constexpr const color_t default_clicked_text_color = 0xff;
-constexpr const color_t default_highlight_text_color = 0xf0;
+constexpr const color_t default_highlight_text_color = 0xff;
 
 constexpr const color_t default_inactive_border_color = 0xf0;
 constexpr const color_t default_clicked_border_color = 0xff;
