@@ -16,24 +16,92 @@ UninterruptibleGuard::~UninterruptibleGuard()
     RestoreInterrupts(cpsr);
 }
 
-CriticalGuard::CriticalGuard(Spinlock &sl) : _s(sl)
+CriticalGuard::CriticalGuard(Spinlock &sl) : _s1(&sl), _s2(nullptr), _s3(nullptr)
 {
     cpsr = DisableInterrupts();
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
 #if DEBUG_SPINLOCK
     uint32_t lr;
     __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
-    _s.lock(lr & ~1UL);
+    _s1.lock(lr & ~1UL);
 #else
-    _s.lock();
+    _s1.lock();
 #endif
+#endif
+}
+
+CriticalGuard::CriticalGuard(Spinlock &sl1, Spinlock &sl2) : _s1(&sl1), _s2(&sl2), _s3(nullptr)
+{
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
+    // need to acquire all at once with sufficient restoration of interrupts inbetween
+#if DEBUG_SPINLOCK
+    uint32_t lr;
+    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
+#endif
+    while(true)
+    {
+        cpsr = DisableInterrupts();
+        if(_s1->try_lock())
+        {
+            if(_s2->try_lock())
+                return;
+            else
+                _s1->unlock();
+        }
+        RestoreInterrupts(cpsr);
+        __asm__ volatile("yield \n" ::: "memory");
+    }
+
+#else
+    cpsr = DisableInterrupts();
+#endif
+}
+
+CriticalGuard::CriticalGuard(Spinlock &sl1, Spinlock &sl2, Spinlock &sl3) : 
+    _s1(&sl1), _s2(&sl2), _s3(&sl3)
+{
+#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
+    // need to acquire all at once with sufficient restoration of interrupts inbetween
+#if DEBUG_SPINLOCK
+    uint32_t lr;
+    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
+#endif
+    while(true)
+    {
+        cpsr = DisableInterrupts();
+        if(_s1->try_lock())
+        {
+            if(_s2->try_lock())
+            {
+                if(_s3->try_lock())
+                    return
+                else
+                {
+                    _s1->unlock();
+                    _s2->unlock();
+                }
+            }
+            else
+                _s1->unlock();
+        }
+        RestoreInterrupts(cpsr);
+        __asm__ volatile("yield \n" ::: "memory");
+    }
+
+#else
+    cpsr = DisableInterrupts();
 #endif
 }
 
 CriticalGuard::~CriticalGuard()
 {
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-    _s.unlock();
+    if(_s1)
+        _s1->unlock();
+    if(_s2)
+        _s2->unlock();
+    if(_s3)
+        _s3->unlock();
 #endif
     RestoreInterrupts(cpsr);
 }

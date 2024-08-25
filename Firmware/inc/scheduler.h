@@ -56,6 +56,8 @@ class Scheduler
 
         void StartForCurrentCore [[noreturn]] ();
 
+        void ChangePriority(Thread *t, int old_priority, int new_priority);
+
         using LockedThread = locked_val<Thread *>;
         LockedThread current_thread[ncores];
 

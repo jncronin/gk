@@ -354,3 +354,47 @@ void Scheduler::Unschedule(Thread *t)
         }
     }
 }
+
+void Scheduler::ChangePriority(Thread *t, int old_p, int new_p)
+{
+    if(old_p < 0 || old_p >= npriorities)
+        return;
+    if(new_p < 0 || new_p >= npriorities)
+        return;
+    
+    // Simultaneously lock thread and old/new priority lists
+    CriticalGuard cg(t->sl, tlist[old_p].m, tlist[new_p].m);
+
+    auto &old_v = tlist[old_p].v.v;
+
+    for(auto iter = old_v.begin(); iter != old_v.end(); iter++)
+    {
+        if(*iter == t)
+        {
+            // We found the thread in this scheduler instance, remove from old list, add to new
+            old_v.erase(iter);
+            auto &new_v = tlist[new_p].v.v;
+            new_v.push_back(t);
+
+            // update base_priority
+            t->base_priority = new_p;
+
+            // if currently running, and has lowered priority, need to yield
+            if(new_p < old_p && t->tss.running_on_core)
+            {
+                #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
+                if(t->tss.running_on_core != GetCoreID() + 1)
+                {
+                    auto other_core = 1U - GetCoreID();
+                    ipi_messages[other_core].Write({ ipi_message::ThreadUnblocked, nullptr, .t = t });
+                    __SEV();
+                }
+                else
+                #endif
+                Yield();    // single core or dual core and running on this
+            }
+
+            return;
+        }
+    }
+}
