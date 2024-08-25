@@ -808,6 +808,20 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_sched_get_priority_max:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_sched_get_priority_max(
+                        reinterpret_cast<int>(r2), reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_sched_get_priority_min:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_sched_get_priority_min(
+                        reinterpret_cast<int>(r2), reinterpret_cast<int *>(r3));
+            }
+            break;            
+
         default:
             {
                 CriticalGuard cg(s_rtt);

@@ -687,7 +687,18 @@ int syscall_set_thread_priority(Thread *t, int priority, int *_errno)
 
 int syscall_get_thread_priority(Thread *t, int *_errno)
 {
-    // scale 0 (highest priority) to 19 (lowest priority)
-    auto ret = (GK_PRIORITY_VHIGH - t->base_priority) * 19 / GK_PRIORITY_VHIGH;
-    return ret;
+    return t->base_priority;
+}
+
+static_assert(GK_PRIORITY_VERYHIGH >= (GK_PRIORITY_IDLE + 2));
+
+int syscall_sched_get_priority_min(int policy, int *_errno)
+{
+    // for any policy we allow user threads to be 1-3
+    return GK_PRIORITY_IDLE + 1;
+}
+
+int syscall_sched_get_priority_max(int policy, int *_errno)
+{
+    return GK_PRIORITY_VERYHIGH - 1;
 }

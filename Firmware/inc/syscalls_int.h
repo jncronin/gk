@@ -76,6 +76,8 @@ int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_e
 
 int syscall_set_thread_priority(Thread *thread, int priority, int *_errno);
 int syscall_get_thread_priority(Thread *thread, int *_errno);
+int syscall_sched_get_priority_max(int policy, int *_errno);
+int syscall_sched_get_priority_min(int policy, int *_errno);
 
 int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno);
 int syscall_memdealloc(size_t len, const void *addr, int *_errno);
