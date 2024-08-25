@@ -674,14 +674,26 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
 
 int syscall_set_thread_priority(Thread *t, int priority, int *_errno)
 {
-    // don't support user setting priority at this time
-    {
-        CriticalGuard cg(s_rtt);
-        klog("thread: request from %s to set priority of %s to %d - currently not implemented",
-            GetCurrentThreadForCore()->name.c_str(),
-            t->name.c_str(),
-            priority);
-    }
+    // clamp priorities
+    if(priority >= GK_PRIORITY_VERYHIGH)
+        priority = GK_PRIORITY_VERYHIGH - 1;
+    if(priority <= GK_PRIORITY_IDLE)
+        priority = GK_PRIORITY_IDLE + 1;
+    
+    if(priority == t->base_priority)
+        return 0;
+
+    auto from = t->base_priority;
+    
+#if GK_DUAL_CORE
+    sched.ChangePriority(t, from, priority);
+#elif GK_DUAL_CORE_AMP
+    scheds[0].ChangePriority(t, from, priority);
+    scheds[1].ChangePriority(t, from, priority);
+#else
+    sched.ChangePriority(t, from, priority);
+#endif
+
     return 0;
 }
 

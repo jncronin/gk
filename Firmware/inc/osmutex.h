@@ -25,8 +25,10 @@ class Spinlock
     public:
 #if DEBUG_SPINLOCK
         void lock(uint32_t _locking_pc);
+        bool try_lock(uint32_t _locking_pc);
 #else
         void lock();
+        bool try_lock();
 #endif
         void unlock();
         Spinlock();
@@ -154,12 +156,14 @@ class CriticalGuard
 {
     public:
         CriticalGuard(Spinlock &s);
+        CriticalGuard(Spinlock &s1, Spinlock &s2);
+        CriticalGuard(Spinlock &s1, Spinlock &s2, Spinlock &s3);
         ~CriticalGuard();
         CriticalGuard(const CriticalGuard&) = delete;
 
     protected:
         uint32_t cpsr;
-        Spinlock &_s;
+        Spinlock *_s1, *_s2, *_s3;
 };
 
 #endif
