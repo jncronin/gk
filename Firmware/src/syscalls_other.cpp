@@ -295,3 +295,44 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
 
     return 0;
 }
+
+extern std::vector<std::string> gk_env;
+int syscall_get_env_count(int *_errno)
+{
+    const auto &penv = gk_env;
+
+    return penv.size();
+}
+
+int syscall_get_ienv_size(unsigned int idx, int *_errno)
+{
+    const auto &penv = gk_env;
+
+    if(idx >= penv.size())
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    return penv[idx].size();
+}
+
+int syscall_get_ienv(char *outbuf, size_t outbuf_len, unsigned int idx, int *_errno)
+{
+    const auto &penv = gk_env;
+
+    if(idx >= penv.size())
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(penv[idx].size() > outbuf_len)
+    {
+        *_errno = E2BIG;
+        return -1;
+    }
+
+    strncpy(outbuf, penv[idx].c_str(), outbuf_len);
+    return 0;
+}
