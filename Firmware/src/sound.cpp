@@ -320,6 +320,7 @@ void _queue_if_possible()
         auto target = (DMA1_Stream0->CR & DMA_SxCR_CT_Msk) ? &DMA1_Stream0->M0AR : &DMA1_Stream0->M1AR;
         *target = next_buffer;
         __DMB();
+        target = (DMA1_Stream0->CR & DMA_SxCR_CT_Msk) ? &DMA1_Stream0->M0AR : &DMA1_Stream0->M1AR;
         if(*target == next_buffer) break;
     }
 }
