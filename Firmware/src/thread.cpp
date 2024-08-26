@@ -116,7 +116,6 @@ Thread *Thread::Create(std::string name,
     
     memset(&t->tss, 0, sizeof(thread_saved_state));
 
-    t->tss.affinity = affinity;
     t->base_priority = priority;
     t->is_privileged = is_priv;
     t->name = name;
@@ -167,6 +166,8 @@ Thread *Thread::Create(std::string name,
     // we keep PreferM4 as a separate option until now to allow better stack placement for low priority tasks
     affinity = CPUAffinity::M7Only;
 #endif
+    t->tss.affinity = affinity;
+
     if(!t->stack.valid)
         return nullptr;
 
