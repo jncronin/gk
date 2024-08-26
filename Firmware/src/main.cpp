@@ -30,6 +30,10 @@
 #include "logger.h"
 #include "gk_conf.h"
 
+#if GK_ENABLE_PROFILE
+#include "profile.h"
+#endif
+
 __attribute__((section(".sram4"))) Spinlock s_rtt;
 extern Condition scr_vsync;
 
@@ -86,6 +90,10 @@ int main()
     init_mdma();
     init_i2c();
     init_sound();
+
+#if GK_ENABLE_PROFILE
+    init_profile();
+#endif
 
 #if GK_ENABLE_NETWORK
     init_net();
