@@ -14,5 +14,5 @@ else
     return
 fi
 
-#Rscript interpret-profile.R
+Rscript interpret-profile.R
 
