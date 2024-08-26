@@ -924,7 +924,7 @@ void init_args(const std::string &pname, const std::vector<std::string> &params,
 
         // argv array - just reserve space, fill in later
         auto argv_array_addr = addr;
-        addr += (params.size() + 1U) * 4;
+        addr += (params.size() + 2U) * 4;
         std::vector<uint32_t> argv_addresses;
 
         // pname
@@ -954,5 +954,7 @@ void init_args(const std::string &pname, const std::vector<std::string> &params,
             *(uint32_t *)addr = paddr;
             addr += 4;
         }
+        // argv array is also null terminated: argv[argc] = 0
+        *(uint32_t *)addr = 0;
     }
 }
