@@ -71,6 +71,9 @@ SRAM4_DATA pid_t pid_gkmenu = 0;
 
 extern uint32_t _tls_pointers[2];
 
+// default environment variables
+SRAM4_DATA std::vector<std::string> gk_env;
+
 int main()
 {
     EXTI->C2IMR3 |= EXTI_IMR3_IM79;
@@ -107,6 +110,10 @@ int main()
     //elf_load_memory(&_binary__home_jncronin_src_gk_test_build_gk_test_bin_start, "gktest");
 
     kernel_proc.name = "kernel";
+
+    // default environment variables
+    gk_env.push_back("HOME=/home/user");
+
 
     klog("kernel: starting M7\n");
     if(memblk_persistent_log.valid)

@@ -835,7 +835,28 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = syscall_sched_get_priority_min(
                         reinterpret_cast<int>(r2), reinterpret_cast<int *>(r3));
             }
-            break;            
+            break;
+
+        case __syscall_get_env_count:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_get_env_count(reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_get_ienv_size:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_get_ienv_size(reinterpret_cast<unsigned int>(r2),
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_get_ienv:
+            {
+                auto p = reinterpret_cast<__syscall_get_ienv_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_get_ienv(p->outbuf, p->outbuf_size, p->i,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
 
         default:
             {

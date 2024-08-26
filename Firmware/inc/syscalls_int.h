@@ -109,6 +109,11 @@ pid_t syscall_get_focus_pid(int *_errno);
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno);
 int syscall_get_pid_valid(pid_t pid, int *_errno);
 
+// environment variable support
+int syscall_get_env_count(int *_errno);
+int syscall_get_ienv_size(unsigned int idx, int *_errno);
+int syscall_get_ienv(char *bufout, size_t buflen, unsigned int idx, int *_errno);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
