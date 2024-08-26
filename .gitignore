@@ -187,3 +187,5 @@ Firmware/src/*.bin
 Firmware/inc/wifipasswd.h
 ~*.lck
 Ozone_Instruction_Trace*
+trace.bin
+trace.txt

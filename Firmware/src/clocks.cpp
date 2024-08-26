@@ -52,7 +52,7 @@ void init_clocks()
             /R32 = 24 MHz -> LTDC (60 Hz refresh) and I2C1,2,3
 
         Peripheral clock PER_CLK is HSI16
-            => LPTIM1, LPTIM2
+            => LPTIM1, LPTIM2, LPTIM345
     */
     
     // Ensure sysclk is HSI64/4 = HSI16 and PLLs disabled
@@ -130,7 +130,8 @@ void init_clocks()
         (2UL << RCC_D2CCIP2R_USBSEL_Pos) |
         (1UL << RCC_D2CCIP2R_I2C123SEL_Pos) |
         (1UL << RCC_D2CCIP2R_RNGSEL_Pos);
-    RCC->D3CCIPR = (5UL << RCC_D3CCIPR_LPTIM2SEL_Pos);
+    RCC->D3CCIPR = (5UL << RCC_D3CCIPR_LPTIM2SEL_Pos) |
+        (5UL << RCC_D3CCIPR_LPTIM345SEL_Pos);
 
     // Set up LPTIM1 as a 1 kHz tick
     RCC->APB1LENR |= RCC_APB1LENR_LPTIM1EN;
