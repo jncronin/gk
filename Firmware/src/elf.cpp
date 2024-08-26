@@ -890,7 +890,7 @@ size_t get_arg_length(const std::string &pname, const std::vector<std::string> &
     cur_size += 4;
 
     // argv * 4
-    cur_size += (params.size() + 1U) * 4;
+    cur_size += (params.size() + 2U) * 4;
 
     // pname
     {
