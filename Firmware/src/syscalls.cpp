@@ -503,6 +503,21 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_sleep_us:
+            {
+                auto tout = kernel_time::from_us(clock_cur_us() + *reinterpret_cast<unsigned long *>(r2));
+                auto curt = GetCurrentThreadForCore();
+                {
+                    CriticalGuard cg(curt->sl);
+                    curt->block_until = tout;
+                    curt->is_blocking = true;
+                    curt->blocking_on = nullptr;
+                    *reinterpret_cast<int *>(r1) = 0;
+                    Yield();
+                }
+            }
+            break;
+
         case __syscall_memalloc:
             {
                 auto p = reinterpret_cast<__syscall_memalloc_params *>(r2);
