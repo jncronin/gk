@@ -206,7 +206,24 @@ Thread *Thread::Create(std::string name,
     
     /* Create mpu regions */
     memcpy(t->tss.mpuss, defmpu, sizeof(mpu_default));
-    int next_mpu = 2;
+    // get first free
+    int next_mpu = -1;
+    for(int i = 0; i < 16; i++)
+    {
+        if(!(t->tss.mpuss[i].rasr & 0x1U))
+        {
+            next_mpu = i;
+            break;
+        }
+    }
+    if(next_mpu == -1)
+    {
+        // shouldn't get here
+        klog("thread: all MPU slots already used at thread creation time!\n");
+        BKPT();
+        while(1);
+    }
+
     t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.code_data.address,
         owning_process.code_data.length, next_mpu, true,
         RW, RW, WBWA_NS);
