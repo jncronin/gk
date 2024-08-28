@@ -70,6 +70,8 @@ SRAM4_DATA MemRegion memblk_persistent_log;
 SRAM4_DATA pid_t pid_gkmenu = 0;
 
 extern uint32_t _tls_pointers[2];
+extern uint64_t _cur_ms;
+extern struct timespec toffset;
 
 // default environment variables
 SRAM4_DATA std::vector<std::string> gk_env;
@@ -175,6 +177,18 @@ int main()
     {
         klog("kernel: _tls_pointers[] is invalid\n");
         __BKPT();
+        while(true);
+    }
+    if((uint32_t)(uintptr_t)&_cur_ms != GK_CUR_MS_ADDRESS)
+    {
+        klog("kernel: _cur_ms is invalid\n");
+        BKPT();
+        while(true);
+    }
+    if((uint32_t)(uintptr_t)&toffset != GK_TOFFSET_ADDRESS)
+    {
+        klog("kernel: toffset is invalid\n");
+        BKPT();
         while(true);
     }
 
