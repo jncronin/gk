@@ -1,6 +1,8 @@
 #ifndef MPUREGIONS_H
 #define MPUREGIONS_H
 
+#include <stm32h7xx.h>
+
 /* 
     Revision of MPU allocations:
     We allow privileged code to use the default map, so it already has access to FLASH and peripherals
@@ -118,12 +120,13 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
 
 constexpr mpu_saved_state mpu_sram = MPUGenerate(0x30000000, 0x10000000, 0, false, RW, RO, N_NC_S);
 constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 1, false, RW, RW, WT_NS);
+constexpr mpu_saved_state mpu_lptim1 = MPUGenerate(LPTIM1_BASE, sizeof(LPTIM_TypeDef), 2, false, RW, RO, DEV_S);
 
 constexpr mpu_saved_state mpu_default[16] =
 {
     mpu_sram,
     mpu_fb0,
-    MPUGenerateNonValid(2),
+    mpu_lptim1,
     MPUGenerateNonValid(3),
     MPUGenerateNonValid(4),
     MPUGenerateNonValid(5),
