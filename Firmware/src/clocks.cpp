@@ -9,8 +9,10 @@
 #include "ipi.h"
 
 __attribute__((section(".sram4"))) uint32_t SystemCoreClock;
-__attribute__((section(".sram4"))) struct timespec toffset;
 __attribute__((section(".sram4"))) Spinlock sl_toffset;
+
+extern uint64_t _cur_ms;
+extern struct timespec toffset;
 
 static void enable_backup_domain();
 
@@ -154,7 +156,6 @@ void init_clocks()
 
 SRAM4_DATA Spinlock sl_timer;
 
-__attribute__((section(".sram4"))) static volatile uint64_t _cur_ms = 0;
 extern "C" void LPTIM1_IRQHandler()
 {
     CriticalGuard cg(sl_timer);
