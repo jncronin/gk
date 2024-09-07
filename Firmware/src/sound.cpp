@@ -6,6 +6,7 @@
 #include <cstring>
 #include "scheduler.h"
 #include "SEGGER_RTT.h"
+#include "process.h"
 
 static constexpr const pin SAI1_SCK_A { GPIOE, 5, 6 };
 static constexpr const pin SAI1_SD_A { GPIOC, 1, 6 };
@@ -140,6 +141,12 @@ constexpr pll_setup pll_multiplier(int freq)
 
 int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
 {
+    if(&GetCurrentThreadForCore()->p != focus_process)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    
     CriticalGuard cg(sl_sound);
 
     /* this should be the first call from any process - stop sound output then reconfigure */
@@ -279,6 +286,12 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 
 int syscall_audioenable(int enable, int *_errno)
 {
+    if(&GetCurrentThreadForCore()->p != focus_process)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
     CriticalGuard cg(sl_sound);
     if(enable && !ac.enabled)
     {
@@ -327,6 +340,12 @@ void _queue_if_possible()
 
 int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno)
 {
+    if(&GetCurrentThreadForCore()->p != focus_process)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    
     CriticalGuard cg(sl_sound);
     if(buffer)
     {
@@ -354,6 +373,12 @@ int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno
 
 int syscall_audiowaitfree(int *_errno)
 {
+    if(&GetCurrentThreadForCore()->p != focus_process)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    
     CriticalGuard cg(sl_sound);
     if(_ptr_plus_one(ac.rd_ptr) == ac.wr_ptr)
     {
