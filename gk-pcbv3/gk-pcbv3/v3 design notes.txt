@@ -1,0 +1,49 @@
+CPU:
+STM32H7S7L8H6H HEXA - 225 BGA
+
+Memory:
+hexa spi 512 Mbit plus __1.8V__
+e.g. 2x Infineon S80KS5122GABHI020 512 Mbit/1.8V/200 MHz - 32 mA max x2 = 64 mA
+
+Flash:
+Octa SPI
+e.g. Infineon S26KS128SDPBHI020 128 Mbit/1.8V/166 MHz - 180 mA max
+
+Vreg:
+buck-boost:
+MAX77859 from Vlith -> 3.3V
+Switch with VUSB separate V12V stepdown
+
+SD 3.3V: use switch (do not support low voltage SD)
+
+1.8V - need ~250 mA => 0.4W dropout
+Can use MIC5504-1.8V SOT package -> max 253C/W rise = 101C... - but max and with sufficient PCB heat sink is okay
+
+Use internal buck+LDO on STM32 for vcore
+
+Or: LTC3380 - I2C controllable
+initial feedback for LTC3380 is 0.725V, controllable from
+     0.4125 to 0.8000 V in 0.0125 steps
+
+For VCORE need initial ~1.25V - Divider 412k (lower)/301k (upper) (total 713k) gives VCORE 1.255V
+0.8V FB gives 1.384V - satisfactory
+
+For SVOS low - need ~0.74V: 0.4250V FB gives 0.7355V - satisfactory
+For SVOS high - need ~1V: 0.5750 FB gives 0.995V - satisfactory
+
+
+
+LCD:
+DPI LTDC as per v1
+LED boost regulator off VREGIN
+
+Clock multiplier for 320x240->640x480 scaling:
+Renesas 570BLF
+
+Clock mux:
+SN4559-Q1 or TMUX1237
+
+
+Audio:
+PLL1707 via TMUX1237 into I2S_CKIN
+Out to PCM1753 and v2 filter stage/output amp
