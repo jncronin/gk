@@ -662,7 +662,7 @@ void *init_thread(void *p)
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
-    pt.stack_size = 8 * 1024;
+    pt.stack_size = 64 * 1024;
     pt.heap_size = 4*1024*1024;
     pt.screen_w = 640;
     pt.screen_h = 480;
