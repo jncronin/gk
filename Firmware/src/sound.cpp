@@ -388,7 +388,12 @@ extern "C" void DMA1_Stream0_IRQHandler()
 
     CriticalGuard cg(ac.sl_sound);
     if(!ac.mr_sound.valid)
+    {
+        DMA1->LIFCR = DMA_LIFCR_CTCIF0;
+        DMA1_Stream0->CR = 0;
+        SAI1_Block_A->CR1 = 0;
         return;
+    }
     
     _queue_if_possible(ac);
 
