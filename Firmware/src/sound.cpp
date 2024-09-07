@@ -280,7 +280,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 int syscall_audioenable(int enable, int *_errno)
 {
     CriticalGuard cg(sl_sound);
-    if(enable)
+    if(enable && !ac.enabled)
     {
         //_queue_if_possible();
         DMA1_Stream0->CR |= DMA_SxCR_EN;
@@ -288,7 +288,7 @@ int syscall_audioenable(int enable, int *_errno)
         PCM_MUTE.clear();
         SPKR_NSD.set();
     }
-    else
+    else if(ac.enabled)
     {
         SPKR_NSD.clear();
         PCM_MUTE.set();
