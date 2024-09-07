@@ -1,0 +1,14 @@
+(version 1)
+(rule "target length and skew"
+      (condition "A.NetClass == 'xspi2'")
+      (constraint length (min 17.6mm) (opt 17.65mm) (max 18mm))
+      )
+(rule "target length and skew"
+      (condition "A.NetClass == 'xspi1_p1'")
+      (constraint length (min 9.40mm) (opt 9.45mm) (max 9.50mm))
+      )
+(rule "target length and skew"
+      (condition "A.NetClass == 'xspi1_p2'")
+      (constraint length (min 30.30mm) (opt 30.34mm) (max 30.40mm))
+      )
+
