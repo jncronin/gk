@@ -36,6 +36,9 @@ void init_clocks()
     enable_backup_domain();
 
 
+    _cur_ms = 0ULL;
+
+
 
     /* Configure PLLs - TODO: these have been changed - all "M"s are /2 (PLL1 + 3 has been fixed)
         PLL1 = HSE16 / M2 * N96 = 768                   (overclock *120 = 960)
