@@ -21,28 +21,11 @@ static constexpr const pin SPKR_NSD { GPIOI, 8 };
 RTCREG_DATA int volume_pct;
 
 // buffer
-struct audio_conf
-{
-    unsigned int nbuffers;
-    unsigned int buf_size_bytes;
-    unsigned int buf_ndtr;
-    unsigned int wr_ptr;
-    unsigned int rd_ptr;
-    unsigned int rd_ready_ptr;
-    uint32_t *silence;
-    Thread *waiting_thread;
-    bool enabled;
-};
-SRAM4_DATA MemRegion mr_sound;
 constexpr unsigned int max_buffer_size = 32*1024;
-static SRAM4_DATA Spinlock sl_sound;
-static SRAM4_DATA audio_conf ac;
 
-extern Spinlock s_rtt;
+static void _queue_if_possible(audio_conf &ac);
 
-static void _queue_if_possible();
-
-static void _clear_buffers()
+static void _clear_buffers(audio_conf &ac)
 {
     ac.wr_ptr = 0;
     ac.rd_ptr = 0;
@@ -50,7 +33,7 @@ static void _clear_buffers()
     ac.enabled = false;
 }
 
-static unsigned int _ptr_plus_one(unsigned int i)
+static unsigned int _ptr_plus_one(unsigned int i, audio_conf &ac)
 {
     i++;
     if(i >= ac.nbuffers) i = 0;
@@ -90,12 +73,6 @@ void init_sound()
     EXTI->IMR1 |= EXTI_IMR1_IM2;
 
     NVIC_EnableIRQ(EXTI2_IRQn);
-
-    mr_sound = memblk_allocate(max_buffer_size, MemRegionType::SRAM, "sound buffer");
-    if(!mr_sound.valid)
-        mr_sound = memblk_allocate(max_buffer_size, MemRegionType::AXISRAM, "sound buffer");
-    if(!mr_sound.valid)
-        mr_sound = memblk_allocate(max_buffer_size, MemRegionType::SDRAM, "sound buffer");
 
     RCC->APB2ENR |= RCC_APB2ENR_SAI1EN;
     (void)RCC->APB2ENR;
@@ -141,13 +118,9 @@ constexpr pll_setup pll_multiplier(int freq)
 
 int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
 {
-    if(&GetCurrentThreadForCore()->p != focus_process)
-    {
-        *_errno = EINVAL;
-        return -1;
-    }
+    auto &ac = GetCurrentThreadForCore()->p.audio;
     
-    CriticalGuard cg(sl_sound);
+    CriticalGuard cg(ac.sl_sound);
 
     /* this should be the first call from any process - stop sound output then reconfigure */
     PCM_MUTE.set();
@@ -245,7 +218,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
     ac.buf_size_bytes = buf_size_bytes;
     ac.buf_ndtr = buf_size_bytes * 8 / nbits;
-    _clear_buffers();
+    _clear_buffers(ac);
 
     if(ac.nbuffers < 2)
     {
@@ -253,8 +226,22 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
         return -1;
     }
 
+    /* Get buffers */
+    MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
+        const std::string &usage, int *_errno);
+
+    int mr_sound_errno;
+    ac.mr_sound = syscall_memalloc_int(max_buffer_size, 1, 1, "sound buffer", &mr_sound_errno);
+
+    if(!ac.mr_sound.valid)
+    {
+        klog("sound: couldn't allocate buffers: %d\n", mr_sound_errno);
+        *_errno = ENOMEM;
+        return -1;
+    }
+
     /* Set up silence buffer - last one */
-    ac.silence = (uint32_t *)(mr_sound.address + buf_size_bytes * ac.nbuffers);
+    ac.silence = (uint32_t *)(ac.mr_sound.address + buf_size_bytes * ac.nbuffers);
     memset(ac.silence, 0, buf_size_bytes);
 
     /* Prepare DMA for running */
@@ -286,13 +273,14 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 
 int syscall_audioenable(int enable, int *_errno)
 {
-    if(&GetCurrentThreadForCore()->p != focus_process)
+    auto &ac = GetCurrentThreadForCore()->p.audio;
+    if(!ac.mr_sound.valid)
     {
         *_errno = EINVAL;
         return -1;
     }
 
-    CriticalGuard cg(sl_sound);
+    CriticalGuard cg(ac.sl_sound);
     if(enable && !ac.enabled)
     {
         //_queue_if_possible();
@@ -312,14 +300,14 @@ int syscall_audioenable(int enable, int *_errno)
     return 0;
 }
 
-void _queue_if_possible()
+void _queue_if_possible(audio_conf &ac)
 {
     uint32_t next_buffer;
     if(ac.rd_ready_ptr != ac.wr_ptr)
     {
         // we can queue the next buffer
-        next_buffer = mr_sound.address + ac.wr_ptr * ac.buf_size_bytes;
-        ac.wr_ptr = _ptr_plus_one(ac.wr_ptr);
+        next_buffer = ac.mr_sound.address + ac.wr_ptr * ac.buf_size_bytes;
+        ac.wr_ptr = _ptr_plus_one(ac.wr_ptr, ac);
     }
     else
     {
@@ -340,13 +328,14 @@ void _queue_if_possible()
 
 int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno)
 {
-    if(&GetCurrentThreadForCore()->p != focus_process)
+    auto &ac = GetCurrentThreadForCore()->p.audio;
+    if(!ac.mr_sound.valid)
     {
         *_errno = EINVAL;
         return -1;
     }
-    
-    CriticalGuard cg(sl_sound);
+
+    CriticalGuard cg(ac.sl_sound);
     if(buffer)
     {
         if(!next_buffer)
@@ -355,32 +344,33 @@ int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno
             *_errno = EINVAL;
             return -1;
         }
-        ac.rd_ready_ptr = _ptr_plus_one(ac.rd_ready_ptr);        
+        ac.rd_ready_ptr = _ptr_plus_one(ac.rd_ready_ptr, ac);        
     }
     if(next_buffer)
     {
-        if(_ptr_plus_one(ac.rd_ptr) == ac.wr_ptr)
+        if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
         {
             // buffers full
             *_errno = EBUSY;
             return -3;
         }
-        *next_buffer = (void *)(mr_sound.address + ac.rd_ptr * ac.buf_size_bytes);
-        ac.rd_ptr = _ptr_plus_one(ac.rd_ptr);
+        *next_buffer = (void *)(ac.mr_sound.address + ac.rd_ptr * ac.buf_size_bytes);
+        ac.rd_ptr = _ptr_plus_one(ac.rd_ptr, ac);
     }
     return 0;
 }
 
 int syscall_audiowaitfree(int *_errno)
 {
-    if(&GetCurrentThreadForCore()->p != focus_process)
+    auto &ac = GetCurrentThreadForCore()->p.audio;
+    if(!ac.mr_sound.valid)
     {
         *_errno = EINVAL;
         return -1;
     }
-    
-    CriticalGuard cg(sl_sound);
-    if(_ptr_plus_one(ac.rd_ptr) == ac.wr_ptr)
+
+    CriticalGuard cg(ac.sl_sound);
+    if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
     {
         ac.waiting_thread = GetCurrentThreadForCore();
         return -2;
@@ -394,10 +384,15 @@ int syscall_audiowaitfree(int *_errno)
 
 extern "C" void DMA1_Stream0_IRQHandler()
 {
-    CriticalGuard cg(sl_sound);
-    _queue_if_possible();
+    auto &ac = focus_process->audio;
 
-    if(ac.waiting_thread && _ptr_plus_one(ac.rd_ptr) != ac.wr_ptr)
+    CriticalGuard cg(ac.sl_sound);
+    if(!ac.mr_sound.valid)
+        return;
+    
+    _queue_if_possible(ac);
+
+    if(ac.waiting_thread && _ptr_plus_one(ac.rd_ptr, ac) != ac.wr_ptr)
     {
         ac.waiting_thread->ss_p.ival1 = 0;
         ac.waiting_thread->ss.Signal();
@@ -410,7 +405,7 @@ extern "C" void DMA1_Stream0_IRQHandler()
 
 extern "C" void EXTI2_IRQHandler()
 {
-    CriticalGuard cg(sl_sound);
+    //CriticalGuard cg(sl_sound);
     auto v = PCM_ZERO.value();
     if(!v && volume_pct)
     {

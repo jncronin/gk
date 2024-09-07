@@ -38,14 +38,9 @@ int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
     return 0;
 }
 
-int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
+MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
+    const std::string &usage, int *_errno)
 {
-    if(!retaddr)
-    {
-        *_errno = EINVAL;
-        return -1;
-    }
-
     // get free mpu slot
     auto t = GetCurrentThreadForCore();
     int mpu_slot = -1;
@@ -61,17 +56,21 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
     if(mpu_slot == -1)
     {
         *_errno = ENOMEM;
-        return -1;
+        return InvalidMemregion();
     }
 
-    auto mr = memblk_allocate(len, MemRegionType::AXISRAM, "mmap");
+    MemRegion mr = InvalidMemregion();
+    if(allow_sram)
+        mr = memblk_allocate(len, MemRegionType::SRAM, usage);
+    if(!mr.valid)
+        mr = memblk_allocate(len, MemRegionType::AXISRAM, usage);
     if(!mr.valid)
     {
-        mr = memblk_allocate(len, MemRegionType::SDRAM, "mmap");
+        mr = memblk_allocate(len, MemRegionType::SDRAM, usage);
         if(!mr.valid)
         {
             *_errno = ENOMEM;
-            return -1;
+            return mr;
         }
     }
 
@@ -110,8 +109,28 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
         }
     }
 
-    *retaddr = (void *)mr.address;
-    return 0;
+    return mr;
+}
+
+int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
+{
+    if(!retaddr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto ret = syscall_memalloc_int(len, is_sync, 0, "mmap", _errno);
+    if(ret.valid)
+    {
+        *retaddr = (void *)ret.address;
+        return 0;
+    }
+    else
+    {
+        *retaddr = nullptr;
+        return -1;
+    }
 }
 
 int syscall_memdealloc(size_t len, const void *addr, int *_errno)

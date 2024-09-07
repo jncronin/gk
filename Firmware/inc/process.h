@@ -16,6 +16,22 @@ class Thread;
 #include <sys/types.h>
 #include <unordered_set>
 
+struct audio_conf
+{
+    unsigned int nbuffers = 0;
+    unsigned int buf_size_bytes;
+    unsigned int buf_ndtr;
+    unsigned int wr_ptr;
+    unsigned int rd_ptr;
+    unsigned int rd_ready_ptr;
+    uint32_t *silence;
+    Thread *waiting_thread;
+    bool enabled;
+
+    MemRegion mr_sound = InvalidMemregion();
+    Spinlock sl_sound;
+};
+
 class Process
 {
     public:
@@ -120,6 +136,9 @@ class Process
         /* hot code region */
         MemRegion mr_hot = InvalidMemregion();
         bool use_hot_region = true;
+
+        /* audio buffers */
+        audio_conf audio;
 };
 
 extern Process *focus_process;
