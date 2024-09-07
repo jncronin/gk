@@ -2,7 +2,7 @@
 	(version 20231120)
 	(generator "eeschema")
 	(generator_version "8.0")
-	(uuid "942ce7db-b179-48e0-ab40-321489fde4bd")
+	(uuid "73829d0d-f8e8-4eb2-8dc3-530d1aa00e99")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ATWILC3000:ATWILC3000-MR110CA"

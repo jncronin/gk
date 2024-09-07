@@ -6273,7 +6273,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "S26KS128SDPBHM020"
+		(property "Value" "S26KS128SDPBHI020"
 			(at 137.16 46.9899 0)
 			(effects
 				(font
@@ -7183,7 +7183,7 @@
 				)
 			)
 		)
-		(property "Value" "S26KS128SDPBHM020"
+		(property "Value" "S26KS128SDPBHI020"
 			(at 54.61 27.94 0)
 			(effects
 				(font
