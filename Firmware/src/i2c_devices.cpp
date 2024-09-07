@@ -16,7 +16,10 @@ extern Spinlock s_rtt;
 /* The I2C1 bus runs at 400 kHz and contains:
         LSM6DSL gyro/accelerometer:         Address 0x6a
         CST340 touch screen controller:     Address 0x1a (see https://sbexr.rabexc.org/latest/sources/b1/4dc8ab017aac8c.html)
-        MAX17048 battery charge monitor:    Address
+        MAX17048 battery charge monitor:    Address 0x36
+        GT911 touch screen:                 Address 0x5d
+        LTC3380 VREG:                       Address 0x3c
+        CDCE913 PLL:                        Address 0x65
 
     I2C1 clock is 24 MHz - we can use the 8MHz examples from RM with a /3 prescaler
 
