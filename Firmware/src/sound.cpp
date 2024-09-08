@@ -110,7 +110,15 @@ constexpr pll_setup pll_multiplier(int freq)
     
     unsigned int div = (freq >= 60000) ? 28 : ((freq >= 30000) ? 56 : 112);
     unsigned int vco_out = (unsigned int)freq * 256 * div;
+    if(vco_out < 192000000 || vco_out > 960000000)
+    {
+        return { 0, 0, 0 };
+    }
     unsigned int mult = vco_out / 2000000;
+    if(mult < 4 || mult > 512)
+    {
+        return { 0, 0, 0 };
+    }
     unsigned long long int mult_rem = vco_out - mult * 2000000; // currently a value out of 2000000
     mult_rem *= 8192ULL;
     mult_rem /= 2000000ULL;
