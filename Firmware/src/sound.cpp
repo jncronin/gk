@@ -91,29 +91,30 @@ struct pll_setup
 constexpr pll_setup pll_multiplier(int freq)
 {
     // frac is out of 8192
-    switch(freq)
-    {
-        case 48000:
-            return { 43, 65, 7 };
-        case 24000:
-            return { 43, 65, 14 };
-        case 12000:
-            return { 43, 65, 28 };
-        case 8000:
-            return { 40, 7864, 40 };
-        case 16000:
-            return { 40, 7864, 20 };
-        case 32000:
-            return { 40, 7864, 10 };
-        case 44100:
-            return { 39, 4208, 7 };
-        case 22050:
-            return { 39, 4208, 14 };
-        case 11025:
-            return { 39, 4208, 28 };
-    }
 
-    return { 0, 0, 0 };
+    /* Target is 256x freq.
+        VCO_out = 2000000 * (mult + mult_frac/8192)
+         [ must be between 192000000 and 960000000, better 384000000 to 960000000 ]
+        Target = VCO_out / div
+
+        div = 2 - 127
+
+        For div = 28, freq 53 kHz - 134 kHz
+        For div = 56, freq 26.7 kHz - 67 kHz
+        For div = 112, freq 13.4 kHz - 33.5 kHz
+        For div = 112, VCO_out down to 192 MHz, freq = 6.7 kHz
+
+        Thus we can have the following freq cutoffs for calculations:
+            60 kHz, 30 kHz, 15 kHz
+    */
+    
+    unsigned int div = (freq >= 60000) ? 28 : ((freq >= 30000) ? 56 : 112);
+    unsigned int vco_out = (unsigned int)freq * 256 * div;
+    unsigned int mult = vco_out / 2000000;
+    unsigned long long int mult_rem = vco_out - mult * 2000000; // currently a value out of 2000000
+    mult_rem *= 8192ULL;
+    mult_rem /= 2000000ULL;
+    return { mult, (unsigned int)mult_rem, div };
 }
 
 int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
