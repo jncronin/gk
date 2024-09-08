@@ -128,6 +128,7 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
     }
     else
     {
+        klog("memalloc: couldn't allocate memory of length %u\n", len);
         *retaddr = nullptr;
         return -1;
     }
@@ -157,7 +158,83 @@ int syscall_memdealloc(size_t len, const void *addr, int *_errno)
 
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno)
 {
-    // We have run out of MPU slots, so this does nothing at the moment
+    // find MPU slot containing addr
+    auto t = GetCurrentThreadForCore();
+    int mpu_slot = -1;
+    for(int i = 0; i < 16; i++)
+    {
+        const auto &cmpu = t->tss.mpuss[i];
+        if(cmpu.is_enabled() &&
+            (uint32_t)(uintptr_t)addr >= cmpu.base_addr() &&
+            (uint32_t)(uintptr_t)addr < (cmpu.base_addr() + cmpu.length()))
+        {
+            mpu_slot = i;
+            break;
+        }
+    }
+
+    if(mpu_slot == -1)
+    {
+        *_errno = EACCES;
+        return -1;
+    }
+    else
+    {
+        const auto &cmpu = t->tss.mpuss[mpu_slot];
+
+        MemRegionAccess unpriv_access;
+        if(is_write)
+            unpriv_access = MemRegionAccess::RW;
+        else if(is_read)
+            unpriv_access = MemRegionAccess::RO;
+        else
+            unpriv_access = MemRegionAccess::NoAccess;
+
+        auto mpur = MPUGenerate(cmpu.base_addr(), cmpu.length(),
+            mpu_slot, is_exec != 0, cmpu.priv_access(), unpriv_access,
+            cmpu.tex_scb());
+
+        auto &p = t->p;
+
+        {
+            CriticalGuard cg_p(p.sl);
+            auto iter = p.mmap_regions.find(cmpu.base_addr());
+            if(iter != p.mmap_regions.end())
+            {
+                iter->second.is_exec = is_exec;
+                iter->second.is_read = is_read;
+                iter->second.is_write = is_write;
+            }
+        }
+
+        // set mpu region for this thread and all others
+        for(auto curt : p.threads)
+        {
+            CriticalGuard cg_t(curt->sl);
+            curt->tss.mpuss[mpu_slot] = mpur;
+
+            // Invalidate here on the off-chance the M7 cache has entries for the 0x38000000 range
+            // When MPU is disabled in task switch, cache may be re-enabled for reads from this
+            //  region
+            // No longer required with MPU-safe switch
+            //InvalidateM7Cache((uint32_t)(uintptr_t)&curt->tss.mpuss[0],
+            //    8 * sizeof(mpu_saved_state), CacheType_t::Data);
+        }
+
+        // and for this thread
+        {
+            CriticalGuard cg_t(t->sl);
+            auto ctrl = MPU->CTRL;
+            MPU->CTRL = 0;
+            MPU->RBAR = mpur.rbar;
+            MPU->RASR = mpur.rasr;
+            MPU->CTRL = ctrl;
+            __DSB();
+            __ISB();
+        }
+    }
+
+
     return 0;
 }
 

@@ -46,6 +46,13 @@ struct mpu_saved_state
 {
     uint32_t rbar;
     uint32_t rasr;
+
+    bool is_enabled() const;
+    uint32_t base_addr() const;
+    uint32_t length() const;
+    MemRegionAccess priv_access() const;
+    MemRegionAccess unpriv_access() const;
+    uint32_t tex_scb() const;
 };
 
 struct thread_saved_state
