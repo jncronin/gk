@@ -117,6 +117,29 @@ constexpr pll_setup pll_multiplier(int freq)
     return { mult, (unsigned int)mult_rem, div };
 }
 
+int syscall_audiosetfreq(int freq, int *_errno)
+{
+    /* Calculate PLL divisors */
+    const auto mult = pll_multiplier(freq);
+    if(mult.mult == 0)
+    {
+        if(_errno) *_errno = EINVAL;
+        return -1;
+    }
+
+    RCC->CR &= ~RCC_CR_PLL2ON;
+    __DMB();
+    RCC->PLL2FRACR = mult.mult_frac;
+    RCC->PLL2DIVR = (1UL << RCC_PLL2DIVR_R2_Pos) |
+        (0UL << RCC_PLL2DIVR_Q2_Pos) |
+        ((mult.div - 1) << RCC_PLL2DIVR_P2_Pos) |
+        ((mult.mult - 1) << RCC_PLL2DIVR_N2_Pos);
+    RCC->CR |= RCC_CR_PLL2ON;
+    while(!(RCC->CR & RCC_CR_PLL2RDY));
+
+    return 0;
+}
+
 int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
 {
     auto &ac = GetCurrentThreadForCore()->p.audio;
