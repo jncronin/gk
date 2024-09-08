@@ -4,6 +4,7 @@
 #include <cmath>
 
 static const constexpr unsigned int arr = 4096;
+double btnled_brightness = 0.5;
 
 static constexpr pin btnled_pins[] =
 {
@@ -50,10 +51,10 @@ void init_btnled()
 static inline unsigned int pwm_non_linear(unsigned int input)
 {
     auto iflt = static_cast<double>(input);
-    auto oflt = std::pow(arr, iflt / 255.0);
+    auto oflt = std::pow(arr, iflt / 255.0 * btnled_brightness);
     auto oi = static_cast<int>(std::rint(oflt));
     if(oi < 0) oi = 0;
-    if(oi > 255) oi = 255;
+    if(oi > static_cast<int>(arr)) oi = arr;
     return static_cast<unsigned int>(oi);    
 }
 
