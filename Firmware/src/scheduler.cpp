@@ -161,6 +161,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         cur_t->tss.deschedule_from_core = ncore + 1;
     }
 
+#if GK_DYNAMIC_SYSTICK
     // Get earliest blocker at each priority level
     for(int i = 0; i < npriorities; i++)
     {
@@ -187,6 +188,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
         earliest_blockers[i] = cur_earliest_blocker;
     }
+#endif
 
     for(int i = npriorities-1; i >= cur_prio; i--)
     {
@@ -231,7 +233,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 #if DEBUG_SCHEDULER
                     report_chosen(cur_t, cval);
 #endif
+#if GK_DYNAMIC_SYSTICK
                     set_timeout(cval);
+#endif
                     return cval;
                 }
             }
@@ -279,7 +283,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         report_chosen(cur_t, current_thread[ct_ncore].v);
 #endif
         current_thread[ct_ncore].v->tss.deschedule_from_core = 0;
+#if GK_DYNAMIC_SYSTICK
         set_timeout(current_thread[ct_ncore].v);
+#endif
         return current_thread[ct_ncore].v;
     }
 }
