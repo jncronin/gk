@@ -41,6 +41,11 @@ class Scheduler
         /* Report chosen thread */
         void report_chosen(Thread *old_t, Thread *new_t);
 
+        /* Set new timeout value based upon high priority threads which will unblock before the current
+            scheduling interval */
+        kernel_time earliest_blockers[npriorities];
+        inline void set_timeout(const Thread *new_t);
+
     public:
         Scheduler();
         Scheduler(const Scheduler &) = delete;

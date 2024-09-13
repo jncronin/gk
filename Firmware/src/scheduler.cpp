@@ -81,6 +81,61 @@ void Scheduler::Schedule(Thread *t)
     }
 }
 
+inline void Scheduler::set_timeout(const Thread *new_t)
+{
+    // Get earliest timeout in anything with higher priority than new_t
+    auto new_p = new_t->base_priority;
+    kernel_time earliest_blocker;
+    for(int i = new_p + 1; i < npriorities; i++)
+    {
+        if(earliest_blockers[i].is_valid())
+        {
+            if(!earliest_blocker.is_valid() || earliest_blockers[i] < earliest_blocker)
+            {
+                earliest_blocker = earliest_blockers[i];
+            }
+        }
+    }
+
+#if GK_OVERCLOCK
+    unsigned int sysclk = 480;
+#else
+    unsigned int sysclk = 384;
+#endif
+    unsigned int reload = 0;
+
+    if(earliest_blocker.is_valid())
+    {
+        // set a timer for then
+        auto now = clock_cur();
+        if(now >= earliest_blocker)
+        {
+            // re-run scheduler
+            Yield();
+            return;
+        }
+        else
+        {
+            auto tdiff = earliest_blocker - now;
+            
+            if(tdiff < kernel_time::from_ms(20))
+            {
+                // core_clk/reload = 1/tdiff
+                // reload = core * tdiff(s)
+                reload = (unsigned int)(sysclk * tdiff.to_us());
+            }
+        }
+    }
+    if(reload == 0)
+    {
+        reload = sysclk * 20000;    // 20 ms
+    }
+    reload--;
+
+    SysTick->LOAD = reload;
+    SysTick->VAL = reload;
+}
+
 Thread *Scheduler::GetNextThread(uint32_t ncore)
 {
     CPUAffinity OnlyMe = (ncore == 0) ? CPUAffinity::M7Only : CPUAffinity::M4Only;
@@ -106,40 +161,32 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         cur_t->tss.deschedule_from_core = ncore + 1;
     }
 
-#if GK_TICKLESS
-    // Tickless needs to know the earliest time blocker as well
-    block_until = 0;
+    // Get earliest blocker at each priority level
     for(int i = 0; i < npriorities; i++)
     {
+        kernel_time cur_earliest_blocker;
 #if GK_DUAL_CORE
         CriticalGuard cg(tlist[i].m);
 #endif
 
         for(const auto &tthread : tlist[i].v.v)
         {
-            if(tthread->is_blocking && tthread->block_until)
+            if(tthread->is_blocking && tthread->block_until.is_valid())
             {
                 if(tthread->block_until <= clock_cur())
                 {
                     tthread->is_blocking = false;
                     tthread->block_until = 0ULL;
                 }
-                else if(!block_until || tthread->block_until < block_until)
+                else if(!cur_earliest_blocker.is_valid() || tthread->block_until < cur_earliest_blocker)
                 {
-                    block_until = tthread->block_until;
+                    cur_earliest_blocker = tthread->block_until;
                 }
             }
         }
-    }
 
-#if DEBUG_SCHEDULER
-    if(block_until)
-    {
-        CriticalGuard cg(s_rtt);
-        klog("sched core %d: set block_until to %d\n", ncore, (uint32_t)block_until);
+        earliest_blockers[i] = cur_earliest_blocker;
     }
-#endif
-#endif
 
     for(int i = npriorities-1; i >= cur_prio; i--)
     {
@@ -184,6 +231,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 #if DEBUG_SCHEDULER
                     report_chosen(cur_t, cval);
 #endif
+                    set_timeout(cval);
                     return cval;
                 }
             }
@@ -216,6 +264,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 #if DEBUG_SCHEDULER
                     report_chosen(cur_t, cval);
 #endif
+                    set_timeout(cval);
                     return cval;
                 }
             }
@@ -230,6 +279,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         report_chosen(cur_t, current_thread[ct_ncore].v);
 #endif
         current_thread[ct_ncore].v->tss.deschedule_from_core = 0;
+        set_timeout(current_thread[ct_ncore].v);
         return current_thread[ct_ncore].v;
     }
 }

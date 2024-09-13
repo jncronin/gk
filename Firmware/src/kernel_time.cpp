@@ -73,27 +73,27 @@ bool kernel_time::is_valid() const
     return _us != 0ULL;
 }
 
-bool kernel_time::operator>=(const kernel_time &rhs)
+bool kernel_time::operator>=(const kernel_time &rhs) const
 {
     return _us >= rhs._us;
 }
 
-bool kernel_time::operator>(const kernel_time &rhs)
+bool kernel_time::operator>(const kernel_time &rhs) const
 {
     return _us > rhs._us;
 }
 
-bool kernel_time::operator<=(const kernel_time &rhs)
+bool kernel_time::operator<=(const kernel_time &rhs) const
 {
     return _us <= rhs._us;
 }
 
-bool kernel_time::operator<(const kernel_time &rhs)
+bool kernel_time::operator<(const kernel_time &rhs) const
 {
     return _us < rhs._us;
 }
 
-bool kernel_time::operator==(const kernel_time &rhs)
+bool kernel_time::operator==(const kernel_time &rhs) const
 {
     return _us == rhs._us;
 }
