@@ -40,11 +40,11 @@ class kernel_time
         kernel_time operator-(const kernel_time &rhs);
         kernel_time &operator+=(const kernel_time &rhs);
         kernel_time &operator-=(const kernel_time &rhs);
-        bool operator==(const kernel_time &rhs);
-        bool operator<(const kernel_time &rhs);
-        bool operator<=(const kernel_time &rhs);
-        bool operator>(const kernel_time &rhs);
-        bool operator>=(const kernel_time &rhs);
+        bool operator==(const kernel_time &rhs) const;
+        bool operator<(const kernel_time &rhs) const;
+        bool operator<=(const kernel_time &rhs) const;
+        bool operator>(const kernel_time &rhs) const;
+        bool operator>=(const kernel_time &rhs) const;
 };
 
 bool clock_set_cpu(clock_cpu_speed speed);
