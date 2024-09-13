@@ -92,17 +92,17 @@ constexpr pll_setup pll_multiplier(int freq)
 {
     // frac is out of 8192
 
-    /* Target is 256x freq.
+    /* Target is 1024x freq.
         VCO_out = 8000000 * (mult + mult_frac/8192)
          [ must be between 192000000 and 960000000, better 384000000 to 960000000 ]
         Target = VCO_out / div
 
         div = 2 - 127
 
-        For div = 28, freq 53 kHz - 134 kHz
-        For div = 56, freq 26.7 kHz - 67 kHz
-        For div = 112, freq 13.4 kHz - 33.5 kHz
-        For div = 112, VCO_out down to 192 MHz, freq = 6.7 kHz
+        For div = 7, freq 53 kHz - 134 kHz
+        For div = 14, freq 26.7 kHz - 67 kHz
+        For div = 28, freq 13.4 kHz - 33.5 kHz
+        For div = 28, VCO_out down to 192 MHz, freq = 6.7 kHz
 
         Thus we can have the following freq cutoffs for calculations:
             60 kHz, 30 kHz, 15 kHz
@@ -110,8 +110,8 @@ constexpr pll_setup pll_multiplier(int freq)
 
     const auto vco_in = 8000000UL;
     
-    unsigned int div = (freq >= 60000) ? 28 : ((freq >= 30000) ? 56 : 112);
-    unsigned int vco_out = (unsigned int)freq * 256 * div;
+    unsigned int div = (freq >= 60000) ? 7 : ((freq >= 30000) ? 14 : 28);
+    unsigned int vco_out = (unsigned int)freq * 1024 * div;
     if(vco_out < 192000000 || vco_out > 960000000)
     {
         return { 0, 0, 0 };
@@ -121,7 +121,7 @@ constexpr pll_setup pll_multiplier(int freq)
     {
         return { 0, 0, 0 };
     }
-    unsigned long long int mult_rem = vco_out - mult * vco_in; // currently a value out of 2000000
+    unsigned long long int mult_rem = vco_out - mult * vco_in; // currently a value out of 8000000
     mult_rem *= 8192ULL;
     mult_rem /= (unsigned long long)vco_in;
     return { mult, (unsigned int)mult_rem, div };
