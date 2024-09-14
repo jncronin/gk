@@ -13,14 +13,14 @@ include(cmake/utils.cmake)
 
 add_definitions(-DCONFIG_BLOCK_DEV_CACHE_SIZE=32)
 add_definitions(-DCONFIG_HAVE_OWN_OFLAGS=0)
-add_subdirectory(lwext4)
+#add_subdirectory(lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
 set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/inc/lv_conf.h")
 #add_subdirectory(lvgl-9.1.0)
 
 set(ZLIB_BUILD_EXAMPLES OFF)
-add_subdirectory(zlib-1.3.1)
+#add_subdirectory(zlib-1.3.1)
 
 project(gk C CXX ASM)
 
@@ -28,7 +28,6 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/gk-test.obj
     ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ff.c
     ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffsystem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffunicode.c
@@ -46,6 +45,7 @@ file(GLOB_RECURSE WINC_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/spi_flash/source/*.c
 )
 
+#[[
 add_library(tusb)
 target_include_directories(tusb
     PRIVATE
@@ -97,7 +97,7 @@ target_sources(winc
 PRIVATE
     ${WINC_SOURCES}
 )
-
+]]
 
 add_executable(${PROJECT_NAME})
 
@@ -105,7 +105,7 @@ add_executable(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7rs/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
@@ -117,7 +117,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
-        STM32H747xx
+        STM32H7S7xx
         CORE_CM7
         ETH_MODE
         _POSIX_READER_WRITER_LOCKS
@@ -175,10 +175,10 @@ target_compile_options(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         -lm
-        lwext4
-        tusb
-        winc
-        zlib
+        #lwext4
+        #tusb
+        #winc
+        #zlib
         #lvgl
 )
 
@@ -198,7 +198,7 @@ target_link_options(${PROJECT_NAME}
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
-    ${CMAKE_CURRENT_SOURCE_DIR}/STM32H747BIx_FLASH.ld
+    ${CMAKE_CURRENT_SOURCE_DIR}/stm32h7s7xx_flash.ld
 )
 
 utils_target_print_size(${PROJECT_NAME})
