@@ -16,12 +16,12 @@
 [submodule "Firmware/lwip"]
 	path = Firmware/lwip
 	url = https://github.com/lwip-tcpip/lwip.git
-[submodule "Firmware-v3/cmsis_device_h7"]
-	path = Firmware-v3/cmsis_device_h7
-	url = https://github.com/STMicroelectronics/cmsis_device_h7.git
 [submodule "Firmware-v3/cmsis_core"]
 	path = Firmware-v3/cmsis_core
 	url = https://github.com/STMicroelectronics/cmsis_core.git
 [submodule "Firmware-v3/gk-userlandinterface"]
 	path = Firmware-v3/gk-userlandinterface
 	url = https://github.com/jncronin/gk-userlandinterface
+[submodule "Firmware-v3/cmsis_device_h7rs"]
+	path = Firmware-v3/cmsis_device_h7rs
+	url = https://github.com/STMicroelectronics/cmsis_device_h7rs.git
