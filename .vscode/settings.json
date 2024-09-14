@@ -79,4 +79,7 @@
     },
     "cortex-debug.variableUseNaturalFormat": false,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.defines": [
+        "STM32H7S7xx"
+    ],
 }
