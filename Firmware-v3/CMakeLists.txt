@@ -22,7 +22,7 @@ set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/inc/lv_conf.h")
 set(ZLIB_BUILD_EXAMPLES OFF)
 #add_subdirectory(zlib-1.3.1)
 
-project(gk C CXX ASM)
+project(gkv3 C CXX ASM)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
@@ -106,7 +106,7 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7rs/Include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
