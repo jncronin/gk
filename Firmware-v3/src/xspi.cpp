@@ -5,8 +5,9 @@
 
 static const constexpr pin XSPI_PINS[] =
 {
+    { GPIOO, 0, 9 },    // CS#
+    { GPION, 1, 9 },    // CS#
     { GPION, 0, 9 },
-    { GPION, 1, 9 },
     { GPION, 2, 9 },
     { GPION, 3, 9 },
     { GPION, 4, 9 },
@@ -17,7 +18,6 @@ static const constexpr pin XSPI_PINS[] =
     { GPION, 9, 9 },
     { GPION, 10, 9 },
     { GPION, 11, 9 },
-    { GPIOO, 0, 9 },
     { GPIOO, 2, 9 },
     { GPIOO, 3, 9 },
     { GPIOO, 4, 9 },
@@ -48,6 +48,8 @@ uint32_t id1 = 0;
 uint32_t cr0 = 0;
 uint32_t cr1 = 0;
 
+
+
 extern "C" int init_xspi()
 {
     // pin setup
@@ -55,6 +57,11 @@ extern "C" int init_xspi()
     {
         p.set_as_af();
     }
+    // CS# needs pullups
+    XSPI_PINS[0].set_as_af(pin::PushPull, pin::PullUp);
+    XSPI_PINS[1].set_as_af(pin::PushPull, pin::PullUp);
+
+    // hardware reset chips
     XSPI1_RESET.clear();
     XSPI2_RESET.clear();
     XSPI1_RESET.set_as_output();
@@ -98,9 +105,9 @@ extern "C" int init_xspi()
         (1UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
-    XSPI1->DCR4 = 0;
+    XSPI1->DCR4 = 255;      // tCSM=4us/64 MHz - can increase once clock speed increased
     XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // TODO: burst
-        (1UL << XSPI_DCR2_PRESCALER_Pos); 
+        (0UL << XSPI_DCR2_PRESCALER_Pos); 
     //while(XSPI1->SR & XSPI_SR_BUSY);
     //XSPI1->CR |= XSPI_CR_DMM;
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -302,6 +309,9 @@ extern "C" int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->DCR1 = (XSPI1->DCR1 & ~XSPI_DCR1_MTYP_Msk) | (4U << XSPI_DCR1_MTYP_Pos);
     while(XSPI1->SR & XSPI_SR_BUSY);
+    //XSPI1->CCR = 0;
+    //XSPI1->WCCR = XSPI_CCR_DQSE;
+    //XSPI1->WPCCR = 0;
 
 
 
