@@ -99,7 +99,7 @@ extern "C" int init_xspi()
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 0;
-    XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // TODO: burst
+    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // TODO: burst
         (1UL << XSPI_DCR2_PRESCALER_Pos); 
     //while(XSPI1->SR & XSPI_SR_BUSY);
     //XSPI1->CR |= XSPI_CR_DMM;
@@ -244,6 +244,15 @@ extern "C" int init_xspi()
         *(volatile uint32_t *)&XSPI1->DR = 0xff81ff81;  // write to all 4 dies (2 per chip)
         while((XSPI1->SR & XSPI_SR_TCF) == 0);
         XSPI1->FCR = XSPI_FCR_CTCF;
+
+        // enable hybrid burst 128 bytes -- TODO put this outside the singleclk check
+        while(XSPI1->SR & XSPI_SR_BUSY);
+        XSPI1->AR = 0x800U*4;
+        *(volatile uint32_t *)&XSPI1->DR = 0x8f288f28;  // register writes are big endian
+        *(volatile uint32_t *)&XSPI1->DR = 0x8f288f28;  // write to all 4 dies (2 per chip)
+        while((XSPI1->SR & XSPI_SR_TCF) == 0);
+        XSPI1->FCR = XSPI_FCR_CTCF;
+
 
         // Now confirm it is enabled
         while(XSPI1->SR & XSPI_SR_BUSY);
