@@ -58,12 +58,18 @@ Reset_Handler:
   ldr   r0, =_estack
   mov   sp, r0          /* set stack pointer */
 
+  /* Disable internal regulators */
+  bl pwr_disable_regulators
+
   /* Ensure the power stays on */
   mov   r0, #1
   bl pwrbtn_setvregen
 
-  /* Enable XSPI memories */
-  bl init_xspi
+  /* __libc_init_array may use FPU - enable it here */
+  ldr.w r0, =0xe000ed88
+  ldr r1, [r0]
+  orr r1, r1, #(0xf << 20)
+  str r1, [r0]
 
 /* Call the clock system initialization function.*/
   bl  SystemInit
@@ -98,6 +104,11 @@ FillZerobss:
 LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
+
+  /* Enable XSPI memories */
+  //bl init_xspi
+
+  /* TODO: initialize XSPI data/bss */
 
 /* Call static constructors */
     bl __libc_init_array

@@ -63,12 +63,7 @@
           "width": 0.366268
         }
       ],
-      "drc_exclusions": [
-        "items_not_allowed|133172200|170180000|cbd3a7a6-9a86-4f7f-b181-3a5e716bfbee|00000000-0000-0000-0000-000000000000",
-        "silk_edge_clearance|54107500|19050000|77179ec7-647e-4b58-9122-388dc6efa82f|df61b687-1de4-4191-a58e-26f6ed918774",
-        "silk_edge_clearance|60307500|19050000|77179ec7-647e-4b58-9122-388dc6efa82f|fe447e34-6aed-46e2-8832-ec889637365d",
-        "silk_over_copper|102300000|133500000|7607f704-a8b8-47b2-a3a8-ab873263d514|00000000-0000-0000-0000-000000000000"
-      ],
+      "drc_exclusions": [],
       "meta": {
         "version": 2
       },
