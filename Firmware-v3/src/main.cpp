@@ -30,12 +30,12 @@ int main()
     SCB_EnableICache();
     SCB_EnableDCache();
     
-    //*(volatile uint32_t *)0x90000000 = 0xdeadbeef;
-    //*(volatile uint32_t *)0x90000004 = 0xaabbccdd;
-    //*(volatile uint32_t *)0x90000008 = 0x11223344;
-    //test_val = *(volatile uint32_t *)0x90000000;
+    *(volatile uint32_t *)0x90000000 = 0xdeadbeef;
+    *(volatile uint32_t *)0x90000004 = 0xaabbccdd;
+    *(volatile uint32_t *)0x90000008 = 0x11223344;
+    test_val = *(volatile uint32_t *)0x90000000;
 
-    //memcpy(test_range, (void *)0x90000000, 4*256);
+    memcpy(test_range, (void *)0x90000000, 4*256);
     CTP_NRESET.set_as_output();
     CTP_NRESET.clear();
     for(int i = 0; i < 100000; i++) __DMB();

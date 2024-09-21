@@ -111,26 +111,29 @@ extern "C" int init_xspi()
     //while(XSPI1->SR & XSPI_SR_BUSY);
     //XSPI1->CR |= XSPI_CR_DMM;
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->CCR = 
+    XSPI1->CCR = XSPI_CCR_DQSE |
         (4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
         (4UL << XSPI_CCR_DMODE_Pos) |
+        //(3UL << XSPI_CCR_ADSIZE_Pos) |
         //(4UL << XSPI_CCR_ABMODE_Pos) |
         //(4UL << XSPI_CCR_IMODE_Pos) |
-        XSPI_CCR_DDTR | XSPI_CCR_IDTR | XSPI_CCR_ADDTR | XSPI_CCR_ABDTR;
+        XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR = XSPI_WCCR_DQSE |
         (4UL << XSPI_WCCR_ADMODE_Pos) | // 8 address lines
         (4UL << XSPI_WCCR_DMODE_Pos) |
+        //(3UL << XSPI_WCCR_ADSIZE_Pos) |
         //(4UL << XSPI_WCCR_ABMODE_Pos) |
         //(4UL << XSPI_WCCR_IMODE_Pos) |
-        XSPI_WCCR_DDTR | XSPI_WCCR_IDTR | XSPI_WCCR_ADDTR | XSPI_WCCR_ABDTR;
+        XSPI_WCCR_DDTR | XSPI_WCCR_ADDTR;
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->WPCCR =
+    XSPI1->WPCCR = XSPI_WPCCR_DQSE |
         (4UL << XSPI_WPCCR_ADMODE_Pos) | // 8 address lines
         (4UL << XSPI_WPCCR_DMODE_Pos) |
+        //(3UL << XSPI_WPCCR_ADSIZE_Pos) |
         //(4UL << XSPI_WCCR_ABMODE_Pos) |
         //(4UL << XSPI_WCCR_IMODE_Pos) |
-        XSPI_WPCCR_DDTR | XSPI_WPCCR_IDTR | XSPI_WPCCR_ADDTR | XSPI_WPCCR_ABDTR;
+        XSPI_WPCCR_DDTR | XSPI_WPCCR_ADDTR;
     //XSPI1->CCR = XSPI_CCR_DQSE;
     //XSPI1->WCCR = XSPI_WCCR_DQSE | XSPI_WCCR_DDTR |
     //    (4UL << XSPI_WCCR_DMODE_Pos);
@@ -145,14 +148,7 @@ extern "C" int init_xspi()
 
     // Do some indirect register reads to prove we're connected
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->DLR = 7; // 2 bytes per register per die per chip
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->CCR = 
-        (4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
-        (4UL << XSPI_CCR_DMODE_Pos) |
-        //(4UL << XSPI_CCR_ABMODE_Pos) |
-        //(4UL << XSPI_CCR_IMODE_Pos) |
-        XSPI_CCR_DDTR | XSPI_CCR_IDTR | XSPI_CCR_ADDTR | XSPI_CCR_ABDTR;
+    XSPI1->DLR = 3; // 2 bytes per register per die per chip
 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->AR = 0;  // ID reg 0
@@ -167,7 +163,7 @@ extern "C" int init_xspi()
     }
     XSPI1->FCR = XSPI_FCR_CTCF;
 
-    if(id0 != 0x860F860F)
+    if(id0 != 0x0f860f86)
     {
         // try again
         while(XSPI1->SR & XSPI_SR_BUSY);
@@ -183,7 +179,7 @@ extern "C" int init_xspi()
         }
         XSPI1->FCR = XSPI_FCR_CTCF;
 
-        if(id0 != 0x860F860F)
+        if(id0 != 0x0f860f86)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
         }
@@ -229,7 +225,7 @@ extern "C" int init_xspi()
     XSPI1->FCR = XSPI_FCR_CTCF;
 
     // Try and enable differential clock...
-    [[maybe_unused]]uint32_t singleclk = 0x40004000;
+    [[maybe_unused]]uint32_t singleclk = 0x00400040;
     if(true)
     {
         SEGGER_RTT_printf(0, "xspi: enabling differential clk\n");
