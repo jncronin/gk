@@ -23,12 +23,12 @@ void OnProjectLoad (void) {
   // Dialog-generated settings
   //
   Project.SetTraceSource ("Trace Buffer");
-  Project.SetDevice ("STM32H747BI_M7");
+  Project.SetDevice ("STM32H7S7L8");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
   Project.SetTIFSpeed ("4 MHz");
-  Project.AddPathSubstitute ("C:/Users/jncro/source/repos/gk/Firmware", "$(ProjectDir)");
-  Project.AddPathSubstitute ("c:/users/jncro/source/repos/gk/firmware", "$(ProjectDir)");
+  Project.AddPathSubstitute ("C:/Users/jncro/source/repos/gk/Firmware-v3", "$(ProjectDir)");
+  Project.AddPathSubstitute ("c:/users/jncro/source/repos/gk/firmware-v3", "$(ProjectDir)");
   //
   // User settings
   //
@@ -36,10 +36,10 @@ void OnProjectLoad (void) {
   Edit.SysVar (VAR_TRACE_CORE_CLOCK, 600000000);
   Edit.SysVar (VAR_RTT_ENABLED, 1);
   Edit.SysVar (VAR_HSS_SPEED, FREQ_2_KHZ);
-  File.Open ("C:/Users/jncro/source/repos/gk/build/gk.elf");
+  File.Open ("C:/Users/jncro/source/repos/gk/build/gkv3.elf");
   Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M7F.svd");
   Project.AddSvdFile ("$(InstallDir)/Config/Peripherals/ARMv7M.svd");
-  Project.SetOSPlugin ("../gk-jlink-rtos/src/gk-ozone-rtos.js");
+  //Project.SetOSPlugin ("../gk-jlink-rtos/src/gk-ozone-rtos.js");
 }
 
 /*********************************************************************
@@ -53,7 +53,7 @@ void OnProjectLoad (void) {
 **********************************************************************
 */
 void OnStartupComplete (void) {
-Window.Add ("Data Sampling", "(*(uint32_t *)(&s.current_thread[0]) & 0xffff)");
+//Window.Add ("Data Sampling", "(*(uint32_t *)(&s.current_thread[0]) & 0xffff)");
 }
 
 /*********************************************************************
@@ -158,7 +158,7 @@ Window.Add ("Data Sampling", "(*(uint32_t *)(&s.current_thread[0]) & 0xffff)");
 **********************************************************************
 */
 void BeforeTargetConnect (void) {
-	Project.SetJLinkScript("./ST_STM32H747_M7_TraceBuffer.pex");
+	//Project.SetJLinkScript("./ST_STM32H747_M7_TraceBuffer.pex");
 }
 
 /*********************************************************************

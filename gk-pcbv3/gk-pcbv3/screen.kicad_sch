@@ -6225,7 +6225,7 @@
 		)
 		(uuid "a11c79a4-032e-463e-9b61-d87b1cb4dd37")
 	)
-	(text "Touchscreen is Waveshare 3.5 DPI removed from carrier board\nLLCD is ER-TFT035-7 compatible pinout\nTouch is GT911"
+	(text "Touchscreen is Waveshare 3.5 DPI removed from carrier board\nLCD is ER-TFT035-7 compatible pinout\nTouch is GT911"
 		(exclude_from_sim no)
 		(at 117.602 21.082 0)
 		(effects
