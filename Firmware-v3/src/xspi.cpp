@@ -45,6 +45,8 @@ static const constexpr pin XSPI2_RESET { GPIOD, 0 };
 
 uint32_t id0 = 0;
 uint32_t id1 = 0;
+uint32_t cr0 = 0;
+uint32_t cr1 = 0;
 
 extern "C" int init_xspi()
 {
@@ -90,24 +92,24 @@ extern "C" int init_xspi()
             - burst length 32 bytes
      */
     XSPI1->CR = (1UL << XSPI_CR_FMODE_Pos) | XSPI_CR_EN
-        /*|
-        XSPI_CR_DMM*/;    // TODO: add timeout
+        |
+        XSPI_CR_DMM;    // TODO: add timeout
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
         (1UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 0;
-    XSPI1->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |     // TODO: burst
-        (1UL << XSPI_DCR2_PRESCALER_Pos); // TODO: use PLL2, 200 MHz and passthrough
+    XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // TODO: burst
+        (2UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
-    //XSPI1->CR |= XSPI_CR_DMM;
-    //XSPI1->CCR = XSPI_CCR_DDTR |
-    //    (4UL << XSPI_CCR_DMODE_Pos);
+    XSPI1->CR |= XSPI_CR_DMM;
+    XSPI1->CCR = XSPI_CCR_DDTR |
+        (4UL << XSPI_CCR_DMODE_Pos);
     XSPI1->WCCR = XSPI_WCCR_DQSE;
     //XSPI1->CCR = XSPI_CCR_DQSE;
     //XSPI1->WCCR = XSPI_WCCR_DQSE | XSPI_WCCR_DDTR |
     //    (4UL << XSPI_WCCR_DMODE_Pos);
-    //XSPI1->TCR = XSPI_TCR_DHQC;
+    XSPI1->TCR = XSPI_TCR_DHQC;
     XSPI1->CR |= XSPI_CR_EN;
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->HLCR = (7UL << XSPI_HLCR_TRWR_Pos) |
@@ -116,27 +118,69 @@ extern "C" int init_xspi()
 
     // Do some indirect register reads to prove we're connected
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->DLR = 1; // 2 bytes per register
+    XSPI1->DLR = 7; // 2 bytes per register
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CCR = 
         (4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
         (4UL << XSPI_CCR_DMODE_Pos) |
-        (4UL << XSPI_CCR_ABMODE_Pos) |
-        (4UL << XSPI_CCR_IMODE_Pos) |
-        XSPI_CCR_DDTR | XSPI_CCR_IDTR | XSPI_CCR_ADDTR | XSPI_CCR_ABDTR;   
+        //(4UL << XSPI_CCR_ABMODE_Pos) |
+        //(4UL << XSPI_CCR_IMODE_Pos) |
+        XSPI_CCR_DDTR | XSPI_CCR_IDTR | XSPI_CCR_ADDTR | XSPI_CCR_ABDTR;
+
     while(XSPI1->SR & XSPI_SR_BUSY);
-
     XSPI1->AR = 0;  // ID reg 0
-    while((XSPI1->SR & XSPI_SR_TCF) == 0);
-    XSPI1->FCR = XSPI_FCR_CTCF;
     int i = 0;
-    while(XSPI1->SR & XSPI_SR_FLEVEL)
+    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
     {
-        id0 = *(volatile uint16_t *)&XSPI1->DR;
-        SEGGER_RTT_printf(0, "id0 (%d): %x\n", i++, id0);
+        while(XSPI1->SR & XSPI_SR_FLEVEL)
+        {
+            id0 = *(volatile uint32_t *)&XSPI1->DR;
+            SEGGER_RTT_printf(0, "id0 (%d): %x\n", i++, id0);
+        }
     }
+    XSPI1->FCR = XSPI_FCR_CTCF;
 
-    XSPI1->AR = 2;  // ID reg 1
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->AR = 4;  // ID reg 1
+    i = 0;
+    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
+    {
+        while(XSPI1->SR & XSPI_SR_FLEVEL)
+        {
+            id1 = *(volatile uint32_t *)&XSPI1->DR;
+            SEGGER_RTT_printf(0, "id1 (%d): %x\n", i++, id1);
+        }
+    }
+    XSPI1->FCR = XSPI_FCR_CTCF;
+
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->AR = 0x800*4;  // control reg 0
+    i = 0;
+    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
+    {
+        while(XSPI1->SR & XSPI_SR_FLEVEL)
+        {
+            cr0 = *(volatile uint32_t *)&XSPI1->DR;
+            SEGGER_RTT_printf(0, "cr0 (%d): %x\n", i++, cr0);
+        }
+    }
+    XSPI1->FCR = XSPI_FCR_CTCF;
+
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->AR = 0x801*4;  // control reg 1
+    i = 0;
+    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
+    {
+        while(XSPI1->SR & XSPI_SR_FLEVEL)
+        {
+            cr1 = *(volatile uint32_t *)&XSPI1->DR;
+            SEGGER_RTT_printf(0, "cr1 (%d): %x\n", i++, cr1);
+        }
+    }
+    XSPI1->FCR = XSPI_FCR_CTCF;
+
+
+    /*XSPI1->AR = 2;  // ID reg 1
     while((XSPI1->SR & XSPI_SR_TCF) == 0);
     XSPI1->FCR = XSPI_FCR_CTCF;
     i = 0;
@@ -144,7 +188,7 @@ extern "C" int init_xspi()
     {
         id1 = *(volatile uint16_t *)&XSPI1->DR;
         SEGGER_RTT_printf(0, "id1 (%d): %x\n", i++, id1);
-    }
+    }*/
 
     //__asm__ volatile("bkpt \n" ::: "memory");
 
