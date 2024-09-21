@@ -222,8 +222,8 @@ extern "C" int init_xspi()
     XSPI1->FCR = XSPI_FCR_CTCF;
 
     // Try and enable differential clock...
-    uint32_t singleclk = 0x40004000;
-    if(cr1 & singleclk)
+    [[maybe_unused]]uint32_t singleclk = 0x40004000;
+    if(true)
     {
         SEGGER_RTT_printf(0, "xspi: enabling differential clk\n");
 
