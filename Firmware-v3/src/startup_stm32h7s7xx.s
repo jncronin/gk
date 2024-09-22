@@ -71,9 +71,6 @@ Reset_Handler:
   orr r1, r1, #(0xf << 20)
   str r1, [r0]
 
-/* Call the clock system initialization function.*/
-  bl  SystemInit
-
 /* Copy the data segment initializers from flash to SRAM */
   ldr r0, =_sdata
   ldr r1, =_edata
@@ -104,6 +101,9 @@ FillZerobss:
 LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
+
+/* Call the clock system initialization function.*/
+  bl  init_clocks
 
   /* Enable XSPI memories */
   bl init_xspi

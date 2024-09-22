@@ -213,9 +213,9 @@ extern "C" int init_xspi()
         (1UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
-    XSPI1->DCR4 = 255;      // tCSM=4us/64 MHz - can increase once clock speed increased
+    XSPI1->DCR4 = 800 - 4 - 1;      // tCSM=4us/200 MHz
     XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |
-        (0UL << XSPI_DCR2_PRESCALER_Pos); 
+        (1UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CCR = XSPI_CCR_DQSE |
         (4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
@@ -238,7 +238,9 @@ extern "C" int init_xspi()
 
     // Do some indirect register reads to prove we're connected
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->DLR = 3; // 2 bytes per register per die per chip
+    XSPI1->DLR = 3; // 2 bytes per register per chip
+
+    xspi_ind_read(XSPI1, 4, 0, &id0);
 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->AR = 0;  // ID reg 0
@@ -409,7 +411,7 @@ extern "C" int init_xspi()
     XSPI2->DCR3 = 0;    // ?max burst length
     XSPI2->DCR4 = 0;    // no refresh needed
     XSPI2->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |                          
-        (1UL << XSPI_DCR2_PRESCALER_Pos); // TODO: use PLL2, 166 MHz and passthrough (/12, x250, /3)
+        (0UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 160MHz
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
         //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
