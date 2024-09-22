@@ -1,6 +1,7 @@
 #include <stm32h7rsxx.h>
 #include "pwr.h"
 #include "clocks.h"
+#include "osmutex.h"
 
 extern uint64_t _cur_ms;
 extern struct timespec toffset;
@@ -169,11 +170,9 @@ extern "C" void init_clocks()
     LPTIM1->CR = LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
 }
 
-//Spinlock sl_timer;
-
 extern "C" void LPTIM1_IRQHandler()
 {
-    //CriticalGuard cg(sl_timer);
+    CriticalGuard cg;
     // do it this way round or the IRQ is still active on IRQ return
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
     _cur_ms++;
@@ -373,13 +372,13 @@ int clock_get_timespec_from_rtc(timespec *ts)
 
 void clock_get_timebase(struct timespec *tp)
 {
-    //CriticalGuard cg(sl_toffset);
+    CriticalGuard cg;
     *tp = toffset;
 }
 
 void clock_set_timebase(const struct timespec *tp)
 {
-    //CriticalGuard cg(sl_toffset);
+    CriticalGuard cg;
     if(tp)
         toffset = *tp;
 }
