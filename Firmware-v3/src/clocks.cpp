@@ -169,11 +169,6 @@ extern "C" void init_clocks()
     LPTIM1->CR = LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
 }
 
-void enable_backup_domain()
-{
-
-}
-
 //Spinlock sl_timer;
 
 extern "C" void LPTIM1_IRQHandler()
@@ -228,4 +223,218 @@ void delay_ms(uint64_t nms)
     {
         __WFI();
     }
+}
+
+void enable_backup_domain()
+{
+    /* There is rather complex nomeclature around the backup domain.  In terms of power supplies:
+        VBAT is external power from battery
+        VDD is external power from VDD pins
+        
+        Either VBAT or VDD (preferentially) supplies VSW
+        
+        VSW powers LSE, RTC and backup IOs
+        
+        VSW also produces VBKP through the backup regulator
+        
+        Either VBKP or VCORE (preferentially) supplies the backup SRAM at 0x38800000
+        
+
+        The PWR CR2 register, and RTC registers are preserved across power fail if VBAT good
+    */
+
+    RCC->APB4ENR |= RCC_APB4ENR_RTCAPBEN;
+    (void)RCC->APB4ENR;
+
+    // Enable RTC to use HSE/32 (for now, pending actual set up with LSE in v2)
+    RCC->CFGR &= ~RCC_CFGR_RTCPRE_Msk;
+    RCC->CFGR |= (32UL << RCC_CFGR_RTCPRE_Pos);
+
+    // First check not already enabled (with valid VBAT should remain enabled)
+    bool is_enabled = true;
+    if(!(PWR->CSR1 & PWR_CSR1_BREN)) is_enabled = false;
+    if(!(RCC->BDCR & RCC_BDCR_RTCEN)) is_enabled = false;
+    if(!(RTC->ICSR & RTC_ICSR_INITS)) is_enabled = false;
+    if(is_enabled)
+    {
+        // clear RSF flag
+        PWR->CR1 |= PWR_CR1_DBP;
+        __DMB();
+        RTC->WPR = 0xca;
+        RTC->WPR = 0x53;
+        RTC->ICSR &= ~RTC_ICSR_RSF;
+        RTC->WPR = 0xff;
+        //PWR->CR1 &= ~PWR_CR1_DBP;
+
+        RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
+        (void)RCC->AHB4ENR;
+
+        timespec cts;
+        if(clock_get_timespec_from_rtc(&cts) == 0)
+        {
+            clock_set_timebase(&cts);
+        }
+        return;
+    }
+
+    // Permit write access to backup domain - needed for write access to RTC, backup SRAM etc
+    PWR->CR1 |= PWR_CR1_DBP;
+    __DMB();
+
+    // Enable backup regulator
+    PWR->CSR1 |= PWR_CSR1_BREN;
+    while(!(PWR->CSR1 & PWR_CSR1_BRRDY));
+
+    // Enable RTC to use HSE/32 (for now, pending actual set up with LSE in v2)
+    RCC->BDCR = RCC_BDCR_RTCEN |
+        (3UL << RCC_BDCR_RTCSEL_Pos);
+
+    // Disallow write access to backup domain
+    //PWR->CR1 &= ~PWR_CR1_DBP;
+
+    RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
+    (void)RCC->AHB4ENR;
+
+    // Set up basic RTC time - changed later by network time or user
+
+    // For now, default to the time of writing this file
+    timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
+    clock_set_rtc_from_timespec(&ct);
+}
+
+static constexpr unsigned int to_bcd(unsigned int val)
+{
+    unsigned int out = 0;
+    unsigned int out_shift = 0;
+    while(val)
+    {
+        auto cval = val % 10;
+        out |= (cval << out_shift);
+        out_shift += 4;
+        val /= 10;
+    }
+    return out;
+}
+
+static constexpr unsigned int from_bcd(unsigned int val)
+{
+    unsigned int out = 0;
+    unsigned int out_mult = 1;
+    while(val)
+    {
+        auto cval = val & 0xfU;
+        out += (cval * out_mult);
+        out_mult *= 10;
+        val >>= 4;
+    }
+    return out;
+}
+
+int clock_get_timespec_from_rtc(timespec *ts)
+{
+    while(!(RTC->ICSR & RTC_ICSR_RSF));
+    unsigned int tr = 0, dr = 0;
+    while(true)
+    {
+        tr = RTC->TR;
+        dr = RTC->DR;
+
+        auto tr2 = RTC->TR;
+        auto dr2 = RTC->DR;
+
+        if(tr2 == tr && dr2 == dr) break;
+    }
+
+    tm ct;
+    ct.tm_hour = from_bcd((tr & (RTC_TR_HT_Msk | RTC_TR_HU_Msk)) >> RTC_TR_HU_Pos);
+    ct.tm_min = from_bcd((tr & (RTC_TR_MNT_Msk | RTC_TR_MNU_Msk)) >> RTC_TR_MNU_Pos);
+    ct.tm_sec = from_bcd((tr & (RTC_TR_ST_Msk | RTC_TR_SU_Msk)) >> RTC_TR_SU_Pos);
+    ct.tm_year = from_bcd((dr & (RTC_DR_YT_Msk | RTC_DR_YU_Msk)) >> RTC_DR_YU_Pos) + 100;
+    ct.tm_mon = from_bcd((dr & (RTC_DR_MT_Msk | RTC_DR_MU_Msk)) >> RTC_DR_MU_Pos) - 1;
+    ct.tm_wday = from_bcd((dr & (RTC_DR_WDU_Msk)) >> RTC_DR_WDU_Pos);
+    if(ct.tm_wday == 7) ct.tm_wday = 0;
+    ct.tm_mday = from_bcd((dr & (RTC_DR_DT_Msk | RTC_DR_DU_Msk)) >> RTC_DR_DU_Pos);
+    ct.tm_isdst = (RTC->CR & RTC_CR_BKP) ? 1 : 0;
+
+    static const unsigned int yday_upto[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+    ct.tm_yday = yday_upto[ct.tm_mon] + ct.tm_mday - 1;
+    if(ct.tm_mon > 1 &&
+        (ct.tm_year % 4 == 0 && (ct.tm_year % 100 != 0 || ct.tm_year % 400 == 0)))
+    {
+        ct.tm_yday++;
+    }
+
+    // convert to timespec
+    ts->tv_nsec = 0;
+    ts->tv_sec = mktime(&ct);
+
+    return 0;
+}
+
+void clock_get_timebase(struct timespec *tp)
+{
+    //CriticalGuard cg(sl_toffset);
+    *tp = toffset;
+}
+
+void clock_set_timebase(const struct timespec *tp)
+{
+    //CriticalGuard cg(sl_toffset);
+    if(tp)
+        toffset = *tp;
+}
+
+int clock_set_rtc_from_timespec(const timespec *ts)
+{
+    // Permit write access to backup domain - needed for write access to RTC, backup SRAM etc
+    PWR->CR1 |= PWR_CR1_DBP;
+    __DMB();
+
+    // Set up RTC divisors - change once using LSE
+
+    // for 500 kHz HSE/32 we can use /125 asynchronous = 4000 Hz and /4000 sync = 1Hz
+    // enable write access to RTC
+    RTC->WPR = 0xca;
+    RTC->WPR = 0x53;
+    RTC->ICSR |= RTC_ICSR_INIT;
+    while(!(RTC->ICSR & RTC_ICSR_INITF));
+    unsigned int adiv = 125;
+    unsigned int sdiv = 4000;
+    RTC->PRER = (adiv - 1) << RTC_PRER_PREDIV_A_Pos;
+    RTC->PRER = ((adiv - 1) << RTC_PRER_PREDIV_A_Pos) |
+        ((sdiv - 1) << RTC_PRER_PREDIV_S_Pos);
+
+    // convert timespec to BCD H:M:s etc
+    auto lt = gmtime(&ts->tv_sec);
+    auto lt_sec = to_bcd(lt->tm_sec);
+    auto lt_min = to_bcd(lt->tm_min);
+    auto lt_hour = to_bcd(lt->tm_hour);
+    auto lt_year = to_bcd((lt->tm_year - 100) % 100);           // tm_year is years since 1900
+    auto lt_month = to_bcd(lt->tm_mon + 1);                     // 0-11 -> 1-12
+    auto lt_wday = to_bcd(lt->tm_wday == 0 ? 7 : lt->tm_wday);  // 0=Sunday,6=Sat -> 1=Mon,7=Sun
+    auto lt_mday = to_bcd(lt->tm_mday);
+
+    RTC->TR = lt_sec << RTC_TR_SU_Pos |
+        lt_min << RTC_TR_MNU_Pos |
+        lt_hour << RTC_TR_HU_Pos;
+    RTC->DR = lt_mday << RTC_DR_DU_Pos |
+        lt_month << RTC_DR_MU_Pos |
+        lt_wday << RTC_DR_WDU_Pos |
+        lt_year << RTC_DR_YU_Pos;
+
+    if(lt->tm_isdst)
+        RTC->CR |= RTC_CR_BKP;
+    else
+        RTC->CR &= ~RTC_CR_BKP;
+
+    // exit init mode
+    RTC->ICSR &= ~RTC_ICSR_INIT;
+
+    // disable write access to RTC
+    RTC->WPR = 0xff;
+
+    // Disable write access to backup domain
+    //PWR->CR1 &= ~PWR_CR1_DBP;
+
+    return 0;
 }
