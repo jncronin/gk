@@ -241,80 +241,19 @@ extern "C" int init_xspi()
     XSPI1->DLR = 3; // 2 bytes per register per chip
 
     xspi_ind_read(XSPI1, 4, 0, &id0);
-
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 0;  // ID reg 0
-    int i = 0;
-    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-    {
-        while(XSPI1->SR & XSPI_SR_FLEVEL)
-        {
-            id0 = *(volatile uint32_t *)&XSPI1->DR;
-            SEGGER_RTT_printf(0, "xspi: id0 (%d): %x\n", i++, id0);
-        }
-    }
-    XSPI1->FCR = XSPI_FCR_CTCF;
-
     if(id0 != 0x0f860f86)
     {
         // try again
-        while(XSPI1->SR & XSPI_SR_BUSY);
-        XSPI1->AR = 0;  // ID reg 0
-        i = 0;
-        while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-        {
-            while(XSPI1->SR & XSPI_SR_FLEVEL)
-            {
-                id0 = *(volatile uint32_t *)&XSPI1->DR;
-                SEGGER_RTT_printf(0, "xspi: id0 (%d): %x\n", i++, id0);
-            }
-        }
-        XSPI1->FCR = XSPI_FCR_CTCF;
-
+        xspi_ind_read(XSPI1, 4, 0, &id0);
         if(id0 != 0x0f860f86)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
         }
     }
 
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 4;  // ID reg 1
-    i = 0;
-    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-    {
-        while(XSPI1->SR & XSPI_SR_FLEVEL)
-        {
-            id1 = *(volatile uint32_t *)&XSPI1->DR;
-            SEGGER_RTT_printf(0, "xspi: id1 (%d): %x\n", i++, id1);
-        }
-    }
-    XSPI1->FCR = XSPI_FCR_CTCF;
-
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 0x800*4;  // control reg 0
-    i = 0;
-    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-    {
-        while(XSPI1->SR & XSPI_SR_FLEVEL)
-        {
-            cr0 = *(volatile uint32_t *)&XSPI1->DR;
-            SEGGER_RTT_printf(0, "xspi: cr0 (%d): %x\n", i++, cr0);
-        }
-    }
-    XSPI1->FCR = XSPI_FCR_CTCF;
-
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 0x801*4;  // control reg 1
-    i = 0;
-    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-    {
-        while(XSPI1->SR & XSPI_SR_FLEVEL)
-        {
-            cr1 = *(volatile uint32_t *)&XSPI1->DR;
-            SEGGER_RTT_printf(0, "xspi: cr1 (%d): %x\n", i++, cr1);
-        }
-    }
-    XSPI1->FCR = XSPI_FCR_CTCF;
+    xspi_ind_read(XSPI1, 4, 1*4, &id1);
+    xspi_ind_read(XSPI1, 4, 0x800*4, &cr0);
+    xspi_ind_read(XSPI1, 4, 0x801*4, &cr1);
 
     // Try and enable differential clock...
     SEGGER_RTT_printf(0, "xspi: enabling differential clk\n");
@@ -330,25 +269,23 @@ extern "C" int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR &= ~XSPI_WCCR_DQSE;
 
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 0x801U*4;
-    *(volatile uint32_t *)&XSPI1->DR = 0xff81ff81;  // register writes are big endian
-    *(volatile uint32_t *)&XSPI1->DR = 0xff81ff81;  // write to all 4 dies (2 per chip)
-    while((XSPI1->SR & XSPI_SR_TCF) == 0);
-    XSPI1->FCR = XSPI_FCR_CTCF;
+    uint32_t new_cr1 = 0xff81ff81U;
+    xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
 
-    // enable hybrid burst 128 bytes -- TODO put this outside the singleclk check
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 0x800U*4;
-    *(volatile uint32_t *)&XSPI1->DR = 0x8f288f28;  // register writes are big endian
-    *(volatile uint32_t *)&XSPI1->DR = 0x8f288f28;  // write to all 4 dies (2 per chip)
-    while((XSPI1->SR & XSPI_SR_TCF) == 0);
-    XSPI1->FCR = XSPI_FCR_CTCF;
+    uint32_t new_cr0 = 0x8f288f28U;
+    xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
 
+    xspi_ind_read(XSPI1, 4, 0x800U*4, &cr0);
+    xspi_ind_read(XSPI1, 4, 0x801U*4, &cr1);
 
-    // Now confirm it is enabled
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->CR |= 1U << XSPI_CR_FMODE_Pos;        // indirect read mode
+    if(cr0 != new_cr0)
+    {
+        __asm__ volatile ("bkpt \n" ::: "memory");
+    }
+    if(cr1 != new_cr1)
+    {
+        __asm__ volatile ("bkpt \n" ::: "memory");
+    }
 
     while(XSPI1->SR & XSPI_SR_BUSY);
     // reenable latency in write mode
@@ -357,35 +294,6 @@ extern "C" int init_xspi()
     // reenable RWDS in write mode
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR |= XSPI_WCCR_DQSE;
-
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->AR = 0x801U*4;  // control reg 1
-    i = 0;
-    while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-    {
-        while(XSPI1->SR & XSPI_SR_FLEVEL)
-        {
-            cr1 = *(volatile uint32_t *)&XSPI1->DR;
-            SEGGER_RTT_printf(0, "xspi: cr1 (%d): %x\n", i++, cr1);
-        }
-    }
-    XSPI1->FCR = XSPI_FCR_CTCF;
-
-    if(cr1 == 0)
-    {
-        while(XSPI1->SR & XSPI_SR_BUSY);
-        XSPI1->AR = 0x801*4;  // control reg 1
-        i = 0;
-        while((XSPI1->SR & XSPI_SR_TCF) == 0 || (XSPI1->SR & XSPI_SR_FLEVEL))
-        {
-            while(XSPI1->SR & XSPI_SR_FLEVEL)
-            {
-                cr1 = *(volatile uint32_t *)&XSPI1->DR;
-                SEGGER_RTT_printf(0, "xspi: cr1 (%d): %x\n", i++, cr1);
-            }
-        }
-        XSPI1->FCR = XSPI_FCR_CTCF;
-    }
 
     // set XSPI1 to memory mapped mode
     while(XSPI1->SR & XSPI_SR_BUSY);
