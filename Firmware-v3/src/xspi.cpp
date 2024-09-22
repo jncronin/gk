@@ -48,6 +48,100 @@ uint32_t id1 = 0;
 uint32_t cr0 = 0;
 uint32_t cr1 = 0;
 
+template <typename T> static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
+{
+    static_assert(sizeof(T) <= 4);
+
+    if(!d)
+        return -1;
+    
+    // set indirect write mode
+    while(instance->SR & XSPI_SR_BUSY);
+    instance->CR = (instance->CR & ~XSPI_CR_FMODE_Msk & ~XSPI_CR_FTHRES_Msk) |
+        (0UL << XSPI_CR_FMODE_Pos) |
+        ((sizeof(T) - 1) << XSPI_CR_FTHRES_Pos);
+
+    // write data
+    instance->DLR = nbytes-1;
+    instance->AR = addr;
+
+    size_t ret = 0;
+    
+    while(nbytes)
+    {
+        while(!(instance->SR & XSPI_SR_FTF));
+        *(volatile T *)&instance->DR = *d++;
+        ret += sizeof(T);
+
+        if(nbytes < sizeof(T))
+            nbytes = 0;
+        else
+            nbytes -= sizeof(T);
+    }
+
+    while(!(instance->SR & XSPI_SR_TCF));
+    instance->FCR = XSPI_FCR_CTCF;
+
+    return (int)ret;
+}
+
+template <typename T> static int xspi_ind_read(XSPI_TypeDef *instance, size_t nbytes, size_t addr, T *d)
+{
+    static_assert(sizeof(T) <= 4);
+
+    if(!d)
+        return -1;
+    
+    // set indirect read mode
+    while(instance->SR & XSPI_SR_BUSY);
+    instance->CR = (instance->CR & ~XSPI_CR_FMODE_Msk & ~XSPI_CR_FTHRES_Msk) |
+        (1UL << XSPI_CR_FMODE_Pos) |
+        ((sizeof(T) - 1) << XSPI_CR_FTHRES_Pos);
+
+    // ADMODE needs to be != 0
+    while(instance->SR & XSPI_SR_BUSY);
+    instance->CCR = (instance->CCR & ~XSPI_CCR_ADMODE_Msk) |
+        (4UL << XSPI_CCR_ADMODE_Pos);
+
+    // read data
+    while(instance->SR & XSPI_SR_BUSY);
+    instance->DLR = nbytes-1;
+    instance->AR = addr;
+
+    size_t ret = 0;
+    
+    while(nbytes)
+    {
+        while(!(instance->SR & XSPI_SR_FTF));
+        *d++ = *(volatile T *)&instance->DR;
+        ret += sizeof(T);
+
+        if(nbytes < sizeof(T))
+            nbytes = 0;
+        else
+            nbytes -= sizeof(T);
+    }
+
+    while(!(instance->SR & XSPI_SR_TCF));
+    instance->FCR = XSPI_FCR_CTCF;
+
+    return (int)ret;
+}
+
+static uint16_t xspi_ind_read16(XSPI_TypeDef *instance, size_t addr)
+{
+    uint16_t ret;
+    if(xspi_ind_read(instance, 2, addr, &ret) != 2)
+        return 0xffff;
+    else
+        return ret;
+}
+
+static int xspi_ind_write16(XSPI_TypeDef *instance, size_t addr, uint16_t v)
+{
+    return xspi_ind_write(instance, 2, addr, &v);
+}
+
 extern "C" int init_xspi()
 {
     // pin setup
@@ -282,16 +376,126 @@ extern "C" int init_xspi()
     XSPI1->DCR1 = (XSPI1->DCR1 & ~XSPI_DCR1_MTYP_Msk) | (4U << XSPI_DCR1_MTYP_Pos);
     while(XSPI1->SR & XSPI_SR_BUSY);
 
-    /* XSPI2 - octal HyperBus 64 MByte, 166 MHz */
-    XSPI2->CR = (3UL << XSPI_CR_FMODE_Pos);    // TODO: add timeout
+    /* XSPI2 - octal HyperBus 64 MByte, 166 MHz
+        read latency (initial) 16 clk for 166 MHz, no additional
+        no write latency
+        256 kbyte sectors
+
+        write buffer programming - 512 bytes at a time on 512 byte boundary
+        see datasheet p31 for write flowchart
+    */
+    XSPI2->CR = (3UL << XSPI_CR_FMODE_Pos) |
+        XSPI_CR_TCEN | XSPI_CR_EN;
+    XSPI2->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
     XSPI2->DCR1 = (4UL << XSPI_DCR1_MTYP_Pos) |
+        (0UL << XSPI_DCR1_CSHT_Pos) |
         (25UL << XSPI_DCR1_DEVSIZE_Pos);
-    XSPI2->DCR2 =                           // TODO: burst
+    XSPI2->DCR3 = 0;    // ?max burst length
+    XSPI2->DCR4 = 0;    // no refresh needed
+    XSPI2->DCR2 =                           
         (1UL << XSPI_DCR2_PRESCALER_Pos); // TODO: use PLL2, 166 MHz and passthrough (/12, x250, /3)
-    XSPI2->DCR3 = 0;
-    XSPI2->DCR4 = 0;
-    XSPI2->CCR = XSPI_CCR_DQSE;
-    XSPI2->CR |= XSPI_CR_EN;
+    while(XSPI2->SR & XSPI_SR_BUSY);
+    XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
+        //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
+        //(4UL << XSPI_CCR_DMODE_Pos) |
+        XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
+    XSPI2->WCCR = 0 |
+        //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
+        //(4UL << XSPI_CCR_DMODE_Pos) |
+        XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
+    XSPI2->WPCCR = 0 |  // respect RWDS from device
+        //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
+        //(4UL << XSPI_CCR_DMODE_Pos) |
+        XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
+
+    while(XSPI2->SR & XSPI_SR_BUSY);
+    XSPI2->HLCR = (7UL << XSPI_HLCR_TRWR_Pos) |
+        (16UL << XSPI_HLCR_TACC_Pos) |
+        XSPI_HLCR_WZL;
+
+    // Try and enter ID mode
+    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
+    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
+    xspi_ind_write16(XSPI2, 0x555*2, 0x90);
+
+    SEGGER_RTT_printf(0, "xspi2: manufacturer id: %04x, dev id: %04x\n",
+        xspi_ind_read16(XSPI2, 0),
+        xspi_ind_read16(XSPI2, 2));
+
+    // Exit ID mode
+    xspi_ind_write16(XSPI2, 0, 0xff);
+
+    // Try and program 0-512
+    // Write to Buffer, sector address
+    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
+    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
+    xspi_ind_write16(XSPI2, /*sector address*/ 0, 0x25);
+
+    // 16-bit Word count - 1, sector address
+    xspi_ind_write16(XSPI2, /*sector address*/ 0, 255);
+
+    // Address/Data pair, *256
+    for(int idx = 0; idx < 256; idx++)
+    {
+        uint16_t data = (idx * 2) + ((idx * 2 + 1) << 8);
+        xspi_ind_write16(XSPI2, /*data address*/ idx*2, data);
+    }
+
+    // Program buffer to flash confirm, sector address
+    xspi_ind_write16(XSPI2, /*sector address*/ 0, 0x29);
+
+    // Poll status register until DRB != 0
+    uint16_t sr = 0xffff;
+    while(true)
+    {
+        xspi_ind_write16(XSPI2, 0x555*2, 0x70);
+        sr = xspi_ind_read16(XSPI2, 0);
+
+        if(sr == 0xffff)
+        {
+            // error
+            SEGGER_RTT_printf(0, "xspi2: error reading status register\n");
+            break;
+        }
+
+        if(sr & (1UL << 7))
+        {
+            // DRB
+            SEGGER_RTT_printf(0, "xspi2: sr: %x\n", sr);
+            break;
+        }
+    }
+
+    // Check PSB for error
+    if(sr & (1UL << 4))
+    {
+        // error
+        if(sr & (1UL << 3))
+        {
+            SEGGER_RTT_printf(0, "xspi2: program aborted during write to buffer command\n");
+        }
+        else if(sr & (1UL << 1))
+        {
+            SEGGER_RTT_printf(0, "xspi2: sector locked\n");
+        }
+        else
+        {
+            SEGGER_RTT_printf(0, "xspi2: program fail\n");
+        }
+    }
+    else
+    {
+        SEGGER_RTT_printf(0, "xspi2: programmed successfully\n");
+    }
+
+    // clear SR
+    xspi_ind_write16(XSPI2, 0x555*2, 0x71);
+
+    // Return to memory mapped mode
+    while(XSPI2->SR & XSPI_SR_BUSY);
+    XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
+        (3U << XSPI_CR_FMODE_Pos);
 
     return 0;
 }
+
