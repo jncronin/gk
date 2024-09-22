@@ -1,5 +1,6 @@
 #include <stm32h7rsxx.h>
 #include "pwr.h"
+#include "clocks.h"
 
 extern uint64_t _cur_ms;
 extern struct timespec toffset;
@@ -63,18 +64,19 @@ extern "C" void init_clocks()
     RCC->PLL1DIVR2 = (1U << RCC_PLL1DIVR2_DIVS_Pos);
 
     /* PLL2:
-        P -> SPI2,3 @ 200 MHz
+        P -> LPTIM1 @ 32 MHz
         Q -> SPI4,5,6 @ 200 MHz
         S -> XSPI1 @ 266 MHz (then prescaled/2 - max XSPI without DQS is 135 MHz)
         T -> XSPI2 and SD @ 160 MHz */
     RCC->PLL2DIVR1 = (1U << RCC_PLL2DIVR1_DIVR_Pos) |
         (3U << RCC_PLL2DIVR1_DIVQ_Pos) |
-        (3U << RCC_PLL2DIVR1_DIVP_Pos) |
+        (24U << RCC_PLL2DIVR1_DIVP_Pos) |
         (99U << RCC_PLL2DIVR1_DIVN_Pos);
     RCC->PLL2DIVR2 = (4U << RCC_PLL2DIVR2_DIVT_Pos) |
         (2U << RCC_PLL2DIVR2_DIVS_Pos);
 
     /* PLL3:
+        P -> SPI2,3 @240 MHz
         R -> LTDC @24 MHz (60 Hz * 800 * 500) */
     RCC->PLL3DIVR1 = (19U << RCC_PLL3DIVR1_DIVR_Pos) |
         (1U << RCC_PLL3DIVR1_DIVQ_Pos) |
@@ -84,6 +86,7 @@ extern "C" void init_clocks()
 
     /* Enable the requested outputs */
     RCC->PLLCFGR = RCC_PLLCFGR_PLL3REN |
+        RCC_PLLCFGR_PLL3PEN |
         RCC_PLLCFGR_PLL2TEN |
         RCC_PLLCFGR_PLL2QEN |
         RCC_PLLCFGR_PLL2PEN |
@@ -136,10 +139,10 @@ extern "C" void init_clocks()
         (2U << RCC_CCIPR1_XSPI2SEL_Pos) |               // XSPI2 from PLL2T=160MHz
         (1U << RCC_CCIPR1_XSPI1SEL_Pos) |               // XSPI1 from PLL2S=400MHz
         (1U << RCC_CCIPR1_SDMMC12SEL_Pos);              // SDMMC from PLL2T=160MHz
-    RCC->CCIPR2 = (5U << RCC_CCIPR2_LPTIM1SEL_Pos) |    // LPTIM1 = HSE24
+    RCC->CCIPR2 = (1U << RCC_CCIPR2_LPTIM1SEL_Pos) |    // LPTIM1 = PLL2P=32MHz
         (2U << RCC_CCIPR2_I2C1_I3C1SEL_Pos) |           // I2C1 = HSI64
         (2U << RCC_CCIPR2_I2C23SEL_Pos) |               // I2C2/3 = HSI64
-        (1U << RCC_CCIPR2_SPI23SEL_Pos) |               // SPI2/3 = PLL2P=200
+        (2U << RCC_CCIPR2_SPI23SEL_Pos) |               // SPI2/3 = PLL3P=240
         (3U << RCC_CCIPR2_UART234578SEL_Pos);           // UARTs = HSI64
     RCC->CCIPR3 = 0;    // TODO: SAI needs I2S_CKIN to be running before selecting it
     RCC->CCIPR4 = (5U << RCC_CCIPR4_LPTIM45SEL_Pos) |   // LPTIM4,5 = HSE24
@@ -147,9 +150,82 @@ extern "C" void init_clocks()
         (1U << RCC_CCIPR4_SPI6SEL_Pos) |                // SPI6  = PLL2Q=200
         (3U << RCC_CCIPR4_LPUART1SEL_Pos);              // LPUART = HSI64
 
+    // Set up LPTIM1 as a 1 kHz tick
+    RCC->APB1ENR1 |= RCC_APB1ENR1_LPTIM1EN;
+    (void)RCC->APB1ENR1;
+
+    LPTIM1->CR = 0;
+    LPTIM1->CR = LPTIM_CR_RSTARE;
+    (void)LPTIM1->CR;
+    LPTIM1->CR = 0;
+
+    LPTIM1->CFGR = 5UL << LPTIM_CFGR_PRESC_Pos;     // /32 => 1 MHz tick
+    LPTIM1->DIER = LPTIM_DIER_ARRMIE;
+    LPTIM1->CR = LPTIM_CR_ENABLE;
+    LPTIM1->ARR = 999;                              // Reload every 1 kHz
+    
+    NVIC_EnableIRQ(LPTIM1_IRQn);
+    __enable_irq();
+    LPTIM1->CR = LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
 }
 
 void enable_backup_domain()
 {
 
+}
+
+//Spinlock sl_timer;
+
+extern "C" void LPTIM1_IRQHandler()
+{
+    //CriticalGuard cg(sl_timer);
+    // do it this way round or the IRQ is still active on IRQ return
+    LPTIM1->ICR = LPTIM_ICR_ARRMCF;
+    _cur_ms++;
+    __DMB();
+}
+
+uint64_t clock_cur_ms()
+{
+    return clock_cur_us() / 1000ULL;
+}
+
+uint64_t clock_cur_us()
+{
+    /* The basic idea here is to try and read both LPTIM1->CNT and _cur_ms atomically.
+        We need to account for the fact that on calling this function:
+            1) interrupts may be enabled and so _cur_ms may change as we read LPTIM1->CNT
+            2) interrupts may be disabled and so LPTIM1->CNT may rollover without a change in
+                _cur_ms - luckily LPTIM1->ISR & ARRM will be set in this instance.
+    */
+
+    uint32_t cnt = 0U;
+    uint64_t cms = 0U;
+    uint32_t isr = 0U;
+
+    while(true)
+    {
+        cms = _cur_ms;
+        isr = LPTIM1->ISR;
+        cnt = LPTIM1->CNT;
+
+        auto isr2 = LPTIM1->ISR;
+        auto cms2 = _cur_ms;
+
+        if(isr == isr2 && cms == cms2) break;
+    }
+
+    auto ret = cms + ((isr & LPTIM_ISR_ARRM) ? 1ULL : 0ULL);
+    ret *= 1000ULL;
+    ret += cnt;
+    return ret;
+}
+
+void delay_ms(uint64_t nms)
+{
+    auto await_val = _cur_ms + nms + 1;
+    while(_cur_ms < await_val)
+    {
+        __WFI();
+    }
 }
