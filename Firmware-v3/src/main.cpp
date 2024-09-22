@@ -13,22 +13,10 @@ extern "C" void init_xspi();
 
 int main()
 {
-    // enable CSI for compensation cell
-    RCC->CR |= RCC_CR_CSION;
-    while(!(RCC->CR & RCC_CR_CSIRDY));
-
-    RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
-    (void)RCC->APB4ENR;
-
-    SBS->CCCSR |= SBS_CCCSR_COMP_EN | SBS_CCCSR_XSPI1_COMP_EN |
-        SBS_CCCSR_XSPI2_COMP_EN;
-
-    init_xspi();
-
-    //SCB_InvalidateDCache();
-    //SCB_InvalidateICache();
-    //SCB_EnableICache();
-    //SCB_EnableDCache();
+    SCB_InvalidateDCache();
+    SCB_InvalidateICache();
+    SCB_EnableICache();
+    SCB_EnableDCache();
     
     *(volatile uint32_t *)0x90000000 = 0xdeadbeef;
     *(volatile uint32_t *)0x90000004 = 0xaabbccdd;
