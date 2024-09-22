@@ -208,6 +208,22 @@ SECTIONS
     . = ALIGN(8);
   } >DTCM
 
+  .fast_pointers 0x30002000 (NOLOAD) :
+  {
+    /* fast access to TLS pointer(s) and timing bits */
+    _tls_pointers = .;
+    QUAD(0);
+    QUAD(0);
+    _cur_ms = .;
+    QUAD(0);
+    QUAD(0);
+    toffset = .;
+    QUAD(0);
+    QUAD(0);
+    QUAD(0);
+    QUAD(0);
+  } > SRAMAHB
+
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {
