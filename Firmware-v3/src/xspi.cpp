@@ -1,6 +1,6 @@
 #include <stm32h7rsxx.h>
 #include "pins.h"
-
+#include "clocks.h"
 #include "SEGGER_RTT.h"
 
 static const constexpr pin XSPI_PINS[] =
@@ -175,16 +175,10 @@ extern "C" int init_xspi()
     XSPI1_RESET.set_as_output();
     XSPI2_RESET.set_as_output();
 
-    for(int i = 0; i < 1000000; i++)
-    {
-        __DMB();
-    }
+    delay_ms(1);
     XSPI1_RESET.set();
     XSPI2_RESET.set();
-    for(int i = 0; i < 1000000; i++)
-    {
-        __DMB();
-    }
+    delay_ms(1);
 
     // Init XSPI controller
     RCC->AHB5ENR |= RCC_AHB5ENR_XSPI1EN | RCC_AHB5ENR_XSPI2EN | RCC_AHB5ENR_XSPIMEN;
