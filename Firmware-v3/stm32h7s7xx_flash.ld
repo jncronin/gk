@@ -61,11 +61,22 @@ MEMORY
   BKPSRAM   (rw)  : ORIGIN = 0x38800000,  LENGTH = 0x00001000
 
   FLASH     (xrw) : ORIGIN = __FLASH_BEGIN, LENGTH = __FLASH_SIZE
+
+  XSPI_RAM  (xrw) : ORIGIN = 0x90000000, LENGTH = 0x08000000
+  XSPI_FLASH (xr) : ORIGIN = 0x70000000, LENGTH = 0x04000000
 }
 
 /* Sections */
 SECTIONS
 {
+    /* put random rubbish into xspi_flash */
+  .xspi_flash :
+  {
+    . = ALIGN(4);
+    KEEP(*(.world))
+    . = ALIGN(4);
+  } >XSPI_FLASH
+  
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {
@@ -206,4 +217,6 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+
+
 }

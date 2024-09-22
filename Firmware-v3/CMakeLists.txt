@@ -132,6 +132,7 @@ target_sources(${PROJECT_NAME}
         ${SOURCES}
 )
 
+
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
         SUFFIX ".elf"
@@ -180,6 +181,7 @@ target_link_libraries(${PROJECT_NAME}
         #winc
         #zlib
         #lvgl
+
 )
 
 target_link_options(${PROJECT_NAME}
@@ -202,3 +204,5 @@ utils_target_set_linker_script(${PROJECT_NAME}
 )
 
 utils_target_print_size(${PROJECT_NAME})
+
+add_subdirectory(xspi_flasher)

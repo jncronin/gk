@@ -25,10 +25,10 @@ int main()
 
     init_xspi();
 
-    SCB_InvalidateDCache();
-    SCB_InvalidateICache();
-    SCB_EnableICache();
-    SCB_EnableDCache();
+    //SCB_InvalidateDCache();
+    //SCB_InvalidateICache();
+    //SCB_EnableICache();
+    //SCB_EnableDCache();
     
     *(volatile uint32_t *)0x90000000 = 0xdeadbeef;
     *(volatile uint32_t *)0x90000004 = 0xaabbccdd;
