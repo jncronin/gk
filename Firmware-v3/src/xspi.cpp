@@ -150,6 +150,16 @@ static int xspi_ind_write16(XSPI_TypeDef *instance, size_t addr, uint16_t v)
 
 extern "C" int init_xspi()
 {
+    // enable CSI for compensation cell
+    RCC->CR |= RCC_CR_CSION;
+    while(!(RCC->CR & RCC_CR_CSIRDY));
+
+    RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
+    (void)RCC->APB4ENR;
+
+    SBS->CCCSR |= SBS_CCCSR_COMP_EN | SBS_CCCSR_XSPI1_COMP_EN |
+        SBS_CCCSR_XSPI2_COMP_EN;
+    
     // pin setup
     for(const auto &p : XSPI_PINS)
     {

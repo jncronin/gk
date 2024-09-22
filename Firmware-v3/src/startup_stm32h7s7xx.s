@@ -106,7 +106,7 @@ LoopFillZerobss:
   bcc FillZerobss
 
   /* Enable XSPI memories */
-  //bl init_xspi
+  bl init_xspi
 
   /* TODO: initialize XSPI data/bss */
 
