@@ -23,7 +23,7 @@ void OnProjectLoad (void) {
   // Dialog-generated settings
   //
   Project.SetTraceSource ("Trace Buffer");
-  Project.SetDevice ("STM32H7S7L8");
+  Project.SetDevice ("STM32H7S7L8_XSPI2_HyperFlash");
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
   Project.SetTIFSpeed ("4 MHz");

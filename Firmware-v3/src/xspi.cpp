@@ -142,6 +142,12 @@ static int xspi_ind_write16(XSPI_TypeDef *instance, size_t addr, uint16_t v)
     return xspi_ind_write(instance, 2, addr, &v);
 }
 
+[[maybe_unused]] static uint32_t xspi_read_status()
+{
+    xspi_ind_write16(XSPI2, 0x555*2, 0x70);
+    return xspi_ind_read16(XSPI2, 0);
+}
+
 extern "C" int init_xspi()
 {
     // pin setup
@@ -392,7 +398,7 @@ extern "C" int init_xspi()
         (25UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI2->DCR3 = 0;    // ?max burst length
     XSPI2->DCR4 = 0;    // no refresh needed
-    XSPI2->DCR2 =                           
+    XSPI2->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |                          
         (1UL << XSPI_DCR2_PRESCALER_Pos); // TODO: use PLL2, 166 MHz and passthrough (/12, x250, /3)
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
@@ -423,73 +429,7 @@ extern "C" int init_xspi()
         xspi_ind_read16(XSPI2, 2));
 
     // Exit ID mode
-    xspi_ind_write16(XSPI2, 0, 0xff);
-
-    // Try and program 0-512
-    // Write to Buffer, sector address
-    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
-    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
-    xspi_ind_write16(XSPI2, /*sector address*/ 0, 0x25);
-
-    // 16-bit Word count - 1, sector address
-    xspi_ind_write16(XSPI2, /*sector address*/ 0, 255);
-
-    // Address/Data pair, *256
-    for(int idx = 0; idx < 256; idx++)
-    {
-        uint16_t data = (idx * 2) + ((idx * 2 + 1) << 8);
-        xspi_ind_write16(XSPI2, /*data address*/ idx*2, data);
-    }
-
-    // Program buffer to flash confirm, sector address
-    xspi_ind_write16(XSPI2, /*sector address*/ 0, 0x29);
-
-    // Poll status register until DRB != 0
-    uint16_t sr = 0xffff;
-    while(true)
-    {
-        xspi_ind_write16(XSPI2, 0x555*2, 0x70);
-        sr = xspi_ind_read16(XSPI2, 0);
-
-        if(sr == 0xffff)
-        {
-            // error
-            SEGGER_RTT_printf(0, "xspi2: error reading status register\n");
-            break;
-        }
-
-        if(sr & (1UL << 7))
-        {
-            // DRB
-            SEGGER_RTT_printf(0, "xspi2: sr: %x\n", sr);
-            break;
-        }
-    }
-
-    // Check PSB for error
-    if(sr & (1UL << 4))
-    {
-        // error
-        if(sr & (1UL << 3))
-        {
-            SEGGER_RTT_printf(0, "xspi2: program aborted during write to buffer command\n");
-        }
-        else if(sr & (1UL << 1))
-        {
-            SEGGER_RTT_printf(0, "xspi2: sector locked\n");
-        }
-        else
-        {
-            SEGGER_RTT_printf(0, "xspi2: program fail\n");
-        }
-    }
-    else
-    {
-        SEGGER_RTT_printf(0, "xspi2: programmed successfully\n");
-    }
-
-    // clear SR
-    xspi_ind_write16(XSPI2, 0x555*2, 0x71);
+    xspi_ind_write16(XSPI2, 0, 0xff);    
 
     // Return to memory mapped mode
     while(XSPI2->SR & XSPI_SR_BUSY);
