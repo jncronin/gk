@@ -18,11 +18,7 @@
 extern Spinlock s_rtt;
 extern Process kernel_proc;
 
-#if GK_OVERCLOCK
-#define SDCLK   240000000
-#else
-#define SDCLK   192000000
-#endif
+#define SDCLK 200000000
 
 #define SDCLK_IDENT     200000
 #define SDCLK_DS        25000000
