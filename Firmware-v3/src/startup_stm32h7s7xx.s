@@ -65,6 +65,9 @@ Reset_Handler:
   mov   r0, #1
   bl pwrbtn_setvregen
 
+  /* Ensure the appropriate memory setup is enabled (max DTCM/ITCM, no ECC) */
+  bl memblk_init_flash_opt_bytes
+
   /* __libc_init_array may use FPU - enable it here */
   ldr.w r0, =0xe000ed88
   ldr r1, [r0]
