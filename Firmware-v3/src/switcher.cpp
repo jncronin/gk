@@ -19,6 +19,30 @@ extern "C" void cinv()
     SCB_InvalidateDCache();
 }
 
+// for v3 - can load all with mpu disabled because default is cached anyway
+#define MPU_LOAD_16()                                                                   \
+        "ldr r4, =0xe000ed94        \n"     /* MPU_CTRL */                              \
+        "ldr r2, [r4]               \n"                                                 \
+        "bic r2, #1                 \n"     /* disable mpu */                           \
+        "str r2, [r4]               \n"                                                 \
+                                                                                        \
+        "add r4, r4, #8             \n"     /* R4 = RBAR */                             \
+        "ldmia r0!, {r5-r12}        \n"                                                 \
+        "stmia r4, {r5-r12}         \n"     /* first 4 mpu regions */                   \
+        "ldmia r0!, {r5-r12}        \n"                                                 \
+        "stmia r4, {r5-r12}         \n"     /* second 4 mpu regions */                  \
+        "ldmia r0!, {r5-r12}        \n"                                                 \
+        "stmia r4, {r5-r12}         \n"     /* third 4 mpu regions */                   \
+        "ldmia r0!, {r5-r12}        \n"                                                 \
+        "stmia r4, {r5-r12}         \n"     /* fourth 4 mpu regions */                  \
+                                                                                        \
+        "sub r4, r4, #8             \n"     /* MPU_CTRL */                              \
+        "ldr r5, [r4]               \n"                                                 \
+        "orr r5, #5                 \n"     /* enable mpu, default background map */    \
+        "str r5, [r4]               \n"                                                 \
+        "dsb                        \n"                                                 \
+        "isb                        \n"
+
 // load mputss entries with mpu enabled (so cache disabled)
 // store them to MPU with mpu disabled
 #define MPU_LOAD_4()                                                                    \
@@ -41,7 +65,7 @@ extern "C" void cinv()
 
 extern "C" void PendSV_Handler() __attribute__((naked));
 
-extern "C" ITCM_FUNCTION void PendSV_Handler()
+extern "C" void PendSV_Handler()
 {
     __asm volatile
     (
@@ -118,7 +142,7 @@ extern "C" ITCM_FUNCTION void PendSV_Handler()
 #endif
 
         /* Set current_thread pointer to new one */
-        "push {r0-r3}                   \n" /* can optimise to sp = sp - 16 */
+        "push {r0-r3}                   \n"
         "mov r0, r1                     \n"
         "mov r1, r2                     \n"
         "bl SetNextThreadForCore        \n"
@@ -150,19 +174,7 @@ extern "C" ITCM_FUNCTION void PendSV_Handler()
         /* Set up new task MPU, can discard R0 now */
 #if GK_USE_MPU
         "add r0, r1, #" xstr(GK_TSS_MPUSS_OFFSET) "           \n"     // R0 = &mpuss[0]
-
-        /* test r2 here because it is clobbered by MPU_LOAD_4() */
-        "cbz r2, .L4%=              \n"
-        MPU_LOAD_4()
-        MPU_LOAD_4()
-        "b .L5%=                    \n"
-        ".L4%=:                     \n"
-        MPU_LOAD_4()
-        MPU_LOAD_4()
-        MPU_LOAD_4()
-        MPU_LOAD_4()
-        ".L5%=:                     \n"
-
+        MPU_LOAD_16()
 #endif
 
         /* Load saved tss registers */

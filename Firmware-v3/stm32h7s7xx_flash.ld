@@ -39,7 +39,7 @@ _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 __FLASH_BEGIN  = 0x08000000;
-__FLASH_SIZE   = 0x000100000;
+__FLASH_SIZE   = 0x00010000;
 
 /* Memories definition */
 MEMORY
@@ -101,6 +101,17 @@ SECTIONS
     _etext = .;        /* define a global symbols at end of code */
   } >XSPI_FLASH
 
+  /* Boot-time constant data */
+  .flash_rodata :
+  {
+    . = ALIGN(4);
+    *(.flash_rodata)
+    *(.flash_rodata*)
+    *(.flash_string)
+    *(.flash_string*)
+    . = ALIGN(4);
+  } >FLASH
+
   /* Constant data into "FLASH" Rom type memory */
   .rodata :
   {
@@ -108,7 +119,7 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >FLASH
+  } >XSPI_FLASH
 
   .ARM.extab (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -171,7 +182,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >AXISRAM AT> FLASH
+  } >AXISRAM4 AT> FLASH
 
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
@@ -187,7 +198,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >AXISRAM
+  } >AXISRAM4
 
   . = ALIGN(4);
   .dtcm_bss (NOLOAD) :
@@ -228,6 +239,11 @@ SECTIONS
   } >ITCM AT> XSPI_FLASH
   _sitcm_flash = LOADADDR(.itcm);
 
+  .fb 0x90000000 (NOLOAD) :
+  {
+    . = . + 0x400000;
+  } >XSPI_RAM
+
   .sdram (NOLOAD) :
   {
     . = ALIGN(4);
@@ -252,7 +268,7 @@ SECTIONS
     *(.net_bss)
     *(.net_bss*)
     _elwip_data = .;
-  } >AXISRAM
+  } >XSPI_RAM
   _slwip_flash = LOADADDR(.net_data);
 
   .sram4 :

@@ -2,8 +2,8 @@
 #include "SEGGER_RTT.h"
 #include "gk_conf.h"
 
-static const constexpr pin I2C2_SDA { GPIOF, 0, 4 };
-static const constexpr pin I2C2_SCL { GPIOF, 1, 4 };
+INTFLASH_RDATA static const constexpr pin I2C2_SDA { GPIOF, 0, 4 };
+INTFLASH_RDATA static const constexpr pin I2C2_SCL { GPIOF, 1, 4 };
 
 #define i2c I2C2
 
@@ -217,14 +217,26 @@ INTFLASH_FUNCTION static volatile char *cur_buf_p(const i2c_msg *msg, unsigned i
         return (char *)&msg->regaddr_buf[n];
 }
 
+INTFLASH_STRING static char msg_i2c_init_starting[] = "i2c: init starting\n";
+INTFLASH_STRING static char msg_i2c_reset_complete[] = "i2c: init complete\n";
+INTFLASH_STRING static char msg_i2c_berr[] = "i2c: BERR\n";
+INTFLASH_STRING static char msg_i2c_arlo[] = "i2c: ARLO\n";
+INTFLASH_STRING static char msg_i2c_nackf[] = "i2c: NACKF\n";
+INTFLASH_STRING static char msg_i2c_ack_for_read[] = "i2c: ACK for read\n";
+INTFLASH_STRING static char msg_i2c_read_success[] = "i2c: read success\n";
+INTFLASH_STRING static char msg_i2c_read_early_finish[] = "i2c: early finish during read\n";
+INTFLASH_STRING static char msg_i2c_ack_for_write[] = "i2c: ACK for write\n";
+INTFLASH_STRING static char msg_i2c_write_success[] = "i2c: write success\n";
+INTFLASH_STRING static char msg_i2c_write_early_finish[] = "i2c: early finish during write\n";
+
 INTFLASH_FUNCTION static int i2c_dotfer()
 {
     // just do basic polling transfer
     if(!i2c_init)
     {
-        SEGGER_RTT_printf(0, "i2c init starting\n");
+        SEGGER_RTT_printf(0, msg_i2c_init_starting);
         reset_i2c();
-        SEGGER_RTT_printf(0, "i2c reset complete\n");
+        SEGGER_RTT_printf(0, msg_i2c_reset_complete);
         i2c_init = true;
     }
 
@@ -245,26 +257,26 @@ INTFLASH_FUNCTION static int i2c_dotfer()
         // fail
         if(i2c->ISR & I2C_ISR_BERR)
         {
-            SEGGER_RTT_printf(0, "i2c: BERR\n");
+            SEGGER_RTT_printf(0, msg_i2c_berr);
             i2c_init = false;
             return -1;
         }
         else if(i2c->ISR & I2C_ISR_ARLO)
         {
-            SEGGER_RTT_printf(0, "i2c: ARLO\n");
+            SEGGER_RTT_printf(0, msg_i2c_arlo);
             i2c_init = false;
             return -1;
         }
         else
         {
-            SEGGER_RTT_printf(0, "i2c: NACF\n");
+            SEGGER_RTT_printf(0, msg_i2c_nackf);
             i2c->ICR = I2C_ICR_NACKCF;
             return -1;
         }
     }
     else if(cur_i2c_msg.is_read)
     {
-        SEGGER_RTT_printf(0, "i2c: ACK for read\n");
+        SEGGER_RTT_printf(0, msg_i2c_ack_for_read);
 
         bool cont = true;
         while(cont)
@@ -284,7 +296,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
                     //{
                     //    cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                     //}
-                    SEGGER_RTT_printf(0, "i2c: read success\n");
+                    SEGGER_RTT_printf(0, msg_i2c_read_success);
                     return n_xmit;
                 }
                 else if(i2c->ISR & I2C_ISR_TCR)
@@ -297,7 +309,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
                 else
                 {
                     {
-                        SEGGER_RTT_printf(0, "i2c: early finish\n");
+                        SEGGER_RTT_printf(0, msg_i2c_read_early_finish);
                     }
                     // early finish
                     cont = false;
@@ -308,7 +320,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
     }
     else
     {
-        SEGGER_RTT_printf(0, "i2c: ACK for write\n");
+        SEGGER_RTT_printf(0, msg_i2c_ack_for_write);
         bool cont = true;
         while(cont)
         {
@@ -322,7 +334,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
                 {
                     //CriticalGuard cg(s_rtt);
                     //klog("i2c: NACKF during write phase\n");
-                    SEGGER_RTT_printf(0, "i2c: NACKF during write phase\n");
+                    SEGGER_RTT_printf(0, msg_i2c_nackf);
                 }
                 if((cur_i2c_msg.restart_after_write && (i2c->ISR & I2C_ISR_TC)) ||
                     (i2c->ISR & I2C_ISR_STOPF))
@@ -333,7 +345,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
                     //{
                     //    cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                     //}
-                    SEGGER_RTT_printf(0, "i2c: write success\n");
+                    SEGGER_RTT_printf(0, msg_i2c_write_success);
                     return n_xmit;
                 }
                 else if(i2c->ISR & I2C_ISR_TCR)
@@ -348,7 +360,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
                     {
                         //CriticalGuard cg(s_rtt);
                         //klog("i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
-                        SEGGER_RTT_printf(0, "i2c: early write finish\n");
+                        SEGGER_RTT_printf(0, msg_i2c_write_early_finish);
                     }
                     // early finish
                     cont = false;

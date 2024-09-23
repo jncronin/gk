@@ -212,6 +212,10 @@ extern "C" void init_memblk()
         (obw2sr & FLASH_OBW2SR_ECC_ON_SRAM) ? "" : " and 0x24060000 - 0x24072000 (72 kbytes)",
         0x30000000U + ahbsram_size, ahbsram_size/1024);
 
+    if(eaxisram < axisram_base) eaxisram = axisram_base;
+    if(eaxisram4 < 0x24060000U) eaxisram4 = 0x24060000U;
+    if(edtcm < 0x20000000U) edtcm = 0x20000000U;
+    if(esdram < 0x90000000U) esdram = 0x90000000U;
 
     add_memory_region(eaxisram, axisram_end - eaxisram, MemRegionType::AXISRAM);
     if(!(obw2sr & FLASH_OBW2SR_ECC_ON_SRAM))
@@ -221,7 +225,6 @@ extern "C" void init_memblk()
     add_memory_region(esram, 0x30008000 - esram, MemRegionType::SRAM);
     add_memory_region(esdram, GK_SDRAM_BASE + GK_SDRAM_SIZE - esdram, MemRegionType::SDRAM);
     add_memory_region(eitcm, itcm_size - eitcm, MemRegionType::ITCM);
-    //add_memory_region(0x38000000UL, 0x10000);   // SRAM4 - handled separately by malloc interface
 
     inited = true;
 }

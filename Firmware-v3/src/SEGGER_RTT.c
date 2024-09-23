@@ -311,7 +311,7 @@ static unsigned char _ActiveTerminal;
 
 static void _DoInit(void) {
   volatile SEGGER_RTT_CB* p;   // Volatile to make sure that compiler cannot change the order of accesses to the control block
-  static const char _aInitStr[] = "\0\0\0\0\0\0TTR REGGES";  // Init complete ID string to make sure that things also work if RTT is linked to a no-init memory area
+  __attribute__((section(".flash_string"))) static const char _aInitStr[] = "\0\0\0\0\0\0TTR REGGES";  // Init complete ID string to make sure that things also work if RTT is linked to a no-init memory area
   unsigned i;
   //
   // Initialize control block
