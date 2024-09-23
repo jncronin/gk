@@ -194,6 +194,8 @@ extern "C" int init_xspi()
     XSPIM->CR = 0;  // direct mode
 
     /* XSPI1 - dual-octal HyperBus 2x 64MByte, 200 MHz
+        We can only run at ~133 due to STM32 restrictions (dual octal without DQS)
+         - this allows latency of 2x5 clk
         Default:
             - initial latency 7 clk
             - fixed latency - 2 times initial
@@ -204,10 +206,10 @@ extern "C" int init_xspi()
         XSPI_CR_DMM;
     XSPI1->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
-        (1UL << XSPI_DCR1_CSHT_Pos) |
+        (0UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
-    XSPI1->DCR4 = 800 - 4 - 1;      // tCSM=4us/200 MHz
+    XSPI1->DCR4 = 532 - 4 - 1;      // tCSM=4us/133 MHz
     XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |
         (1UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -226,7 +228,7 @@ extern "C" int init_xspi()
         (4UL << XSPI_WPCCR_DMODE_Pos) |
         XSPI_WPCCR_DDTR | XSPI_WPCCR_ADDTR;
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->HLCR = (7UL << XSPI_HLCR_TRWR_Pos) |
+    XSPI1->HLCR = (5UL << XSPI_HLCR_TRWR_Pos) |
         (7UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
 
@@ -266,8 +268,14 @@ extern "C" int init_xspi()
     uint32_t new_cr1 = 0xff81ff81U;
     xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
 
-    uint32_t new_cr0 = 0x8f288f28U;
+    uint32_t new_cr0 = 0x8f088f08U; // hybrid burst, 128 byte burst, 5 initial latency, fixed latency
     xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
+
+    // set new latency
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->HLCR = (5UL << XSPI_HLCR_TRWR_Pos) |
+        (5UL << XSPI_HLCR_TACC_Pos) |
+        XSPI_HLCR_LM;
 
     xspi_ind_read(XSPI1, 4, 0x800U*4, &cr0);
     xspi_ind_read(XSPI1, 4, 0x801U*4, &cr1);
