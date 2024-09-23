@@ -4,7 +4,7 @@
 #include "logger.h"
 
 #define GK_ENABLE_NETWORK           0
-#define GK_ENABLE_USB               1
+#define GK_ENABLE_USB               0
 #define GK_ENABLE_USB_MASS_STORAGE  1
 #define GK_ENABLE_LWEXT4_WRITE      0
 #define GK_ENABLE_TEST_THREADS      0

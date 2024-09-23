@@ -23,7 +23,7 @@ Process p_supervisor;
 SRAM4_DATA std::vector<std::string> empty_string_vector;
 SRAM4_DATA MemRegion memblk_persistent_log;
 
-SRAM4_DATA pid_t pid_gkmenu = 0;
+extern pid_t pid_gkmenu;
 
 extern uint32_t _tls_pointers[2];
 extern uint64_t _cur_ms;
@@ -34,6 +34,7 @@ SRAM4_DATA std::vector<std::string> gk_env;
 
 
 void *idle_thread(void *p);
+void *init_thread(void *p);
 
 int main()
 {
@@ -67,6 +68,9 @@ int main()
 
     init_sd();
     init_ext4();
+
+    auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
+    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
 
     // Prepare systick
     SysTick->CTRL = 0;
