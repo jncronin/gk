@@ -176,12 +176,12 @@ int Init (unsigned long adr, unsigned long clk, unsigned long fnc)
     XSPI2_RESET.clear();
     XSPI2_RESET.set_as_output();
 
-    for(int i = 0; i < 1000000; i++)
+    for(int i = 0; i < 100000; i++)
     {
         __DMB();
     }
     XSPI2_RESET.set();
-    for(int i = 0; i < 1000000; i++)
+    for(int i = 0; i < 100000; i++)
     {
         __DMB();
     }
@@ -191,6 +191,7 @@ int Init (unsigned long adr, unsigned long clk, unsigned long fnc)
     (void)RCC->AHB5ENR;
     RCC->AHB5RSTR = RCC_AHB5RSTR_XSPI2RST | RCC_AHB5RSTR_XSPIMRST;
     (void)RCC->AHB5RSTR;
+    __DMB();
     RCC->AHB5RSTR = 0;
     (void)RCC->AHB5RSTR;
 
@@ -207,7 +208,9 @@ int Init (unsigned long adr, unsigned long clk, unsigned long fnc)
         write buffer programming - 512 bytes at a time on 512 byte boundary
         see datasheet p31 for write flowchart
     */
-    XSPI2->CR = (3UL << XSPI_CR_FMODE_Pos) |
+    unsigned long presc = clk / 166000000U;
+
+    XSPI2->CR = (0UL << XSPI_CR_FMODE_Pos) |
         XSPI_CR_TCEN | XSPI_CR_EN;
     XSPI2->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
     XSPI2->DCR1 = (4UL << XSPI_DCR1_MTYP_Pos) |
@@ -216,7 +219,7 @@ int Init (unsigned long adr, unsigned long clk, unsigned long fnc)
     XSPI2->DCR3 = 0;    // ?max burst length
     XSPI2->DCR4 = 0;    // no refresh needed
     XSPI2->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |                          
-        (0UL << XSPI_DCR2_PRESCALER_Pos); // TODO: use PLL2, 166 MHz and passthrough (/12, x250, /3)
+        (presc << XSPI_DCR2_PRESCALER_Pos); // TODO: use PLL2, 166 MHz and passthrough (/12, x250, /3)
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
         //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
@@ -247,15 +250,18 @@ int Init (unsigned long adr, unsigned long clk, unsigned long fnc)
     // Exit ID mode
     xspi_ind_write16(XSPI2, 0, 0xff);
 
-    // Return to memory mapped mode
-    while(XSPI2->SR & XSPI_SR_BUSY);
-    XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
-        (3U << XSPI_CR_FMODE_Pos);
+    if(fnc == 3) // verify
+    {
+        // Return to memory mapped mode
+        while(XSPI2->SR & XSPI_SR_BUSY);
+        XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
+            (3U << XSPI_CR_FMODE_Pos);
+    }
 
     if(manf_id != 0x0001)
-        return -1;
+        return 1;
     if(dev_id != 0x007e)
-        return -2;
+        return 1;
 
     return 0;
 }
@@ -263,6 +269,11 @@ int Init (unsigned long adr, unsigned long clk, unsigned long fnc)
 int UnInit(unsigned long fnc)
 {
     RCC->AHB5ENR &= ~RCC_AHB5ENR_XSPI2EN;
+    (void)RCC->AHB5ENR;
+    RCC->AHB5RSTR = RCC_AHB5RSTR_XSPI2RST;
+    (void)RCC->AHB5RSTR;
+    RCC->AHB5RSTR = 0;
+    (void)RCC->AHB5RSTR;
     return 0;
 }
 
@@ -297,9 +308,9 @@ int EraseSector(unsigned long addr)
     xspi_ind_write16(XSPI2, 0x555*2, 0x71);
 
     // Return to memory mapped mode
-    while(XSPI2->SR & XSPI_SR_BUSY);
-    XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
-        (3U << XSPI_CR_FMODE_Pos);
+    //while(XSPI2->SR & XSPI_SR_BUSY);
+    //XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
+    //    (3U << XSPI_CR_FMODE_Pos);
 
     // check for error
     if(sr == 0xffff)
@@ -353,9 +364,9 @@ static int pp_int(unsigned long devaddr, size_t n, const unsigned char *buf)
     xspi_ind_write16(XSPI2, 0x555*2, 0x71);
 
     // Return to memory mapped mode
-    while(XSPI2->SR & XSPI_SR_BUSY);
-    XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
-        (3U << XSPI_CR_FMODE_Pos);
+    //while(XSPI2->SR & XSPI_SR_BUSY);
+    //XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
+    //    (3U << XSPI_CR_FMODE_Pos);
 
     // check for error
     if(sr == 0xffff)
@@ -437,9 +448,9 @@ int EraseChip()
     xspi_ind_write16(XSPI2, 0x555*2, 0x71);
 
     // Return to memory mapped mode
-    while(XSPI2->SR & XSPI_SR_BUSY);
-    XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
-        (3U << XSPI_CR_FMODE_Pos);
+    //while(XSPI2->SR & XSPI_SR_BUSY);
+    //XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
+    //   (3U << XSPI_CR_FMODE_Pos);
 
     // check for error
     if(sr == 0xffff)
