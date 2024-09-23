@@ -17,20 +17,13 @@ class Scheduler
 #endif
 
     protected:
-        template <class T> struct locked_val
-        {
-            T v;
-            Spinlock m;
-        };
         struct IndexedThreadVector
         {
-            SRAM4Vector<Thread *> v;
+            std::vector<Thread *> v;
             int index = -1;
         };
-        using LockedIndexedThreadVector = locked_val<IndexedThreadVector>;
-        using LockedThreadVector = locked_val<SRAM4Vector<Thread *>>;
 
-        LockedIndexedThreadVector tlist[npriorities];
+        IndexedThreadVector tlist[npriorities];
 
         /* Follows the chain of 'blocking_on' to allow priority escalation */
         Thread *get_blocker(Thread *t);
@@ -63,8 +56,7 @@ class Scheduler
 
         void ChangePriority(Thread *t, int old_priority, int new_priority);
 
-        using LockedThread = locked_val<Thread *>;
-        LockedThread current_thread[ncores];
+        Thread *current_thread[ncores];
 
         bool scheduler_running[ncores];
 
@@ -93,9 +85,17 @@ inline Scheduler::LockedThread &current_thread(int coreid) { return scheds[corei
 #else
 extern Scheduler sched;
 inline Scheduler &s() { return sched; }
+
+#if GK_DUAL_CORE
 inline bool &scheduler_running() { return s().scheduler_running[GetCoreID()]; }
 inline Scheduler::LockedThread &current_thread() { return s().current_thread[GetCoreID()]; }
 inline Scheduler::LockedThread &current_thread(int coreid) { return sched.current_thread[coreid]; }
+#else
+inline bool &scheduler_running() { return s().scheduler_running[0]; }
+inline Thread * &current_thread() { return s().current_thread[0]; }
+inline Thread * &current_thread(int coreid) { return s().current_thread[0]; }
+#endif
+
 #endif
 
 static inline void Yield()

@@ -29,7 +29,6 @@ struct audio_conf
     bool enabled = false;
 
     MemRegion mr_sound = InvalidMemregion();
-    Spinlock sl_sound;
 };
 
 class Process
@@ -37,12 +36,10 @@ class Process
     public:
         Process();
         ~Process();
-
-        Spinlock sl;
         
         std::string name;
         std::string window_title;
-        SRAM4Vector<Thread *> threads;
+        std::vector<Thread *> threads;
 
         MemRegion heap;
         MemRegion code_data;
@@ -165,8 +162,6 @@ class ProcessList
         };
 
         std::vector<pval> pvals;
-
-        Spinlock sl;
 };
 
 extern ProcessList proc_list;

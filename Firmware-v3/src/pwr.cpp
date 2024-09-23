@@ -1,7 +1,8 @@
 #include "stm32h7rsxx.h"
 #include "i2c.h"
+#include "gk_conf.h"
 
-extern "C" int pwr_disable_regulators()
+extern "C" INTFLASH_FUNCTION int pwr_disable_regulators()
 {
     // PWR init
     auto pwr_csr2 = PWR->CSR2;
@@ -12,7 +13,7 @@ extern "C" int pwr_disable_regulators()
     return 0;
 }
 
-int pwr_set_vos_high()
+INTFLASH_FUNCTION int pwr_set_vos_high()
 {
     // boost VCORE
     uint8_t dvb2a = 0;

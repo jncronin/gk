@@ -2,6 +2,7 @@
 #include "pwr.h"
 #include "clocks.h"
 #include "osmutex.h"
+#include "gk_conf.h"
 
 extern uint64_t _cur_ms;
 extern struct timespec toffset;
@@ -9,7 +10,7 @@ extern struct timespec toffset;
 static void enable_backup_domain();
 time_t timegm (struct tm* tim_p);
 
-extern "C" void init_clocks()
+extern "C" INTFLASH_FUNCTION void init_clocks()
 {
     /* Clock syscfg/sbs */
     RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
@@ -138,7 +139,7 @@ extern "C" void init_clocks()
         (3U << RCC_CCIPR1_OTGFSSEL_Pos) |               // OTGFS from USBPHYC
         (0U << RCC_CCIPR1_USBPHYCSEL_Pos) |             // USBPHY from HSE
         (0xaU << RCC_CCIPR1_USBREFCKSEL_Pos) |          // USBPHY is 24 MHz
-        (2U << RCC_CCIPR1_XSPI2SEL_Pos) |               // XSPI2 from PLL2T=160MHz
+        (1U << RCC_CCIPR1_XSPI2SEL_Pos) |               // XSPI2 from PLL2T=160MHz
         (1U << RCC_CCIPR1_XSPI1SEL_Pos) |               // XSPI1 from PLL2S=400MHz
         (1U << RCC_CCIPR1_SDMMC12SEL_Pos);              // SDMMC from PLL2T=160MHz
     RCC->CCIPR2 = (1U << RCC_CCIPR2_LPTIM1SEL_Pos) |    // LPTIM1 = PLL2P=32MHz
@@ -171,13 +172,18 @@ extern "C" void init_clocks()
     LPTIM1->CR = LPTIM_CR_ENABLE | LPTIM_CR_CNTSTRT;
 }
 
-extern "C" void LPTIM1_IRQHandler()
+extern "C" INTFLASH_FUNCTION void LPTIM1_IRQHandler()
 {
     CriticalGuard cg;
     // do it this way round or the IRQ is still active on IRQ return
     LPTIM1->ICR = LPTIM_ICR_ARRMCF;
     _cur_ms++;
     __DMB();
+}
+
+kernel_time clock_cur()
+{
+    return kernel_time::from_us(clock_cur_us());
 }
 
 uint64_t clock_cur_ms()
@@ -216,7 +222,7 @@ uint64_t clock_cur_us()
     return ret;
 }
 
-void delay_ms(uint64_t nms)
+INTFLASH_FUNCTION void delay_ms(uint64_t nms)
 {
     auto await_val = _cur_ms + nms + 1;
     while(_cur_ms < await_val)
@@ -225,7 +231,41 @@ void delay_ms(uint64_t nms)
     }
 }
 
-void enable_backup_domain()
+void clock_get_now(struct timespec *tp)
+{
+    clock_get_timebase(tp);
+    auto curt = clock_cur_us();
+
+    auto cur_ns = (curt % 1000000ULL) * 1000ULL;
+    auto cur_s = curt / 1000000ULL;
+
+    tp->tv_nsec += cur_ns;
+    while(tp->tv_nsec >= 1000000000)
+    {
+        tp->tv_sec++;
+        tp->tv_nsec -= 1000000000;
+    }
+    tp->tv_sec += cur_s;
+}
+
+uint64_t clock_timespec_to_ms(const struct timespec &tp)
+{
+    struct timespec tzero;
+    clock_get_timebase(&tzero);
+
+    auto ns_diff = tp.tv_nsec - tzero.tv_nsec;
+    auto s_diff = tp.tv_sec - tzero.tv_sec;
+
+    while(ns_diff < 0)
+    {
+        s_diff--;
+        ns_diff += 1000000000;
+    }
+    return static_cast<uint64_t>(ns_diff / 1000000) +
+        static_cast<uint64_t>(s_diff * 1000);
+}
+
+INTFLASH_FUNCTION void enable_backup_domain()
 {
     /* There is rather complex nomeclature around the backup domain.  In terms of power supplies:
         VBAT is external power from battery
@@ -269,11 +309,13 @@ void enable_backup_domain()
         RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
         (void)RCC->AHB4ENR;
 
-        timespec cts;
-        if(clock_get_timespec_from_rtc(&cts) == 0)
-        {
-            clock_set_timebase(&cts);
-        }
+        // TODO: do this separately in a function that is in XSPI_FLASH
+
+        //timespec cts;
+        //if(clock_get_timespec_from_rtc(&cts) == 0)
+        //{
+        //    clock_set_timebase(&cts);
+        //}
         return;
     }
 
@@ -297,9 +339,10 @@ void enable_backup_domain()
 
     // Set up basic RTC time - changed later by network time or user
 
+    // TODO: do this in a separate function that is in XSPI_FLASH
     // For now, default to the time of writing this file
-    timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
-    clock_set_rtc_from_timespec(&ct);
+    //timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
+    //clock_set_rtc_from_timespec(&ct);
 }
 
 static constexpr unsigned int to_bcd(unsigned int val)
@@ -368,7 +411,6 @@ int clock_get_timespec_from_rtc(timespec *ts)
     ts->tv_nsec = 0;
     ts->tv_sec = timegm(&ct);
     
-
     return 0;
 }
 

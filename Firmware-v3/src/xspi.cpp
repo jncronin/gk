@@ -2,6 +2,7 @@
 #include "pins.h"
 #include "clocks.h"
 #include "SEGGER_RTT.h"
+#include "gk_conf.h"
 
 static const constexpr pin XSPI_PINS[] =
 {
@@ -48,7 +49,7 @@ uint32_t id1 = 0;
 uint32_t cr0 = 0;
 uint32_t cr1 = 0;
 
-template <typename T> static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
+template <typename T> INTFLASH_FUNCTION static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
 {
     static_assert(sizeof(T) <= 4);
 
@@ -85,7 +86,7 @@ template <typename T> static int xspi_ind_write(XSPI_TypeDef *instance, size_t n
     return (int)ret;
 }
 
-template <typename T> static int xspi_ind_read(XSPI_TypeDef *instance, size_t nbytes, size_t addr, T *d)
+template <typename T> INTFLASH_FUNCTION static int xspi_ind_read(XSPI_TypeDef *instance, size_t nbytes, size_t addr, T *d)
 {
     static_assert(sizeof(T) <= 4);
 
@@ -128,7 +129,13 @@ template <typename T> static int xspi_ind_read(XSPI_TypeDef *instance, size_t nb
     return (int)ret;
 }
 
-static uint16_t xspi_ind_read16(XSPI_TypeDef *instance, size_t addr)
+// Ensure these go in intflash
+template INTFLASH_FUNCTION static int xspi_ind_write<uint16_t>(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const uint16_t *d);
+template INTFLASH_FUNCTION static int xspi_ind_write<uint32_t>(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const uint32_t *d);
+template INTFLASH_FUNCTION static int xspi_ind_read<uint16_t>(XSPI_TypeDef *instance, size_t nbytes, size_t addr, uint16_t *d);
+template INTFLASH_FUNCTION static int xspi_ind_read<uint32_t>(XSPI_TypeDef *instance, size_t nbytes, size_t addr, uint32_t *d);
+
+INTFLASH_FUNCTION static uint16_t xspi_ind_read16(XSPI_TypeDef *instance, size_t addr)
 {
     uint16_t ret;
     if(xspi_ind_read(instance, 2, addr, &ret) != 2)
@@ -137,18 +144,18 @@ static uint16_t xspi_ind_read16(XSPI_TypeDef *instance, size_t addr)
         return ret;
 }
 
-static int xspi_ind_write16(XSPI_TypeDef *instance, size_t addr, uint16_t v)
+INTFLASH_FUNCTION static int xspi_ind_write16(XSPI_TypeDef *instance, size_t addr, uint16_t v)
 {
     return xspi_ind_write(instance, 2, addr, &v);
 }
 
-[[maybe_unused]] static uint32_t xspi_read_status()
+[[maybe_unused]] INTFLASH_FUNCTION static uint32_t xspi_read_status()
 {
     xspi_ind_write16(XSPI2, 0x555*2, 0x70);
     return xspi_ind_read16(XSPI2, 0);
 }
 
-extern "C" int init_xspi()
+extern "C" INTFLASH_FUNCTION int init_xspi()
 {
     // enable CSI for compensation cell
     RCC->CR |= RCC_CR_CSION;
@@ -305,6 +312,7 @@ extern "C" int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
 
     /* XSPI2 - octal HyperBus 64 MByte, 166 MHz
+        for some reason DQSE doens't work, therefore slow to 133 MHz as per H7 datasheet
         read latency (initial) 16 clk for 166 MHz, no additional
         no write latency
         256 kbyte sectors
@@ -320,8 +328,8 @@ extern "C" int init_xspi()
         (25UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI2->DCR3 = 0;    // ?max burst length
     XSPI2->DCR4 = 0;    // no refresh needed
-    XSPI2->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |                          
-        (0UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 160MHz
+    XSPI2->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |           // TODO enable hybrid wrap on device               
+        (1UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 266MHz /2
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
         //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
