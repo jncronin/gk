@@ -280,6 +280,8 @@ SECTIONS
     *(.sram4_rdata*)
     *(.sram4)
     *(.sram4*)
+    *(.sdt_data)
+    *(.sdt_data*)
     _edata4 = .;
   } >AXISRAM4 AT> FLASH
   _ssdata4_flash = LOADADDR(.sram4);

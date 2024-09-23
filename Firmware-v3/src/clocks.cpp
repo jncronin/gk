@@ -69,13 +69,13 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     /* PLL2:
         P -> LPTIM1 @ 32 MHz
         Q -> SPI4,5,6 @ 200 MHz
-        S -> XSPI1 @ 266 MHz (then prescaled/2 - max XSPI without DQS is 135 MHz)
-        T -> XSPI2 and SD @ 160 MHz */
+        S -> XSPI1,2 @ 266 MHz (then prescaled/2 - max XSPI without DQS is 135 MHz)
+        T -> SD @ 200 MHz */
     RCC->PLL2DIVR1 = (1U << RCC_PLL2DIVR1_DIVR_Pos) |
         (3U << RCC_PLL2DIVR1_DIVQ_Pos) |
         (24U << RCC_PLL2DIVR1_DIVP_Pos) |
         (99U << RCC_PLL2DIVR1_DIVN_Pos);
-    RCC->PLL2DIVR2 = (4U << RCC_PLL2DIVR2_DIVT_Pos) |
+    RCC->PLL2DIVR2 = (3U << RCC_PLL2DIVR2_DIVT_Pos) |
         (2U << RCC_PLL2DIVR2_DIVS_Pos);
 
     /* PLL3:
