@@ -174,7 +174,11 @@ extern "C" void PendSV_Handler()
         /* Set up new task MPU, can discard R0 now */
 #if GK_USE_MPU
         "add r0, r1, #" xstr(GK_TSS_MPUSS_OFFSET) "           \n"     // R0 = &mpuss[0]
-        MPU_LOAD_16()
+        //MPU_LOAD_16()
+        MPU_LOAD_4()
+        MPU_LOAD_4()
+        MPU_LOAD_4()
+        MPU_LOAD_4()
 #endif
 
         /* Load saved tss registers */
