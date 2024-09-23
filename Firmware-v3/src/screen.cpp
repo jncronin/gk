@@ -539,9 +539,7 @@ void init_screen()
 
     // switch on backlight - TIM2 CH4 GPIOA11
     constexpr const pin LED_BACKLIGHT { GPIOA, 5, 1 };
-    //LED_BACKLIGHT.set_as_af();
-    LED_BACKLIGHT.set_as_output();
-    LED_BACKLIGHT.set();
+    LED_BACKLIGHT.set_as_af();
 
     RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
     (void)RCC->APB1ENR1;
