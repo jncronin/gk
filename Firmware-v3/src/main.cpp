@@ -17,53 +17,58 @@ int main()
     SCB_InvalidateICache();
     SCB_EnableICache();
     SCB_EnableDCache();
+
+    // calculate total memory
+    unsigned int itcm_size, dtcm_size, axisram_base, axisram_end, axisram_size, ahbsram_size;
+    auto obw2sr = FLASH->OBW2SR;
+    auto dtcm_axi_share = (obw2sr & FLASH_OBW2SR_DTCM_AXI_SHARE_Msk) >>
+        FLASH_OBW2SR_DTCM_AXI_SHARE_Pos;
+    auto itcm_axi_share = (obw2sr & FLASH_OBW2SR_ITCM_AXI_SHARE_Msk) >>
+        FLASH_OBW2SR_ITCM_AXI_SHARE_Pos;
+    switch(dtcm_axi_share)
+    {
+        case 1:
+            dtcm_size = 128*1024;
+            axisram_end = 0x24050000;
+            break;
+        case 2:
+            dtcm_size = 192*1024;
+            axisram_end = 0x24040000;
+            break;
+        default:
+            dtcm_size = 64*1024;
+            axisram_end = 0x24060000;
+            break;
+    }
+    switch(itcm_axi_share)
+    {
+        case 1:
+            itcm_size = 128*1024;
+            axisram_base = 0x24010000;
+            break;
+        case 2:
+            itcm_size = 192*1024;
+            axisram_base = 0x24020000;
+            break;
+        default:
+            itcm_size = 64*1024;
+            axisram_base = 0x24000000;
+            break;
+    }
+    axisram_size = axisram_end - axisram_base;
+    ahbsram_size = 0x8000;
+
+    SEGGER_RTT_printf(0, "memory_map:\n"
+        "  ITCM:    0x00000000 - 0x%08x (%d kbytes)\n"
+        "  DTCM:    0x20000000 - 0x%08x (%d kbytes)\n"
+        "  AXISRAM: 0x%08x - 0x%08x (%d kbytes)%s\n"
+        "  AHBSRAM: 0x30000000 - 0x%08x (%d kbytes)\n",
+        itcm_size, itcm_size/1024,
+        0x20000000U + dtcm_size, dtcm_size/1024,
+        axisram_base, axisram_end, axisram_size/1024,
+        (obw2sr & FLASH_OBW2SR_ECC_ON_SRAM) ? "" : " and 0x24060000 - 0x24072000 (72 kbytes)",
+        0x30000000U + ahbsram_size, ahbsram_size/1024);
     
-    *(volatile uint32_t *)0x90000000 = 0xdeadbeef;
-    *(volatile uint32_t *)0x90000004 = 0xaabbccdd;
-    *(volatile uint32_t *)0x90000008 = 0x11223344;
-    test_val = *(volatile uint32_t *)0x90000000;
-
-    memcpy(test_range, (void *)0x90000000, 4*256);
-    CTP_NRESET.set_as_output();
-    CTP_NRESET.clear();
-    for(int i = 0; i < 100000; i++) __DMB();
-
-    //i2c_test();
-
-    uint8_t dvb4a = 0;
-    auto i2c_ret = i2c_register_read(0x78 >> 1, (uint8_t)0x0a, &dvb4a, 1);
-    SEGGER_RTT_printf(0, "pwr: ret: %d, dvb4a: %d\n", i2c_ret, dvb4a);
-
-    if(i2c_ret == 1)
-    {
-        dvb4a &= ~0x1fU;
-        dvb4a |= 0x19U;     // set VCCA to default
-
-        i2c_ret = i2c_register_write(0x78 >> 1, (uint8_t)0x0a, &dvb4a, 1);
-        SEGGER_RTT_printf(0, "pwr: ret: %d, dvb4a: %d\n", i2c_ret, dvb4a);
-    }
-
-    // check current vcore
-    for(int i = 0; i < 1000000; i++) __DMB();
-    SEGGER_RTT_printf(0, "PWR->SR1: %x\n", PWR->SR1);
-
-    // boost VCORE
-    uint8_t dvb2a = 0;
-    i2c_ret = i2c_register_read(0x78 >> 1, (uint8_t)0x0e, &dvb2a, 1);
-    if(i2c_ret == 1)
-    {
-        dvb2a &= ~0x1fU;
-        dvb2a |= 0x1fU;
-
-        i2c_register_write(0x78 >> 1, (uint8_t)0x0e, &dvb2a, 1);
-
-        // check for success
-        PWR->CSR4 |= PWR_CSR4_VOS;
-        for(int i = 0; i < 1000000; i++) __DMB();
-        SEGGER_RTT_printf(0, "PWR->SR1: %x\n", PWR->SR1);
-        SEGGER_RTT_printf(0, "PWR->CSR2: %x\n", PWR->CSR2);
-    }
-
     while(true);
 
     return 0;
