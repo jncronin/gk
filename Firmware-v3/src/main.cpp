@@ -10,17 +10,11 @@ uint32_t test_val;
 uint32_t test_range[256];
 
 static const constexpr pin CTP_NRESET { GPIOC, 0 };
-extern "C" void init_xspi();
+void system_init_cm7();
 
 int main()
 {
-    SCB_InvalidateDCache();
-    SCB_InvalidateICache();
-    SCB_EnableICache();
-    SCB_EnableDCache();
-
-    //system_init_cm7();
-
+    system_init_cm7();
 
     init_memblk();
 
