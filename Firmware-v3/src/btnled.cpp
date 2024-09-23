@@ -25,7 +25,7 @@ void init_btnled()
 
     /* Timer clocks on APB2 run between 200 and 300 MHz depending on CPU speed
         We want something in the 5-20 kHz range
-        For ARR = 4096, we need a prescaler of 2 to give 8.1 kHz to 12.2 kHz
+        For ARR = 4096, we need a prescaler of 6 to give 8.1 kHz to 12.2 kHz
             Slowed down a bit due to some RC delay on ULN2003 */
     TIM1->CCMR1 = (0UL << TIM_CCMR1_CC1S_Pos) |
         TIM_CCMR1_OC1PE |

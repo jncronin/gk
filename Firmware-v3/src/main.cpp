@@ -7,6 +7,7 @@
 #include "process.h"
 #include "sd.h"
 #include "ext4_thread.h"
+#include "screen.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -68,6 +69,8 @@ int main()
 
     init_sd();
     init_ext4();
+    init_screen();
+    screen_set_frame_buffer((void*)0x90000000, (void*)0x90200000);
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
@@ -79,7 +82,8 @@ int main()
 
     BKPT();
 
-    s().StartForCurrentCore();
+    //s().StartForCurrentCore();
+    while(true);
 
     return 0;
 }
