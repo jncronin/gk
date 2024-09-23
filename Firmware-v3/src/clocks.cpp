@@ -7,6 +7,7 @@ extern uint64_t _cur_ms;
 extern struct timespec toffset;
 
 static void enable_backup_domain();
+time_t timegm (struct tm* tim_p);
 
 extern "C" void init_clocks()
 {
@@ -365,7 +366,8 @@ int clock_get_timespec_from_rtc(timespec *ts)
 
     // convert to timespec
     ts->tv_nsec = 0;
-    ts->tv_sec = mktime(&ct);
+    ts->tv_sec = timegm(&ct);
+    
 
     return 0;
 }
