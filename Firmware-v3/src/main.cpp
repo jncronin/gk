@@ -6,6 +6,7 @@
 #include "scheduler.h"
 #include "process.h"
 #include "sd.h"
+#include "ext4_thread.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -65,7 +66,8 @@ int main()
         memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "idle_cm7 stack")));
 
     init_sd();
-    
+    init_ext4();
+
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
