@@ -1,6 +1,7 @@
 void tilt_enable(bool en)
 {
-    __asm__ volatile("bkpt \n" ::: "memory");
+    if(en)
+        __asm__ volatile("bkpt \n" ::: "memory");
 
 #if 0
     if(en)
