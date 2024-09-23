@@ -5,6 +5,7 @@
 #include "memblk.h"
 #include "scheduler.h"
 #include "process.h"
+#include "sd.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -63,6 +64,7 @@ int main()
     Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "idle_cm7 stack")));
 
+    init_sd();
     
     // Prepare systick
     SysTick->CTRL = 0;
