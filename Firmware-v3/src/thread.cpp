@@ -140,8 +140,8 @@ Thread *Thread::Create(std::string name,
 
         // initialize TLS segment
         {
-            SharedMemoryGuard smg_write((void *)t->mr_tls.address, owning_process.tls_memsz, false, true);
-            SharedMemoryGuard smg_read((void *)owning_process.tls_base, owning_process.tls_filsz, true, false);
+            //SharedMemoryGuard smg_write((void *)t->mr_tls.address, owning_process.tls_memsz, false, true);
+            //SharedMemoryGuard smg_read((void *)owning_process.tls_base, owning_process.tls_filsz, true, false);
             // ARM32 has TLS segments starting 8 bytes after tp.  We can use these for other things
             *(volatile uint32_t *)(t->mr_tls.address + 0) = (uint32_t)owning_process.pid;   // proc ID
             *(volatile uint32_t *)(t->mr_tls.address + 4) = (uint32_t)(uintptr_t)t;         // thread ID
@@ -187,8 +187,8 @@ Thread *Thread::Create(std::string name,
     auto cleanup_func = is_priv ? reinterpret_cast<uint32_t>(thread_cleanup) : owning_process.thread_finalizer;
     
     {
-        SharedMemoryGuard sg((const void *)(t->stack.address + t->stack.length - 8*4),
-            t->stack.is_cacheable() ? 8*4 : 0, false, true);
+        //SharedMemoryGuard sg((const void *)(t->stack.address + t->stack.length - 8*4),
+        //    t->stack.is_cacheable() ? 8*4 : 0, false, true);
         stack[--top_stack] = 1UL << 24; // THUMB mode
         stack[--top_stack] = reinterpret_cast<uint32_t>(func) | 1UL;
         stack[--top_stack] = cleanup_func | 1UL;
@@ -245,12 +245,6 @@ Thread *Thread::Create(std::string name,
         t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.mr_hot.address,
             owning_process.mr_hot.length, next_mpu, true, RW, RW, WBWA_NS);
         next_mpu++;
-    }
-
-    if(t->stack.rt == MemRegionType::SRAM)
-    {
-        // stack is uncached at time of set up but will be cached when used - handle this
-        InvalidateM7Cache(t->stack.address, t->stack.length, CacheType_t::Data, true);
     }
 
     //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
