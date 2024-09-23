@@ -22,6 +22,7 @@ set_target_properties(xspi_flasher
 target_compile_options(xspi_flasher
     PRIVATE
         -fpic
+        -g
 )
 
 target_link_options(xspi_flasher
