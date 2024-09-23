@@ -57,6 +57,7 @@ class Thread
         kernel_time block_until;
 
         Process &p;
+        Spinlock sl;
 
         /* Used for waiting on inter-process RPC returns */
         SimpleSignal ss;

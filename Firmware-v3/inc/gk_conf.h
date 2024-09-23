@@ -55,6 +55,9 @@
 #define SRAM4_DATA
 #define ITCM_FUNCTION __attribute__((section(".itcm")))
 #define INTFLASH_FUNCTION __attribute__((section(".flash_text")))
+#define INTFLASH_RDATA __attribute__((section(".flash_rodata")))
+#define INTFLASH_RODATA INTFLASH_RDATA
+#define INTFLASH_STRING __attribute__((section(".flash_string")))
 
 // TODO: check presence of debugger and if not show message on screen
 #ifdef BKPT

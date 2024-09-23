@@ -9,7 +9,7 @@ class Thread;
 #include <map>
 #include "osmutex.h"
 #include "osqueue.h"
-//#include "osfile.h"
+#include "osfile.h"
 #include "_gk_event.h"
 #include "_gk_proccreate.h"
 #include "gk_conf.h"
@@ -52,9 +52,11 @@ class Process
         int rc;
         bool for_deletion = false;
 
-        //File *open_files[GK_MAX_OPEN_FILES];
+        File *open_files[GK_MAX_OPEN_FILES];
 
         CPUAffinity default_affinity;
+
+        Spinlock sl;
 
         /* pthread TLS data */
         pthread_key_t next_key = 0;

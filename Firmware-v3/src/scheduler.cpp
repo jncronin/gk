@@ -8,7 +8,7 @@
 
 extern Process kernel_proc;
 Process *focus_process = &kernel_proc;     // which process has access to screen and inputs
-__attribute__((section(".sram4"))) Thread dt(kernel_proc);
+SRAM4_DATA Thread dt(kernel_proc);
 
 #if GK_DUAL_CORE
 const int gk_ncores = 2;
@@ -292,8 +292,7 @@ extern char _ecm7_stack;
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
     // Get MSP top (so it doesn't look like we're always running in ResetHandler forever)
-    uint32_t msp_top = GetCoreID() == 0 ? (uint32_t)(uintptr_t)&_ecm7_stack :
-        (uint32_t)(uintptr_t)&_ecm4_stack;
+    uint32_t msp_top = (uint32_t)(uintptr_t)&_ecm7_stack;
     
     __enable_irq();
 

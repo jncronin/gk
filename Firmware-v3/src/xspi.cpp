@@ -4,7 +4,7 @@
 #include "SEGGER_RTT.h"
 #include "gk_conf.h"
 
-static const constexpr pin XSPI_PINS[] =
+INTFLASH_RDATA static const constexpr pin XSPI_PINS[] =
 {
     { GPIOO, 0, 9 },    // CS#
     { GPION, 1, 9 },    // CS#
@@ -41,8 +41,8 @@ static const constexpr pin XSPI_PINS[] =
     { GPIOP, 15, 9 },
 };
 
-static const constexpr pin XSPI1_RESET { GPIOD, 1 };
-static const constexpr pin XSPI2_RESET { GPIOD, 0 };
+INTFLASH_RDATA static const constexpr pin XSPI1_RESET { GPIOD, 1 };
+INTFLASH_RDATA static const constexpr pin XSPI2_RESET { GPIOD, 0 };
 
 uint32_t id0 = 0;
 uint32_t id1 = 0;
@@ -259,7 +259,8 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     xspi_ind_read(XSPI1, 4, 0x801*4, &cr1);
 
     // Try and enable differential clock...
-    SEGGER_RTT_printf(0, "xspi: enabling differential clk\n");
+    INTFLASH_STRING static char msg_xspi_enable_diffclk[] = "xspi: enabling differential clk\n";
+    SEGGER_RTT_printf(0, msg_xspi_enable_diffclk);
 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CR &= ~XSPI_CR_FMODE;        // indirect write mode
@@ -354,7 +355,8 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
     xspi_ind_write16(XSPI2, 0x555*2, 0x90);
 
-    SEGGER_RTT_printf(0, "xspi2: manufacturer id: %04x, dev id: %04x\n",
+    INTFLASH_STRING static char msg_xspi_manfid[] = "xspi2: manufacturer id: %04x, dev id: %04x\n";
+    SEGGER_RTT_printf(0, msg_xspi_manfid,
         xspi_ind_read16(XSPI2, 0),
         xspi_ind_read16(XSPI2, 2));
 

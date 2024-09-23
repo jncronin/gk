@@ -2,7 +2,7 @@
 #include "pins.h"
 #include "gk_conf.h"
 
-static const constexpr pin MCU_PWR_EN { GPIOC, 13 };
+INTFLASH_RDATA static const constexpr pin MCU_PWR_EN { GPIOC, 13 };
 
 extern "C" INTFLASH_FUNCTION int pwrbtn_setvregen(int val)
 {

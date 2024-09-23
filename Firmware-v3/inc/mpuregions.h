@@ -118,15 +118,14 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
     return ret;
 }
 
-constexpr mpu_saved_state mpu_sram = MPUGenerate(0x30000000, 0x10000000, 0, false, RW, RO, N_NC_S);
-constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x60000000, 0x400000, 1, false, RW, RW, WT_NS);
-constexpr mpu_saved_state mpu_lptim1 = MPUGenerate(LPTIM1_BASE, sizeof(LPTIM_TypeDef), 2, false, RW, RO, DEV_S);
+constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x90000000, 0x400000, 0, false, RW, RW, WT_NS);
+constexpr mpu_saved_state mpu_lptim1 = MPUGenerate(LPTIM1_BASE, sizeof(LPTIM_TypeDef), 1, false, RW, RO, DEV_S);
 
 constexpr mpu_saved_state mpu_default[16] =
 {
-    mpu_sram,
     mpu_fb0,
     mpu_lptim1,
+    MPUGenerateNonValid(2),
     MPUGenerateNonValid(3),
     MPUGenerateNonValid(4),
     MPUGenerateNonValid(5),

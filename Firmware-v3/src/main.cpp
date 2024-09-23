@@ -64,7 +64,14 @@ int main()
         memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "idle_cm7 stack")));
 
     
-    while(true);
+    // Prepare systick
+    SysTick->CTRL = 0;
+    SysTick->VAL = 0;
+    SysTick->LOAD = 7680000UL - 1UL;    // 20 ms tick at 384 MHz
+
+    BKPT();
+
+    s().StartForCurrentCore();
 
     return 0;
 }
@@ -76,4 +83,9 @@ void *idle_thread(void *p)
     {
         __WFI();
     }
+}
+
+extern "C" void SysTick_Handler()
+{
+    Yield();
 }
