@@ -68,11 +68,10 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
 
     /* PLL2:
         P -> LPTIM1 @ 32 MHz
-        Q -> SPI4,5,6 @ 200 MHz
         S -> XSPI1,2 @ 266 MHz (then prescaled/2 - max XSPI without DQS is 135 MHz)
         T -> SD @ 200 MHz */
     RCC->PLL2DIVR1 = (1U << RCC_PLL2DIVR1_DIVR_Pos) |
-        (3U << RCC_PLL2DIVR1_DIVQ_Pos) |
+        (1U << RCC_PLL2DIVR1_DIVQ_Pos) |
         (24U << RCC_PLL2DIVR1_DIVP_Pos) |
         (99U << RCC_PLL2DIVR1_DIVN_Pos);
     RCC->PLL2DIVR2 = (3U << RCC_PLL2DIVR2_DIVT_Pos) |
@@ -80,6 +79,7 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
 
     /* PLL3:
         P -> SPI2,3 @240 MHz
+        Q -> SPI4,5,6 @240 MHz
         R -> LTDC @24 MHz (60 Hz * 800 * 500) */
     RCC->PLL3DIVR1 = (19U << RCC_PLL3DIVR1_DIVR_Pos) |
         (1U << RCC_PLL3DIVR1_DIVQ_Pos) |
@@ -89,9 +89,9 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
 
     /* Enable the requested outputs */
     RCC->PLLCFGR = RCC_PLLCFGR_PLL3REN |
+        RCC_PLLCFGR_PLL3QEN |
         RCC_PLLCFGR_PLL3PEN |
         RCC_PLLCFGR_PLL2TEN |
-        RCC_PLLCFGR_PLL2QEN |
         RCC_PLLCFGR_PLL2PEN |
         RCC_PLLCFGR_PLL2SEN |
         RCC_PLLCFGR_PLL1PEN |
@@ -147,10 +147,12 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
         (2U << RCC_CCIPR2_I2C23SEL_Pos) |               // I2C2/3 = HSI64
         (2U << RCC_CCIPR2_SPI23SEL_Pos) |               // SPI2/3 = PLL3P=240
         (3U << RCC_CCIPR2_UART234578SEL_Pos);           // UARTs = HSI64
-    RCC->CCIPR3 = 0;    // TODO: SAI needs I2S_CKIN to be running before selecting it
+    RCC->CCIPR3 = (2U << RCC_CCIPR3_SPI45SEL_Pos) |     // SPI3,4 = PLL3Q=240
+    
+        0 ;    // TODO: SAI needs I2S_CKIN to be running before selecting it
     RCC->CCIPR4 = (5U << RCC_CCIPR4_LPTIM45SEL_Pos) |   // LPTIM4,5 = HSE24
         (5U << RCC_CCIPR4_LPTIM23SEL_Pos) |             // LPTIM2,3 = HSE24
-        (1U << RCC_CCIPR4_SPI6SEL_Pos) |                // SPI6  = PLL2Q=200
+        (2U << RCC_CCIPR4_SPI6SEL_Pos) |                // SPI6  = PLL3Q=240
         (3U << RCC_CCIPR4_LPUART1SEL_Pos);              // LPUART = HSI64
 
     // Set up LPTIM1 as a 1 kHz tick
