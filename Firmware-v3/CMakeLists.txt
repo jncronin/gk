@@ -16,9 +16,6 @@ add_definitions(-DCONFIG_HAVE_OWN_OFLAGS=0)
 #add_subdirectory(lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
-set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/inc/lv_conf.h")
-#add_subdirectory(lvgl-9.1.0)
-
 set(ZLIB_BUILD_EXAMPLES OFF)
 #add_subdirectory(zlib-1.3.1)
 

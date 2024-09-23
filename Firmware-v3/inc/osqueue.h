@@ -14,10 +14,6 @@
 #include "gk_conf.h"
 #include "SEGGER_RTT.h"
 
-extern Spinlock s_rtt;
-
-template <typename T> using SRAM4Queue = std::queue<T, std::deque<T, SRAM4RegionAllocator<T>>>;
-
 class BaseQueue
 {
     public:
@@ -28,7 +24,6 @@ class BaseQueue
         int nitems;
         size_t sz;
 
-        Spinlock sl;
         int _wptr = 0;
         int _rptr = 0;
         std::unordered_set<Thread *> waiting_threads;
@@ -45,7 +40,7 @@ class BaseQueue
         {
             for(auto bt : waiting_threads)
             {
-                //CriticalGuard cg(bt->sl);
+                CriticalGuard cg;
                 bt->is_blocking = false;
                 bt->block_until.invalidate();
                 bt->blocking_on = nullptr;
@@ -85,7 +80,7 @@ class BaseQueue
 
         bool Push(const void *v)
         {
-            CriticalGuard cg(sl);
+            CriticalGuard cg;
             return _Push(v);
         }
 
@@ -94,7 +89,7 @@ class BaseQueue
             if(!v)
                 return false;
 
-            CriticalGuard cg(sl);
+            CriticalGuard cg;
             if(empty())
                 return false;
 
@@ -104,7 +99,7 @@ class BaseQueue
 
         bool TryPop(void *v)
         {
-            CriticalGuard cg(sl);
+            CriticalGuard cg;
             if(empty())
             {
                 return false;
@@ -128,7 +123,7 @@ class BaseQueue
             while(true)
             {
                 {
-                    CriticalGuard cg(sl);
+                    CriticalGuard cg;
                     if(empty())
                     {
                         auto t = GetCurrentThreadForCore();
@@ -168,7 +163,7 @@ template <typename T, int _nitems> class FixedQueue : public BaseQueue
 
         size_t Push(const T* v, size_t n)
         {
-            CriticalGuard cg(sl);
+            CriticalGuard cg;
             for(unsigned int i = 0; i < n; i++)
             {
                 if(!_Push(&v[i]))

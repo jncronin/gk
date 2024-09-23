@@ -56,8 +56,6 @@ class Thread
         Thread *blocking_on = nullptr;
         kernel_time block_until;
 
-        Spinlock sl;
-
         Process &p;
 
         /* Used for waiting on inter-process RPC returns */

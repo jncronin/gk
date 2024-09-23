@@ -6,152 +6,24 @@
 #include "util.h"
 #include "gk_conf.h"
 
-UninterruptibleGuard::UninterruptibleGuard()
-{
-    cpsr = DisableInterrupts();
-}
-
-UninterruptibleGuard::~UninterruptibleGuard()
-{
-    RestoreInterrupts(cpsr);
-}
-
-CriticalGuard::CriticalGuard() : _s1(nullptr), _s2(nullptr), _s3(nullptr)
-{
-    cpsr = DisableInterrupts();
-}
-
-CriticalGuard::CriticalGuard(Spinlock &sl) : _s1(&sl), _s2(nullptr), _s3(nullptr)
-{
-    cpsr = DisableInterrupts();
-#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-#if DEBUG_SPINLOCK
-    uint32_t lr;
-    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
-    _s1.lock(lr & ~1UL);
-#else
-    _s1.lock();
-#endif
-#endif
-}
-
-CriticalGuard::CriticalGuard(Spinlock &sl1, Spinlock &sl2) : _s1(&sl1), _s2(&sl2), _s3(nullptr)
-{
-#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-    // need to acquire all at once with sufficient restoration of interrupts inbetween
-#if DEBUG_SPINLOCK
-    uint32_t lr;
-    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
-#endif
-    while(true)
-    {
-        cpsr = DisableInterrupts();
-        if(_s1->try_lock())
-        {
-            if(_s2->try_lock())
-                return;
-            else
-                _s1->unlock();
-        }
-        RestoreInterrupts(cpsr);
-        __asm__ volatile("yield \n" ::: "memory");
-    }
-
-#else
-    cpsr = DisableInterrupts();
-#endif
-}
-
-CriticalGuard::CriticalGuard(Spinlock &sl1, Spinlock &sl2, Spinlock &sl3) : 
-    _s1(&sl1), _s2(&sl2), _s3(&sl3)
-{
-#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-    // need to acquire all at once with sufficient restoration of interrupts inbetween
-#if DEBUG_SPINLOCK
-    uint32_t lr;
-    __asm__ volatile ("mov %0, lr \n" : "=r" (lr));
-#endif
-    while(true)
-    {
-        cpsr = DisableInterrupts();
-        if(_s1->try_lock())
-        {
-            if(_s2->try_lock())
-            {
-                if(_s3->try_lock())
-                    return
-                else
-                {
-                    _s1->unlock();
-                    _s2->unlock();
-                }
-            }
-            else
-                _s1->unlock();
-        }
-        RestoreInterrupts(cpsr);
-        __asm__ volatile("yield \n" ::: "memory");
-    }
-
-#else
-    cpsr = DisableInterrupts();
-#endif
-}
-
-CriticalGuard::~CriticalGuard()
-{
-#if GK_DUAL_CORE | GK_DUAL_CORE_AMP
-    if(_s1)
-        _s1->unlock();
-    if(_s2)
-        _s2->unlock();
-    if(_s3)
-        _s3->unlock();
-#endif
-    RestoreInterrupts(cpsr);
-}
-
 Spinlock::Spinlock()
 {
+
 }
 
-void Spinlock::lock(
-#if DEBUG_SPINLOCK
-    uint32_t _locking_pc
-#endif
-)
+INTFLASH_FUNCTION CriticalGuard::CriticalGuard()
 {
-    while(true)
-    {
-        uint32_t expected_zero = 0;
-        cmpxchg(&_lock_val, &expected_zero, 1UL);
-        if(expected_zero)
-        {
-            // spin in non-locking mode until unset
-            while(_lock_val) __DMB();
-        }
-        else
-        {
-#if DEBUG_SPINLOCK
-            locking_core = GetCoreID();
-            locked_by = GetCurrentThreadForCore(locking_core);
-            locking_pc = _locking_pc;
-#endif
-            __DMB();
-            return;
-        }
-    }
+    cpsr = DisableInterrupts();
 }
 
-void Spinlock::unlock()
+INTFLASH_FUNCTION CriticalGuard::CriticalGuard(Spinlock &s1)
 {
-#if DEBUG_SPINLOCK
-    locked_by = nullptr;
-    locking_core = 0;
-    locking_pc = 0;
-#endif
-    set(&_lock_val, 0UL);
-    __DMB();
+    cpsr = DisableInterrupts();
+}
+
+INTFLASH_FUNCTION CriticalGuard::~CriticalGuard()
+{
+    RestoreInterrupts(cpsr);
 }
 
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
@@ -159,7 +31,7 @@ SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 
 uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(waiting_thread && t != waiting_thread)
         return false;
@@ -200,7 +72,7 @@ uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
 
 void SimpleSignal::Signal(SignalOperation op, uint32_t val)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     bool hpt = false;
     do_op(op, val);
@@ -253,7 +125,7 @@ void SimpleSignal::do_op(SignalOperation op, uint32_t vop)
 
 void Condition::Wait(kernel_time tout, int *signalled_ret)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     timeout to { tout, signalled_ret };
     waiting_threads.insert_or_assign(t, to);
@@ -302,7 +174,7 @@ unsigned int CountingSemaphore::Value()
 Condition::~Condition()
 {
     // wake up all waiting threads
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     bool hpt = false;
     auto t = GetCurrentThreadForCore();
     for(auto &bt : waiting_threads)
@@ -324,7 +196,7 @@ Condition::~Condition()
 
 void Condition::Signal(bool signal_all)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     bool hpt = false;
     auto tnow = clock_cur();
@@ -417,7 +289,7 @@ void Mutex::lock()
 
 bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(owner == nullptr || (is_recursive && owner == t))
     {
@@ -463,7 +335,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 
 bool Mutex::unlock(int *reason)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(owner != t)
     {
@@ -491,7 +363,7 @@ bool Mutex::unlock(int *reason)
 
 bool Mutex::try_delete(int *reason)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     if(owner == nullptr || owner == GetCurrentThreadForCore())
     {
         for(auto wt : waiting_threads)
@@ -509,7 +381,7 @@ bool Mutex::try_delete(int *reason)
 
 bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(wrowner)
     {
@@ -541,7 +413,7 @@ bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
 
 bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(wrowner)
     {
@@ -596,7 +468,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
 
 bool RwLock::unlock(int *reason)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(wrowner)
     {
@@ -654,7 +526,7 @@ bool RwLock::unlock(int *reason)
 
 bool RwLock::try_delete(int *reason)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     if(wrowner || !rdowners.empty())
     {
         if(reason) *reason = EBUSY;
@@ -665,7 +537,7 @@ bool RwLock::try_delete(int *reason)
 
 bool UserspaceSemaphore::try_wait(int *reason, bool block, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
     if(val)
     {
@@ -692,7 +564,7 @@ bool UserspaceSemaphore::try_wait(int *reason, bool block, kernel_time tout)
 
 void UserspaceSemaphore::post(int n, bool add)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     if(val == 0 && n > 0)
     {
         for(auto wt : waiting_threads)
@@ -740,6 +612,6 @@ UserspaceSemaphore::UserspaceSemaphore(unsigned int value)
 
 unsigned int UserspaceSemaphore::get_value()
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg;
     return val;
 }

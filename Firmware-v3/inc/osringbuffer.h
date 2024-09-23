@@ -9,8 +9,6 @@
 #include "osmutex.h"
 #include "SEGGER_RTT.h"
 
-extern Spinlock s_rtt;
-
 size_t memcpy_split_src(void *dst, const void *src, size_t n, size_t src_ptr, size_t split_ptr);
 size_t memcpy_split_dest(void *dst, const void *src, size_t n, size_t dest_ptr, size_t split_ptr,
     bool clean_dest = false);

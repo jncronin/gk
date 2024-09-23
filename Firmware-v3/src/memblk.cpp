@@ -11,7 +11,6 @@
 #if GK_MEMBLK_STATS
 struct memblk_stats_t { MemRegion mr; std::string tag; };
 static std::map<uint32_t, memblk_stats_t> memblk_tags;
-static Spinlock sl_ms;
 static MemRegion memblk_usage[GK_MEMBLK_USAGE_MAX] = { 0 }; 
 #endif
 
@@ -338,7 +337,7 @@ void memblk_deallocate(MemRegion &r)
 
 #if GK_MEMBLK_STATS
     {
-        CriticalGuard cg_ms(sl_ms);
+        CriticalGuard cg_ms;
         auto iter = memblk_tags.find(r.address);
         if(iter != memblk_tags.end())
         {
@@ -425,7 +424,7 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype, const std::string &tag)
     if(mr.valid)
     {
         memblk_stats_t ms { .mr = mr, .tag = tag };
-        CriticalGuard cg_ms(sl_ms);
+        CriticalGuard cg_ms;
         memblk_tags[mr.address] = ms;
     }
     return mr;
@@ -438,7 +437,7 @@ MemRegion memblk_allocate(size_t n, MemRegionType rtype, int usage)
     {
         if(usage < GK_MEMBLK_USAGE_MAX)
         {
-            CriticalGuard cg_ms(sl_ms);
+            CriticalGuard cg_ms;
             memblk_usage[usage] = mr;
         }
     }
@@ -464,7 +463,7 @@ bool operator!=(const MemRegion &a, const MemRegion &b)
 #if GK_MEMBLK_STATS
 void memblk_stats()
 {
-    CriticalGuard cg(sl_ms);
+    CriticalGuard cg;
     // add usage values back as strings
     for(int i = 0; i < GK_MEMBLK_USAGE_MAX; i++)
     {
@@ -494,7 +493,7 @@ void memblk_stats()
 #endif
 
 
-extern "C" int memblk_init_flash_opt_bytes()
+extern "C" INTFLASH_FUNCTION int memblk_init_flash_opt_bytes()
 {
     // aim for max DTCM, ITCM and no ECC
     auto opw2_mask = FLASH_OBW2SR_DTCM_AXI_SHARE_Msk |

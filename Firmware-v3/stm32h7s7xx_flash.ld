@@ -39,7 +39,7 @@ _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 __FLASH_BEGIN  = 0x08000000;
-__FLASH_SIZE   = 0x00010000;
+__FLASH_SIZE   = 0x000100000;
 
 /* Memories definition */
 MEMORY
@@ -72,6 +72,18 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  /* Startup code to bring the xspi interface online */
+  .flash_text :
+  {
+    . = ALIGN(4);
+    *(.flash_text)
+    *(.flash_text*)
+    *SEGGER_RTT*(.text)
+    *SEGGER_RTT*(.text*)
+    . = ALIGN(4);
+  } >FLASH
+
+
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
   {
@@ -87,7 +99,7 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >FLASH
+  } >XSPI_FLASH
 
   /* Constant data into "FLASH" Rom type memory */
   .rodata :
@@ -103,7 +115,7 @@ SECTIONS
     . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
     . = ALIGN(4);
-  } >FLASH
+  } >XSPI_FLASH
 
   .ARM (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
    {
@@ -112,7 +124,7 @@ SECTIONS
     *(.ARM.exidx*)
     __exidx_end = .;
     . = ALIGN(4);
-  } >FLASH
+  } >XSPI_FLASH
 
   .preinit_array  (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -121,7 +133,7 @@ SECTIONS
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
     . = ALIGN(4);
-  } >FLASH
+  } >XSPI_FLASH
 
   .init_array (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -131,7 +143,7 @@ SECTIONS
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
     . = ALIGN(4);
-  } >FLASH
+  } >XSPI_FLASH
 
   .fini_array (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -141,7 +153,7 @@ SECTIONS
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
     . = ALIGN(4);
-  } >FLASH
+  } >XSPI_FLASH
 
   /* Used by the startup to initialize data */
   _sidata = LOADADDR(.data);
@@ -201,7 +213,7 @@ SECTIONS
     _edtcm = .;       /* create a global symbol at ccmram end */
     *(.noinit_dtcm*)  /* for those bits we do not need to initialize */
     _edtcm2 = .;
-  } >DTCM AT> FLASH1
+  } >DTCM AT> FLASH
   _sdtcm_flash = LOADADDR(.dtcm);
 
   .itcm (NOLOAD) :
@@ -213,7 +225,7 @@ SECTIONS
     
     . = ALIGN(4);
     _eitcm = .;       /* create a global symbol at ccmram end */
-  } >ITCM AT> FLASH1
+  } >ITCM AT> XSPI_FLASH
   _sitcm_flash = LOADADDR(.itcm);
 
   .sdram (NOLOAD) :
@@ -250,6 +262,8 @@ SECTIONS
     *(.sram4_data*)
     *(.sram4_rdata)
     *(.sram4_rdata*)
+    *(.sram4)
+    *(.sram4*)
     _edata4 = .;
   } >AXISRAM4 AT> FLASH
   _ssdata4_flash = LOADADDR(.sram4);

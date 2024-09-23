@@ -8,10 +8,8 @@
 #include <unordered_map>
 #include "clocks.h"
 
-#define DEBUG_SPINLOCK      1
-
-
 class Thread;
+
 class Spinlock
 {
     protected:
@@ -38,7 +36,6 @@ class Mutex
 {
     protected:
         Thread *owner = nullptr;
-        Spinlock sl;
         std::unordered_set<Thread *> waiting_threads;
         bool is_recursive = false;
         bool echeck = false;
@@ -59,7 +56,6 @@ class RwLock
         Thread *wrowner = nullptr;
         std::unordered_set<Thread *> rdowners;
         std::unordered_set<Thread *> waiting_threads;
-        Spinlock sl;
 
     public:
         bool try_wrlock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
@@ -71,7 +67,6 @@ class RwLock
 class UserspaceSemaphore
 {
     protected:
-        Spinlock sl;
         unsigned int val;
         std::unordered_set<Thread *> waiting_threads;
 
@@ -89,7 +84,6 @@ class Condition
     protected:
         struct timeout { kernel_time tout; int *signalled; };
         std::unordered_map<Thread *, timeout> waiting_threads;
-        Spinlock sl;
 
     public:
         void Wait(kernel_time tout = kernel_time(), int *signalled_ret = nullptr);
@@ -101,7 +95,6 @@ class SimpleSignal
 {
     protected:
         uint32_t signal_value = 0;
-        Spinlock sl;
 
     public:
         Thread *waiting_thread = nullptr;
@@ -141,30 +134,18 @@ class CountingSemaphore
         CountingSemaphore(unsigned int value = 0) : ss(value) {};
 };
 
-class UninterruptibleGuard
-{
-    public:
-        UninterruptibleGuard();
-        ~UninterruptibleGuard();
-        UninterruptibleGuard(const UninterruptibleGuard&) = delete;
-
-    protected:
-        uint32_t cpsr;
-};
-
 class CriticalGuard
 {
     public:
         CriticalGuard();
-        CriticalGuard(Spinlock &s);
-        CriticalGuard(Spinlock &s1, Spinlock &s2);
-        CriticalGuard(Spinlock &s1, Spinlock &s2, Spinlock &s3);
+        CriticalGuard(Spinlock &s1);
         ~CriticalGuard();
         CriticalGuard(const CriticalGuard&) = delete;
 
     protected:
         uint32_t cpsr;
-        Spinlock *_s1, *_s2, *_s3;
 };
+
+using UninterruptibleGuard = CriticalGuard;
 
 #endif

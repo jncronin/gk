@@ -1,8 +1,9 @@
 #include <stm32h7rsxx.h>
 
 #include "pins.h"
+#include "gk_conf.h"
 
-void pin_set(const struct pin &p, int mode, int ospeed, int af, int otype, int pup)
+INTFLASH_FUNCTION void pin_set(const struct pin &p, int mode, int ospeed, int af, int otype, int pup)
 {
     GPIO_TypeDef *gpio = p.gpio;
 
@@ -91,33 +92,33 @@ void pin_set(const struct pin &p, int mode, int ospeed, int af, int otype, int p
     gpio->PUPDR |= (pup << (pin * 2));
 }
 
-void pin::set() const
+INTFLASH_FUNCTION void pin::set() const
 {
     gpio->BSRR = 1UL << pin;
 }
 
-void pin::clear() const
+INTFLASH_FUNCTION void pin::clear() const
 {
     gpio->BSRR = 1UL << (pin + 16);
 }
 
-bool pin::value() const
+INTFLASH_FUNCTION bool pin::value() const
 {
     return (gpio->IDR & (1UL << pin)) != 0;
 }
 
-void pin::set_as_af(otype _otype, pup _pup, int af_override) const
+INTFLASH_FUNCTION void pin::set_as_af(otype _otype, pup _pup, int af_override) const
 {
     pin_set(*this, 2, 3, af_override == -1 ? af : af_override,
         (int)_otype, (int)_pup);
 }
 
-void pin::set_as_output(otype _otype, pup _pup) const
+INTFLASH_FUNCTION void pin::set_as_output(otype _otype, pup _pup) const
 {
     pin_set(*this, 1, 3, 0, (int)_otype, (int)_pup);
 }
 
-void pin::set_as_input(pup _pup) const
+INTFLASH_FUNCTION void pin::set_as_input(pup _pup) const
 {
     pin_set(*this, 0, 3, 0, 0, (int)_pup);
 }

@@ -23,10 +23,10 @@
 #define GK_ENABLE_PROFILE           1
 #define GK_DYNAMIC_SYSTICK          1
 
-#define GK_LOG_PERSISTENT           1
+#define GK_LOG_PERSISTENT           0
 #define GK_LOG_RTT                  1
-#define GK_LOG_USB                  1
-#define GK_LOG_FILE                 1
+#define GK_LOG_USB                  0
+#define GK_LOG_FILE                 0
 
 #define GK_LOG_SIZE                 (24*1024)
 
@@ -52,6 +52,9 @@
 #define GK_MAX_WINDOW_TITLE 32
 
 #define RTCREG_DATA __attribute__((section(".rtcregs")))
+#define SRAM4_DATA
+#define ITCM_FUNCTION __attribute__((section(".itcm")))
+#define INTFLASH_FUNCTION __attribute__((section(".flash_text")))
 
 // TODO: check presence of debugger and if not show message on screen
 #ifdef BKPT

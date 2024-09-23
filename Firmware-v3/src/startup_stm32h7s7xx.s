@@ -51,7 +51,7 @@ defined in linker script */
  * @retval : None
 */
 
-    .section  .text.Reset_Handler
+    .section  .flash_text.Reset_Handler
   .weak  Reset_Handler
   .type  Reset_Handler, %function
 Reset_Handler:
@@ -97,6 +97,23 @@ LoopCopyDataInit:
   cmp r4, r1
   bcc CopyDataInit
 
+/* Copy the data4 segment initializers from flash to SRAM */
+  ldr r0, =_sdata4
+  ldr r1, =_edata4
+  ldr r2, =_ssdata4_flash
+  movs r3, #0
+  b LoopCopyData4Init
+
+CopyData4Init:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyData4Init:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyData4Init
+
 /* Zero fill the bss segment. */
   ldr r2, =_sbss
   ldr r4, =_ebss
@@ -117,12 +134,32 @@ LoopFillZerobss:
   /* Enable XSPI memories */
   bl init_xspi
 
-  /* TODO: initialize XSPI data/bss */
+  /* Initialize .itcm from xspi_flash */
+  ldr r0, =_sitcm
+  ldr r1, =_eitcm
+  ldr r2, =_sitcm_flash
+  movs r3, #0
+  b LoopCopyItcmInit
+
+CopyItcmInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyItcmInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyItcmInit
+
+  /* TODO: initialize XSPI data/bss / itcm from xspiflash etc */
 
 /* Call static constructors */
-    bl __libc_init_array
+  ldr ip, =__libc_init_array
+  blx ip
+
 /* Call the application's entry point.*/
-  bl  main
+  ldr ip, =main
+  blx ip
 
 LoopForever:
   b LoopForever
