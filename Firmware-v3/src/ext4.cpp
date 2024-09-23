@@ -32,8 +32,6 @@ static_assert(EXT4_DE_FIFO == DT_FIFO);
 static_assert(EXT4_DE_SOCK == DT_SOCK);
 static_assert(EXT4_DE_SYMLINK == DT_LNK);
 
-extern Spinlock s_rtt;
-
 extern Process kernel_proc;
 extern char _sext4_data, _eext4_data;
 
@@ -77,7 +75,6 @@ extern "C" void *ext4_user_buf_alloc(size_t n)
 
 #if EXT4_DEBUG
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: user_buf_alloc %x bytes @%x\n", n, reg.address);
     }
 #endif
@@ -95,7 +92,6 @@ extern "C" void ext4_user_buf_free(void *ptr, size_t n)
 
 #if EXT4_DEBUG
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: user_buf_free %x bytes @%x\n", n, reg.address);
     }
 #endif
@@ -108,13 +104,11 @@ static int get_mbr_entry()
 	struct ext4_mbr_bdevs bdevs;
     int r = ext4_mbr_scan(&sd, &bdevs);
     if (r != EOK) {
-        CriticalGuard cg(s_rtt);
         klog("ext4_mbr_scan error\n");
         return -2;
     }
     r = -1;
     {
-        CriticalGuard cg(s_rtt);
         for (int i = 0; i < 4; i++)
         {
             klog("mbr_entry %d:\n", i);
@@ -153,7 +147,6 @@ static int prepare_ext4()
     int r = ext4_device_register(&sd_part, "sd");
     if(r != EOK)
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: register failed %d\n", r);
         return r;
     }
@@ -172,7 +165,6 @@ static int do_mount()
     int r = ext4_mount("sd", "/", readonly);
     if(r != EOK)
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: mount failed %d\n", r);
         return r;
     }
@@ -182,14 +174,12 @@ static int do_mount()
     r = ext4_recover("/");
     if(r != EOK)
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: recover failed %d\n", r);
     }
 
     r = ext4_journal_start("/");
     if(r != EOK)
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: journal_start failed %d\n", r);
     }
 #endif
@@ -202,7 +192,6 @@ static int do_mount()
 #endif
 
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: mounted /\n");
         return 0;
     }
@@ -261,7 +250,6 @@ static void handle_open_message(ext4_message &msg)
                 {
 #if EXT4_DEBUG
                     {
-                        CriticalGuard cg_rtt(s_rtt);
                         klog("ext4_fopen: open(%s) failing with %d\n",
                             msg.params.open_params.pathname, extret);
                     }
@@ -285,7 +273,6 @@ static void handle_read_message(ext4_message &msg)
 
 #if EXT4_DEBUG
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4: read(%x, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
             msg.params.rw_params.nbytes);
     }
@@ -351,7 +338,6 @@ static inline void copy_dmaaware(void *dest, const void *src, size_t n)
 #if 0
 #if DEBUG_EXT
     {
-        CriticalGuard cg(s_rtt);
         klog("copy_dmaaware: dest: %x, src: %x, len %d, coreid: %d\n",
             (uint32_t)(uintptr_t)dest, (uint32_t)(uintptr_t)src, n, GetCoreID());
     }
@@ -386,7 +372,6 @@ static inline void copy_dmaaware(void *dest, const void *src, size_t n)
         // debug
 #if DEBUG_EXT
         {
-            CriticalGuard cg(s_rtt);
             klog("copy_dmaaware: cisr: %x\n", dmac->CISR);
         }
 #endif
@@ -432,7 +417,6 @@ static void handle_fstat_message(ext4_message &msg)
     if(fstat_cache.try_get(ino, &buf))
     {
 #if DEBUG_EXT
-        CriticalGuard cg(s_rtt);
         klog("fstat: %s obtained from cache\n", msg.params.fstat_params.pathname);
 #endif
     }
@@ -479,7 +463,6 @@ static void handle_fstat_message(ext4_message &msg)
     // handle M4 copying to M7 DTCM
 #if DEBUG_EXT
     {
-        CriticalGuard cg(s_rtt);
         klog("fstat: precopy\n");
     }
 #endif
@@ -489,7 +472,6 @@ static void handle_fstat_message(ext4_message &msg)
 
 #if DEBUG_EXT
     {
-        CriticalGuard cg(s_rtt);
         klog("fstat: %s: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
             msg.params.fstat_params.pathname,
             buf.st_blksize,
@@ -504,7 +486,6 @@ static void handle_fstat_message(ext4_message &msg)
 
 _err:
     {
-        CriticalGuard cg(s_rtt);
         klog("ext4_fstat: fstat(%s) failing\n", msg.params.fstat_params.pathname);
     }
     msg.ss_p->ival1 = -1;
@@ -694,7 +675,6 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
     
 #if EXT4_DEBUG >= 2
     {
-        CriticalGuard cg(s_rtt);
         klog("sd_bread: %x, %u, %u\n", (uint32_t)(uintptr_t)buf,
             (uint32_t)blk_id, blk_cnt);
     }
