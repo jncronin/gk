@@ -32,7 +32,10 @@
 
 #define GK_ENABLE_CTP340            0
 
-#define GK_SDRAM_BASE               0x60000000
+#define GK_SDRAM_BASE               0x90000000
+#define GK_SDRAM_SIZE               0x08000000
+
+#define GK_KHEAP_SIZE               (64*1024)
 
 #define GK_NUM_EVENTS_PER_PROCESS   32
 #define GK_PRIORITY_IDLE    0
@@ -48,8 +51,6 @@
 
 #define GK_MAX_WINDOW_TITLE 32
 
-
-#define SRAM4_DATA __attribute__((section(".sram4")))
 #define RTCREG_DATA __attribute__((section(".rtcregs")))
 
 // TODO: check presence of debugger and if not show message on screen

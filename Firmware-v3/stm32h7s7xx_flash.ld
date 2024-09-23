@@ -35,9 +35,6 @@
 /* Entry Point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the user mode stack */
-_estack = ORIGIN(DTCM) + LENGTH(DTCM); /* end of "DTCM" Ram type memory */
-
 _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
@@ -59,19 +56,14 @@ MEMORY
 
   XSPI_RAM  (xrw) : ORIGIN = 0x90000000, LENGTH = 0x08000000
   XSPI_FLASH (xr) : ORIGIN = 0x70000000, LENGTH = 0x04000000
+
+  /* RTC backup registers */
+  RTCREGS (rw)        : ORIGIN = 0x58004050, LENGTH = 128
 }
 
 /* Sections */
 SECTIONS
 {
-    /* put random rubbish into xspi_flash */
-  .xspi_flash :
-  {
-    . = ALIGN(4);
-    KEEP(*(.world))
-    . = ALIGN(4);
-  } >XSPI_FLASH
-  
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {
@@ -167,7 +159,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >RAM AT> FLASH
+  } >AXISRAM AT> FLASH
 
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
@@ -183,18 +175,135 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >RAM
+  } >AXISRAM
 
-  /* User_heap_stack section, used to check that there is enough "DTCM" Ram  type memory left */
-  ._user_heap_stack :
+  . = ALIGN(4);
+  .dtcm_bss (NOLOAD) :
   {
-    . = ALIGN(8);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
-    . = ALIGN(8);
+    /* This is used by the startup in order to initialize the .bss secion */
+    _sdtcm_bss = .;         /* define a global symbol at bss start */
+    *(.dtcm_bss)
+    *(.dtcm_bss*)
+    *(COMMON)
+
+    . = ALIGN(4);
+    _edtcm_bss = .;         /* define a global symbol at bss end */
   } >DTCM
+
+  .dtcm :
+  {
+    . = ALIGN(4);
+    _sdtcm = .;       /* create a global symbol at ccmram start */
+    *(.dtcm)
+    *(.dtcm*)
+    
+    . = ALIGN(4);
+    _edtcm = .;       /* create a global symbol at ccmram end */
+    *(.noinit_dtcm*)  /* for those bits we do not need to initialize */
+    _edtcm2 = .;
+  } >DTCM AT> FLASH1
+  _sdtcm_flash = LOADADDR(.dtcm);
+
+  .itcm (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _sitcm = .;       /* create a global symbol at ccmram start */
+    *(.itcm)
+    *(.itcm*)
+    
+    . = ALIGN(4);
+    _eitcm = .;       /* create a global symbol at ccmram end */
+  } >ITCM AT> FLASH1
+  _sitcm_flash = LOADADDR(.itcm);
+
+  .sdram (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _ssdram = .;
+    *(.sdram)
+    *(.sdram*)
+    . = ALIGN(4);
+    _esdram = .;
+  } >XSPI_RAM
+
+  .net_data ALIGN(1 << LOG2CEIL(_elwip_data - _slwip_data)):
+  {
+    _slwip_data = .;
+    *(.net_data)
+    *(.net_data*)
+    _elwip_init_data = .;
+  } >AXISRAM AT> FLASH
+
+  .net_bss (NOLOAD):
+  {
+    _slwip_bss_data = .;
+    *(.net_bss)
+    *(.net_bss*)
+    _elwip_data = .;
+  } >AXISRAM
+  _slwip_flash = LOADADDR(.net_data);
+
+  .sram4 :
+  {
+    _sdata4 = .;
+    *(.sram4_data)
+    *(.sram4_data*)
+    *(.sram4_rdata)
+    *(.sram4_rdata*)
+    _edata4 = .;
+  } >AXISRAM4 AT> FLASH
+  _ssdata4_flash = LOADADDR(.sram4);
+
+
+  /* Initial stack for CM7 */
+  .cm7_stack 0x20001000 (NOLOAD)  :
+  {
+    _scm7_stack = .;
+    . = . + 4K;
+    _ecm7_stack = .;
+    _estack = .;
+  } >DTCM
+
+  .sram_data :
+  {
+    . = ALIGN(16);
+    _ssramahb = .;
+    *(.sram_data)
+    *(.sram_data*)
+    *(.sram_rdata)
+    *(.sram_rdata*)
+    _esramahb = .;
+  } >SRAMAHB AT> FLASH
+  _ssramahb_flash = LOADADDR(.sram_data);
+
+  .sram_bss (NOLOAD) :
+  {
+    /* This is used by the startup in order to initialize the .bss secion */
+    _ssram_bss = .;         /* define a global symbol at bss start */
+    *(.sram_bss)
+    *(.sram_bss*)
+    *(COMMON)
+
+    . = ALIGN(4);
+    _esram_bss = .;         /* define a global symbol at bss end */
+  } >SRAMAHB
+
+  .backupsram (NOLOAD):
+  {
+    _sbackupsram = .;
+    *(.backupsram)
+    *(.backupsram*)
+    _ebackupsram = .;
+  } >BKPSRAM
+
+  .rtcregs (NOLOAD):
+  {
+    _srtcregs = .;
+    *(.rtcregs)
+    *(.rtcregs*)
+    _ertcregs = .;
+  } >RTCREGS
+
 
   .fast_pointers 0x30002000 (NOLOAD) :
   {
