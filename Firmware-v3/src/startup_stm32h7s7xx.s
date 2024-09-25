@@ -114,6 +114,23 @@ LoopCopyData4Init:
   cmp r4, r1
   bcc CopyData4Init
 
+/* Copy the rtt segment initializers from flash to SRAM */
+  ldr r0, =_srtt
+  ldr r1, =_ertt
+  ldr r2, =_srtt_flash
+  movs r3, #0
+  b LoopCopyRttInit
+
+CopyRttInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyRttInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyRttInit
+
 /* Zero fill the bss segment. */
   ldr r2, =_sbss
   ldr r4, =_ebss

@@ -30,6 +30,7 @@ extern int _edata;
 extern int _ebss;
 extern int _elwip_data;
 extern int _edata4;
+extern int _ertt;
 
 // dtcm
 extern int _edtcm_bss;
@@ -135,6 +136,7 @@ extern "C" void init_memblk()
     incr_axisram(&_ebss, &eaxisram, &eaxisram4);
     incr_axisram(&_elwip_data, &eaxisram, &eaxisram4);
     incr_axisram(&_edata4, &eaxisram, &eaxisram4);
+    incr_axisram(&_ertt, &eaxisram, &eaxisram4);
 
     if((uintptr_t)&_edtcm_bss > edtcm)
         edtcm = (uintptr_t)&_edtcm_bss;
