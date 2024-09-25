@@ -25,25 +25,38 @@ SRAM4_DATA Condition scr_vsync;
 
 SRAM4_DATA volatile bool screen_flip_in_progress = false;
 
+static const constexpr pin LTDC_CLK_SELECT { GPIOC, 7 };
+
 static unsigned int screen_get_pitch(unsigned int pf)
 {
+    unsigned int ret;
+
     switch(pf)
     {
         case 0:
-            return 2560;
+            ret = 2560;
+            break;
         case 1:
-            return 1920;
+            ret = 1920;
+            break;
         case 2:
         case 3:
         case 4:
         case 7:
-            return 1280;
+            ret = 1280;
+            break;
         case 5:
         case 6:
-            return 640;
+            ret = 640;
+            break;
         default:
-            return 0;        
+            ret = 0;        
     }
+
+    if(_sc_h != x1)
+        ret /= 2;
+    
+    return ret;
 }
 
 void *screen_get_frame_buffer(bool back_buf)
@@ -234,6 +247,71 @@ void SPI_WriteData(unsigned char i)
     *(volatile uint16_t *)&SPI5->TXDR = id;
 }
 
+static void screen_set_timings()
+{
+    /* Timings from linux for 60 Hz/24 MHz pixel clock:
+        Hsync = 16, Vsync = 2
+        H back porch = 48, V back porch = 13
+        Display = 640x480
+        H front porch = 16, V front porch = 5
+        Total = 720*500 => gives 66.67 Hz refresh
+
+        We make slightly bigger h front porch, so 800*500 gives 60 Hz refresh
+        
+        Values accumulate in the register settings (and always -1 at end) */
+    
+    unsigned int pll3r_divisor;
+
+    if(_sc_h == x1)
+    {
+        LTDC->SSCR = (1UL << LTDC_SSCR_VSH_Pos) |
+            (15UL << LTDC_SSCR_HSW_Pos);
+        LTDC->BPCR = (14UL << LTDC_BPCR_AVBP_Pos) |
+            (63UL << LTDC_BPCR_AHBP_Pos);
+        LTDC->AWCR = (494UL << LTDC_AWCR_AAH_Pos) |
+            (703UL << LTDC_AWCR_AAW_Pos);
+        LTDC->TWCR = (499UL << LTDC_TWCR_TOTALH_Pos) |
+            (799UL << LTDC_TWCR_TOTALW_Pos);
+        pll3r_divisor = 19U;
+    }
+    else
+    {
+        // only support x2 in hardware - halve all horiz values
+
+        // 16, 64, 704, 800 -> 8, 32, 352, 400
+        LTDC->SSCR = (1UL << LTDC_SSCR_VSH_Pos) |
+            (7UL << LTDC_SSCR_HSW_Pos);
+        LTDC->BPCR = (14UL << LTDC_BPCR_AVBP_Pos) |
+            (31UL << LTDC_BPCR_AHBP_Pos);
+        LTDC->AWCR = (494UL << LTDC_AWCR_AAH_Pos) |
+            (351UL << LTDC_AWCR_AAW_Pos);
+        LTDC->TWCR = (499UL << LTDC_TWCR_TOTALH_Pos) |
+            (399UL << LTDC_TWCR_TOTALW_Pos);
+        
+        // halve output clock (actual clock is doubled outside stm32)
+        pll3r_divisor = 39U;
+    }
+
+    // update PLL3 if required
+    if(((RCC->PLL3DIVR1 & RCC_PLL3DIVR1_DIVR_Msk) >> RCC_PLL3DIVR1_DIVR_Pos) != pll3r_divisor)
+    {
+        //RCC->CR &= ~RCC_CR_PLL3ON;
+        //while(RCC->CR & RCC_CR_PLL3RDY);
+        RCC->PLLCFGR &= ~RCC_PLLCFGR_PLL3REN;
+        RCC->PLL3DIVR1 = (RCC->PLL3DIVR1 & ~RCC_PLL1DIVR1_DIVR_Msk) |
+            (pll3r_divisor << RCC_PLL3DIVR1_DIVR_Pos);
+        RCC->PLLCFGR |= RCC_PLLCFGR_PLL3REN;
+        //RCC->CR |= RCC_CR_PLL3ON;
+        //while(!(RCC->CR & RCC_CR_PLL3RDY));
+    }
+
+    LTDC_Layer1->WHPCR =
+        ((((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL) << LTDC_LxWHPCR_WHSTPOS_Pos) |
+        ((((LTDC->AWCR & LTDC_AWCR_AAW_Msk) >> LTDC_AWCR_AAW_Pos)) << LTDC_LxWHPCR_WHSPPOS_Pos);
+    
+    LTDC->SRCR = LTDC_SRCR_VBR;
+}
+
 void init_screen()
 {
     for(unsigned int i = 0; i < n_lcd_pins; i++)
@@ -241,6 +319,8 @@ void init_screen()
         lcd_pins[i].set_as_af();
     }
     lcd_reset.set_as_output();
+    LTDC_CLK_SELECT.clear();
+    LTDC_CLK_SELECT.set_as_output();
 
     // Initial set-up is through SPI5, kernel clock 240 MHz off PLL3Q
     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
@@ -474,24 +554,7 @@ void init_screen()
     RCC->APB5ENR |= RCC_APB5ENR_LTDCEN;
     (void)RCC->APB5ENR;
 
-    /* Timings from linux for 60 Hz/24 MHz pixel clock:
-        Hsync = 16, Vsync = 2
-        H back porch = 48, V back porch = 13
-        Display = 640x480
-        H front porch = 16, V front porch = 5
-        Total = 720*500 => gives 66.67 Hz refresh
-
-        We make slightly bigger h front porch, so 800*500 gives 60 Hz refresh
-        
-        Values accumulate in the register settings (and always -1 at end) */
-    LTDC->SSCR = (1UL << LTDC_SSCR_VSH_Pos) |
-        (15UL << LTDC_SSCR_HSW_Pos);
-    LTDC->BPCR = (14UL << LTDC_BPCR_AVBP_Pos) |
-        (63UL << LTDC_BPCR_AHBP_Pos);
-    LTDC->AWCR = (494UL << LTDC_AWCR_AAH_Pos) |
-        (703UL << LTDC_AWCR_AAW_Pos);
-    LTDC->TWCR = (499UL << LTDC_TWCR_TOTALH_Pos) |
-        (799UL << LTDC_TWCR_TOTALW_Pos);
+    screen_set_timings();
     
     /* Set all control signals active low */
     LTDC->GCR = 0UL | LTDC_GCR_PCPOL;
@@ -632,6 +695,9 @@ int screen_get_brightness()
 int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
     screen_hardware_scale scale_vert)
 {
+    _sc_h = scale_horiz;
+    _sc_v = scale_vert;
+
     // vertical scrolling is done by GFXMMU
     if(scale_vert == x2 || scale_vert == x4)
     {
@@ -675,8 +741,16 @@ int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
 
         GFXMMU->CR = GFXMMU_CR_ATE;
     }
-    _sc_v = scale_vert;
 
+    if(scale_horiz == x1)
+    {
+        LTDC_CLK_SELECT.clear();
+    }
+    else
+    {
+        LTDC_CLK_SELECT.set();
+    }
+    screen_set_timings();
 
     return 0;
 }
