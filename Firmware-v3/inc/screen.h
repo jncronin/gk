@@ -14,4 +14,8 @@ void screen_set_overlay_alpha(unsigned int alpha);
 void screen_set_brightness(int pct);
 int screen_get_brightness();
 
+enum screen_hardware_scale { x1, x2, x4 };
+int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
+    screen_hardware_scale scale_vert);
+
 #endif

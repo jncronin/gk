@@ -110,6 +110,7 @@ int main()
             ((uint32_t *)0x90200000)[y * 640 + x] = col;
         }
     }
+    //screen_set_hardware_scale(x1, x2);
     screen_flip();
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
