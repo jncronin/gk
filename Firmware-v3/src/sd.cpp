@@ -12,7 +12,7 @@
 #include "ext4_thread.h"
 #include "gk_conf.h"
 
-#define DEBUG_SD    0
+#define DEBUG_SD    1
 #define PROFILE_SDT 0
 
 extern Spinlock s_rtt;
@@ -239,9 +239,8 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         }
 
 #if DEBUG_SD
-        {
-            klog("sd_issue_command: sent %lu received reponse", command);
-        }
+        char dbg_msg[128];
+        sprintf(dbg_msg, "sd_issue_command: sent %lu received reponse", command);
 #endif
 
         if(resp)
@@ -252,7 +251,9 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
                 resp[nresp - i - 1] = (&SDMMC2->RESP1)[i];
 #if DEBUG_SD
                 {
-                    klog(" %lx", resp[nresp - i - 1]);
+                    char msg2[32];
+                    sprintf(msg2, " %lx", resp[nresp - i - 1]);
+                    strcat(dbg_msg, msg2);
                 }
 #endif
             }
@@ -261,7 +262,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
         
 #if DEBUG_SD
         {
-            klog("\n");
+            klog("%s\n", dbg_msg);
         }
 #endif
 
@@ -885,7 +886,7 @@ void *sd_thread(void *param)
             {
                 
                 klog("sd: pre-command: STA: %x, DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
-                    SDMMC2->STA, SDMMC2->DCTRL, SDMMC2->DCOUNT, SDMMC2->DLEN, SDMMC2->IDMACTRL, SDMMC2->IDMABASE0);
+                    SDMMC2->STA, SDMMC2->DCTRL, SDMMC2->DCOUNT, SDMMC2->DLEN, SDMMC2->IDMACTRL, SDMMC2->IDMABASER);
             }
 #endif
 
@@ -911,7 +912,7 @@ void *sd_thread(void *param)
                 {
                     
                     klog("sd: post-command FAIL: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
-                        SDMMC2->STA, sd_status, SDMMC2->DCTRL, SDMMC2->DCOUNT, SDMMC2->DLEN, SDMMC2->IDMACTRL, SDMMC2->IDMABASE0);
+                        SDMMC2->STA, sd_status, SDMMC2->DCTRL, SDMMC2->DCOUNT, SDMMC2->DLEN, SDMMC2->IDMACTRL, SDMMC2->IDMABASER);
                 }
 #endif
                 sd_ready = false;
@@ -921,7 +922,7 @@ void *sd_thread(void *param)
             {
                 
                 klog("sd: post-command SUCCESS: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n",
-                    SDMMC2->STA, sd_status, SDMMC2->DCTRL, SDMMC2->DCOUNT, SDMMC2->DLEN, SDMMC2->IDMACTRL, SDMMC2->IDMABASE0);
+                    SDMMC2->STA, sd_status, SDMMC2->DCTRL, SDMMC2->DCOUNT, SDMMC2->DLEN, SDMMC2->IDMACTRL, SDMMC2->IDMABASER);
             }
 #endif
             if(sd_multi)
