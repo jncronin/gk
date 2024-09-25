@@ -505,7 +505,7 @@ void sd_reset()
 
     {
         klog("init_sd: CSD: %lx, %lx, %lx, %lx\n", csd[0], csd[1], csd[2], csd[3]);
-        klog("init_sd: sd card size %lu kB\n", sd_get_size() / 1024);
+        klog("init_sd: sd card size %llu kB\n", sd_get_size() / 1024ULL);
     }
     sd_size = sd_get_size();
 
