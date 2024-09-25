@@ -72,6 +72,46 @@ int main()
     init_screen();
     screen_set_frame_buffer((void*)0x90000000, (void*)0x90200000);
 
+    /* Build test pattern - 80x80 squares to check hardware scaling */
+    for(int y = 0; y < 480; y++)
+    {
+        for(int x = 0; x < 640; x++)
+        {
+            uint32_t col;
+            if((y % 160) < 80)
+            {
+                // R/G alternating
+                if((x % 160) < 80)
+                {
+                    // R
+                    col = 0x00ff0000;
+                }
+                else
+                {
+                    // G
+                    col = 0x0000ff00;
+                }
+            }
+            else
+            {
+                // B/black alternating
+                if((x % 160) < 80)
+                {
+                    // B
+                    col = 0x000000ff;
+                }
+                else
+                {
+                    // black
+                    col = 0;
+                }
+            }
+            ((uint32_t *)0x90000000)[y * 640 + x] = col;
+            ((uint32_t *)0x90200000)[y * 640 + x] = col;
+        }
+    }
+    screen_flip();
+
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
 
