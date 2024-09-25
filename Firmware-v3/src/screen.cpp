@@ -13,6 +13,8 @@ SRAM4_DATA static Spinlock s_scrbuf;
 SRAM4_DATA static void *scr_bufs[2] = { 0, 0 };
 SRAM4_DATA static int scr_cbuf = 0;
 
+[[maybe_unused]] static screen_hardware_scale _sc_h = x1, _sc_v = x1;
+
 SRAM4_DATA static Spinlock s_scrbuf_overlay;
 SRAM4_DATA static void *scr_bufs_overlay[2] = { 0, 0 };
 SRAM4_DATA static int scr_cbuf_overlay = 0;
@@ -22,6 +24,27 @@ SRAM4_DATA static int scr_brightness = 0;
 SRAM4_DATA Condition scr_vsync;
 
 SRAM4_DATA volatile bool screen_flip_in_progress = false;
+
+static unsigned int screen_get_pitch(unsigned int pf)
+{
+    switch(pf)
+    {
+        case 0:
+            return 2560;
+        case 1:
+            return 1920;
+        case 2:
+        case 3:
+        case 4:
+        case 7:
+            return 1280;
+        case 5:
+        case 6:
+            return 640;
+        default:
+            return 0;        
+    }
+}
 
 void *screen_get_frame_buffer(bool back_buf)
 {
@@ -85,31 +108,26 @@ void *screen_flip(void **old_buf)
     int wbuf = scr_cbuf & 0x1;
     int rbuf = wbuf ? 0 : 1;
     auto scr_pf = focus_process->screen_pf;
-    LTDC_Layer1->CFBAR = (uint32_t)(uintptr_t)scr_bufs[rbuf];
-    LTDC_Layer1->PFCR = scr_pf;
-    switch(scr_pf)
+    if(_sc_v == x1)
     {
-        case 0:
-            LTDC_Layer1->CFBLR = (2560UL << LTDC_LxCFBLR_CFBP_Pos) |
-                (2567UL << LTDC_LxCFBLR_CFBLL_Pos);
-            break;
-        case 1:
-            LTDC_Layer1->CFBLR = (1920UL << LTDC_LxCFBLR_CFBP_Pos) |
-                (1927UL << LTDC_LxCFBLR_CFBLL_Pos);
-            break;
-        case 2:
-        case 3:
-        case 4:
-        case 7:
-            LTDC_Layer1->CFBLR = (1280UL << LTDC_LxCFBLR_CFBP_Pos) |
-                (1287UL << LTDC_LxCFBLR_CFBLL_Pos);
-            break;
-        case 5:
-        case 6:
-            LTDC_Layer1->CFBLR = (640UL << LTDC_LxCFBLR_CFBP_Pos) |
-                (647UL << LTDC_LxCFBLR_CFBLL_Pos);
-            break;
+        // direct from screen buffer
+        LTDC_Layer1->CFBAR = (uint32_t)(uintptr_t)scr_bufs[rbuf];
     }
+    else
+    {
+        // via GFXMMU
+        LTDC_Layer1->CFBAR = (rbuf == 0) ? GFXMMU_VIRTUAL_BUFFER0_BASE :
+            GFXMMU_VIRTUAL_BUFFER1_BASE;
+    }
+    LTDC_Layer1->PFCR = scr_pf;
+    auto line_length = screen_get_pitch(scr_pf);
+    unsigned int pitch;
+    if(_sc_v == x1)
+        pitch = line_length;
+    else
+        pitch = 4096;       // GFXMMU pitch
+    LTDC_Layer1->CFBLR = (pitch << LTDC_LxCFBLR_CFBP_Pos) |
+        ((line_length + 7) << LTDC_LxCFBLR_CFBLL_Pos);
     if(scr_bufs[rbuf])
     {
         LTDC_Layer1->CR |= LTDC_LxCR_LEN;
@@ -609,4 +627,56 @@ void screen_set_brightness(int pct)
 int screen_get_brightness()
 {
     return scr_brightness;
+}
+
+int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
+    screen_hardware_scale scale_vert)
+{
+    // vertical scrolling is done by GFXMMU
+    if(scale_vert == x2 || scale_vert == x4)
+    {
+        RCC->AHB5ENR |= RCC_AHB5ENR_GFXMMUEN;
+        (void)RCC->AHB5ENR;
+
+        GFXMMU->B0CR = (uint32_t)(uintptr_t)scr_bufs[0];
+        GFXMMU->B1CR = (uint32_t)(uintptr_t)scr_bufs[1];
+
+        // All virtual buffers share the same look-up table, dependent upon pixel format
+        // blocks are 12 or 16 bytes each - all our pitches, including 24bpp/1920 bytes
+        //  are multiples of 16
+        unsigned int y_virt = 0;
+        int y_phys = 0;
+        unsigned int y_virt_incr = scale_vert == x2 ? 2 : 4;
+
+        unsigned int pitch = screen_get_pitch(focus_process->screen_pf);
+        unsigned int nblocks = pitch / 16;
+        int blocks_used = 0;
+
+        for(; y_virt < 480; y_virt += y_virt_incr)
+        {
+            for(unsigned int y = 0; y < y_virt_incr; y++)
+            {
+                auto lutl = (volatile uint32_t *)(GFXMMU_BASE + 0x1000 + 8 * (y_virt + y));
+                auto luth = (volatile uint32_t *)(GFXMMU_BASE + 0x1004 + 8 * (y_virt + y));
+
+                *lutl = GFXMMU_LUTxL_EN |
+                    (0U << GFXMMU_LUTxL_FVB_Pos) |
+                    ((nblocks - 1) << GFXMMU_LUTxL_LVB_Pos);
+
+                // number of blocks used - address of first block
+                //*luth = ((uint32_t)(blocks_used - y_phys)) & 0x3ffff;
+                *luth = (uint32_t)blocks_used;
+
+            }
+            blocks_used += nblocks;
+
+            y_phys += (int)nblocks;
+        }
+
+        GFXMMU->CR = GFXMMU_CR_ATE;
+    }
+    _sc_v = scale_vert;
+
+
+    return 0;
 }
