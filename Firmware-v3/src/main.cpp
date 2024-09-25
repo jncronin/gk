@@ -8,6 +8,7 @@
 #include "sd.h"
 #include "ext4_thread.h"
 #include "screen.h"
+#include "gpu.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -70,51 +71,11 @@ int main()
     init_sd();
     init_ext4();
     init_screen();
-    screen_set_frame_buffer((void*)0x90000000, (void*)0x90200000);
-
-    /* Build test pattern - 80x80 squares to check hardware scaling */
-    for(int y = 0; y < 240; y++)
-    {
-        for(int x = 0; x < 320; x++)
-        {
-            uint32_t col;
-            if((y % 160) < 80)
-            {
-                // R/G alternating
-                if((x % 160) < 80)
-                {
-                    // R
-                    col = 0x00ff0000;
-                }
-                else
-                {
-                    // G
-                    col = 0x0000ff00;
-                }
-            }
-            else
-            {
-                // B/black alternating
-                if((x % 160) < 80)
-                {
-                    // B
-                    col = 0x000000ff;
-                }
-                else
-                {
-                    // black
-                    col = 0;
-                }
-            }
-            ((uint32_t *)0x90000000)[y * 320 + x] = col;
-            ((uint32_t *)0x90200000)[y * 320 + x] = col;
-        }
-    }
-    screen_set_hardware_scale(x2, x2);
-    screen_flip();
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
+
+    Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM7));
 
     // Prepare systick
     SysTick->CTRL = 0;
@@ -123,7 +84,7 @@ int main()
 
     BKPT();
 
-    //s().StartForCurrentCore();
+    s().StartForCurrentCore();
     while(true);
 
     return 0;
@@ -141,4 +102,10 @@ void *idle_thread(void *p)
 extern "C" void SysTick_Handler()
 {
     Yield();
+}
+
+// for now until we have ported supervisor
+bool is_overlay_visible()
+{
+    return false;
 }
