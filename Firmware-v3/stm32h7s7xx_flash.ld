@@ -288,6 +288,17 @@ SECTIONS
   } >AXISRAM4 AT> FLASH
   _ssdata4_flash = LOADADDR(.sram4);
 
+  /* RTT - put into WT memory region */
+  .rtt ALIGN(1 << LOG2CEIL(_erttd - _srtt)):
+  {
+    _srtt = .;
+    *(.rtt)
+    *(.rtt*)
+    _erttd = .;
+    . = ALIGN(1 << LOG2CEIL(_erttd - _srtt));
+    _ertt = .;
+  } >AXISRAM4 AT> FLASH
+  _srtt_flash = LOADADDR(.rtt);
 
   /* Initial stack for CM7 */
   .cm7_stack 0x20001000 (NOLOAD)  :
