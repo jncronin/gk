@@ -72,7 +72,7 @@ Revision: $Rev: 24316 $
 #define SEGGER_RTT_ALIGNMENT          32
 #define SEGGER_RTT_BUFFER_ALIGNMENT   32
 
-//#define SEGGER_RTT_SECTION  ".sram4"
+#define SEGGER_RTT_SECTION  ".rtt"
 //
 // Take in and set to correct values for Cortex-A systems with CPU cache
 //
