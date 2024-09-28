@@ -14,7 +14,7 @@ template <typename Key, typename T,
         class LRUCache
 {
     protected:
-        std::list<std::pair<Key, T>> item_list;
+        std::list<std::pair<Key, T>, ListAllocator> item_list;
         std::unordered_map<Key, decltype(item_list.begin()), Hash, KeyEqual, MapAllocator> item_map;
         size_t _max_size;
 

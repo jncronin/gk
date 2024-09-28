@@ -334,7 +334,9 @@ struct timespec lwext_time_to_timespec(uint32_t t)
 
 static inline void copy_dmaaware(void *dest, const void *src, size_t n)
 {
-    BKPT();
+    memcpy(dest, src, n);
+
+    //BKPT();
 #if 0
 #if DEBUG_EXT
     {
