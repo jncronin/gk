@@ -119,10 +119,6 @@ constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
     return ret;
 }
 
-constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x90000000, 0x400000, 0, false, RW, RW, WT_NS);
-constexpr mpu_saved_state mpu_lptim1 = MPUGenerate(LPTIM1_BASE, sizeof(LPTIM_TypeDef), 1, false, RW, RO, DEV_S);
-constexpr mpu_saved_state fast_access = MPUGenerate(GK_TLS_POINTER_ADDRESS, GK_FAST_ACCESS_SIZE, 2, false, RW, RO, WBWA_NS);
-
 extern mpu_saved_state mpu_default[16];
 
 #endif

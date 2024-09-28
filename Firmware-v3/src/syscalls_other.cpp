@@ -245,12 +245,9 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
         return -1;
     }
 
-    BKPT();
-#if 0
     *nsent = GPUEnqueueMessages(msgs, nmsg);
     if(*nsent == nmsg && nmsg && msgs[nmsg - 1].type == gpu_message_type::SignalThread)
         return -2;  // deferred return
-#endif
     
     return 0;
 }

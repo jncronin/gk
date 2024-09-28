@@ -6,6 +6,7 @@ extern "C" void *ECMsbrk(int n);
 #include "osallocator.h"
 #include "memblk.h"
 #include "dlmalloc.h"
+#include "gk_conf.h"
 
 template <> void region_free<0>(void *ptr)
 {
@@ -14,7 +15,12 @@ template <> void region_free<0>(void *ptr)
 
 template <> void *region_alloc<0>(size_t size)
 {
-    return ECMmalloc(size);
+    auto ret = ECMmalloc(size);
+    if(ret)
+    {
+        memset(ret, 0, size);
+    }
+    return ret;
 }
 
 void *ECMsbrk(int n)
