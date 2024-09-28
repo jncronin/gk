@@ -35,7 +35,7 @@
 #define GK_SDRAM_BASE               0x90000000
 #define GK_SDRAM_SIZE               0x08000000
 
-#define GK_KHEAP_SIZE               (64*1024)
+#define GK_KHEAP_SIZE               (128*1024)
 
 #define GK_NUM_EVENTS_PER_PROCESS   32
 #define GK_PRIORITY_IDLE    0
