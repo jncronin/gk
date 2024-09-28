@@ -4,6 +4,8 @@ extern int _srtt, _ertt;
 const uint32_t _srttp = (uint32_t)&_srtt;
 const uint32_t _erttp = (uint32_t)&_ertt;
 static mpu_saved_state mpu_rtt = MPUGenerate(_srttp, _erttp - _srttp, 3, false, RW, NoAccess, WT_NS);
+// xspi1 space is wt by default
+static const constexpr mpu_saved_state mpu_xspi = MPUGenerate(0x90000000, 128*1024*1024U, 4, false, RW, NoAccess, WBWA_NS);
 
 mpu_saved_state mpu_default[16] =
 {
@@ -11,7 +13,7 @@ mpu_saved_state mpu_default[16] =
     mpu_lptim1,
     fast_access,
     mpu_rtt,
-    MPUGenerateNonValid(4),
+    mpu_xspi,
     MPUGenerateNonValid(5),
     MPUGenerateNonValid(6),
     MPUGenerateNonValid(7),
