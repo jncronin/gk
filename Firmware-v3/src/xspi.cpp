@@ -217,8 +217,8 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 532 - 4 - 1;      // tCSM=4us/133 MHz
-    XSPI1->DCR2 = (4UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 32 byte hybrid read per chip = 64 bytes at XSPI interface
-        (3UL << XSPI_DCR2_PRESCALER_Pos); 
+    XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
+        (1UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CCR = XSPI_CCR_DQSE |
         (4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
@@ -276,7 +276,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     uint32_t new_cr1 = 0xff81ff81U;
     xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
 
-    uint32_t new_cr0 = 0x8f0b8f0bU; // hybrid burst, 128 byte burst, 5 initial latency, fixed latency
+    uint32_t new_cr0 = 0x8f0a8f0aU; // hybrid burst, 16 byte burst, 5 initial latency, fixed latency
     xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
 
     // set new latency
@@ -304,6 +304,44 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     // reenable RWDS in write mode
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR |= XSPI_WCCR_DQSE;
+
+    // XSPI timing calibration in memory mode
+    /*while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->DCR1 = (XSPI1->DCR1 & ~XSPI_DCR1_MTYP_Msk) | (4U << XSPI_DCR1_MTYP_Pos);
+    uint32_t tst_data[2];
+    tst_data[0] = 0x11223344;
+    tst_data[1] = 0x55667788;
+    xspi_ind_write(XSPI1, sizeof(tst_data), 0, tst_data);
+    static int errs[0x20] = { 0 };
+
+    for(unsigned int coarse = 0; coarse < 0x1fU; coarse++)
+    {
+        while(XSPI1->SR & XSPI_SR_BUSY);
+        XSPI1->CALSIR = (coarse << XSPI_CALSIR_COARSE_Pos);
+
+        errs[coarse] = 0;
+        for(int i = 0; i < 1024*32; i++)
+        {
+            uint32_t recv_data[sizeof(tst_data)/sizeof(uint32_t)];
+            xspi_ind_read(XSPI1, sizeof(recv_data), 0, recv_data);
+            for(unsigned int j = 0; j < sizeof(tst_data)/sizeof(uint32_t); j++)
+            {
+                if(recv_data[j] != tst_data[j])
+                {
+                    errs[coarse]++;
+                    break;
+                }
+            }
+        }
+    }
+
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    auto coarse = (XSPI1->CALFCR & XSPI_CALFCR_COARSE_Msk) >> XSPI_CALFCR_COARSE_Pos;
+    auto fine = (XSPI1->CALFCR & XSPI_CALFCR_FINE_Msk) >> XSPI_CALFCR_FINE_Pos;
+    XSPI1->CALMR = (coarse/4) << XSPI_CALMR_COARSE_Pos |
+        (fine/4) << XSPI_CALMR_FINE_Pos;
+    */
+    
 
     // set XSPI1 to memory mapped mode
     while(XSPI1->SR & XSPI_SR_BUSY);
