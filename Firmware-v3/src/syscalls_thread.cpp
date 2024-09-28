@@ -111,7 +111,7 @@ static bool check_mutex(pthread_mutex_t *mutex)
     {
         syscall_pthread_mutex_init(mutex, nullptr, nullptr);
     }
-    if(*mutex < 0x30000000U || *mutex >= 0x38010000u)
+    if(*mutex < 0x20000000U || *mutex >= 0x38010000u)
         return false;
     return true;    // TODO: check against list of mutexes this process can access
 }
