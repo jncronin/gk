@@ -25,12 +25,7 @@ bool i2c_init = false;
 
 static int i2c_dotfer();
 
-INTFLASH_FUNCTION void init_i2c()
-{
-
-}
-
-INTFLASH_FUNCTION static void reset_i2c()
+INTFLASH_FUNCTION void i2c_reset()
 {
     RCC->APB1ENR1 &= ~RCC_APB1ENR1_I2C2EN;
     (void)RCC->APB1ENR1;
@@ -93,7 +88,7 @@ INTFLASH_FUNCTION static uint32_t calc_cr2(unsigned int i2c_address, bool is_rea
     return ret;
 }
 
-INTFLASH_FUNCTION int i2c_xmit(unsigned int addr, void *buf, size_t nbytes, bool is_read)
+INTFLASH_FUNCTION int i2c_poll_xmit(unsigned int addr, void *buf, size_t nbytes, bool is_read)
 {
     cur_i2c_msg.i2c_address = addr;
     cur_i2c_msg.buf = (char *)buf;
@@ -105,17 +100,17 @@ INTFLASH_FUNCTION int i2c_xmit(unsigned int addr, void *buf, size_t nbytes, bool
     return i2c_dotfer();
 }
 
-INTFLASH_FUNCTION int i2c_read(unsigned int addr, const void *buf, size_t nbytes)
+INTFLASH_FUNCTION int i2c_poll_read(unsigned int addr, const void *buf, size_t nbytes)
 {
-    return i2c_xmit(addr, (void *)buf, nbytes, true);
+    return i2c_poll_xmit(addr, (void *)buf, nbytes, true);
 }
 
-INTFLASH_FUNCTION int i2c_send(unsigned int addr, void *buf, size_t nbytes)
+INTFLASH_FUNCTION int i2c_poll_send(unsigned int addr, void *buf, size_t nbytes)
 {
-    return i2c_xmit(addr, buf, nbytes, false);
+    return i2c_poll_xmit(addr, buf, nbytes, false);
 }
 
-INTFLASH_FUNCTION int i2c_register_write(unsigned int addr, uint8_t reg, const void *buf, size_t nbytes)
+INTFLASH_FUNCTION int i2c_poll_register_write(unsigned int addr, uint8_t reg, const void *buf, size_t nbytes)
 {
     cur_i2c_msg.i2c_address = addr;
     cur_i2c_msg.regaddr_buf[0] = reg;
@@ -129,7 +124,7 @@ INTFLASH_FUNCTION int i2c_register_write(unsigned int addr, uint8_t reg, const v
     return i2c_dotfer();
 }
 
-INTFLASH_FUNCTION int i2c_register_write(unsigned int addr, uint16_t reg, const void *buf, size_t nbytes)
+INTFLASH_FUNCTION int i2c_poll_register_write(unsigned int addr, uint16_t reg, const void *buf, size_t nbytes)
 {
     cur_i2c_msg.i2c_address = addr;
     cur_i2c_msg.regaddr_buf[0] = reg;
@@ -144,7 +139,7 @@ INTFLASH_FUNCTION int i2c_register_write(unsigned int addr, uint16_t reg, const 
     return i2c_dotfer();
 }
 
-INTFLASH_FUNCTION int i2c_register_read(unsigned int addr, uint8_t reg, void *buf, size_t nbytes)
+INTFLASH_FUNCTION int i2c_poll_register_read(unsigned int addr, uint8_t reg, void *buf, size_t nbytes)
 {
     i2c_msg msgs[2];
 
@@ -171,7 +166,7 @@ INTFLASH_FUNCTION int i2c_register_read(unsigned int addr, uint8_t reg, void *bu
     return i2c_dotfer();
 }
 
-INTFLASH_FUNCTION int i2c_register_read(unsigned int addr, uint16_t reg, void *buf, size_t nbytes)
+INTFLASH_FUNCTION int i2c_poll_register_read(unsigned int addr, uint16_t reg, void *buf, size_t nbytes)
 {
     i2c_msg msgs[2];
 
@@ -235,7 +230,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
     if(!i2c_init)
     {
         SEGGER_RTT_printf(0, msg_i2c_init_starting);
-        reset_i2c();
+        i2c_reset();
         SEGGER_RTT_printf(0, msg_i2c_reset_complete);
         i2c_init = true;
     }

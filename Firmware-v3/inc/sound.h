@@ -15,5 +15,6 @@ extern MemRegion sound_get_buffer();
 
 int sound_set_volume(int vol_pct);
 int sound_get_volume();
+int sound_set_extfreq(double freq);
 
 #endif

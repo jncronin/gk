@@ -29,6 +29,7 @@ struct audio_conf
     bool enabled = false;
 
     MemRegion mr_sound = InvalidMemregion();
+    Spinlock sl_sound;
 };
 
 class Process

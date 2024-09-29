@@ -127,6 +127,8 @@ constexpr pll_setup pll_multiplier(int freq)
     return { mult, (unsigned int)mult_rem, div };
 }
 
+constexpr auto ftest = pll_multiplier(44100);
+
 int syscall_audiosetfreq(int freq, int *_errno)
 {
     /* Calculate PLL divisors */
