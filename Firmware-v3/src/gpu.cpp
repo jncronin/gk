@@ -195,7 +195,7 @@ static void handle_scale_blit_cpu(const gpu_message &g)
     // slow implementation on CPU - manages ~20fps for 160x120 -> 640x480 without PFC
     auto sbpp = get_bpp(g.src_pf);
     auto dbpp = get_bpp(g.dest_pf);
-    if(g.src_addr_color < 0x60000000 || g.src_addr_color >= 0x60400000)
+    if(g.src_addr_color < 0x90000000 || g.src_addr_color >= 0x90400000)
     {
         CleanAndInvalidateM7Cache(g.src_addr_color + g.sy * g.sp + g.sx * sbpp,
             g.h * g.sp, CacheType_t::Data);
@@ -235,7 +235,7 @@ static void handle_scale_blit_cpu(const gpu_message &g)
         }
     }
 
-    if(g.dest_addr < 0x60000000 || g.dest_addr >= 0x60400000)
+    if(g.dest_addr < 0x90000000 || g.dest_addr >= 0x90400000)
     {
         CleanM7Cache(g.dest_addr + g.dy * g.dp + g.dx * dbpp, g.dh * g.dp, CacheType_t::Data);
     }
@@ -744,7 +744,7 @@ void *gpu_thread(void *p)
                         auto cache_line_end = (start_addr + len + 0x1fU) & ~0x1fU;
 
                         auto need_to_clean = true;
-                        if((cache_line_start >= 0x60000000) && (cache_line_end < 0x60400000))
+                        if((cache_line_start >= 0x90000000) && (cache_line_end < 0x90400000))
                         {
                             need_to_clean = false;
                         }
