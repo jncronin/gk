@@ -21,6 +21,8 @@ static constexpr const pin SPI2_MOSI { GPIOC, 1, 5 };
 static constexpr const pin SPI2_NSS { GPIOB, 9, 5 };
 static constexpr const pin SPI2_SCK { GPIOD, 3, 5 };
 
+static constexpr const pin I2S_CKIN { GPIOC, 9, 5 };
+
 #define dma GPDMA1_Channel12
 #define dma_irq GPDMA1_Channel12_IRQn
 #define dma_irqhandler GPDMA1_Channel12_IRQHandler
@@ -92,6 +94,7 @@ void init_sound()
     SAI1_SD_A.set_as_af();
     SAI1_FS_A.set_as_af();
     SAI1_MCLK_A.set_as_af();
+    I2S_CKIN.set_as_af();
 
     SPKR_NSD.clear();
     SPKR_NSD.set_as_output();
@@ -103,8 +106,8 @@ void init_sound()
     SPI2_NSS.set_as_af();
 
     // Enable clock to SAI1
-    sound_set_extfreq(44100.0 * 1024.0);
-    RCC->CCIPR3 = (RCC->CCIPR3 &~ RCC_CCIPR3_SAI1SEL_Msk) |
+    //sound_set_extfreq(44100.0 * 1024.0);
+    RCC->CCIPR3 = (RCC->CCIPR3 & ~RCC_CCIPR3_SAI1SEL_Msk) |
         (3U << RCC_CCIPR3_SAI1SEL_Pos);
     
     // Enable SPI2 control to PCM1753
@@ -155,7 +158,7 @@ void init_sound()
 
 int syscall_audiosetfreq(int freq, int *_errno)
 {
-    sound_set_extfreq(1024.0 * (double)freq);
+    //sound_set_extfreq(1024.0 * (double)freq);
     return 0;
 }
 
@@ -171,7 +174,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     dma->CCR = 0;
 
     /* Calculate PLL divisors */
-    sound_set_extfreq(1024.0 * (double)freq);
+    //sound_set_extfreq(1024.0 * (double)freq);
 
     /* SAI1 is connected to PCM1754 
 
@@ -355,10 +358,11 @@ int syscall_audioenable(int enable, int *_errno)
     while(true)
     {
         auto target = (dma->CLLR == ll[0].next_ll) ? &ll[1].sar : &ll[0].sar;
-        *target = (void*)next_buffer;
+        *(volatile void **)target = (void*)next_buffer;
         __DMB();
         target = (dma->CLLR == ll[0].next_ll) ? &ll[1].sar : &ll[0].sar;
-        if(*target == (void*)next_buffer) break;
+        CleanM7Cache((uint32_t)(uintptr_t)ll, sizeof(ll), CacheType_t::Data);
+        if(*(volatile void **)target == (void*)next_buffer) break;
     }
 }
 
@@ -404,8 +408,6 @@ int syscall_audiowaitfree(int *_errno)
         *_errno = EINVAL;
         return -1;
     }
-
-    BKPT();
 
     CriticalGuard cg(ac.sl_sound);
     if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
