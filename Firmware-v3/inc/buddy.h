@@ -299,6 +299,14 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
             }
 
             auto level = buddy_size_to_level(length);
+            if(level >= num_levels())
+            {
+                // too large
+                ret.base = 0UL;
+                ret.length = 0UL;
+                ret.valid = false;
+                return ret;
+            }
 
             auto cpsr = lock();
             auto bitret = acquire_at_level(level);
