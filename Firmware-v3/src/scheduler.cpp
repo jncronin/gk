@@ -93,11 +93,7 @@ inline void Scheduler::set_timeout(const Thread *new_t)
         }
     }
 
-#if GK_OVERCLOCK
-    unsigned int sysclk = 480;
-#else
-    unsigned int sysclk = 384;
-#endif
+    unsigned int sysclk = 600;
     unsigned int reload = 0;
 
     if(earliest_blocker.is_valid())
