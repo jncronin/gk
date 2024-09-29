@@ -224,7 +224,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 532 - 4 - 1;      // tCSM=4us/133 MHz
-    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
+    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 64 byte hybrid read per chip = 128 bytes at XSPI interface
         (1UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CCR = XSPI_CCR_DQSE |
