@@ -3,6 +3,8 @@
 #include "buttons.h"
 #include "fs_provision.h"
 #include "supervisor.h"
+#include "sound.h"
+#include "i2c.h"
 #include <cstring>
 
 pid_t pid_gkmenu = 0;
@@ -10,7 +12,10 @@ pid_t pid_gkmenu = 0;
 /* Init thread - loads services from sdcard */
 void *init_thread(void *p)
 {
+    init_i2c();
 
+    sound_set_extfreq(44100*1024);
+    init_sound();
     //init_supervisor();
 
     // Provision root file system, then allow USB write access to MSC
