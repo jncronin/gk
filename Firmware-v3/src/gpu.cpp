@@ -764,7 +764,7 @@ void *gpu_thread(void *p)
 
                         if(need_to_clean)
                         {
-                            CleanM7Cache(cache_line_start, cache_line_start + cache_line_end, CacheType_t::Data);
+                            CleanM7Cache(cache_line_start, cache_line_end - cache_line_start, CacheType_t::Data);
                         }
                     }
                     break;
