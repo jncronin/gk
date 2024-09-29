@@ -8,6 +8,7 @@
 #include "process.h"
 #include "elf.h"
 #include "tilt.h"
+#include "screen.h"
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -277,6 +278,12 @@ void *proccreate_thread(void *ptr)
         else
         {
             tilt_enable(false);
+        }
+
+        /* set screen mode */
+        if(pcinfo->screen_w == 320 && pcinfo->screen_h == 240)
+        {
+            screen_set_hardware_scale(x2, x2);
         }
 
         p_supervisor.events.Push( { .type = Event::CaptionChange });
