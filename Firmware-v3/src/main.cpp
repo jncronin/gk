@@ -9,6 +9,7 @@
 #include "ext4_thread.h"
 #include "screen.h"
 #include "gpu.h"
+#include "buttons.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -71,6 +72,7 @@ int main()
     init_sd();
     init_ext4();
     init_screen();
+    init_buttons();
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));

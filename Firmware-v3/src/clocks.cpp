@@ -150,8 +150,8 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->CCIPR3 = (2U << RCC_CCIPR3_SPI45SEL_Pos) |     // SPI3,4 = PLL3Q=240
     
         0 ;    // TODO: SAI needs I2S_CKIN to be running before selecting it
-    RCC->CCIPR4 = (5U << RCC_CCIPR4_LPTIM45SEL_Pos) |   // LPTIM4,5 = HSE24
-        (5U << RCC_CCIPR4_LPTIM23SEL_Pos) |             // LPTIM2,3 = HSE24
+    RCC->CCIPR4 = (1U << RCC_CCIPR4_LPTIM45SEL_Pos) |   // LPTIM4,5 = PLL2P=32MHz
+        (1U << RCC_CCIPR4_LPTIM23SEL_Pos) |             // LPTIM2,3 = PLL2P=32MHz
         (2U << RCC_CCIPR4_SPI6SEL_Pos) |                // SPI6  = PLL3Q=240
         (3U << RCC_CCIPR4_LPUART1SEL_Pos);              // LPUART = HSI64
 

@@ -101,7 +101,10 @@ class Process
             X = GK_KEYX,
             Y = GK_KEYY,
             VolUp = GK_KEYVOLUP,
-            VolDown = GK_KEYVOLDOWN
+            VolDown = GK_KEYVOLDOWN,
+            Menu = GK_KEYMENU,
+            Power = GK_KEYPOWER,
+            Joy = GK_KEYJOY
         };
 
         unsigned int gamepad_buttons = 0;
