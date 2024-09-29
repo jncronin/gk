@@ -640,7 +640,7 @@ void *gpu_thread(void *p)
                     }
                     if(!cur_process->screen_ignore_vsync)
                     {
-                        while(screen_flip_in_progress);
+                        //while(screen_flip_in_progress);
                         //scr_vsync.Wait();
                     }
 
