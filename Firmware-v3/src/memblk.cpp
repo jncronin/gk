@@ -507,10 +507,21 @@ extern "C" INTFLASH_FUNCTION int memblk_init_flash_opt_bytes()
     auto opw2_settings = (0U << FLASH_OBW2SRP_ECC_ON_SRAM_Pos) |
         (2U << FLASH_OBW2SRP_DTCM_AXI_SHARE_Pos) |
         (2U << FLASH_OBW2SRP_ITCM_AXI_SHARE_Pos);
-    if((FLASH->OBW2SR & opw2_mask) != opw2_settings)
+
+    // enable xspi HSLV
+    auto opw1_mask = FLASH_OBW1SR_XSPI1_HSLV_Msk |
+        FLASH_OBW1SR_XSPI2_HSLV_Msk;
+    auto opw1_settings = FLASH_OBW1SR_XSPI1_HSLV |
+        FLASH_OBW1SR_XSPI2_HSLV;
+
+    if(((FLASH->OBW2SR & opw2_mask) != opw2_settings) ||
+        ((FLASH->OBW1SR & opw1_mask) != opw1_settings))
     {
         auto orig_val = FLASH->OBW2SR;
         auto new_val = (orig_val & ~opw2_mask) | opw2_settings;
+
+        auto orig_val1 = FLASH->OBW1SR;
+        auto new_val1 = (orig_val1 & ~opw1_mask) | opw1_settings;
 
         // program option bytes
 
@@ -524,7 +535,10 @@ extern "C" INTFLASH_FUNCTION int memblk_init_flash_opt_bytes()
         FLASH->OPTCR |= FLASH_OPTCR_PG_OPT;
 
         // program new value
-        FLASH->OBW2SRP = new_val;
+        if(orig_val != new_val)
+            FLASH->OBW2SRP = new_val;
+        if(orig_val1 != new_val1)
+            FLASH->OBW1SRP = new_val1;
 
         // wait completion
         while(FLASH->SR & FLASH_SR_QW);
