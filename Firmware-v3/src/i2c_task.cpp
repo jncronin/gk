@@ -43,7 +43,7 @@ struct i2c_msg
     uint8_t regaddr_buf[2];
 };
 
-SRAM4_DATA FixedQueue<i2c_msg, 32> i2c_msgs;
+SRAM4_DATA FixedQueue<i2c_msg, 64> i2c_msgs;
 SRAM4_DATA static volatile i2c_msg cur_i2c_msg;
 SRAM4_DATA static volatile unsigned int n_xmit;
 SRAM4_DATA static volatile unsigned int n_tc_end;

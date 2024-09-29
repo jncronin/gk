@@ -14,7 +14,7 @@ void *init_thread(void *p)
 {
     init_i2c();
 
-    sound_set_extfreq(44100*1024);
+    sound_set_extfreq(22050*1024);
     init_sound();
     //init_supervisor();
 
