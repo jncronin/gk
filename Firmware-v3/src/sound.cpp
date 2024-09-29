@@ -10,12 +10,16 @@
 #include "i2c.h"
 #include "cache.h"
 
-static constexpr const pin SAI1_SCK_A { GPIOE, 5, };
-static constexpr const pin SAI1_SD_A { GPIOE, 6, };
-static constexpr const pin SAI1_FS_A { GPIOE, 4, };
-static constexpr const pin SAI1_MCLK_A { GPIOE, 2,};
+static constexpr const pin SAI1_SCK_A { GPIOE, 5, 6 };
+static constexpr const pin SAI1_SD_A { GPIOE, 6, 6 };
+static constexpr const pin SAI1_FS_A { GPIOE, 4, 6 };
+static constexpr const pin SAI1_MCLK_A { GPIOE, 2, 6 };
 static constexpr const pin PCM_ZERO { GPIOB, 0 };   // input
 static constexpr const pin SPKR_NSD { GPIOB, 7 };
+
+static constexpr const pin SPI2_MOSI { GPIOC, 1, 5 };
+static constexpr const pin SPI2_NSS { GPIOB, 9, 5 };
+static constexpr const pin SPI2_SCK { GPIOD, 3, 5 };
 
 #define dma GPDMA1_Channel12
 #define dma_irq GPDMA1_Channel12_IRQn
@@ -42,11 +46,6 @@ constexpr unsigned int max_buffer_size = 32*1024;
 
 static void _queue_if_possible(audio_conf &ac);
 
-static void pcm_mute_set(bool val)
-{
-    klog("pcm_mute: not yet implemented\n");
-}
-
 [[maybe_unused]] static void _clear_buffers(audio_conf &ac)
 {
     ac.wr_ptr = 0;
@@ -62,6 +61,30 @@ static void pcm_mute_set(bool val)
     return i;
 }
 
+static void pcm1753_write(const uint16_t *d, size_t n)
+{
+    SPI2->CR2 = n;
+    SPI2->CR1 = SPI_CR1_SPE;
+    SPI2->CR1 = SPI_CR1_SPE | SPI_CR1_CSTART;
+    while(n)
+    {
+        while(!(SPI2->SR & SPI_SR_TXP));
+        *(volatile uint16_t *)&SPI2->TXDR = *d++;
+        n--;
+    }
+    while(!(SPI2->SR & SPI_SR_TXTF));
+    SPI2->IFCR = SPI_IFCR_TXTFC;
+    while(!(SPI2->SR & SPI_SR_EOT));
+    SPI2->IFCR = SPI_IFCR_EOTC;
+    SPI2->CR1 = 0;
+}
+
+static void pcm_mute_set(bool val)
+{
+    uint16_t pcmreg = val ? 0x1203U : 0x1200U;
+    pcm1753_write(&pcmreg, 1);
+}
+
 void init_sound()
 {
     // pins
@@ -75,10 +98,41 @@ void init_sound()
 
     PCM_ZERO.set_as_input();
 
+    SPI2_MOSI.set_as_af();
+    SPI2_SCK.set_as_af();
+    SPI2_NSS.set_as_af();
+
     // Enable clock to SAI1
     sound_set_extfreq(44100.0 * 1024.0);
     RCC->CCIPR3 = (RCC->CCIPR3 &~ RCC_CCIPR3_SAI1SEL_Msk) |
         (3U << RCC_CCIPR3_SAI1SEL_Pos);
+    
+    // Enable SPI2 control to PCM1753
+    RCC->APB1ENR1 |= RCC_APB1ENR1_SPI2EN;
+    (void)RCC->APB1ENR1;
+    SPI2->CR1 = 0;
+
+    // Input clock is 240 MHz, output max 10 MHz, no MISO, raise NSS between each 16-bit word
+    SPI2->CR2 = 0;
+    SPI2->CFG1 = (7U << SPI_CFG1_MBR_Pos) |     // baud /256
+        // TODO TXDMAEN
+        (15U << SPI_CFG1_DSIZE_Pos) |           // 16-bit frame
+        0;
+    SPI2->CFG2 = SPI_CFG2_AFCNTR |              // always control the SPI data lines even with SPE=0
+        SPI_CFG2_SSOM |                         // interleave frames with NSS high
+        SPI_CFG2_SSOE |                         // enable NSS control
+        SPI_CFG2_MASTER |
+        (1U << SPI_CFG2_COMM_Pos) |             // simplex transmitter
+        (0xfU << SPI_CFG2_MIDI_Pos) |           // longest possible NSS interleave
+        0;
+
+    // configure PCM1753
+    uint16_t pcm1753_conf[] = {
+        0x1300,         // enable both DACs
+        0x1404,         // I2S format
+        0x1604,         // single ZEROA pin
+    };
+    pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
 
     // Set PCM_ZERO IRQ, both edges
     RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
@@ -429,7 +483,15 @@ int sound_set_volume(int new_vol_pct)
         SPKR_NSD.clear();
     }
 
-    // TODO: set volume on PCM
+    // set volume on PCM, scaled from 128 (muted) to 255 (full)
+    //  for now just linear in top part of range
+    uint16_t val = new_vol_pct ? (155U + new_vol_pct) : 0U;
+    uint16_t pcmregs[] = {
+        (uint16_t)(0x1000U | val),
+        (uint16_t)(0x1100U | val)
+    };
+    pcm1753_write(pcmregs, sizeof(pcmregs) / sizeof(uint16_t));
+
     return 0;
 }
 
