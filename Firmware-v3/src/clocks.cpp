@@ -73,7 +73,7 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->PLL2DIVR1 = (1U << RCC_PLL2DIVR1_DIVR_Pos) |
         (1U << RCC_PLL2DIVR1_DIVQ_Pos) |
         (24U << RCC_PLL2DIVR1_DIVP_Pos) |
-        (99U << RCC_PLL2DIVR1_DIVN_Pos);
+        (79U << RCC_PLL2DIVR1_DIVN_Pos);
     RCC->PLL2DIVR2 = (3U << RCC_PLL2DIVR2_DIVT_Pos) |
         (2U << RCC_PLL2DIVR2_DIVS_Pos);
 
