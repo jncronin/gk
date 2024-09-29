@@ -84,7 +84,7 @@ int main()
     SysTick->VAL = 0;
     SysTick->LOAD = 7680000UL - 1UL;    // 20 ms tick at 384 MHz
 
-    BKPT();
+    //BKPT();
 
     s().StartForCurrentCore();
     while(true);
