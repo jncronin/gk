@@ -44,10 +44,10 @@ INTFLASH_RDATA static const constexpr pin XSPI_PINS[] =
 INTFLASH_RDATA static const constexpr pin XSPI1_RESET { GPIOD, 1 };
 INTFLASH_RDATA static const constexpr pin XSPI2_RESET { GPIOD, 0 };
 
-uint16_t id0 = 0;
-uint16_t id1 = 0;
-uint16_t cr0 = 0;
-uint16_t cr1 = 0;
+uint32_t id0 = 0;
+uint32_t id1 = 0;
+uint32_t cr0 = 0;
+uint32_t cr1 = 0;
 
 template <typename T> INTFLASH_FUNCTION static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
 {
@@ -217,14 +217,14 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
             - burst length 32 bytes
      */
     XSPI1->CR = (1UL << XSPI_CR_FMODE_Pos) | XSPI_CR_EN | XSPI_CR_TCEN |
-        0;
+        XSPI_CR_DMM;
     XSPI1->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
         (0UL << XSPI_DCR1_CSHT_Pos) |
-        (25UL << XSPI_DCR1_DEVSIZE_Pos);
+        (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 532 - 4 - 1;      // tCSM=4us/133 MHz
-    XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
+    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
         (1UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CCR = XSPI_CCR_DQSE |
@@ -255,20 +255,20 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->DLR = 3; // 2 bytes per register per chip
 
-    xspi_ind_read(XSPI1, 2, 0, &id0);
-    if(id0 != 0x0f86U)
+    xspi_ind_read(XSPI1, 4, 0, &id0);
+    if(id0 != 0x0f860f86U)
     {
         // try again
-        xspi_ind_read(XSPI1, 2, 0, &id0);
-        if(id0 != 0x0f86U)
+        xspi_ind_read(XSPI1, 4, 0, &id0);
+        if(id0 != 0x0f860f86U)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
         }
     }
 
-    xspi_ind_read(XSPI1, 2, 1*2, &id1);
-    xspi_ind_read(XSPI1, 2, 0x800*2, &cr0);
-    xspi_ind_read(XSPI1, 2, 0x801*2, &cr1);
+    xspi_ind_read(XSPI1, 4, 1*4, &id1);
+    xspi_ind_read(XSPI1, 4, 0x800*4, &cr0);
+    xspi_ind_read(XSPI1, 4, 0x801*4, &cr1);
 
     // Try and enable differential clock...
     INTFLASH_STRING static char msg_xspi_enable_diffclk[] = "xspi: enabling differential clk\n";
@@ -285,11 +285,11 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR &= ~XSPI_WCCR_DQSE;
 
-    uint16_t new_cr1 = 0xff81U;
-    xspi_ind_write(XSPI1, 2, 0x801U*2, &new_cr1);
+    uint32_t new_cr1 = 0xff81ff81U;
+    xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
 
-    uint16_t new_cr0 = 0x8f0bU; // hybrid burst, 16 byte burst, 5 initial latency, fixed latency
-    xspi_ind_write(XSPI1, 2, 0x800U*2, &new_cr0);
+    uint32_t new_cr0 = 0x8f098f09U; // hybrid burst, 64 byte burst, 5 initial latency, fixed latency
+    xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
 
     // set new latency
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -297,8 +297,8 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (5UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
 
-    xspi_ind_read(XSPI1, 2, 0x800U*2, &cr0);
-    xspi_ind_read(XSPI1, 2, 0x801U*2, &cr1);
+    xspi_ind_read(XSPI1, 4, 0x800U*4, &cr0);
+    xspi_ind_read(XSPI1, 4, 0x801U*4, &cr1);
 
     if(cr0 != new_cr0)
     {
