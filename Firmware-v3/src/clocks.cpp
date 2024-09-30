@@ -126,6 +126,9 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
         FLASH->ACR = (2U << FLASH_ACR_WRHIGHFREQ_Pos) |
             (5U << FLASH_ACR_LATENCY_Pos);
     }
+    RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
+    (void)RCC->APB4ENR;
+    SBS->PMCR |= SBS_PMCR_AXISRAM_WS;
 
     /* Set sysclk to use PLL */
     RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW_Msk) |
