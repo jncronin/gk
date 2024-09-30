@@ -40,24 +40,6 @@ int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
     const std::string &usage, int *_errno)
 {
-    // get free mpu slot
-    auto t = GetCurrentThreadForCore();
-    int mpu_slot = -1;
-    for(int i = 0; i < 16; i++)
-    {
-        if(!(t->tss.mpuss[i].rasr & 0x1U))
-        {
-            mpu_slot = i;
-            break;
-        }
-    }
-
-    if(mpu_slot == -1)
-    {
-        *_errno = ENOMEM;
-        return InvalidMemregion();
-    }
-
     MemRegion mr = InvalidMemregion();
     if(allow_sram)
         mr = memblk_allocate(len, MemRegionType::SRAM, usage);
@@ -72,6 +54,9 @@ MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
             return mr;
         }
     }
+
+    // get free mpu slot
+    auto t = GetCurrentThreadForCore();
 
     auto mpu_id = t->p.AddMPURegion({ mr, -1, 1, 1, 0, is_sync != 0 });
     if(mpu_id >= 0)
