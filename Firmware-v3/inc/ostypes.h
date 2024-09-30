@@ -53,6 +53,11 @@ struct mpu_saved_state
     MemRegionAccess priv_access() const;
     MemRegionAccess unpriv_access() const;
     uint32_t tex_scb() const;
+
+    constexpr bool operator==(const mpu_saved_state &other) const
+    {
+        return (rbar == other.rbar) && (rasr == other.rasr);
+    }
 };
 
 struct thread_saved_state

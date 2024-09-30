@@ -7,7 +7,6 @@
 extern uint64_t _cur_ms;
 extern struct timespec toffset;
 
-static void enable_backup_domain();
 time_t timegm (struct tm* tim_p);
 
 extern "C" INTFLASH_FUNCTION void init_clocks()
@@ -26,7 +25,7 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->CR = cr;
     while(!(RCC->CR & RCC_CR_HSERDY));
 
-    enable_backup_domain();
+    //enable_backup_domain();
 
     _cur_ms = 0ULL;
 
@@ -267,7 +266,7 @@ uint64_t clock_timespec_to_ms(const struct timespec &tp)
         static_cast<uint64_t>(s_diff * 1000);
 }
 
-INTFLASH_FUNCTION void enable_backup_domain()
+extern "C" void clock_enable_backup_domain()
 {
     /* There is rather complex nomeclature around the backup domain.  In terms of power supplies:
         VBAT is external power from battery
@@ -311,13 +310,11 @@ INTFLASH_FUNCTION void enable_backup_domain()
         RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
         (void)RCC->AHB4ENR;
 
-        // TODO: do this separately in a function that is in XSPI_FLASH
-
-        //timespec cts;
-        //if(clock_get_timespec_from_rtc(&cts) == 0)
-        //{
-        //    clock_set_timebase(&cts);
-        //}
+        timespec cts;
+        if(clock_get_timespec_from_rtc(&cts) == 0)
+        {
+            clock_set_timebase(&cts);
+        }
         return;
     }
 
@@ -341,10 +338,9 @@ INTFLASH_FUNCTION void enable_backup_domain()
 
     // Set up basic RTC time - changed later by network time or user
 
-    // TODO: do this in a separate function that is in XSPI_FLASH
     // For now, default to the time of writing this file
-    //timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
-    //clock_set_rtc_from_timespec(&ct);
+    timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
+    clock_set_rtc_from_timespec(&ct);
 }
 
 static constexpr unsigned int to_bcd(unsigned int val)

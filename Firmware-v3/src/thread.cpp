@@ -106,7 +106,6 @@ Thread *Thread::Create(std::string name,
             Process &owning_process,
             CPUAffinity affinity,
             MemRegion stackblk,
-            const mpu_saved_state *defmpu,
             void *p_r1)
 {
     auto t = new Thread(owning_process);
@@ -203,59 +202,20 @@ Thread *Thread::Create(std::string name,
     t->tss.psp = reinterpret_cast<uint32_t>(&stack[top_stack]);
     
     /* Create mpu regions */
-    memcpy(t->tss.mpuss, defmpu, sizeof(mpu_default));
-    // get first free
-    int next_mpu = -1;
-    for(int i = 0; i < 16; i++)
-    {
-        if(!(t->tss.mpuss[i].rasr & 0x1U))
-        {
-            next_mpu = i;
-            break;
-        }
-    }
-    if(next_mpu == -1)
-    {
-        // shouldn't get here
-        klog("thread: all MPU slots already used at thread creation time!\n");
-        BKPT();
-        while(1);
-    }
-
-    if(!is_priv)
-    {
-        t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.code_data.address,
-            owning_process.code_data.length, next_mpu, true,
-            RW, RW, WBWA_NS);
-        next_mpu++;
-        t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.heap.address,
-            owning_process.heap.length, next_mpu, owning_process.heap_is_exec,
-            RW, RW, WBWA_NS);
-        next_mpu++;
-    }
-    t->tss.mpuss[next_mpu] = MPUGenerate(t->stack.address,
-        t->stack.length, next_mpu, false,
-        RW, RW, WBWA_NS);
-    next_mpu++;
+    memcpy(t->tss.mpuss, owning_process.p_mpu, sizeof(mpu_default));
     if(owning_process.has_tls)
     {
-        t->tss.mpuss[next_mpu] = MPUGenerate(t->mr_tls.address,
-            t->mr_tls.length, next_mpu, false, RW, RW, WBWA_NS);
-        next_mpu++;
+        Process::mmap_region mmr_tls { .mr = t->mr_tls, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = false };
+        t->tss.mpuss[owning_process.p_mpu_tls_id] = mmr_tls.to_mpu(owning_process.p_mpu_tls_id);
     }
-    if(owning_process.mr_hot.valid)
-    {
-        t->tss.mpuss[next_mpu] = MPUGenerate(owning_process.mr_hot.address,
-            owning_process.mr_hot.length, next_mpu, true, RW, RW, WBWA_NS);
-        next_mpu++;
-    }
+    owning_process.AddMPURegion({ .mr = t->stack, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = false });
 
-    //CleanOrInvalidateM7Cache((uint32_t)t, sizeof(Thread), CacheType_t::Data);
-    //CleanOrInvalidateM7Cache((uint32_t)t->stack.address, t->stack.length, CacheType_t::Data);
     {
         CriticalGuard cg;
         owning_process.threads.push_back(t);
     }
+    
+    owning_process.UpdateMPURegionsForThreads();
 
     return t;
 }
