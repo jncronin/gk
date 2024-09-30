@@ -203,7 +203,9 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     (void)RCC->AHB5RSTR;
 
     // Power to XSPI pins
-    PWR->CSR2 |= PWR_CSR2_EN_XSPIM1 | PWR_CSR2_EN_XSPIM2;
+    PWR->CSR2 |= PWR_CSR2_EN_XSPIM1 | PWR_CSR2_EN_XSPIM2 |
+        (3U << PWR_CSR2_XSPICAP1_Pos);
+        ;
 
     XSPIM->CR = 0;  // direct mode
 
@@ -220,10 +222,10 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         XSPI_CR_DMM;
     XSPI1->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
-        (0UL << XSPI_DCR1_CSHT_Pos) |
+        (2UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
-    XSPI1->DCR4 = 532 - 4 - 1;      // tCSM=4us/133 MHz
+    XSPI1->DCR4 = 120 - 4 - 1;      // tCSM=4us/133 MHz
     XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 64 byte hybrid read per chip = 128 bytes at XSPI interface
         (1UL << XSPI_DCR2_PRESCALER_Pos); 
     while(XSPI1->SR & XSPI_SR_BUSY);
