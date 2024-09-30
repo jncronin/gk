@@ -39,7 +39,7 @@ void OnProjectLoad (void) {
   File.Open ("C:/Users/jncro/source/repos/gk/build/gkv3.elf");
   Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M7F.svd");
   Project.AddSvdFile ("$(InstallDir)/Config/Peripherals/ARMv7M.svd");
-  //Project.SetOSPlugin ("../gk-jlink-rtos/src/gk-ozone-rtos.js");
+  Project.SetOSPlugin ("../gk-jlink-rtos/src/gk-ozone-rtos.js");
 }
 
 /*********************************************************************

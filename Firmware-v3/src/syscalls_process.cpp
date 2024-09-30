@@ -178,12 +178,25 @@ void *proccreate_thread(void *ptr)
         return nullptr;
     }
 
+    // Initialize process MPU regions
+    memcpy(proc->p_mpu, mpu_default, sizeof(mpu_default));
+    proc->AddMPURegion({ .mr = heap, .fd = -1, .is_read = true, .is_write = true, .is_exec = proc->heap_is_exec, .is_sync = false });
+    proc->AddMPURegion({ .mr = proc->code_data, .fd = -1, .is_read = true, .is_write = true, .is_exec = true, .is_sync = false });
+    if(proc->mr_hot.valid)
+    {
+        proc->AddMPURegion({ .mr = proc->mr_hot, .fd = -1, .is_read = true, .is_write = false, .is_exec = true, .is_sync = false });
+    }
+    if(proc->has_tls)
+    {
+        proc->p_mpu_tls_id = proc->AddMPURegion({ .mr = InvalidMemregion() });
+    }
+    
     // create startup thread
     auto start_t = Thread::Create(cpname + "_0",
         (Thread::threadstart_t)(uintptr_t)epoint,
         (void *)proc->argc, is_priv, GK_PRIORITY_NORMAL,
         *proc, (CPUAffinity)core_affinity,
-        stack, mpu_default,
+        stack,
         (void *)proc->argv);
     if(start_t == nullptr)
     {

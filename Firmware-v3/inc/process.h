@@ -64,9 +64,19 @@ class Process
         std::map<pthread_key_t, void (*)(void *)> tls_data;
 
         /* mmap regions */
-        struct mmap_region { MemRegion mr; int fd; int is_read; int is_write; int is_exec; bool is_sync; };
+        struct mmap_region { MemRegion mr; int fd; int is_read; int is_write; int is_exec; bool is_sync;
+            mpu_saved_state to_mpu(unsigned int mpu_id) const; };
         std::map<uint32_t, mmap_region> mmap_regions;
         std::map<uint32_t, mmap_region>::iterator get_mmap_region(uint32_t addr, uint32_t len);
+
+        /* The MPU regions defined for this process */
+        mpu_saved_state p_mpu[16];
+        unsigned int p_mpu_tls_id = 0;
+        void UpdateMPURegionsForThreads();
+        void UpdateMPURegionForThread(Thread *t);
+        int AddMPURegion(const mmap_region &r);
+        int DeleteMPURegion(const mmap_region &r);
+        int DeleteMPURegion(const MemRegion &r);
 
         /* display modes */
         uint16_t screen_w = 640;

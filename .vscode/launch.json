@@ -7,12 +7,12 @@
         {
             "name": "Launch",
             "cwd": "${workspaceFolder}",
-            "executable": "./build/gk.elf",
+            "executable": "./build/gkv3.elf",
             "request": "launch",
             "type": "cortex-debug",
             "runToEntryPoint": "main",
             "servertype": "jlink",
-            "device": "STM32H747BI_M7",
+            "device": "STM32H7S7L8_XSPI2_HyperFlash",
             "serverpath": "C:\\Program Files\\SEGGER\\JLink\\JLinkGDBServerCL.exe",
             //"rtos": "c:\\Program Files\\SEGGER\\JLink\\GDBServer\\RTOSPlugin_FreeRTOS.dll",
             "rttConfig": {
@@ -30,12 +30,12 @@
         {
             "name": "Attach",
             "cwd": "${workspaceFolder}",
-            "executable": "./build/gk.elf",
+            "executable": "./build/gkv3.elf",
             "request": "attach",
             "type": "cortex-debug",
             "runToEntryPoint": "main",
             "servertype": "jlink",
-            "device": "STM32H747BI_M7",
+            "device": "STM32H7S7L8_XSPI2_HyperFlash",
             "serverpath": "C:\\Program Files\\SEGGER\\JLink\\JLinkGDBServerCL.exe",
             //"rtos": "c:\\Program Files\\SEGGER\\JLink\\GDBServer\\RTOSPlugin_FreeRTOS.dll",
             "rttConfig": {

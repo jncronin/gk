@@ -174,6 +174,10 @@ LoopCopyItcmInit:
   ldr ip, =__libc_init_array
   blx ip
 
+/* Initialise backup domain */
+  ldr ip, =clock_enable_backup_domain
+  blx ip
+
 /* Call the application's entry point.*/
   ldr ip, =main
   blx ip

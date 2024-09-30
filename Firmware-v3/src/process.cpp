@@ -16,6 +16,89 @@ Process::~Process()
     proc_list.DeleteProcess(pid, this->rc);
 }
 
+int Process::AddMPURegion(const mmap_region &r)
+{
+    CriticalGuard cg(sl);
+
+    // get free mpu slot
+    int mpu_slot = -1;
+    for(unsigned int i = 0; i < 16; i++)
+    {
+        if(!(p_mpu[i].rasr & 0x1U))
+        {
+            if(!has_tls || i != p_mpu_tls_id)
+            {
+                mpu_slot = i;
+                break;
+            }
+        }
+    }
+
+    if(mpu_slot == -1)
+    {
+        klog("proc: request for mpu slot - none available\n");
+        BKPT();
+    }
+    else
+    {
+        p_mpu[mpu_slot] = r.to_mpu(mpu_slot);
+    }
+    
+    return mpu_slot;
+}
+
+void Process::UpdateMPURegionsForThreads()
+{
+    CriticalGuard cg(sl);
+    for(auto t : threads)
+    {
+        UpdateMPURegionForThread(t);
+    }
+}
+
+void Process::UpdateMPURegionForThread(Thread *t)
+{
+    CriticalGuard cg(t->sl);
+    // copy everything but the TLS
+    for(unsigned int i = 0; i < 16; i++)
+    {
+        if(has_tls && i == p_mpu_tls_id)
+            continue;
+        t->tss.mpuss[i] = p_mpu[i];
+    }
+
+    // If we are the calling process then update for us as well
+    if(t == GetCurrentThreadForCore())
+    {
+        auto ctrl = MPU->CTRL;
+        MPU->CTRL = 0;
+        for(unsigned int i = 0; i < 16; i++)
+        {
+            MPU->RBAR = t->tss.mpuss[i].rbar;
+            MPU->RASR = t->tss.mpuss[i].rasr;
+        }
+        MPU->CTRL = ctrl;
+        __DSB();
+        __ISB();
+    }
+}
+
+mpu_saved_state Process::mmap_region::to_mpu(unsigned int mpu_id) const
+{
+    if(mr.valid == false)
+        return MPUGenerateNonValid(mpu_id);
+
+    MemRegionAccess user_acc;
+    if(is_write)
+        user_acc = MemRegionAccess::RW;
+    else if(is_read || is_exec)
+        user_acc = MemRegionAccess::RO;
+    else
+        user_acc = MemRegionAccess::NoAccess;
+    
+    return MPUGenerate(mr.address, mr.length, mpu_id, is_exec, RW, user_acc, 
+        is_sync ? WT_NS : WBWA_NS);
+}
 
 pid_t ProcessList::RegisterProcess(Process *p)
 {
