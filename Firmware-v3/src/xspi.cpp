@@ -48,6 +48,10 @@ uint32_t id0 = 0;
 uint32_t id1 = 0;
 uint32_t cr0 = 0;
 uint32_t cr1 = 0;
+uint32_t id0_1 = 0;
+uint32_t id1_1 = 0;
+uint32_t cr0_1 = 0;
+uint32_t cr1_1 = 0;
 
 template <typename T> INTFLASH_FUNCTION static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
 {
@@ -272,6 +276,11 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     xspi_ind_read(XSPI1, 4, 0x800*4, &cr0);
     xspi_ind_read(XSPI1, 4, 0x801*4, &cr1);
 
+    xspi_ind_read(XSPI1, 4, 0x80000*4, &id0_1);
+    xspi_ind_read(XSPI1, 4, 0x80001*4, &id1_1);
+    xspi_ind_read(XSPI1, 4, 0x80800*4, &cr0_1);
+    xspi_ind_read(XSPI1, 4, 0x80801*4, &cr1_1);
+
     // Try and enable differential clock...
     INTFLASH_STRING static char msg_xspi_enable_diffclk[] = "xspi: enabling differential clk\n";
     SEGGER_RTT_printf(0, msg_xspi_enable_diffclk);
@@ -301,6 +310,8 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     xspi_ind_read(XSPI1, 4, 0x800U*4, &cr0);
     xspi_ind_read(XSPI1, 4, 0x801U*4, &cr1);
+    xspi_ind_read(XSPI1, 4, 0x80800*4, &cr0_1);
+    xspi_ind_read(XSPI1, 4, 0x80801*4, &cr1_1);
 
     if(cr0 != new_cr0)
     {
