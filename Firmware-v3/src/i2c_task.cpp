@@ -326,6 +326,14 @@ void *i2c_thread(void *params)
                             {
                                 cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                             }
+#if DEBUG_I2C
+                            klog("i2c: read success: %u bytes from %x\n", cur_i2c_msg.nbytes + cur_i2c_msg.nbytes2,
+                                cur_i2c_msg.i2c_address);
+                            for(unsigned int i = 0; i < cur_i2c_msg.nbytes + cur_i2c_msg.nbytes2; i++)
+                            {
+                                klog("i2c: read (%u): %x\n", i, *cur_buf_p((i2c_msg *)&cur_i2c_msg, i));
+                            }
+#endif
                         }
                         else if(i2c->ISR & I2C_ISR_TCR)
                         {
@@ -376,6 +384,14 @@ void *i2c_thread(void *params)
                             {
                                 cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                             }
+#if DEBUG_I2C
+                            klog("i2c: write success: %u bytes to %x\n", cur_i2c_msg.nbytes + cur_i2c_msg.nbytes2,
+                                cur_i2c_msg.i2c_address);
+                            for(unsigned int i = 0; i < cur_i2c_msg.nbytes + cur_i2c_msg.nbytes2; i++)
+                            {
+                                klog("i2c: write (%u): %x\n", i, *cur_buf_p((i2c_msg *)&cur_i2c_msg, i));
+                            }
+#endif
                         }
                         else if(i2c->ISR & I2C_ISR_TCR)
                         {

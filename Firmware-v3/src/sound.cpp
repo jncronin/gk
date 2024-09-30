@@ -15,7 +15,8 @@ static constexpr const pin SAI1_SD_A { GPIOE, 6, 6 };
 static constexpr const pin SAI1_FS_A { GPIOE, 4, 6 };
 static constexpr const pin SAI1_MCLK_A { GPIOE, 2, 6 };
 static constexpr const pin PCM_ZERO { GPIOB, 0 };   // input
-static constexpr const pin SPKR_NSD { GPIOB, 7 };
+static constexpr const pin SPKR_NSD { GPIOB, 7 };   // speaker amp enable
+static constexpr const pin PCM_MUTE { GPIOO, 1 };   // headphone amp #enable
 
 static constexpr const pin SPI2_MOSI { GPIOC, 1, 5 };
 static constexpr const pin SPI2_NSS { GPIOB, 9, 5 };
@@ -98,6 +99,8 @@ void init_sound()
 
     SPKR_NSD.clear();
     SPKR_NSD.set_as_output();
+    PCM_MUTE.set();
+    PCM_MUTE.set_as_output();
 
     PCM_ZERO.set_as_input();
 
@@ -154,6 +157,8 @@ void init_sound()
 
     RCC->AHB1ENR |= RCC_AHB1ENR_GPDMA1EN;
     (void)RCC->AHB1ENR;
+
+    sound_set_volume(10);
 }
 
 int syscall_audiosetfreq(int freq, int *_errno)
@@ -170,11 +175,12 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     /* this should be the first call from any process - stop sound output then reconfigure */
     pcm_mute_set(true);
     SPKR_NSD.clear();
+    PCM_MUTE.set();
     SAI1_Block_A->CR1 = 0;
     dma->CCR = 0;
 
     /* Calculate PLL divisors */
-    //sound_set_extfreq(1024.0 * (double)freq);
+    sound_set_extfreq(1024.0 * (double)freq);
 
     /* SAI1 is connected to PCM1754 
 
@@ -327,9 +333,11 @@ int syscall_audioenable(int enable, int *_errno)
         SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
         pcm_mute_set(false);
         SPKR_NSD.set();
+        PCM_MUTE.clear();
     }
     else if(ac.enabled)
     {
+        PCM_MUTE.set();
         SPKR_NSD.clear();
         pcm_mute_set(true);
         SAI1_Block_A->CR1 &= ~SAI_xCR1_SAIEN;
@@ -457,11 +465,13 @@ extern "C" void EXTI0_IRQHandler()
     {
         pcm_mute_set(false);
         SPKR_NSD.set();
+        PCM_MUTE.clear();
     }
     else
     {
         pcm_mute_set(true);
         SPKR_NSD.clear();
+        PCM_MUTE.set();
     }
     EXTI->PR1 = EXTI_PR1_PR0;
     __DMB();
@@ -478,11 +488,13 @@ int sound_set_volume(int new_vol_pct)
     {
         pcm_mute_set(false);
         SPKR_NSD.set();
+        PCM_MUTE.clear();
     }
     else
     {
         pcm_mute_set(true);
         SPKR_NSD.clear();
+        PCM_MUTE.set();
     }
 
     // set volume on PCM, scaled from 128 (muted) to 255 (full)
@@ -616,12 +628,13 @@ int sound_set_extfreq(double freq)
     klog("sound: M: %u, N: %u, Pdiv: %u\n", fvals.M, fvals.N, fvals.Pdiv);
 
     // disable PLL1 - don't wait for i2c completion in this function because we may
-    //  be called from an uninterruptible syscall
-    uint8_t pllcfg = 0xed;
+    //  be called from an uninterruptible syscall, therefore also use
+    //  static vars so they don't get destroyed with stack change prior to use by i2c thread
+    static uint8_t pllcfg = 0xed;
     i2c_register_write(cdce_address, (uint8_t)0x94U, &pllcfg, 1, false);
 
     // Program output divider first
-    uint8_t pdiv[2];
+    static uint8_t pdiv[2];
     pdiv[0] = ((fvals.Pdiv >> 8) & 0x3U) | 0xb4U;       // default value for upper bits
     pdiv[1] = fvals.Pdiv & 0xffU;
 
@@ -648,7 +661,7 @@ int sound_set_extfreq(double freq)
     else
         vco_range = 0;
     
-    uint8_t pll[4];
+    static uint8_t pll[4];
     pll[0] = (fvals.N >> 4) & 0xffU;
     pll[1] = ((fvals.N & 0xfU) << 4) |
         ((R >> 5) & 0xfU);
@@ -664,8 +677,8 @@ int sound_set_extfreq(double freq)
     i2c_register_write(cdce_address, (uint8_t)0x9bU, &pll[3], 1, false);
 
     // enable PLL1
-    pllcfg = 0x6d;
-    i2c_register_write(cdce_address, (uint8_t)0x94U, &pllcfg, 1, false);
+    static uint8_t pllcfg2 = 0x6d;
+    i2c_register_write(cdce_address, (uint8_t)0x94U, &pllcfg2, 1, false);
 
     return 0;
 }
