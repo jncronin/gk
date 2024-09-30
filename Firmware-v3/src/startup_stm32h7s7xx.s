@@ -116,7 +116,7 @@ LoopCopyData4Init:
 
 /* Copy the rtt segment initializers from flash to SRAM */
   ldr r0, =_srtt
-  ldr r1, =_ertt
+  ldr r1, =_erttd
   ldr r2, =_srtt_flash
   movs r3, #0
   b LoopCopyRttInit
@@ -145,6 +145,20 @@ LoopFillZerobss:
   cmp r2, r4
   bcc FillZerobss
 
+/* Zero fill the dtcm_bss segment. */
+  ldr r2, =_sdtcm_bss
+  ldr r4, =_edtcm_bss
+  movs r3, #0
+  b LoopFillZerodtcm_bss
+
+FillZerodtcm_bss:
+  str  r3, [r2]
+  adds r2, r2, #4
+
+LoopFillZerodtcm_bss:
+  cmp r2, r4
+  bcc FillZerodtcm_bss
+
 /* Call the clock system initialization function.*/
   bl  init_clocks
 
@@ -167,6 +181,21 @@ LoopCopyItcmInit:
   adds r4, r0, r3
   cmp r4, r1
   bcc CopyItcmInit
+
+/* Zero fill the .net_bss segment. */
+  ldr r2, =_slwip_bss_data
+  ldr r4, =_elwip_data
+  movs r3, #0
+  b LoopFillZeronet_bss
+
+FillZeronet_bss:
+  str  r3, [r2]
+  adds r2, r2, #4
+
+LoopFillZeronet_bss:
+  cmp r2, r4
+  bcc FillZeronet_bss
+
 
   /* TODO: initialize XSPI data/bss / itcm from xspiflash etc */
 
