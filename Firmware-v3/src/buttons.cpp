@@ -18,6 +18,11 @@ constexpr const pin BTN_X { GPIOC, 2 };
 constexpr const pin BTN_Y { GPIOE, 10 };
 constexpr const pin BTN_JOY { GPIOD, 2 };
 
+constexpr const pin JOY_X { GPIOC, 4 };        // ADC12_INP4
+constexpr const pin JOY_Y { GPIOA, 6 };        // ADC12_INP3
+
+#define dma GPDMA1_Channel13
+
 static Debounce<5, 20, 20, 1000, Process::GamepadKey>
     db_MENU(BTN_MENU, Process::GamepadKey::Menu),
     db_VOLUP(BTN_VOLUP, Process::GamepadKey::VolUp),
@@ -35,6 +40,8 @@ static Debounce<5, 20, 20, 1000, Process::GamepadKey>
 
 static int longpress_count = 0;
 
+static __attribute__((aligned(32))) volatile uint16_t adc_vals[16];
+
 void init_buttons()
 {
     BTN_MENU.set_as_input();
@@ -50,6 +57,112 @@ void init_buttons()
     BTN_X.set_as_input();
     BTN_Y.set_as_input();
     BTN_JOY.set_as_input();
+    pin_set(JOY_X, 3);
+    pin_set(JOY_Y, 3);
+
+    // Set up ADC, clocked from 24 MHz HSE
+    RCC->AHB1ENR |= RCC_AHB1ENR_ADC12EN;
+    (void)RCC->AHB1ENR;
+    RCC->AHB1RSTR = RCC_AHB1RSTR_ADC12RST;
+    (void)RCC->AHB1RSTR;
+    RCC->AHB1RSTR = 0;
+    (void)RCC->AHB1RSTR;
+
+    // Disable deep power down
+    ADC1->CR = 0;
+    (void)ADC1->CR;
+
+    // Enable regulator
+    ADC1->CR |= ADC_CR_ADVREGEN;
+    (void)ADC1->CR;
+    delay_ms(1);
+
+    ADC12_COMMON->CCR = //ADC_CCR_TSEN |
+        (8U << ADC_CCR_PRESC_Pos) |         // /32
+        ADC_CCR_DMACFG |                    // DMA circular mode
+        (0xfU << ADC_CCR_DELAY_Pos);
+    ADC1->DIFSEL = 0;
+
+    // Enable calibration
+    ADC1->CR |= ADC_CR_ADCAL;
+    (void)ADC1->CR;
+    while(ADC1->CR & ADC_CR_ADCAL);
+
+    // Enable ADC
+    ADC1->ISR = ADC_ISR_ADRDY;
+    ADC1->CR |= ADC_CR_ADEN;
+    (void)ADC1->CR;
+    while(!(ADC1->ISR & ADC_ISR_ADRDY));
+
+    ADC1->CFGR = 
+        ADC_CFGR_CONT |
+        ADC_CFGR_OVRMOD |
+        ADC_CFGR_DMACFG |
+        ADC_CFGR_DMAEN;
+
+    // x128 and 3 bit shift gives ~5ms update interval
+    ADC1->CFGR2 = (3U << ADC_CFGR2_OVSS_Pos) |
+        (6U << ADC_CFGR2_OVSR_Pos) |
+        ADC_CFGR2_ROVSE;
+    ADC1->SQR1 = (1U << ADC_SQR1_L_Pos) |   // 2 conversions
+        (4U << ADC_SQR1_SQ1_Pos) |          // JOY_X
+        (3U << ADC_SQR1_SQ2_Pos);           // JOY_Y
+    ADC1->SQR2 = 0;
+    ADC1->SQR3 = 0;
+    ADC1->SQR4 = 0;
+    const unsigned smpr = 3u;
+    ADC1->SMPR1 = (smpr << ADC_SMPR1_SMP0_Pos) |
+        (smpr << ADC_SMPR1_SMP1_Pos) |
+        (smpr << ADC_SMPR1_SMP2_Pos) |
+        (smpr << ADC_SMPR1_SMP3_Pos) |
+        (smpr << ADC_SMPR1_SMP4_Pos) |
+        (smpr << ADC_SMPR1_SMP5_Pos) |
+        (smpr << ADC_SMPR1_SMP6_Pos) |
+        (smpr << ADC_SMPR1_SMP7_Pos) |
+        (smpr << ADC_SMPR1_SMP8_Pos) |
+        (smpr << ADC_SMPR1_SMP9_Pos);
+    ADC1->SMPR2 = (smpr << ADC_SMPR2_SMP10_Pos) |
+        (smpr << ADC_SMPR2_SMP11_Pos) |
+        (smpr << ADC_SMPR2_SMP12_Pos) |
+        (smpr << ADC_SMPR2_SMP13_Pos) |
+        (smpr << ADC_SMPR2_SMP14_Pos) |
+        (smpr << ADC_SMPR2_SMP15_Pos) |
+        (smpr << ADC_SMPR2_SMP16_Pos) |
+        (smpr << ADC_SMPR2_SMP17_Pos) |
+        (smpr << ADC_SMPR2_SMP18_Pos);
+
+
+    // Set up DMA
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPDMA1EN;
+    (void)RCC->AHB1ENR;
+
+    dma->CCR = 0;
+    dma->CTR1 = DMA_CTR1_DAP |
+        (1U << DMA_CTR1_DBL_1_Pos) |
+        DMA_CTR1_DINC |
+        (1U << DMA_CTR1_DDW_LOG2_Pos) |
+        (0U << DMA_CTR1_SBL_1_Pos) |
+        (1U << DMA_CTR1_SDW_LOG2_Pos);
+    dma->CTR2 = (0U << DMA_CTR2_REQSEL_Pos);
+    dma->CTR3 = 0;
+    dma->CBR1 = 4U |
+        DMA_CBR1_BRDDEC |
+        (1U << DMA_CBR1_BRC_Pos);
+    dma->CSAR = (uint32_t)(uintptr_t)&ADC1->DR;
+    dma->CDAR = (uint32_t)(uintptr_t)adc_vals;
+    dma->CBR2 = (4U << DMA_CBR2_BRDAO_Pos);     // -4 every block
+    dma->CLLR = 4U; // anything not zero
+    dma->CCR |= DMA_CCR_EN;
+
+    ADC1->CR |= ADC_CR_ADSTART;
+
+    while(true)
+    {
+        delay_ms(5);
+        SCB_InvalidateDCache_by_Addr(adc_vals, 32);
+        klog("adc: %u %u\n", adc_vals[0], adc_vals[1]);        
+    }
+
 
     // Set up lptim2 for debouncing
     RCC->APB4ENR |= RCC_APB4ENR_LPTIM2EN;
