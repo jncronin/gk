@@ -41,6 +41,22 @@ void *init_thread(void *p);
 
 int main()
 {
+    /* Memory test prior to enabling caches */
+#if GK_MEMTEST
+    for(uint32_t addr = 0x90000000U; addr < 0x98000000U; addr += 4)
+    {
+        *(volatile uint32_t *)addr = addr;
+    }
+    for(uint32_t addr = 0x90000000U; addr < 0x98000000U; addr += 4)
+    {
+        auto v = *(volatile uint32_t *)addr;
+        if(v != addr)
+        {
+            SEGGER_RTT_printf(0, "memchk: fail at %x - got %x\n", addr, v);
+        }
+    }
+#endif
+
     system_init_cm7();
 
     init_memblk();
