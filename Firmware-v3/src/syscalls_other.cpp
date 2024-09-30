@@ -73,42 +73,18 @@ MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
         }
     }
 
+    auto mpu_id = t->p.AddMPURegion({ mr, -1, 1, 1, 0, is_sync != 0 });
+    if(mpu_id >= 0)
     {
-        auto &p = t->p;
-
-        CriticalGuard cg_p(p.sl);
-        p.mmap_regions[mr.address] = Process::mmap_region { mr, -1, 1, 1, 0, is_sync != 0 };
-
-        // set mpu region for this thread and all others
-        auto mpur = MPUGenerate(mr.address, mr.length, mpu_slot, false,
-            RW, RW, is_sync ? WT_NS : WBWA_NS);
-        for(auto curt : p.threads)
-        {
-            CriticalGuard cg_t(curt->sl);
-            curt->tss.mpuss[mpu_slot] = mpur;
-
-            // Invalidate here on the off-chance the M7 cache has entries for the 0x38000000 range
-            // When MPU is disabled in task switch, cache may be re-enabled for reads from this
-            //  region
-            // No longer required with MPU-safe switch
-            //InvalidateM7Cache((uint32_t)(uintptr_t)&curt->tss.mpuss[0],
-            //    8 * sizeof(mpu_saved_state), CacheType_t::Data);
-        }
-
-        // and for this thread
-        {
-            CriticalGuard cg_t(t->sl);
-            auto ctrl = MPU->CTRL;
-            MPU->CTRL = 0;
-            MPU->RBAR = mpur.rbar;
-            MPU->RASR = mpur.rasr;
-            MPU->CTRL = ctrl;
-            __DSB();
-            __ISB();
-        }
+        t->p.UpdateMPURegionsForThreads();
+        return mr;
     }
-
-    return mr;
+    else
+    {
+        memblk_deallocate(mr);
+        *_errno = ENOENT;
+        return InvalidMemregion();
+    }
 }
 
 int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
