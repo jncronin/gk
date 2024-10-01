@@ -28,9 +28,9 @@ static bool inited = false;
 // axisram
 extern int _edata;
 extern int _ebss;
-extern int _elwip_data;
 extern int _edata4;
 extern int _ertt;
+extern int _elwip_init_data;
 
 // dtcm
 extern int _edtcm_bss;
@@ -43,6 +43,7 @@ extern int _esramahb;
 
 // sdram
 extern int _esdram;
+extern int _elwip_data;
 
 // itcm
 extern int _eitcm;
@@ -100,12 +101,12 @@ bool MemRegion::is_cacheable() const
 static void incr_axisram(const void *addr, uintptr_t *eaxisram, uintptr_t *eaxisram4)
 {
     auto p = (uintptr_t)addr;
-    if(p < 0x24060000U) // SRAM4 start
+    if(p >= 0x24020000U && p < 0x24040000U) // SRAM4 start
     {
         if(p > *eaxisram)
             *eaxisram = p;
     }
-    else
+    else if(p >= 0x24060000U && p < 0x24072000U)
     {
         if(p > *eaxisram4)
             *eaxisram4 = p;
@@ -134,7 +135,7 @@ extern "C" void init_memblk()
     //  the beginning of sram4 so be careful
     incr_axisram(&_edata, &eaxisram, &eaxisram4);
     incr_axisram(&_ebss, &eaxisram, &eaxisram4);
-    incr_axisram(&_elwip_data, &eaxisram, &eaxisram4);
+    incr_axisram(&_elwip_init_data, &eaxisram, &eaxisram4);
     incr_axisram(&_edata4, &eaxisram, &eaxisram4);
     incr_axisram(&_ertt, &eaxisram, &eaxisram4);
 
@@ -152,6 +153,8 @@ extern "C" void init_memblk()
 
     if((uintptr_t)&_esdram > esdram)
         esdram = (uintptr_t)&_esdram;
+    if((uintptr_t)&_elwip_data > esdram)
+        esdram = (uintptr_t)&_elwip_data;
 
     if((uintptr_t)&_eitcm > eitcm)
         eitcm = (uintptr_t)&_eitcm;
