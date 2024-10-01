@@ -8,6 +8,7 @@
 #include "SEGGER_RTT.h"
 #include "thread.h"
 #include "scheduler.h"
+#include "usb.h"
 
 #define DEBUG_USB 0
 
@@ -24,6 +25,8 @@ char _stusb_data, _etusb_data, _slwip_data, _elwip_data;
 
 void init_usb()
 {
+    usb_init_chip_id();
+    
     RCC->AHB1RSTR = RCC_AHB1RSTR_OTGHSRST | RCC_AHB1RSTR_USBPHYCRST;
     (void)RCC->AHB1RSTR;
     RCC->AHB1RSTR = 0;
