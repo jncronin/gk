@@ -208,7 +208,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     // Power to XSPI pins
     PWR->CSR2 |= PWR_CSR2_EN_XSPIM1 | PWR_CSR2_EN_XSPIM2 |
-        (3U << PWR_CSR2_XSPICAP1_Pos);
+        (0U << PWR_CSR2_XSPICAP1_Pos);
         ;
 
     XSPIM->CR = 0;  // direct mode
@@ -230,8 +230,8 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 120 - 4 - 1;      // tCSM=4us/133 MHz
-    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 64 byte hybrid read per chip = 128 bytes at XSPI interface
-        (1UL << XSPI_DCR2_PRESCALER_Pos); 
+    XSPI1->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |     // start without wrap
+        (7UL << XSPI_DCR2_PRESCALER_Pos);               // start slow for id
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->CCR = XSPI_CCR_DQSE |
         (4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
@@ -296,10 +296,13 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR &= ~XSPI_WCCR_DQSE;
 
+    
     uint32_t new_cr1 = 0xff81ff81U;
     xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
 
     uint32_t new_cr0 = 0x8f098f09U; // hybrid burst, 64 byte burst, 5 initial latency, fixed latency
+    uint32_t drive_strength = 6U;       // 22 ohm.  Default is 34 ohm expecting 50 ohm traces.  Our traces are higher e.g. 90 ohm...
+    new_cr0 |= (drive_strength << 12) | (drive_strength << 28);
     xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
 
     // set new latency
@@ -329,6 +332,12 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     // reenable RWDS in write mode
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR |= XSPI_WCCR_DQSE;
+
+    // set higher interface speed with wrap enabled
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 64 byte hybrid read per chip = 128 bytes at XSPI interface
+        (7UL << XSPI_DCR2_PRESCALER_Pos);               // start slow for id
+
 
     // XSPI timing calibration in memory mode
     /*while(XSPI1->SR & XSPI_SR_BUSY);
