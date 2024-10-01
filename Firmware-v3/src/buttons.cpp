@@ -101,16 +101,18 @@ void init_buttons()
         ADC_CFGR_DMAEN;
 
     // x128 and 3 bit shift gives ~5ms update interval
-    ADC1->CFGR2 = (3U << ADC_CFGR2_OVSS_Pos) |
-        (6U << ADC_CFGR2_OVSR_Pos) |
+    ADC1->CFGR2 = (0U << ADC_CFGR2_OVSS_Pos) |
+        (3U << ADC_CFGR2_OVSR_Pos) |
         ADC_CFGR2_ROVSE;
-    ADC1->SQR1 = (1U << ADC_SQR1_L_Pos) |   // 2 conversions
+    ADC1->SQR1 = (3U << ADC_SQR1_L_Pos) |   // 2 conversions
         (4U << ADC_SQR1_SQ1_Pos) |          // JOY_X
-        (3U << ADC_SQR1_SQ2_Pos);           // JOY_Y
+        (3U << ADC_SQR1_SQ2_Pos) |          // JOY_Y
+        (3U << ADC_SQR1_SQ2_Pos) |          // JOY_Y
+        (16U << ADC_SQR1_SQ2_Pos);          // temperature
     ADC1->SQR2 = 0;
     ADC1->SQR3 = 0;
     ADC1->SQR4 = 0;
-    const unsigned smpr = 3u;
+    const unsigned smpr = 5u;
     ADC1->SMPR1 = (smpr << ADC_SMPR1_SMP0_Pos) |
         (smpr << ADC_SMPR1_SMP1_Pos) |
         (smpr << ADC_SMPR1_SMP2_Pos) |
@@ -127,7 +129,7 @@ void init_buttons()
         (smpr << ADC_SMPR2_SMP13_Pos) |
         (smpr << ADC_SMPR2_SMP14_Pos) |
         (smpr << ADC_SMPR2_SMP15_Pos) |
-        (smpr << ADC_SMPR2_SMP16_Pos) |
+        (1 << ADC_SMPR2_SMP16_Pos) |
         (smpr << ADC_SMPR2_SMP17_Pos) |
         (smpr << ADC_SMPR2_SMP18_Pos);
 
@@ -138,19 +140,19 @@ void init_buttons()
 
     dma->CCR = 0;
     dma->CTR1 = DMA_CTR1_DAP |
-        (1U << DMA_CTR1_DBL_1_Pos) |
+        (3U << DMA_CTR1_DBL_1_Pos) |
         DMA_CTR1_DINC |
         (1U << DMA_CTR1_DDW_LOG2_Pos) |
         (0U << DMA_CTR1_SBL_1_Pos) |
         (1U << DMA_CTR1_SDW_LOG2_Pos);
     dma->CTR2 = (0U << DMA_CTR2_REQSEL_Pos);
     dma->CTR3 = 0;
-    dma->CBR1 = 4U |
+    dma->CBR1 = 8U |
         DMA_CBR1_BRDDEC |
         (1U << DMA_CBR1_BRC_Pos);
     dma->CSAR = (uint32_t)(uintptr_t)&ADC1->DR;
     dma->CDAR = (uint32_t)(uintptr_t)adc_vals;
-    dma->CBR2 = (4U << DMA_CBR2_BRDAO_Pos);     // -4 every block
+    dma->CBR2 = (8U << DMA_CBR2_BRDAO_Pos);     // -8 every block
     dma->CLLR = 4U; // anything not zero
     dma->CCR |= DMA_CCR_EN;
 
@@ -160,7 +162,7 @@ void init_buttons()
     {
         delay_ms(5);
         SCB_InvalidateDCache_by_Addr(adc_vals, 32);
-        klog("adc: %u %u\n", adc_vals[0], adc_vals[1]);        
+        klog("adc: %u %u %u %u\n", adc_vals[0], adc_vals[1], adc_vals[2], adc_vals[3]);        
     }
 
 
