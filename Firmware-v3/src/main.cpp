@@ -116,7 +116,8 @@ void *idle_thread(void *p)
     (void)p;
     while(true)
     {
-        __WFI();
+        __asm__ volatile("yield \n" ::: "memory");
+        //__WFI();
     }
 }
 
