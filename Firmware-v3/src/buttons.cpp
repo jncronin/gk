@@ -158,12 +158,13 @@ void init_buttons()
 
     ADC1->CR |= ADC_CR_ADSTART;
 
+    /*
     while(true)
     {
         delay_ms(5);
         SCB_InvalidateDCache_by_Addr(adc_vals, 32);
         klog("adc: %u %u %u %u\n", adc_vals[0], adc_vals[1], adc_vals[2], adc_vals[3]);        
-    }
+    } */
 
 
     // Set up lptim2 for debouncing
