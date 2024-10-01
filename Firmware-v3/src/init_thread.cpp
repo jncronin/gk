@@ -57,52 +57,10 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
 
-    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
-#if 0
-    // gkmusic
-    const char *args[] = { "mariner.mp3", "48000" };
-    pt.argv = args;
-    pt.argc = sizeof(args) / sizeof(char *);
-    pt.cwd = "/gkmusic-0.1.1-gk";
-    pt.stack_size = 64 * 1024;
-    pt.heap_size = 4*1024*1024;
-    pt.screen_w = 640;
-    pt.screen_h = 480;
-    pt.pixel_format = GK_PIXELFORMAT_RGB565;
-    pt.keymap.gamepad_is_keyboard = true;
-    pt.keymap.gamepad_is_mouse = true;
-    pt.keymap.gamepad_is_joystick = false;
-    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Left] = 259;    // NEXT
-    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Right] = 258;   // PREV
-    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Up] = 259;      // NEXT
-    pt.keymap.gamepad_to_scancode[Process::GamepadKey::Down] = 258;    // PREV
-    pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
-    pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
-
-    deferred_call(syscall_proccreate, "/gkmusic-0.1.1-gk/bin/gkmusic", &pt, nullptr);
-#endif
-#if 0
-    // doom
-    const char *args[] = { "-nosound", "-nomusic", "-nosfx",
-        "-iwad", "/share/doom/doom1.wad" };
-    pt.argv = args;
-    pt.argc = sizeof(args) / sizeof(char *);
-    pt.cwd = "/gkmenu-0.1.1-gk";
-    pt.stack_size = 64 * 1024;
-    pt.heap_size = 16*1024*1024;
-    pt.screen_w = 320;
-    pt.screen_h = 240;
-    pt.pixel_format = GK_PIXELFORMAT_RGB565;
-    deferred_call(syscall_proccreate, "/sdl2-doom-0.1.1-gk/bin/sdl2-doom", &pt);
-#endif
-
+    //deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
 
     extern Process p_supervisor;
     p_supervisor.events.Push({ .type = Event::CaptionChange });
-
-    //jpeg_test();
-
-    //init_buttons();
 
     return nullptr;
 }

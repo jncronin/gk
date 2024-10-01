@@ -91,8 +91,8 @@ int main()
     init_screen();
     init_buttons();
 
-    //auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
-    //Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
+    auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
+    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
 
     Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM7));
 
