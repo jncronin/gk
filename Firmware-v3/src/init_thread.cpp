@@ -5,6 +5,7 @@
 #include "supervisor.h"
 #include "sound.h"
 #include "i2c.h"
+#include "usb.h"
 #include <cstring>
 
 pid_t pid_gkmenu = 0;

@@ -17,7 +17,7 @@ add_subdirectory(../Firmware/lwext4 lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
 set(ZLIB_BUILD_EXAMPLES OFF)
-#add_subdirectory(zlib-1.3.1)
+add_subdirectory(../Firmware/zlib-1.3.1 zlib)
 
 project(gkv3 C CXX ASM)
 
@@ -31,8 +31,8 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 )
 
 file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking/rndis_reports.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/lib/networking/rndis_reports.c
 )
 
 file(GLOB_RECURSE WINC_SOURCES CONFIGURE_DEPENDS
@@ -42,20 +42,19 @@ file(GLOB_RECURSE WINC_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/spi_flash/source/*.c
 )
 
-#[[
 add_library(tusb)
 target_include_directories(tusb
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7rs/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/lib/networking"
 )
 target_compile_definitions(tusb
     PRIVATE
-        STM32H747xx
+        STM32H7S7xx
         CORE_CM7
         ETH_MODE
         _POSIX_READER_WRITER_LOCKS
@@ -70,6 +69,7 @@ target_sources(tusb
         ${TUSB_SOURCES}
 )
 
+#[[
 add_library(winc)
 target_include_directories(winc
     PRIVATE
@@ -107,7 +107,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
         "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source"
 )
@@ -174,9 +174,9 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         -lm
         lwext4
-        #tusb
+        tusb
         #winc
-        #zlib
+        zlib
         #lvgl
 
 )

@@ -181,13 +181,13 @@ class Queue : public BaseQueue
     public:
         Queue(int _nitems, size_t item_size) : BaseQueue(nullptr, _nitems, item_size)
         {
-            _b = malloc_region(_nitems * item_size, REG_ID_SRAM4);
+            _b = new char[nitems * item_size];
         }
 
         ~Queue()
         {
             if(_b)
-                free_region(_b, REG_ID_SRAM4);
+                delete[] reinterpret_cast<char *>(_b);
         }
 };
 

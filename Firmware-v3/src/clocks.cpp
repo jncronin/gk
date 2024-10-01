@@ -6,11 +6,14 @@
 
 extern uint64_t _cur_ms;
 extern struct timespec toffset;
+uint32_t SystemCoreClock = 0;
 
 time_t timegm (struct tm* tim_p);
 
 extern "C" INTFLASH_FUNCTION void init_clocks()
 {
+    SystemCoreClock = 64000000U;
+
     /* Clock syscfg/sbs */
     RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
     (void)RCC->APB4ENR;
@@ -134,6 +137,11 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_SW_Msk) |
         (3U << RCC_CFGR_SW_Pos);
     while((RCC->CFGR & RCC_CFGR_SWS_Msk) != (3U << RCC_CFGR_SWS_Pos));
+
+    if(vos)
+        SystemCoreClock = 600000000U;
+    else
+        SystemCoreClock = 400000000U;
 
     /* Configure peripheral clocks */
     RCC->CCIPR1 = (2U << RCC_CCIPR1_CKPERSEL_Pos) |     // PERCLK = HSE24
