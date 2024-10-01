@@ -37,10 +37,18 @@ SRAM4_DATA std::vector<std::string> gk_env;
 
 
 void *idle_thread(void *p);
+void *idle_thread_dbg(void *p);
 void *init_thread(void *p);
 
 int main()
 {
+    /* Check for debugger */
+    if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+    {
+        SEGGER_RTT_printf(0, "kernel: startup, debugger detected\n");
+        DBGMCU->CR |= DBGMCU_CR_DBG_SLEEP;
+    }
+
     /* Memory test prior to enabling caches */
 #define GK_MEMTEST 0
 #if GK_MEMTEST
@@ -85,7 +93,9 @@ int main()
         while(true);
     }
 
-    Schedule(Thread::Create("idle_cm7", idle_thread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
+    auto ithread = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) ? idle_thread_dbg :
+        idle_thread;
+    Schedule(Thread::Create("idle_cm7", ithread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "idle_cm7 stack")));
 
     init_sd();
@@ -117,7 +127,16 @@ void *idle_thread(void *p)
     while(true)
     {
         __asm__ volatile("yield \n" ::: "memory");
-        //__WFI();
+        __WFI();
+    }
+}
+
+void *idle_thread_dbg(void *p)
+{
+    (void)p;
+    while(true)
+    {
+        __asm__ volatile("yield \n" ::: "memory");
     }
 }
 
