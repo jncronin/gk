@@ -42,7 +42,7 @@ void *init_thread(void *p);
 int main()
 {
     /* Memory test prior to enabling caches */
-#define GK_MEMTEST 1
+#define GK_MEMTEST 0
 #if GK_MEMTEST
     for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
     {

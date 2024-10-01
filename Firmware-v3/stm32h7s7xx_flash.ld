@@ -179,6 +179,19 @@ SECTIONS
     *(.RamFunc)        /* .RamFunc sections */
     *(.RamFunc*)       /* .RamFunc* sections */
 
+
+    . = ALIGN(1K);
+    _stusb_data = .;
+    *(.tusb_data)
+    *(.tusb_data*)
+    *(.tusb_bss)
+    *(.tusb_bss*)
+    *libtusb.a:*(.data)
+    *libtusb.a:*(.data*)
+    *libtusb.a:*(.bss)
+    *libtusb.a:*(.bss*)
+    _etusb_data = .;
+
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
