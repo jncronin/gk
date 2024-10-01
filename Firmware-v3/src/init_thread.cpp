@@ -20,7 +20,7 @@ void *init_thread(void *p)
     //init_supervisor();
 
     // Provision root file system, then allow USB write access to MSC
-    //fs_provision();
+    fs_provision();
 #if GK_ENABLE_USB
     Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::M7Only));
 #endif

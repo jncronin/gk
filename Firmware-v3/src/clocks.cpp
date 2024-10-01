@@ -239,7 +239,8 @@ INTFLASH_FUNCTION void delay_ms(uint64_t nms)
     auto await_val = _cur_ms + nms + 1;
     while(_cur_ms < await_val)
     {
-        __WFI();
+        __asm__ volatile("yield \n");
+        //__WFI();
     }
 }
 

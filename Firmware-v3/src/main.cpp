@@ -58,6 +58,8 @@ int main()
     }
 #endif
 
+    BKPT();
+
     system_init_cm7();
 
     init_memblk();

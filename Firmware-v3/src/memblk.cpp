@@ -40,6 +40,7 @@ extern int _ecm7_stack;
 // sram
 extern int _esram_bss;
 extern int _esramahb;
+extern int _efast_pointers;
 
 // sdram
 extern int _esdram;
@@ -150,6 +151,8 @@ extern "C" void init_memblk()
         esram = (uintptr_t)&_esram_bss;
     if((uintptr_t)&_esramahb > esram)
         esram = (uintptr_t)&_esramahb;
+    if((uintptr_t)&_efast_pointers > esram)
+        esram = (uintptr_t)&_efast_pointers;
 
     if((uintptr_t)&_esdram > esdram)
         esdram = (uintptr_t)&_esdram;
@@ -159,11 +162,12 @@ extern "C" void init_memblk()
     if((uintptr_t)&_eitcm > eitcm)
         eitcm = (uintptr_t)&_eitcm;
 
-    eaxisram = align_up(eaxisram, 1024U);
-    edtcm = align_up(edtcm, 1024U);
-    esram = align_up(esram, 1024U);
-    esdram = align_up(esdram, 1024U);
-    eitcm = align_up(eitcm, 1024U);
+    eaxisram = align_up(eaxisram, (uintptr_t)b_axisram.MinBuddySize());
+    eaxisram4 = align_up(eaxisram4, (uintptr_t)b_axisram.MinBuddySize());
+    edtcm = align_up(edtcm, (uintptr_t)b_dtcm.MinBuddySize());
+    esram = align_up(esram, (uintptr_t)b_sram.MinBuddySize());
+    esdram = align_up(esdram, (uintptr_t)b_sdram.MinBuddySize());
+    eitcm = align_up(eitcm, (uintptr_t)b_itcm.MinBuddySize());
 
     // Get sizes of the various memory regions
     // calculate total memory
