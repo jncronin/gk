@@ -104,10 +104,15 @@ static const constexpr __attribute__((section(".sram_rdata"))) klog_def *klogs[]
 #endif
 };
 
+static uint64_t _last_us = 0;
+
 int klog(const char *format, ...)
 {
     CriticalGuard cg(s_log);
-    auto ret = fprintf(stderr, "[%llu]: ", clock_cur_us());
+    auto cur_us = clock_cur_us();
+    if(cur_us < _last_us)
+        BKPT();
+    auto ret = fprintf(stderr, "[%llu]: ", cur_us);
     va_list args;
     va_start(args, format);
 
