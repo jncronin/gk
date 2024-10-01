@@ -4,7 +4,7 @@
 #include "osmutex.h"
 #include "gk_conf.h"
 
-extern uint64_t _cur_ms;
+extern volatile uint64_t _cur_ms;
 extern struct timespec toffset;
 uint32_t SystemCoreClock = 0;
 
