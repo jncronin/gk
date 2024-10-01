@@ -63,7 +63,7 @@
 #define CFG_TUD_CDC_RX_BUFSIZE  512
 #define CFG_TUD_CDC_TX_BUFSIZE  512
 
-#define CFG_TUD_MSC_EP_BUFSIZE  512
+#define CFG_TUD_MSC_EP_BUFSIZE  4096
 
 #define CFG_TUSB_DEBUG_PRINTF   rtt_printf_wrapper
 
