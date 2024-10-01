@@ -14,7 +14,7 @@
 
 #define FS_PROVISION_BLOCK_SIZE     (4*1024*1024)
 
-#define FS_PROVISION_EXTRACT_FILE 0
+#define FS_PROVISION_EXTRACT_FILE 1
 #define FS_PROVISION_EXTRACT_FILE_FROM "/syslog"
 #define FS_PROVISION_EXTRACT_FILE_TO "syslog.txt"
 
@@ -42,7 +42,6 @@ SRAM4_DATA static volatile unsigned int fake_mbr_lba = 0;
 SRAM4_DATA SimpleSignal fs_provision_complete;
 static FATFS fs;
 static FIL fp;
-extern Spinlock s_rtt;
 
 /* Extract a file from sd card to fat if requested */
 #if FS_PROVISION_EXTRACT_FILE
@@ -181,7 +180,6 @@ static size_t direct_fread(void *ptr, size_t size, void *f)
     auto fr = f_read((FIL *)f, ptr, size, &br);
     if(fr != FR_OK)
     {
-        CriticalGuard cg(s_rtt);
         klog("direct_fread: f_read failed %d\n", fr);
         return 0;
     }
@@ -194,7 +192,6 @@ static ssize_t direct_lseek(void *f, size_t offset)
     auto fr = f_lseek((FIL *)f, offset);
     if(fr != FR_OK)
     {
-        CriticalGuard cg(s_rtt);
         klog("direct_lseek: f_lseek failed %d\n", fr);
         return -1;
     }
@@ -236,7 +233,6 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
     auto mem = memblk_allocate(FS_PROVISION_BLOCK_SIZE, MemRegionType::SDRAM, "fs_provision scratch");
     if(!mem.valid)
     {
-        CriticalGuard cg(s_rtt);
         klog("fs_provision: couldn't allocate buffer\n");
         return -1;
     }
@@ -252,7 +248,6 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         }
         if(ffret != 512)
         {
-            CriticalGuard cg(s_rtt);
             klog("fs_provision: tar header read failed\n");
             memblk_deallocate(mem);
             return -1;
@@ -277,7 +272,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         // check we are ustar
         if(strncmp("ustar", &tar_header[257], 5))
         {
-            CriticalGuard cg(s_rtt);
+            
             klog("fs_provision: tar not ustar\n");
             memblk_deallocate(mem);
             return -1;
@@ -305,7 +300,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         }
         
         {
-            CriticalGuard cg(s_rtt);
+            
             klog("fs_provision: %s (%d bytes), type %d\n", fname.c_str(),
                 (int)fsize, type);
         }
@@ -321,7 +316,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             int fd = deferred_call(syscall_open, fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0);
             if(fd < 0)
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("fs_provision: fopen failed: %d\n", errno);
                 memblk_deallocate(mem);
                 return -1;
@@ -341,7 +336,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 ffret = ff((void *)mem.address, fsize_to_read, f);
                 if(ffret != fsize_to_read)
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("fs_provision: failed to read file: %d\n", ffret);
                     memblk_deallocate(mem);
                     return -1;
@@ -356,7 +351,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 auto bw = deferred_call(syscall_write, fd, (char *)mem.address, (int)fsize_to_write);
                 if(bw != (int)fsize_to_write)
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("fs_provision: fwrite failed: %d, expected %d\n",
                         bw, (int)fsize);
                     memblk_deallocate(mem);
@@ -364,7 +359,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 }
 
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("fs_provision: read %d, wrote %d at offset %d\n",
                         (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                 }
@@ -386,7 +381,7 @@ int fs_provision()
     auto fr = f_mount(&fs, "", 0);
     if(fr != FR_OK)
     {
-        CriticalGuard cg(s_rtt);
+        
         klog("fs_provision: f_mount failed %d\n", fr);
         return fr;
     }
@@ -396,7 +391,7 @@ int fs_provision()
     fr = f_opendir(&dp, "/");
     if(fr != FR_OK)
     {
-        CriticalGuard cg(s_rtt);
+        
         klog("fs_provision: f_opendir failed %d\n", fr);
         return fr;
     }
@@ -416,7 +411,7 @@ int fs_provision()
         if(!(fi.fattrib & AM_DIR))
         {
             {
-                CriticalGuard cg(s_rtt);
+                
                 klog("fs_provision: found file %s (%d bytes)\n", fi.fname, (unsigned int)fi.fsize);
             }
 
@@ -435,7 +430,7 @@ int fs_provision()
             }
 
             {
-                CriticalGuard cg(s_rtt);
+                
                 if(is_tar)
                     klog("fs_provision: is_tar\n");
                 if(is_targz)
@@ -452,7 +447,7 @@ int fs_provision()
                 fr = f_open(&fp, fi.fname, FA_READ);
                 if(fr != FR_OK)
                 {
-                    CriticalGuard cg(s_rtt);
+                    
                     klog("fs_provision: couldn't f_open %s: %d\n", fi.fname, fr);
                     had_failure = true;
                     break;
@@ -475,7 +470,7 @@ int fs_provision()
                         fd = get_free_fildes(p);
                         if(fd < 0)
                         {
-                            CriticalGuard cg(s_rtt);
+                            
                             klog("fs_provision: couldn't assign fildes\n");
                             f_close(&fp);
                         }
@@ -490,7 +485,7 @@ int fs_provision()
                         auto gzf = gzdopen(fd, "r");
                         if(gzf == NULL)
                         {
-                            CriticalGuard cg(s_rtt);
+                            
                             klog("fs_provision: gzdopen failed\n");
                             close(fd);
                         }
@@ -508,14 +503,14 @@ int fs_provision()
                 if(fs_p_ret == 0)
                 {
                     {
-                        CriticalGuard cg(s_rtt);
+                        
                         klog("fs_provision: provisioned %s\n", fi.fname);
                     }
 
                     // delete file
                     if(f_unlink(fi.fname) != FR_OK)
                     {
-                        CriticalGuard cg(s_rtt);
+                        
                         klog("fs_provision: failed to delete %s: %d\n",
                             fi.fname, f_unlink(fi.fname));
                     }
@@ -523,7 +518,7 @@ int fs_provision()
                 else
                 {
                     {
-                        CriticalGuard cg(s_rtt);
+                        
                         klog("fs_provision: failed to provision %s\n", fi.fname);
                     }
                     had_failure = true;
@@ -601,7 +596,7 @@ extern "C" void zcfree(void *opaque, void *ptr)
     gz_free_buffer(ptr);
 }
 
-#if GK_LOG_PERSISTENT || GK_PROVISION_EXTRACT_FILE
+#if GK_LOG_PERSISTENT || FS_PROVISION_EXTRACT_FILE
 static struct stat _st;
 #endif
 

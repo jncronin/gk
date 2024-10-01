@@ -245,7 +245,8 @@ static void handle_fault()
         else*/
         {
             // trigger reset
-            SCB->AIRCR = SCB_AIRCR_SYSRESETREQ_Msk;
+            __BKPT();
+            //SCB->AIRCR = SCB_AIRCR_SYSRESETREQ_Msk;
         }
     }
     else if(p)
@@ -275,7 +276,8 @@ static void handle_fault()
         else
         {
             // trigger reset
-            SCB->AIRCR = SCB_AIRCR_SYSRESETREQ_Msk;
+            BKPT();
+            //SCB->AIRCR = SCB_AIRCR_SYSRESETREQ_Msk;
         }
     }
 }

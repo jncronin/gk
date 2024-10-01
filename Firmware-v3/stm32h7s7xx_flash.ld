@@ -377,6 +377,7 @@ SECTIONS
     QUAD(0);
     QUAD(0);
     QUAD(0);
+    _efast_pointers = .;
   } > SRAMAHB
 
   /* Remove information from the compiler libraries */
