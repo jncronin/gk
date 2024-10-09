@@ -9,7 +9,7 @@
 #include "i2c.h"
 #include "SEGGER_RTT.h"
 
-#define DEBUG_I2C 1
+#define DEBUG_I2C 0
 
 /* The I2C1 bus runs at 400 kHz and contains:
         LSM6DSL gyro/accelerometer:         Address 0x6a
