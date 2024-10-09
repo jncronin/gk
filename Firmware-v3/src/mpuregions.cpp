@@ -5,7 +5,7 @@ const uint32_t _srttp = (uint32_t)&_srtt;
 const uint32_t _erttp = (uint32_t)&_ertt;
 static const constexpr mpu_saved_state mpu_lptim1 = MPUGenerate(LPTIM1_BASE, sizeof(LPTIM_TypeDef), 0, false, RW, RO, DEV_S);
 static const constexpr mpu_saved_state fast_access = MPUGenerate(GK_TLS_POINTER_ADDRESS, GK_FAST_ACCESS_SIZE, 1, false, RW, RO, WBWA_NS);
-static mpu_saved_state mpu_rtt = MPUGenerate(_srttp, _erttp - _srttp, 2, false, RW, NoAccess, WT_NS);
+static mpu_saved_state mpu_rtt = MPUGenerate(_srttp, _erttp - _srttp, 2, false, RW, NoAccess, N_NC_NS);
 // xspi1 space is wt by default
 static const constexpr mpu_saved_state mpu_xspi = MPUGenerate(0x90000000, 128*1024*1024U, 3, false, RW, NoAccess, WBWA_NS);
 static const constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x90000000, 0x400000, 4, false, RW, RW, WT_NS);
