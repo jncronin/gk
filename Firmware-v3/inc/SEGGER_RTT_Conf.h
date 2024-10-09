@@ -108,7 +108,7 @@ Revision: $Rev: 24316 $
 #endif
 
 #ifndef   SEGGER_RTT_MODE_DEFAULT
-  #define SEGGER_RTT_MODE_DEFAULT                   SEGGER_RTT_MODE_NO_BLOCK_TRIM // Mode for pre-initialized terminal channel (buffer 0)
+  #define SEGGER_RTT_MODE_DEFAULT                   SEGGER_RTT_MODE_NO_BLOCK_SKIP // Mode for pre-initialized terminal channel (buffer 0)
 #endif
 
 /*********************************************************************
