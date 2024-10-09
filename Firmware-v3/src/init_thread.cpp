@@ -59,7 +59,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
 
-    //deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
+    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
 
     extern Process p_supervisor;
     p_supervisor.events.Push({ .type = Event::CaptionChange });
