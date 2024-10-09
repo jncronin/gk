@@ -5,10 +5,29 @@
       )
 (rule "target length and skew"
       (condition "A.NetClass == 'xspi1_p1'")
-      (constraint length (min 9.40mm) (opt 9.45mm) (max 9.50mm))
+      (constraint length (opt 11.3252mm))
+	  (constraint skew (max 15mil))
       )
 (rule "target length and skew"
       (condition "A.NetClass == 'xspi1_p2'")
-      (constraint length (min 30.30mm) (opt 30.34mm) (max 30.40mm))
+      (constraint length (opt 31.0664mm))
+	  (constraint skew (max 15mil))
       )
-
+(rule "target length and skew"
+      (condition "A.NetClass == 'xspi2_p'")
+      (constraint length (opt 12.6579mm))
+	  (constraint skew (max 15mil))
+      )
+(rule "ck1_length"
+	(condition "A.NetClass == 'xspi1_ck'")
+	(constraint length (opt 31.0664mm))
+	(constraint skew (max 10mil))
+)
+(rule "ck_coplanar"
+	(condition "(A.NetClass == 'xspi1_ck' || A.NetClass == 'xspi2_ck') && B.NetName == 'GND' && B.Type == 'Zone'")
+	(constraint physical_clearance(min 8mil))
+)
+(rule "dq_coplanar"
+	(condition "(A.NetClass == 'xspi1_p1' || A.NetClass == 'xspi1_p2' || A.NetClass == 'xspi2_p') && B.NetName == 'GND' && B.Type == 'Zone'")
+	(constraint physical_clearance(min 12mil))
+)

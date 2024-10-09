@@ -63,12 +63,7 @@
           "width": 0.366268
         }
       ],
-      "drc_exclusions": [
-        "items_not_allowed|133172200|170180000|cbd3a7a6-9a86-4f7f-b181-3a5e716bfbee|00000000-0000-0000-0000-000000000000",
-        "silk_edge_clearance|54107500|19050000|77179ec7-647e-4b58-9122-388dc6efa82f|df61b687-1de4-4191-a58e-26f6ed918774",
-        "silk_edge_clearance|60307500|19050000|77179ec7-647e-4b58-9122-388dc6efa82f|fe447e34-6aed-46e2-8832-ec889637365d",
-        "silk_over_copper|102300000|133500000|7607f704-a8b8-47b2-a3a8-ab873263d514|00000000-0000-0000-0000-000000000000"
-      ],
+      "drc_exclusions": [],
       "meta": {
         "version": 2
       },
@@ -230,6 +225,10 @@
         {
           "diameter": 0.0,
           "drill": 0.0
+        },
+        {
+          "diameter": 0.35,
+          "drill": 0.2
         },
         {
           "diameter": 0.45,
@@ -513,7 +512,7 @@
       },
       {
         "bus_width": 12,
-        "clearance": 0.09,
+        "clearance": 0.1016,
         "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.2,
@@ -523,7 +522,7 @@
         "name": "MCUPIN",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
+        "track_width": 0.156464,
         "via_diameter": 0.45,
         "via_drill": 0.2,
         "wire_width": 6
@@ -555,7 +554,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "ltdc",
-        "pcb_color": "rgb(13, 255, 68)",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.09,
         "via_diameter": 0.45,
@@ -572,7 +571,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "sai",
-        "pcb_color": "rgb(255, 32, 88)",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.09,
         "via_diameter": 0.45,
@@ -589,7 +588,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "sdmmc",
-        "pcb_color": "rgb(255, 254, 18)",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.09,
         "via_diameter": 0.45,
@@ -615,24 +614,24 @@
       },
       {
         "bus_width": 12,
-        "clearance": 0.09,
-        "diff_pair_gap": 0.25,
+        "clearance": 0.1016,
+        "diff_pair_gap": 0.2032,
         "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.2,
+        "diff_pair_width": 0.121666,
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi1_ck",
-        "pcb_color": "rgb(112, 130, 255)",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
-        "via_diameter": 0.45,
+        "track_width": 0.121666,
+        "via_diameter": 0.35,
         "via_drill": 0.2,
         "wire_width": 6
       },
       {
         "bus_width": 12,
-        "clearance": 0.09,
+        "clearance": 0.1016,
         "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.2,
@@ -640,16 +639,16 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi1_p1",
-        "pcb_color": "rgb(0, 255, 27)",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
-        "via_diameter": 0.45,
+        "track_width": 0.156464,
+        "via_diameter": 0.35,
         "via_drill": 0.2,
         "wire_width": 6
       },
       {
         "bus_width": 12,
-        "clearance": 0.09,
+        "clearance": 0.1016,
         "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.2,
@@ -657,27 +656,44 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi1_p2",
-        "pcb_color": "rgb(255, 37, 138)",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
-        "via_diameter": 0.45,
+        "track_width": 0.156464,
+        "via_diameter": 0.35,
         "via_drill": 0.2,
         "wire_width": 6
       },
       {
         "bus_width": 12,
-        "clearance": 0.09,
+        "clearance": 0.1016,
+        "diff_pair_gap": 0.2032,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.121666,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "xspi2_ck",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.121666,
+        "via_diameter": 0.35,
+        "via_drill": 0.2,
+        "wire_width": 6
+      },
+      {
+        "bus_width": 12,
+        "clearance": 0.1016,
         "diff_pair_gap": 0.25,
         "diff_pair_via_gap": 0.25,
         "diff_pair_width": 0.2,
         "line_style": 0,
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
-        "name": "xspi2",
-        "pcb_color": "rgb(0, 65, 255)",
+        "name": "xspi2_p",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
-        "via_diameter": 0.45,
+        "track_width": 0.156464,
+        "via_diameter": 0.35,
         "via_drill": 0.2,
         "wire_width": 6
       }
@@ -793,8 +809,8 @@
         "pattern": "*UART4*"
       },
       {
-        "netclass": "xspi2",
-        "pattern": "XSPI2*"
+        "netclass": "xspi2_ck",
+        "pattern": "XSPI2_CK*"
       },
       {
         "netclass": "xspi1_p1",
@@ -839,6 +855,18 @@
       {
         "netclass": "wifi_spi",
         "pattern": "SPI3*"
+      },
+      {
+        "netclass": "xspi2_p",
+        "pattern": "XSPI2_DQ*"
+      },
+      {
+        "netclass": "xspi2_p",
+        "pattern": "XSPI2_RWDS*"
+      },
+      {
+        "netclass": "MCUPIN",
+        "pattern": "XSPI1_CS#"
       }
     ]
   },

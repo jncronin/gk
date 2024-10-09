@@ -7407,7 +7407,7 @@
 			)
 		)
 	)
-	(global_label "XSPI2_CK"
+	(global_label "XSPI2_CK_P"
 		(shape input)
 		(at 121.92 93.98 0)
 		(fields_autoplaced yes)
@@ -7419,7 +7419,7 @@
 		)
 		(uuid "29bc0073-70ca-4374-8a22-cea729128e2d")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 133.9161 93.98 0)
+			(at 136.1537 93.98 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8133,7 +8133,7 @@
 			)
 		)
 	)
-	(global_label "XSPI1_CK#"
+	(global_label "XSPI1_CK_N"
 		(shape input)
 		(at 60.96 104.14 180)
 		(fields_autoplaced yes)
@@ -8145,7 +8145,7 @@
 		)
 		(uuid "a54d010e-b37f-42ea-84b3-0e50723bb9c9")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 47.6939 104.14 0)
+			(at 46.6658 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8353,7 +8353,7 @@
 			)
 		)
 	)
-	(global_label "XSPI1_CK"
+	(global_label "XSPI1_CK_P"
 		(shape input)
 		(at 60.96 101.6 180)
 		(fields_autoplaced yes)
@@ -8365,7 +8365,7 @@
 		)
 		(uuid "e3ef572a-92bd-4be3-b158-959e0e98f96c")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 48.9639 101.6 0)
+			(at 46.7263 101.6 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8419,7 +8419,7 @@
 			)
 		)
 	)
-	(global_label "XSPI2_CK#"
+	(global_label "XSPI2_CK_N"
 		(shape input)
 		(at 121.92 96.52 0)
 		(fields_autoplaced yes)
@@ -8431,7 +8431,7 @@
 		)
 		(uuid "ecfb8d12-2425-44d4-a6eb-affda18bbddd")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 135.1861 96.52 0)
+			(at 136.2142 96.52 0)
 			(effects
 				(font
 					(size 1.27 1.27)
