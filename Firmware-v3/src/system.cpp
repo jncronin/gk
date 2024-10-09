@@ -64,12 +64,14 @@ void system_init_cm7()
 
 #if GK_USE_CACHE
 #if GK_USE_MPU
+    __DMB();
     for(int i = 0; i < 16; i++)
     {
         MPU->RBAR = mpu_default[i].rbar;
         MPU->RASR = mpu_default[i].rasr;
     }
-    __DMB();
+    __DSB();
+    __ISB();
     MPU->CTRL = MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk;
 #endif
 

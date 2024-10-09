@@ -318,8 +318,9 @@ SECTIONS
   {
     _scm7_stack = .;
     . = . + 4K;
-    _ecm7_stack = .;
-    _estack = .;
+    _ecm7_stack_align = .;
+    _ecm7_stack = . - (_ecm7_stack_align - _scm7_stack) / 8;
+    _estack = _ecm7_stack;
   } >DTCM
 
   .sram_data :
