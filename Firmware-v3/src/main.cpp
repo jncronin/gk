@@ -10,6 +10,7 @@
 #include "screen.h"
 #include "gpu.h"
 #include "buttons.h"
+#include "ctp.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -69,6 +70,7 @@ int main()
     BKPT();
 
     system_init_cm7();
+    memcpy(kernel_proc.p_mpu, mpu_default, sizeof(mpu_default));
 
     init_memblk();
 
@@ -102,6 +104,7 @@ int main()
     init_ext4();
     init_screen();
     init_buttons();
+    init_ctp();
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));

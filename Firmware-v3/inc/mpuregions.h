@@ -50,7 +50,8 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     bool executable,
     MemRegionAccess privilege_access,
     MemRegionAccess unprivilege_access,
-    uint32_t tex_scb)
+    uint32_t tex_scb,
+    uint32_t srd = 0U)
 {
     mpu_saved_state ret { 0, 0 };
 
@@ -106,7 +107,10 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
         }
     }
 
-    ret.rasr = 1UL | (cur_i << 1UL) | ((tex_scb & 0x3f) << 16) | (ap << 24) | (executable ? 0UL : (1UL << 28));
+    srd = (cur_size > 128) ? srd : 0U;
+
+    ret.rasr = 1UL | (cur_i << 1) | ((tex_scb & 0x3f) << 16) | (ap << 24) | (executable ? 0UL : (1UL << 28)) |
+        ((srd & 0xffU) << 8);
 
     return ret;
 }

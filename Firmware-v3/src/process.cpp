@@ -95,9 +95,38 @@ mpu_saved_state Process::mmap_region::to_mpu(unsigned int mpu_id) const
         user_acc = MemRegionAccess::RO;
     else
         user_acc = MemRegionAccess::NoAccess;
+
+    MemRegionAccess priv_acc = RW;
+    uint32_t srd = 0;
+
+    if(is_stack && mr.length > 128)
+    {
+        // add stack guards
+        if(is_priv)
+        {
+            // the default map will give access to this region, therefore we use
+            //  subregions to disable access to the first and last subregion
+            priv_acc = NoAccess;
+            user_acc = NoAccess;    // can't have user higher access than priv
+            srd = 0x7eU;            // only first and last regions arer disabled
+        }
+        else
+        {
+            // unprivileged.  We do not have default access to this region,
+            //  therefore disable first and last regions
+            srd = 0x81U;
+        }
+    }
+
+    bool _is_exec = is_exec;
+
+    if(priv_acc == NoAccess)
+    {
+        _is_exec = false;
+    }
     
-    return MPUGenerate(mr.address, mr.length, mpu_id, is_exec, RW, user_acc, 
-        is_sync ? WT_NS : WBWA_NS);
+    return MPUGenerate(mr.address, mr.length, mpu_id, _is_exec, priv_acc, user_acc, 
+        is_sync ? WT_NS : WBWA_NS, srd);
 }
 
 pid_t ProcessList::RegisterProcess(Process *p)

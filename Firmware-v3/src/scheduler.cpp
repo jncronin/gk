@@ -272,7 +272,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         // We didn't find any valid thread with equal or higher priority than the current one
         CriticalGuard cg;
 #if DEBUG_SCHEDULER
-        report_chosen(cur_t, current_thread[ct_ncore].v);
+        report_chosen(cur_t, current_thread[ct_ncore]);
 #endif
         current_thread[ct_ncore]->tss.deschedule_from_core = 0;
 #if GK_DYNAMIC_SYSTICK
@@ -331,8 +331,7 @@ void Scheduler::unblock_delayer(Thread *t)
     {
 #if DEBUG_SCHEDULER
         {
-            klog("%d: sched awaken sleeping thread %s\n",
-                (uint32_t)clock_cur_us(),
+            klog("sched: awaken sleeping thread %s\n",
                 t->name.c_str());
         }
 #endif
@@ -356,8 +355,7 @@ void Scheduler::unblock_delayer(Thread *t)
 void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 {
     CriticalGuard cg;
-    klog("%d: sched core %d: %s (%d) to %s (%d)\n",
-        (uint32_t)clock_cur_us(),
+    klog("sched core %d: %s (%d) to %s (%d)\n",
         GetCoreID(),
         old_t->name.c_str(), old_t->base_priority,
         new_t->name.c_str(), new_t->base_priority);

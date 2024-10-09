@@ -181,6 +181,11 @@ Thread *Thread::Create(std::string name,
         bottom of stack --
     */
     auto top_stack = t->stack.length / 4;
+    if(t->stack.length > 128)
+    {
+        // add stack guards
+        top_stack -= t->stack.length / 8 / 4;
+    }
     auto stack = reinterpret_cast<uint32_t *>(t->stack.address);
 
     auto cleanup_func = is_priv ? reinterpret_cast<uint32_t>(thread_cleanup) : owning_process.thread_finalizer;
@@ -208,7 +213,8 @@ Thread *Thread::Create(std::string name,
         Process::mmap_region mmr_tls { .mr = t->mr_tls, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = false };
         t->tss.mpuss[owning_process.p_mpu_tls_id] = mmr_tls.to_mpu(owning_process.p_mpu_tls_id);
     }
-    owning_process.AddMPURegion({ .mr = t->stack, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = false });
+    owning_process.AddMPURegion({ .mr = t->stack, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = false,
+        .is_stack = true, .is_priv = is_priv });
 
     {
         CriticalGuard cg;

@@ -65,6 +65,7 @@ class Process
 
         /* mmap regions */
         struct mmap_region { MemRegion mr; int fd; int is_read; int is_write; int is_exec; bool is_sync;
+            bool is_stack = false; bool is_priv = false;
             mpu_saved_state to_mpu(unsigned int mpu_id) const; };
         std::map<uint32_t, mmap_region> mmap_regions;
         std::map<uint32_t, mmap_region>::iterator get_mmap_region(uint32_t addr, uint32_t len);

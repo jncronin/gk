@@ -21,6 +21,8 @@ extern "C" void cinv()
 
 // for v3 - can load all with mpu disabled because default is cached anyway
 #define MPU_LOAD_16()                                                                   \
+        "dmb                        \n"                                                 \
+                                                                                        \
         "ldr r4, =0xe000ed94        \n"     /* MPU_CTRL */                              \
         "ldr r2, [r4]               \n"                                                 \
         "bic r2, #1                 \n"     /* disable mpu */                           \
@@ -174,11 +176,11 @@ extern "C" void PendSV_Handler()
         /* Set up new task MPU, can discard R0 now */
 #if GK_USE_MPU
         "add r0, r1, #" xstr(GK_TSS_MPUSS_OFFSET) "           \n"     // R0 = &mpuss[0]
-        //MPU_LOAD_16()
-        MPU_LOAD_4()
-        MPU_LOAD_4()
-        MPU_LOAD_4()
-        MPU_LOAD_4()
+        MPU_LOAD_16()
+        //MPU_LOAD_4()
+        //MPU_LOAD_4()
+        //MPU_LOAD_4()
+        //MPU_LOAD_4()
 #endif
 
         /* Load saved tss registers */
