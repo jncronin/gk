@@ -3942,7 +3942,7 @@
 			)
 		)
 	)
-	(global_label "XSPI1_CK"
+	(global_label "XSPI1_CK_P"
 		(shape input)
 		(at 53.34 116.84 180)
 		(effects
@@ -4248,7 +4248,7 @@
 			)
 		)
 	)
-	(global_label "XSPI1_CK#"
+	(global_label "XSPI1_CK_N"
 		(shape input)
 		(at 53.34 166.37 180)
 		(effects
@@ -4268,7 +4268,7 @@
 			)
 		)
 	)
-	(global_label "XSPI2_CK#"
+	(global_label "XSPI2_CK_N"
 		(shape input)
 		(at 31.75 40.64 180)
 		(effects
@@ -4308,7 +4308,7 @@
 			)
 		)
 	)
-	(global_label "XSPI1_CK#"
+	(global_label "XSPI1_CK_N"
 		(shape input)
 		(at 53.34 119.38 180)
 		(effects
@@ -4370,7 +4370,7 @@
 			)
 		)
 	)
-	(global_label "XSPI1_CK"
+	(global_label "XSPI1_CK_P"
 		(shape input)
 		(at 53.34 163.83 180)
 		(effects
@@ -4656,7 +4656,7 @@
 			)
 		)
 	)
-	(global_label "XSPI2_CK"
+	(global_label "XSPI2_CK_P"
 		(shape input)
 		(at 31.75 38.1 180)
 		(effects
@@ -5609,7 +5609,7 @@
 				)
 			)
 		)
-		(property "Footprint" "STM32H7S7:PG-BGA-24-801"
+		(property "Footprint" "STM32H7S7:BGA24_Hyperbus"
 			(at 53.34 163.83 0)
 			(effects
 				(font
@@ -6282,7 +6282,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "STM32H7S7:BGA24_S26KS512SDPBHI020_CYP_INF"
+		(property "Footprint" "STM32H7S7:BGA24_Hyperbus"
 			(at 102.87 36.83 0)
 			(effects
 				(font
@@ -6989,7 +6989,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "STM32H7S7:PG-BGA-24-801"
+		(property "Footprint" "STM32H7S7:BGA24_Hyperbus"
 			(at 166.37 120.65 0)
 			(effects
 				(font
@@ -7191,7 +7191,7 @@
 				)
 			)
 		)
-		(property "Footprint" "STM32H7S7:BGA24_S26KS512SDPBHI020_CYP_INF"
+		(property "Footprint" "STM32H7S7:BGA24_Hyperbus"
 			(at 31.75 38.1 0)
 			(effects
 				(font
@@ -7328,7 +7328,7 @@
 				)
 			)
 		)
-		(property "Footprint" "STM32H7S7:PG-BGA-24-801"
+		(property "Footprint" "STM32H7S7:BGA24_Hyperbus"
 			(at 156.21 120.65 0)
 			(effects
 				(font
@@ -8406,7 +8406,7 @@
 				)
 			)
 		)
-		(property "Footprint" "STM32H7S7:PG-BGA-24-801"
+		(property "Footprint" "STM32H7S7:BGA24_Hyperbus"
 			(at 53.34 116.84 0)
 			(effects
 				(font
