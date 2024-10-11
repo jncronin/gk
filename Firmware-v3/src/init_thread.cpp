@@ -40,7 +40,7 @@ void *init_thread(void *p)
     pt.with_focus = 1;
 
     // gkmenu
-    const char *args[] = { };
+    const char *args[] = { "Doom" };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
