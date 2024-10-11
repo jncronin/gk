@@ -338,7 +338,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     // set higher interface speed with wrap enabled
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 64 byte hybrid read per chip = 128 bytes at XSPI interface
-        (7UL << XSPI_DCR2_PRESCALER_Pos);               
+        (1UL << XSPI_DCR2_PRESCALER_Pos);               
 
 
     // XSPI timing calibration in memory mode
@@ -404,7 +404,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI2->DCR3 = 0;    // ?max burst length
     XSPI2->DCR4 = 0;    // no refresh needed
     XSPI2->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |           // TODO enable hybrid wrap on device               
-        (1UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 266MHz /2
+        (1UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 384MHz /3
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
         //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
