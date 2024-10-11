@@ -187,10 +187,10 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI1_RESET.set_as_output();
     XSPI2_RESET.set_as_output();
 
-    delay_ms(1);
+    delay_ms(5);
     XSPI1_RESET.set();
     XSPI2_RESET.set();
-    delay_ms(1);
+    delay_ms(5);
 
     // Pull-ups on NCS PN1/PO0
     PWR->PUCRN = PWR_PUCRN_PUN1;
