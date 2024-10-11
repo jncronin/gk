@@ -29,5 +29,5 @@
 )
 (rule "dq_coplanar"
 	(condition "(A.NetClass == 'xspi1_p1' || A.NetClass == 'xspi1_p2' || A.NetClass == 'xspi2_p') && B.NetName == 'GND' && B.Type == 'Zone'")
-	(constraint physical_clearance(min 12mil))
+	(constraint physical_clearance(min 8mil))
 )
