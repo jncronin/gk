@@ -317,7 +317,7 @@ static void SDMMC_set_clock(int freq)
 void init_sd()
 {
     Schedule(Thread::Create("sd", sd_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, 
-        M7Only));
+        PreferM4));
 }
 
 void sd_reset()

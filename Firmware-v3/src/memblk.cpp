@@ -239,12 +239,13 @@ extern "C" void init_memblk()
 }
 
 #if GK_MEMBLK_STATS
-MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, const std::string &tag)
+MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, const std::string &tag,
+    int pref)
 #else
-MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
+MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, int pref)
 #endif
 {
-    MemRegionType rtlist[4];
+    MemRegionType rtlist[5];
     int nrts = 0;
 
     switch(affinity)
@@ -280,10 +281,32 @@ MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity)
 
 
         case CPUAffinity::M7Only:
-            rtlist[nrts++] = MemRegionType::DTCM;
-            rtlist[nrts++] = MemRegionType::AXISRAM;
-            //rtlist[nrts++] = MemRegionType::SRAM;
-            rtlist[nrts++] = MemRegionType::SDRAM;
+            switch(pref)
+            {
+                case STACK_PREFERENCE_SDRAM_RAM_TCM:
+                    // low performance user thread e.g. gkmenu
+                    rtlist[nrts++] = MemRegionType::SDRAM;
+                    rtlist[nrts++] = MemRegionType::SRAM;
+                    rtlist[nrts++] = MemRegionType::AXISRAM;
+                    rtlist[nrts++] = MemRegionType::DTCM;
+                    rtlist[nrts++] = MemRegionType::ITCM;
+                    break;
+                case STACK_PREFERENCE_TCM_RAM_SDRAM:
+                    // high performance user thread e.g. game
+                    rtlist[nrts++] = MemRegionType::DTCM;
+                    rtlist[nrts++] = MemRegionType::ITCM;
+                    rtlist[nrts++] = MemRegionType::AXISRAM;
+                    rtlist[nrts++] = MemRegionType::SRAM;
+                    rtlist[nrts++] = MemRegionType::SDRAM;
+                    break;
+                default:
+                    // likely a kernel thread
+                    rtlist[nrts++] = MemRegionType::DTCM;
+                    rtlist[nrts++] = MemRegionType::AXISRAM;
+                    //rtlist[nrts++] = MemRegionType::SRAM;
+                    rtlist[nrts++] = MemRegionType::SDRAM;
+                    break;
+            }
             break;
     }
 

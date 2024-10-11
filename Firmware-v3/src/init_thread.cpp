@@ -23,7 +23,7 @@ void *init_thread(void *p)
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
-    Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::M7Only));
+    Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
 #endif
 
     proccreate_t pt;
@@ -58,6 +58,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::Down] = 258;    // PREV
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
+    pt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM; // try to leave TCM for games
 
     deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
 
