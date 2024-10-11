@@ -300,7 +300,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     uint32_t new_cr1 = 0xff81ff81U;
     xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
 
-    uint32_t new_cr0 = 0x8f098f09U; // hybrid burst, 64 byte burst, 5 initial latency, fixed latency
+    uint32_t new_cr0 = 0x8f0a8f0aU; // hybrid burst, 16 byte burst, fixed latency
     uint32_t drive_strength = 6U;       // 22 ohm.  Default is 34 ohm expecting 50 ohm traces.  Our traces are higher e.g. 90 ohm...
     new_cr0 |= (drive_strength << 12) | (drive_strength << 28);
     uint32_t latency = 2U;  // 7 clock
@@ -337,7 +337,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     // set higher interface speed with wrap enabled
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->DCR2 = (5UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 64 byte hybrid read per chip = 128 bytes at XSPI interface
+    XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
         (1UL << XSPI_DCR2_PRESCALER_Pos);               
 
 
