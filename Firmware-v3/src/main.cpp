@@ -50,19 +50,40 @@ int main()
         DBGMCU->CR |= DBGMCU_CR_DBG_SLEEP;
     }
 
+    /* Dump XSPI calibration */
+    SEGGER_RTT_printf(0, "kernel: xspi1: calfcr: %x, calsor: %x, calsir: %x\n",
+        XSPI1->CALFCR, XSPI1->CALSOR, XSPI1->CALSIR);
+    SEGGER_RTT_printf(0, "kernel: xspi2: calfcr: %x, calsor: %x, calsir: %x\n",
+        XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
+
     /* Memory test prior to enabling caches */
-#define GK_MEMTEST 0
+#define GK_MEMTEST 1
 #if GK_MEMTEST
     for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
     {
         *(volatile uint32_t *)addr = addr;
     }
+    uint64_t seed = 123456789U;
     for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
     {
         auto v = *(volatile uint32_t *)addr;
         if(v != addr)
         {
             SEGGER_RTT_printf(0, "memchk: fail at %x - got %x\n", addr, v);
+            // try again
+            for(int i = 0; i < 10; i++)
+            {
+                // do some random dummy reads to flush fifo
+                for(int j = 0; j < 16; j++)
+                {
+                    seed = (1103515245ULL * seed + 12345ULL) % 0x80000000ULL;
+                    auto new_addr = 0x90000000U + (uint32_t)(seed % 0x08000000ULL);
+                    *(volatile uint32_t *)new_addr;
+                }
+                auto v2 = *(volatile uint32_t *)addr;
+                SEGGER_RTT_printf(0, "memchk:   retry %d, got %x (%s)\n", i, v2,
+                    (v2 == addr) ? "SUCCESS" : "FAIL");
+            }
         }
     }
 #endif
@@ -107,9 +128,9 @@ int main()
     init_ctp();
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
-    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM7, init_stack));
+    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM4, init_stack));
 
-    Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM7));
+    Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
 
     // Prepare systick
     SysTick->CTRL = 0;

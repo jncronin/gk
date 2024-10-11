@@ -47,7 +47,9 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
             stack_size = 65536;
     }
     
-    auto stack = memblk_allocate_for_stack((size_t)stack_size, CPUAffinity::Either, p.name + " new thread stack");
+    auto stack = memblk_allocate_for_stack((size_t)stack_size, CPUAffinity::Either,
+        p.name + " new thread stack",
+        p.stack_preference);
     if(!stack.valid)
     {
         // cannot allocate stack

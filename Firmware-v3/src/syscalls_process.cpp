@@ -127,7 +127,9 @@ void *proccreate_thread(void *ptr)
     }
 
     // create stack and heap
-    auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity, std::string(pname) + " main thread stack");
+    auto stack = memblk_allocate_for_stack(stack_size, (CPUAffinity)core_affinity,
+        std::string(pname) + " main thread stack",
+        pcinfo->stack_preference);
     if(!stack.valid)
     {
         {
@@ -159,6 +161,7 @@ void *proccreate_thread(void *ptr)
     proc->heap_is_exec = pcinfo->heap_is_exec ? true : false;
     proc->is_priv = is_priv;
     proc->default_stack_size = stack_size;
+    proc->stack_preference = pcinfo->stack_preference;
     
     // load the elf file
     uint32_t epoint;

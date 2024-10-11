@@ -147,6 +147,7 @@ class Process
 
         /* default stack size for new threads */
         size_t default_stack_size = 0;
+        unsigned int stack_preference = STACK_PREFERENCE_TCM_RAM_SDRAM;
 
         /* hot code region */
         MemRegion mr_hot = InvalidMemregion();

@@ -157,7 +157,7 @@ Thread *Thread::Create(std::string name,
     }
     else
     {
-        t->stack = memblk_allocate_for_stack(4096U, affinity, name + " stack");
+        t->stack = memblk_allocate_for_stack(4096U, affinity, name + " stack", owning_process.stack_preference);
     }
 #if !GK_DUAL_CORE_AMP && !GK_DUAL_CORE
     // we keep PreferM4 as a separate option until now to allow better stack placement for low priority tasks

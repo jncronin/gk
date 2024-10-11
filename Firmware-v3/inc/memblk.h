@@ -30,11 +30,12 @@ extern "C" void init_memblk();
 
 MemRegion memblk_allocate(size_t n, MemRegionType rtype, const std::string &usage);
 MemRegion memblk_allocate(size_t n, MemRegionType rtype, int usage);
-MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, const std::string &usage);
+MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, const std::string &usage,
+    int pref = -1);
 void memblk_stats();
 #else
 MemRegion memblk_allocate(size_t n, MemRegionType rtype);
-MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity);
+MemRegion memblk_allocate_for_stack(size_t n, CPUAffinity affinity, int pref = -1);
 #endif
 void memblk_deallocate(struct MemRegion &r);
 
