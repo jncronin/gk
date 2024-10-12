@@ -18,7 +18,7 @@ void *init_thread(void *p)
     sound_set_extfreq(22050*1024);
     init_sound();
     
-    //init_supervisor();
+    init_supervisor();
 
     // Provision root file system, then allow USB write access to MSC
     fs_provision();

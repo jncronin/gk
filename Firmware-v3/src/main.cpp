@@ -22,7 +22,6 @@ void system_init_cm7();
 
 Scheduler sched;
 Process kernel_proc;
-Process p_supervisor;
 
 SRAM4_DATA std::vector<std::string> empty_string_vector;
 SRAM4_DATA MemRegion memblk_persistent_log;
@@ -184,10 +183,4 @@ void *idle_thread_dbg(void *p)
 extern "C" void SysTick_Handler()
 {
     Yield();
-}
-
-// for now until we have ported supervisor
-bool is_overlay_visible()
-{
-    return false;
 }
