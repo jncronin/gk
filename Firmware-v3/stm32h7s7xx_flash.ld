@@ -58,7 +58,7 @@ MEMORY
   XSPI_FLASH (xr) : ORIGIN = 0x70000000, LENGTH = 0x04000000
 
   /* RTC backup registers */
-  RTCREGS (rw)        : ORIGIN = 0x58004050, LENGTH = 128
+  RTCREGS (rw)        : ORIGIN = 0x58004500, LENGTH = 128
 }
 
 /* Sections */
