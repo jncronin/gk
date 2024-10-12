@@ -250,6 +250,20 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
         (3UL << SAI_xSLOTR_SLOTEN_Pos) |
         (2UL << SAI_xSLOTR_SLOTSZ_Pos);
 
+    // configure PCM1753
+    // set volume on PCM, scaled from 128 (muted) to 255 (full)
+    //  for now just linear in top part of range
+    auto sound_vol = sound_get_volume();
+    uint16_t val = sound_vol ? (155U + sound_vol) : 0U;
+    uint16_t pcm1753_conf[] = {
+        (uint16_t)(0x1000U | val),
+        (uint16_t)(0x1100U | val),
+        0x1300,         // enable both DACs
+        0x1404,         // I2S format
+        0x1604,         // single ZEROA pin
+    };
+    pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
+
     /* Set up buffers */
     ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
     ac.buf_size_bytes = buf_size_bytes;
@@ -482,7 +496,7 @@ int sound_set_volume(int new_vol_pct)
     if(new_vol_pct < 0 || new_vol_pct > 100)
         return -1;
     
-    volume_pct = new_vol_pct;
+    volume_pct = new_vol_pct + 1;   // set one more so we can detect 0 = invalid value
 
     if(!PCM_ZERO.value() && volume_pct)
     {
@@ -511,7 +525,8 @@ int sound_set_volume(int new_vol_pct)
 
 int sound_get_volume()
 {
-    return volume_pct;
+    // 0 = invalid therefore volume_pct in [1,101]
+    return (volume_pct > 0 && volume_pct <= 101) ? (volume_pct - 1) : 50;
 }
 
 static const constexpr uint8_t cdce_address = 0x65U;
