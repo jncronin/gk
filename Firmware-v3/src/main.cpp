@@ -73,8 +73,8 @@ int main()
             // try again
             for(int i = 0; i < 10; i++)
             {
-                // do some random dummy reads to flush fifo
-                for(int j = 0; j < 16; j++)
+                // do some random dummy reads to flush prefetch buffer (not sure how big it is)
+                for(int j = 0; j < 1024; j++)
                 {
                     seed = (1103515245ULL * seed + 12345ULL) % 0x80000000ULL;
                     auto new_addr = 0x90000000U + (uint32_t)(seed % 0x08000000ULL);
@@ -86,6 +86,23 @@ int main()
             }
         }
     }
+
+    // recheck calibration after test
+    (void)*(volatile uint32_t *)0x94000000U;
+    __DMB();
+    __DSB();
+    XSPI1->CR |= XSPI_CR_ABORT;
+    while((XSPI1->CR & XSPI_CR_ABORT) || (XSPI1->SR & XSPI_SR_BUSY));
+
+    // trigger calibration
+    XSPI1->DCR2 = XSPI1->DCR2;
+
+    // dummy read
+    (void)*(volatile uint32_t *)0x92000000U;
+    SEGGER_RTT_printf(0, "kernel: xspi1: calfcr: %x, calsor: %x, calsir: %x\n",
+        XSPI1->CALFCR, XSPI1->CALSOR, XSPI1->CALSIR);
+    SEGGER_RTT_printf(0, "kernel: xspi2: calfcr: %x, calsor: %x, calsir: %x\n",
+        XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 #endif
 
     BKPT();
