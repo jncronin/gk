@@ -388,7 +388,6 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
 
     /* XSPI2 - octal HyperBus 64 MByte, 166 MHz
-        for some reason DQSE doens't work, therefore slow to 133 MHz as per H7 datasheet
         read latency (initial) 16 clk for 166 MHz, no additional
         no write latency
         256 kbyte sectors
@@ -396,7 +395,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         write buffer programming - 512 bytes at a time on 512 byte boundary
         see datasheet p31 for write flowchart
     */
-    XSPI2->CR = (3UL << XSPI_CR_FMODE_Pos) |
+    XSPI2->CR = (1UL << XSPI_CR_FMODE_Pos) |
         XSPI_CR_TCEN | XSPI_CR_EN;
     XSPI2->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
     XSPI2->DCR1 = (4UL << XSPI_DCR1_MTYP_Pos) |
@@ -408,16 +407,10 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (1UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 384MHz /3
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
-        //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
-        //(4UL << XSPI_CCR_DMODE_Pos) |
         XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
     XSPI2->WCCR = 0 |
-        //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
-        //(4UL << XSPI_CCR_DMODE_Pos) |
         XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
-    XSPI2->WPCCR = 0 |  // respect RWDS from device
-        //(4UL << XSPI_CCR_ADMODE_Pos) | // 8 address lines
-        //(4UL << XSPI_CCR_DMODE_Pos) |
+    XSPI2->WPCCR = 0 |
         XSPI_CCR_DDTR | XSPI_CCR_ADDTR;
 
     while(XSPI2->SR & XSPI_SR_BUSY);
@@ -436,7 +429,38 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         xspi_ind_read16(XSPI2, 2));
 
     // Exit ID mode
-    xspi_ind_write16(XSPI2, 0, 0xff);    
+    xspi_ind_write16(XSPI2, 0, 0xf0);
+
+    // Enter ASP mode
+    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
+    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
+    xspi_ind_write16(XSPI2, 0x555*2, 0x40);
+
+    delay_ms(1);
+
+    // Get ASP register
+    auto aspr = xspi_ind_read16(XSPI2, 0);
+    if(aspr != 0xf6ffU)
+    {    
+        if(aspr != 0xfeffU) __BKPT();
+        
+        // Enable hybrid burst
+        xspi_ind_write16(XSPI2, 0, 0xa0);
+        xspi_ind_write16(XSPI2, 0, aspr & 0xf7ffU);
+
+        delay_ms(5);
+
+        // Check
+        if(xspi_ind_read16(XSPI2, 0) != (aspr & 0xf7ffU)) __BKPT();
+    }
+
+    // Exit
+    xspi_ind_write16(XSPI2, 0, 0xf0);
+
+    // Enable hybrid burst 32-byte wrap
+    while(XSPI2->SR & XSPI_SR_BUSY);
+    XSPI2->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |
+        (1UL << XSPI_DCR2_PRESCALER_Pos);               
 
     // Return to memory mapped mode
     while(XSPI2->SR & XSPI_SR_BUSY);
