@@ -214,8 +214,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPIM->CR = 0;  // direct mode
 
     /* XSPI1 - dual-octal HyperBus 2x 64MByte, 200 MHz
-        We can only run at ~133 due to STM32 restrictions (dual octal without DQS)
-         - this allows latency of 2x5 clk
+        Run at hclk5/2 = 150 MHz
         Default:
             - initial latency 7 clk
             - fixed latency - 2 times initial
@@ -229,7 +228,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (2UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
-    XSPI1->DCR4 = 120 - 4 - 1;      // tCSM=4us/133 MHz
+    XSPI1->DCR4 = 150 - 4 - 1;      // tCSM=1us/150 MHz
     XSPI1->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |     // start without wrap
         (7UL << XSPI_DCR2_PRESCALER_Pos);               // start slow for id
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -254,8 +253,10 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI1->HLCR = (5UL << XSPI_HLCR_TRWR_Pos) |
         (7UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
-    while(XSPI1->SR & XSPI_SR_BUSY);
+    /*while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->TCR = XSPI_TCR_DHQC;
+    while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->WPTCR = XSPI_WPTCR_DHQC;*/
 
     // Do some indirect register reads to prove we're connected
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -303,14 +304,14 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     uint32_t new_cr0 = 0x8f0a8f0aU; // hybrid burst, 16 byte burst, fixed latency
     uint32_t drive_strength = 6U;       // 22 ohm.  Default is 34 ohm expecting 50 ohm traces.  Our traces are higher e.g. 90 ohm...
     new_cr0 |= (drive_strength << 12) | (drive_strength << 28);
-    uint32_t latency = 2U;  // 7 clock
+    uint32_t latency = 1U;  // 6 clock @166 MHz max freq
     new_cr0 |= (latency << 4) | (latency << 20);
     xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
 
     // set new latency
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->HLCR = (7UL << XSPI_HLCR_TRWR_Pos) |
-        (7UL << XSPI_HLCR_TACC_Pos) |
+    XSPI1->HLCR = (6UL << XSPI_HLCR_TRWR_Pos) |
+        (6UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
 
     xspi_ind_read(XSPI1, 4, 0x800U*4, &cr0);
