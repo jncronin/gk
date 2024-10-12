@@ -339,7 +339,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     // set higher interface speed with wrap enabled
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
-        (1UL << XSPI_DCR2_PRESCALER_Pos);               
+        (3UL << XSPI_DCR2_PRESCALER_Pos);               
 
 
     // XSPI timing calibration in memory mode
@@ -443,7 +443,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     if(aspr != 0xf6ffU)
     {    
         if(aspr != 0xfeffU) __BKPT();
-        
+
         // Enable hybrid burst
         xspi_ind_write16(XSPI2, 0, 0xa0);
         xspi_ind_write16(XSPI2, 0, aspr & 0xf7ffU);
