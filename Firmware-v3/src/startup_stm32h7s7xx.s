@@ -167,7 +167,7 @@ LoopFillZerodtcm_bss:
 
   /* Initialize .itcm from xspi_flash */
   ldr r0, =_sitcm
-  ldr r1, =_eitcm
+  ldr r1, =_eitcmd
   ldr r2, =_sitcm_flash
   movs r3, #0
   b LoopCopyItcmInit
