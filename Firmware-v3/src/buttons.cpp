@@ -186,12 +186,11 @@ void init_buttons()
 
 static inline Process &recv_proc()
 {
-    // TODO
-    /*if(supervisor_is_active(nullptr, nullptr, nullptr, nullptr))
+    if(supervisor_is_active(nullptr, nullptr, nullptr, nullptr))
     {
         return p_supervisor;
     }
-    else*/
+    else
     {
         return *focus_process;
     }
