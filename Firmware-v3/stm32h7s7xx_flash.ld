@@ -248,16 +248,21 @@ SECTIONS
   } >DTCM AT> FLASH
   _sdtcm_flash = LOADADDR(.dtcm);
 
-  .itcm (NOLOAD) :
+  .itcm 0x0 (NOLOAD) :
   {
+    *(.vtors)
+    *(.vtors*)
+
     . = ALIGN(4);
     _sitcm = .;       /* create a global symbol at ccmram start */
     *(.itcm)
     *(.itcm*)
     
     . = ALIGN(4);
-    _eitcm = .;       /* create a global symbol at ccmram end */
-  } >ITCM AT> XSPI_FLASH
+    _eitcmd = .;       /* create a global symbol at ccmram end */
+    . = ALIGN(1 << LOG2CEIL(_erttd - _srtt));
+    _eitcm = .;
+   } >ITCM AT> XSPI_FLASH
   _sitcm_flash = LOADADDR(.itcm);
 
   .fb 0x90000000 (NOLOAD) :
