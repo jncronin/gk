@@ -23,7 +23,7 @@ bool is_overlay_visible()
 
 extern Condition scr_vsync;
 
-static void *supervisor_thread(void *p);
+[[maybe_unused]] static void *supervisor_thread(void *p);
 
 static const constexpr coord_t btn_overlay_h = 208;
 static const constexpr coord_t btn_overlay_y = 480 - btn_overlay_h;
@@ -60,6 +60,8 @@ void init_supervisor()
     p_supervisor.gamepad_is_keyboard = true;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLUP] = GK_SCANCODE_VOLUMEUP;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLDOWN] = GK_SCANCODE_VOLUMEDOWN;
+
+    memcpy(p_supervisor.p_mpu, mpu_default, sizeof(mpu_default));
     
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
         p_supervisor, PreferM7);
@@ -348,7 +350,7 @@ void *supervisor_thread(void *p)
     {
         Event e;
         [[maybe_unused]] bool do_update = false;
-        bool do_volume_update = false;
+        [[maybe_unused]] bool do_volume_update = false;
         bool has_event = p_supervisor.events.Pop(&e,
             HasAnimations(wl) ? kernel_time::from_ms(1000ULL / 60ULL) : kernel_time::from_ms(1000));
         if(RunAnimations(wl, clock_cur_ms()))
@@ -468,6 +470,7 @@ void *supervisor_thread(void *p)
                     break;
             }
         }
+
 
         if(overlay_visible || (volume_visible && do_volume_update))
         {
