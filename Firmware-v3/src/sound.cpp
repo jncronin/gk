@@ -10,6 +10,8 @@
 #include "i2c.h"
 #include "cache.h"
 
+#define USE_PCM_ZERO 0
+
 static constexpr const pin SAI1_SCK_A { GPIOE, 5, 6 };
 static constexpr const pin SAI1_SD_A { GPIOE, 6, 6 };
 static constexpr const pin SAI1_FS_A { GPIOE, 4, 6 };
@@ -102,7 +104,9 @@ void init_sound()
     PCM_MUTE.set();
     PCM_MUTE.set_as_output();
 
+#if USE_PCM_ZERO
     PCM_ZERO.set_as_input();
+#endif
 
     SPI2_MOSI.set_as_af();
     SPI2_SCK.set_as_af();
@@ -136,10 +140,11 @@ void init_sound()
     uint16_t pcm1753_conf[] = {
         0x1300,         // enable both DACs
         0x1404,         // I2S format
-        0x1604,         // single ZEROA pin
+        0x1606,         // single ZEROA pin
     };
     pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
 
+#if USE_PCM_ZERO
     // Set PCM_ZERO IRQ, both edges
     RCC->APB4ENR |= RCC_APB4ENR_SBSEN;
     (void)RCC->APB4ENR;
@@ -151,6 +156,7 @@ void init_sound()
     EXTI->IMR1 |= EXTI_IMR1_IM0;
 
     NVIC_EnableIRQ(EXTI0_IRQn);
+#endif
 
     RCC->APB2ENR |= RCC_APB2ENR_SAI1EN;
     (void)RCC->APB2ENR;
@@ -158,7 +164,7 @@ void init_sound()
     RCC->AHB1ENR |= RCC_AHB1ENR_GPDMA1EN;
     (void)RCC->AHB1ENR;
 
-    sound_set_volume(10);
+    sound_set_volume(50);
 }
 
 int syscall_audiosetfreq(int freq, int *_errno)
@@ -471,6 +477,7 @@ extern "C" void dma_irqhandler()
     __DMB();
 }
 
+#if USE_PCM_ZERO
 extern "C" void EXTI0_IRQHandler()
 {
     //CriticalGuard cg(sl_sound);
@@ -490,6 +497,7 @@ extern "C" void EXTI0_IRQHandler()
     EXTI->PR1 = EXTI_PR1_PR0;
     __DMB();
 }
+#endif
 
 int sound_set_volume(int new_vol_pct)
 {
@@ -498,7 +506,13 @@ int sound_set_volume(int new_vol_pct)
     
     volume_pct = new_vol_pct + 1;   // set one more so we can detect 0 = invalid value
 
-    if(!PCM_ZERO.value() && volume_pct)
+#if USE_PCM_ZERO
+    bool pcmz = PCM_ZERO.value();
+#else
+    const bool pcmz = false;
+#endif
+
+    if(!pcmz && volume_pct)
     {
         pcm_mute_set(false);
         SPKR_NSD.set();
@@ -518,6 +532,10 @@ int sound_set_volume(int new_vol_pct)
         (uint16_t)(0x1000U | val),
         (uint16_t)(0x1100U | val)
     };
+    klog("sound: set volume val: %d, regs %x, %x, zero=%d\n",
+        new_vol_pct,
+        pcmregs[0], pcmregs[1],
+        pcmz ? 1 : 0);
     pcm1753_write(pcmregs, sizeof(pcmregs) / sizeof(uint16_t));
 
     return 0;
