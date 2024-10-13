@@ -5,7 +5,7 @@
 
 // there are up to 155 maskable interrupts on the NVIC, plus 16 interrupt lines, plus 1 word for stack pointer */
 const int nvtors = 155 + 16 + 1;
-__attribute__((aligned(1024))) __attribute__((section(".dtcm_bss"))) static uint32_t cm7_vtor[nvtors] = { 0 };
+__attribute__((aligned(1024))) __attribute__((section(".vtors"))) static uint32_t cm7_vtor[nvtors] = { 0 };
 
 extern int _ecm7_stack;
 
