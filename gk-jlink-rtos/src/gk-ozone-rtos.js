@@ -309,7 +309,7 @@ function update()
         }
     }
 
-    var tottime = Debug.evaluate("_cur_ms") * 1000;
+    var tottime = Debug.evaluate("*(uint64_t *)0x58004500") * 1000;
 
     if(is_smp)
     {
