@@ -10,6 +10,8 @@ uint32_t SystemCoreClock = 0;
 
 time_t timegm (struct tm* tim_p);
 
+static void enable_backup_sram();
+
 extern "C" INTFLASH_FUNCTION void init_clocks()
 {
     SystemCoreClock = 64000000U;
@@ -28,7 +30,7 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->CR = cr;
     while(!(RCC->CR & RCC_CR_HSERDY));
 
-    //enable_backup_domain();
+    enable_backup_sram();
 
     _cur_ms = 0ULL;
 
@@ -278,7 +280,29 @@ uint64_t clock_timespec_to_ms(const struct timespec &tp)
         static_cast<uint64_t>(s_diff * 1000);
 }
 
-extern "C" void clock_enable_backup_domain()
+INTFLASH_FUNCTION void enable_backup_sram()
+{
+    RCC->APB4ENR |= RCC_APB4ENR_RTCAPBEN;
+    (void)RCC->APB4ENR;
+
+    // Permit write access to backup domain - needed for write access to RTC, backup SRAM etc
+    PWR->CR1 |= PWR_CR1_DBP;
+    __DMB();
+
+    // Enable backup regulator
+    PWR->CSR1 |= PWR_CSR1_BREN;
+    while(!(PWR->CSR1 & PWR_CSR1_BRRDY));
+
+    // Enable RTC to use HSE/32 (for now, pending actual set up with LSE in v2)
+    RCC->BDCR = RCC_BDCR_RTCEN |
+        (3UL << RCC_BDCR_RTCSEL_Pos);
+
+
+    RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
+    (void)RCC->AHB4ENR;
+}
+
+extern "C" void clock_configure_backup_domain()
 {
     /* There is rather complex nomeclature around the backup domain.  In terms of power supplies:
         VBAT is external power from battery

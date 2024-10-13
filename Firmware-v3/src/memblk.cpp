@@ -40,7 +40,6 @@ extern int _ecm7_stack;
 // sram
 extern int _esram_bss;
 extern int _esramahb;
-extern int _efast_pointers;
 
 // sdram
 extern int _esdram;
@@ -151,8 +150,6 @@ extern "C" void init_memblk()
         esram = (uintptr_t)&_esram_bss;
     if((uintptr_t)&_esramahb > esram)
         esram = (uintptr_t)&_esramahb;
-    if((uintptr_t)&_efast_pointers > esram)
-        esram = (uintptr_t)&_efast_pointers;
 
     if((uintptr_t)&_esdram > esdram)
         esdram = (uintptr_t)&_esdram;
