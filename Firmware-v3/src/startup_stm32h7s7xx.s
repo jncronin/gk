@@ -204,7 +204,7 @@ LoopFillZeronet_bss:
   blx ip
 
 /* Initialise backup domain */
-  ldr ip, =clock_enable_backup_domain
+  ldr ip, =clock_configure_backup_domain
   blx ip
 
 /* Call the application's entry point.*/

@@ -363,28 +363,18 @@ SECTIONS
   .rtcregs (NOLOAD):
   {
     _srtcregs = .;
-    *(.rtcregs)
-    *(.rtcregs*)
-    _ertcregs = .;
-  } >RTCREGS
-
-
-  .fast_pointers 0x30002000 (NOLOAD) :
-  {
-    /* fast access to TLS pointer(s) and timing bits */
-    _tls_pointers = .;
-    QUAD(0);
-    QUAD(0);
     _cur_ms = .;
-    QUAD(0);
     QUAD(0);
     toffset = .;
     QUAD(0);
     QUAD(0);
-    QUAD(0);
-    QUAD(0);
-    _efast_pointers = .;
-  } > SRAMAHB
+    _tls_pointers = .;
+    LONG(0);
+
+    *(.rtcregs)
+    *(.rtcregs*)
+    _ertcregs = .;
+  } >RTCREGS
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :

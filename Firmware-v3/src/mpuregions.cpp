@@ -7,26 +7,25 @@ const uint32_t _scm7_stackp = (uint32_t)&_scm7_stack;
 const uint32_t _ecm7_stack_alignp = (uint32_t)&_ecm7_stack_align;
 const uint32_t _eitcmp = (uint32_t)&_eitcm;
 
-static const constexpr mpu_saved_state mpu_lptim1 = MPUGenerate(LPTIM1_BASE, sizeof(LPTIM_TypeDef), 0, false, RW, RO, DEV_S);
-static const constexpr mpu_saved_state fast_access = MPUGenerate(GK_TLS_POINTER_ADDRESS, GK_FAST_ACCESS_SIZE, 1, false, RW, RO, WBWA_NS);
-static mpu_saved_state mpu_rtt = MPUGenerate(_srttp, _erttp - _srttp, 2, false, RW, NoAccess, N_NC_NS);
+static const constexpr mpu_saved_state mpu_devs = MPUGenerate(0x40000000, 0x20000000, 0, false, RW, RO, DEV_S);
+static mpu_saved_state mpu_rtt = MPUGenerate(_srttp, _erttp - _srttp, 1, false, RW, NoAccess, N_NC_NS);
 // xspi1 space is wt by default
-static const constexpr mpu_saved_state mpu_xspi = MPUGenerate(0x90000000, 128*1024*1024U, 3, false, RW, NoAccess, WBWA_NS);
-static const constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x90000000, 0x400000, 4, false, RW, RW, WT_NS);
+static const constexpr mpu_saved_state mpu_xspi = MPUGenerate(0x90000000, 128*1024*1024U, 2, false, RW, NoAccess, WBWA_NS);
+static const constexpr mpu_saved_state mpu_fb0 = MPUGenerate(0x90000000, 0x400000, 3, false, RW, RW, WT_NS);
 // disable access to start and end of msp stack space
-static mpu_saved_state mpu_msp = MPUGenerate(_scm7_stackp, _ecm7_stack_alignp - _scm7_stackp, 5, false, NoAccess, NoAccess, WBWA_NS, 0x7eU);
+static mpu_saved_state mpu_msp = MPUGenerate(_scm7_stackp, _ecm7_stack_alignp - _scm7_stackp, 4, false, NoAccess, NoAccess, WBWA_NS, 0x7eU);
 // read only access to kernel itcm, includes vtors
-static mpu_saved_state mpu_itcm = MPUGenerate(0, _eitcmp, 6, true, RO, NoAccess, WBWA_NS);
+static mpu_saved_state mpu_itcm = MPUGenerate(0, _eitcmp, 5, true, RO, NoAccess, WBWA_NS);
 
 mpu_saved_state mpu_default[16] =
 {
-    mpu_lptim1,
-    fast_access,
+    mpu_devs,
     mpu_rtt,
     mpu_xspi,
     mpu_fb0,
     mpu_msp,
     mpu_itcm,
+    MPUGenerateNonValid(6),
     MPUGenerateNonValid(7),
     MPUGenerateNonValid(8),
     MPUGenerateNonValid(9),
