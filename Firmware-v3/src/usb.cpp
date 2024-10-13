@@ -16,8 +16,8 @@ extern Spinlock s_rtt;
 
 /* Using USB_OTG_HS in HS mode with integrated PHY */
 static constexpr pin usb_pins[] = {
-    { GPIOM, 14, 5 },
-    { GPIOM, 15, 6 },
+    { GPIOM, 5, 10 },
+    { GPIOM, 6, 10 },
 };
 constexpr pin usb_vbus = { GPIOM, 8 };
 
