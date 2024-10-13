@@ -222,6 +222,7 @@ MemRegion log_get_persistent() { return InvalidMemregion(); }
 #if GK_LOG_RTT
 ssize_t log_rtt(const void *buf, size_t count)
 {
+#if 0
     void SWO_PrintChar(char c, uint8_t portNo);
     void uart_sendchar(char c);
 
@@ -230,6 +231,7 @@ ssize_t log_rtt(const void *buf, size_t count)
         SWO_PrintChar(((const char *)buf)[i], 0);
         uart_sendchar(((const char *)buf)[i]);
     }
+#endif
     return SEGGER_RTT_Write(0, buf, count);
 }
 #endif
