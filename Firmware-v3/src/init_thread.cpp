@@ -7,6 +7,7 @@
 #include "i2c.h"
 #include "usb.h"
 #include <cstring>
+#include <cmath>
 
 pid_t pid_gkmenu = 0;
 
@@ -19,6 +20,41 @@ void *init_thread(void *p)
     init_sound();
     
     init_supervisor();
+
+#if 0
+    // audio test
+    deferred_call(syscall_audiosetmode, 2, 16, 22050, 4096);
+    int csamp = 0;
+    void *buf = nullptr;
+    deferred_call(syscall_audioqueuebuffer, nullptr, &buf);
+    deferred_call(syscall_audioenable, 1);
+    while(true)
+    {
+        // 1 second on, 2 seconds off
+        auto cbuf = reinterpret_cast<int16_t *>(buf);
+        for(int i = 0; i < 1024; i++)
+        {
+            if(csamp < 22050)
+            {
+                auto omega = (double)csamp * 440.0 /  22050.0;
+                while(omega >= 1.0) omega -= 1.0;
+                auto val = (int16_t)(std::sin(omega * 2.0 * M_PI) * 32000.0);
+                cbuf[i * 2] = val;
+                cbuf[i * 2 + 1] = val;
+            }
+            else
+            {
+                cbuf[i * 2] = 0;
+                cbuf[i * 2 + 1] = 0;
+            }
+
+            csamp++;
+            if(csamp >= 22050*3) csamp = 0;
+        }
+        deferred_call(syscall_audioqueuebuffer, buf, &buf);
+        deferred_call(syscall_audiowaitfree);
+    }
+#endif
 
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
