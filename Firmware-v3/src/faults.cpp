@@ -21,6 +21,13 @@
 #include "process.h"
 #include "cleanup.h"
 
+#define FAULT_BREAK     1
+#ifdef FAULT_BREAK
+#define _FAULT_BREAK    "bkpt           \n"
+#else
+#define _FAULT_BREAK    ""
+#endif
+
 struct gk_aapcs_regs
 {
     uint32_t r0;
@@ -52,6 +59,7 @@ extern "C" {
     void GKMemManage(gk_regs *r);
     void GKBusFault(gk_regs *r);
     void GKUsageFault(gk_regs *r);
+    void GKNMI(gk_regs *r);
 }
 
 
@@ -59,10 +67,12 @@ extern "C" void HardFault_Handler() __attribute__((naked));
 extern "C" void MemManage_Handler() __attribute__((naked));
 extern "C" void BusFault_Handler() __attribute__((naked));
 extern "C" void UsageFault_Handler() __attribute__((naked));
+extern "C" void NMI_Handler() __attribute__((naked));
 
-extern "C" void HardFault_Handler()
+extern "C" INTFLASH_FUNCTION void HardFault_Handler()
 {
     __asm__ volatile(
+        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -82,9 +92,10 @@ extern "C" void HardFault_Handler()
     ::: "memory");
 }
 
-extern "C" void MemManage_Handler()
+extern "C" INTFLASH_FUNCTION void MemManage_Handler()
 {
     __asm__ volatile(
+        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -104,9 +115,10 @@ extern "C" void MemManage_Handler()
     ::: "memory");
 }
 
-extern "C" void BusFault_Handler()
+extern "C" INTFLASH_FUNCTION void BusFault_Handler()
 {
     __asm__ volatile(
+        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -126,9 +138,10 @@ extern "C" void BusFault_Handler()
     ::: "memory");
 }
 
-extern "C" void UsageFault_Handler()
+extern "C" INTFLASH_FUNCTION void UsageFault_Handler()
 {
     __asm__ volatile(
+        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -143,6 +156,29 @@ extern "C" void UsageFault_Handler()
         "push { r0 }        \n"
         "mov r0, sp         \n"
         "bl GKUsageFault    \n"
+        "add sp, #36        \n"
+        "pop { pc }         \n"
+    ::: "memory");
+}
+
+extern "C" INTFLASH_FUNCTION void NMI_Handler()
+{
+    __asm__ volatile(
+        _FAULT_BREAK
+        "push { lr }        \n"
+        "push { r4-r11 }    \n"
+        "mov r0, lr         \n"
+        "and r0, #0xf       \n"
+        "subs r0, #0xd      \n"
+        "cbz r0, .L0%=      \n"
+        "b .L1%=            \n"
+        "mrs r0, msp        \n"
+        ".L0%=:             \n"
+        "mrs r0, psp        \n"
+        ".L1%=:             \n"
+        "push { r0 }        \n"
+        "mov r0, sp         \n"
+        "bl GKNMI           \n"
         "add sp, #36        \n"
         "pop { pc }         \n"
     ::: "memory");
@@ -168,12 +204,21 @@ static void end_process(Process &p)
     Yield();
 }
 
-static void log_regs(gk_regs *r, const char *fault_type)
+INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
 {
     auto t = GetCurrentThreadForCore();
     auto p = t ? &t->p : nullptr;
     auto tname = t ? t->name.c_str() : "unknown";
     auto pname = p ? p->name.c_str() : "unknown";
+
+    auto r_addr = (uint32_t)(uintptr_t)r;
+    bool r_valid = false;
+    if(r_addr > 0 && r_addr < 0x30000U) r_valid = true;
+    if(r_addr >= 0x20000000U && r_addr < 0x20030000U) r_valid = true;
+    if(r_addr >= 0x24020000U && r_addr < 0x24072000U) r_valid = true;
+    if(r_addr >= 0x30000000U && r_addr < 0x30008000U) r_valid = true;
+    if(r_addr >= 0x90000000U && r_addr < 0x98000000U) r_valid = true;
+    if(!r_valid) BKPT();
 
     klog("%s at %x called from %x\n"
         "\n"
@@ -282,26 +327,32 @@ static void handle_fault()
     }
 }
 
-void GKHardFault(gk_regs *r)
+INTFLASH_FUNCTION void GKHardFault(gk_regs *r)
 {
     log_regs(r, "Hard Fault");
     handle_fault();
 }
 
-void GKMemManage(gk_regs *r)
+INTFLASH_FUNCTION void GKMemManage(gk_regs *r)
 {
     log_regs(r, "MemManage Fault");
     handle_fault();
 }
 
-void GKBusFault(gk_regs *r)
+INTFLASH_FUNCTION void GKBusFault(gk_regs *r)
 {
     log_regs(r, "Bus Fault");
     handle_fault();
 }
 
-void GKUsageFault(gk_regs *r)
+INTFLASH_FUNCTION void GKUsageFault(gk_regs *r)
 {
     log_regs(r, "Usage Fault");
+    handle_fault();
+}
+
+INTFLASH_FUNCTION void GKNMI(gk_regs *r)
+{
+    log_regs(r, "NMI");
     handle_fault();
 }
