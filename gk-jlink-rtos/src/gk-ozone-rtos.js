@@ -7,7 +7,7 @@ function init()
 {
     Threads.clear();
     Threads.newqueue("Task List");
-    Threads.setColor("Status", "ready", "executing", "blocked");
+    Threads.setColor("Status", "waiting", "exec core 0", "blocking");
 
     /* Get info about the system */
     ncores = Debug.evaluate("gk_ncores");
@@ -17,7 +17,7 @@ function init()
     if(is_smp)
     {
         saddr[0] = Debug.evaluate("&sched");
-        Threads.setColumns("ID", "Name", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (us) / %");
+        Threads.setColumns("ID", "Name", "Process", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (us) / %");
     }
     else
     {
@@ -25,7 +25,7 @@ function init()
         {
             saddr[i] = Debug.evaluate("&scheds[" + i + "]");
         }
-        Threads.setColumns("ID", "Name", "Core", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (us) / %");
+        Threads.setColumns("ID", "Name", "Process", "Core", "Priority", "PC", "Status", "BlockingOn", "Stack", "Runtime (us) / %");
     }
 }
 
@@ -33,6 +33,28 @@ function task_get_name(t)
 {
     var namelen = Debug.evaluate("((Thread *)" + t + ")->name._M_string_length");
     var nameaddr = Debug.evaluate("&((Thread *)" + t + ")->name._M_dataplus._M_p");
+    var nameaddr2 = Debug.evaluate("*(uint32_t *)" + nameaddr);
+
+    var namebytes = TargetInterface.peekBytes(nameaddr2, namelen);
+    if(namebytes == undefined)
+    {
+        return "undefined";
+    }
+    namestr = "";
+    for(var j = 0; j < namelen; j++)
+    {
+        namestr += String.fromCharCode(namebytes[j]);
+    }
+
+    return namestr;
+}
+
+function task_get_process_name(t)
+{
+    var procaddraddr = Debug.evaluate("&((Thread *)" + t + ")->p");
+    var procaddr = Debug.evaluate("*(void **)" + procaddraddr);
+    var namelen = Debug.evaluate("((Process *)" + procaddr + ")->name._M_string_length");
+    var nameaddr = Debug.evaluate("&((Process *)" + procaddr + ")->name._M_dataplus._M_p");
     var nameaddr2 = Debug.evaluate("*(uint32_t *)" + nameaddr);
 
     var namebytes = TargetInterface.peekBytes(nameaddr2, namelen);
@@ -199,6 +221,7 @@ function add_threads_for_scheduler(csaddr, tottime, coreid, curt, ncores)
             //TargetInterface.message("t at " + t);
             
             var namestr = task_get_name(t);
+            var pnamestr = task_get_process_name(t);
 
             var t_status = "waiting";
             var is_executing = false;
@@ -261,7 +284,7 @@ function add_threads_for_scheduler(csaddr, tottime, coreid, curt, ncores)
 
             if(coreid == undefined)
             {
-                Threads.add(t.toString(16), namestr, i,
+                Threads.add(t.toString(16), namestr, pnamestr, i,
                     getregs(t)[15].toString(16), t_status,
                     blocking_on(t),
                     sp.toString(16) + " (" + stack_start.toString(16) + "-" + stack_end.toString(16) + ")",
@@ -270,7 +293,7 @@ function add_threads_for_scheduler(csaddr, tottime, coreid, curt, ncores)
             }
             else
             {
-                Threads.add(t.toString(16), namestr, coreid, i,
+                Threads.add(t.toString(16), namestr, pnamestr, coreid, i,
                     getregs(t)[15].toString(16), t_status,
                     blocking_on(t),
                     sp.toString(16) + " (" + stack_start.toString(16) + "-" + stack_end.toString(16) + ")",
@@ -331,6 +354,8 @@ function update()
             add_threads_for_scheduler(saddr[i], tottime, core_name, curt, ncores);
         }
     }
+
+    Threads.setColor("Status", "waiting", "exec core 0", "blocking");
 }
 
 function getOSName()
