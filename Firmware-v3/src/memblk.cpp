@@ -137,7 +137,6 @@ extern "C" void init_memblk()
     incr_axisram(&_ebss, &eaxisram, &eaxisram4);
     incr_axisram(&_elwip_init_data, &eaxisram, &eaxisram4);
     incr_axisram(&_edata4, &eaxisram, &eaxisram4);
-    incr_axisram(&_ertt, &eaxisram, &eaxisram4);
 
     if((uintptr_t)&_edtcm_bss > edtcm)
         edtcm = (uintptr_t)&_edtcm_bss;
@@ -150,6 +149,8 @@ extern "C" void init_memblk()
         esram = (uintptr_t)&_esram_bss;
     if((uintptr_t)&_esramahb > esram)
         esram = (uintptr_t)&_esramahb;
+    if((uintptr_t)&_ertt > esram)
+        esram = (uintptr_t)&_ertt;
 
     if((uintptr_t)&_esdram > esdram)
         esdram = (uintptr_t)&_esdram;

@@ -260,7 +260,7 @@ SECTIONS
     
     . = ALIGN(4);
     _eitcmd = .;       /* create a global symbol at ccmram end */
-    . = ALIGN(1 << LOG2CEIL(_erttd - _srtt));
+    . = ALIGN(1 << LOG2CEIL(_eitcmd));
     _eitcm = .;
    } >ITCM AT> XSPI_FLASH
   _sitcm_flash = LOADADDR(.itcm);
@@ -306,18 +306,6 @@ SECTIONS
   } >AXISRAM4 AT> FLASH
   _ssdata4_flash = LOADADDR(.sram4);
 
-  /* RTT - put into WT memory region */
-  .rtt ALIGN(1 << LOG2CEIL(_erttd - _srtt)):
-  {
-    _srtt = .;
-    *(.rtt)
-    *(.rtt*)
-    _erttd = .;
-    . = ALIGN(1 << LOG2CEIL(_erttd - _srtt));
-    _ertt = .;
-  } >AXISRAM4 AT> FLASH
-  _srtt_flash = LOADADDR(.rtt);
-
   /* Initial stack for CM7 */
   .cm7_stack 0x20001000 (NOLOAD)  :
   {
@@ -327,6 +315,18 @@ SECTIONS
     _ecm7_stack = . - (_ecm7_stack_align - _scm7_stack) / 8;
     _estack = _ecm7_stack;
   } >DTCM
+
+  /* RTT - put into WT memory region */
+  .rtt 0x30000000 :
+  {
+    _srtt = .;
+    *(.rtt)
+    *(.rtt*)
+    _erttd = .;
+    . = ALIGN(1 << LOG2CEIL(_erttd - _srtt));
+    _ertt = .;
+  } >SRAMAHB AT> FLASH
+  _srtt_flash = LOADADDR(.rtt);
 
   .sram_data :
   {
