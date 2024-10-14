@@ -183,6 +183,10 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     SPKR_NSD.clear();
     PCM_MUTE.set();
     SAI1_Block_A->CR1 = 0;
+    dma->CCR |= DMA_CCR_SUSP;
+    while(!(dma->CSR & DMA_CSR_IDLEF));
+    dma->CCR = DMA_CCR_RESET;
+    while(dma->CCR & DMA_CCR_RESET);
     dma->CCR = 0;
 
     /* Calculate PLL divisors */
@@ -203,19 +207,23 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     */
     
     unsigned int dsize;
+    unsigned int dw_log2;
     switch(nbits)
     {
         case 8:
             dsize = 2;
+            dw_log2 = 0;
             break;
         case 16:
             dsize = 4;
+            dw_log2 = 1;
             break;
-        case 24:
+        /*case 24:
             dsize = 6;
-            break;
+            break;*/
         case 32:
             dsize = 7;
+            dw_log2 = 2;
             break;
         default:
             if(_errno) *_errno = EINVAL;
@@ -244,7 +252,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
         mono |
         SAI_xCR1_DMAEN;
     SAI1_Block_A->CR2 =
-        (2UL << SAI_xCR2_FTH_Pos);
+        (0UL << SAI_xCR2_FTH_Pos);
     SAI1_Block_A->FRCR =
         SAI_xFRCR_FSOFF |
         SAI_xFRCR_FSDEF |
@@ -312,11 +320,12 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
         DMA_CCR_TCIE;
     dma->CTR1 = DMA_CTR1_DAP |
         (0U << DMA_CTR1_DBL_1_Pos) |
-        (1U << DMA_CTR1_DDW_LOG2_Pos) |
+        (dw_log2 << DMA_CTR1_DDW_LOG2_Pos) |
         (0U << DMA_CTR1_SBL_1_Pos) |
         DMA_CTR1_SINC |
-        (1U << DMA_CTR1_SDW_LOG2_Pos);
-    dma->CTR2 = DMA_CTR2_DREQ |
+        (dw_log2 << DMA_CTR1_SDW_LOG2_Pos);
+    dma->CTR2 = (2U << DMA_CTR2_TCEM_Pos) |
+        DMA_CTR2_DREQ |
         (63U << DMA_CTR2_REQSEL_Pos);
     dma->CTR3 = 0U;
     dma->CBR1 = ac.buf_size_bytes;
@@ -329,8 +338,8 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     NVIC_EnableIRQ(dma_irq);
 
     {
-        klog("audiosetmode: set %d hz, %d channels, %d bit\n",
-            freq, nchan, nbits);
+        klog("audiosetmode: set %d hz, %d channels, %d bit, %u bytes/buffer, %u buffers\n",
+            freq, nchan, nbits, ac.buf_size_bytes, ac.nbuffers);
     }
     
     return 0;
@@ -441,6 +450,7 @@ int syscall_audiowaitfree(int *_errno)
     if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
     {
         ac.waiting_thread = GetCurrentThreadForCore();
+        //klog("sound: thread sleep\n");
         return -2;
     }
     else
@@ -456,6 +466,11 @@ extern "C" void dma_irqhandler()
     auto &ac = focus_process->audio;
 
     CriticalGuard cg(ac.sl_sound);
+    //static kernel_time last_time;
+
+    //auto tdiff = clock_cur() - last_time;
+    //last_time = clock_cur();
+    //klog("sound: dma, tdiff: %u\n", (uint32_t)tdiff.to_us());
     if(!ac.mr_sound.valid)
     {
         dma->CFCR = DMA_CFCR_TCF;
@@ -471,6 +486,8 @@ extern "C" void dma_irqhandler()
         ac.waiting_thread->ss_p.ival1 = 0;
         ac.waiting_thread->ss.Signal();
         ac.waiting_thread = nullptr;
+
+        //klog("sound: thread wake\n");
     }
 
     dma->CFCR = DMA_CFCR_TCF;
