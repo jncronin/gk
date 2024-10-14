@@ -145,7 +145,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     {
         CriticalGuard cg;
         cur_t = current_thread[ct_ncore];
-        cur_prio = (cur_t->is_blocking || cur_t->for_deletion || 
+        cur_prio = (cur_t->get_is_blocking() || cur_t->for_deletion || 
             (cur_t->tss.running_on_core && (cur_t->tss.running_on_core != ((int)ncore + 1))) ||
             (cur_t->tss.pinned_on_core && (cur_t->tss.pinned_on_core != ((int)ncore + 1))) ||
             cur_t->tss.deschedule_from_core || cur_t->tss.chosen_for_core) ? 0 :
@@ -164,11 +164,17 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
         for(const auto &tthread : tlist[i].v)
         {
-            if(tthread->is_blocking && tthread->block_until.is_valid())
+            if(tthread->get_is_blocking() && tthread->block_until.is_valid())
             {
                 if(tthread->block_until <= clock_cur())
                 {
-                    tthread->is_blocking = false;
+#if DEBUG_SCHEDULER
+                    klog("sched: unblock %s due to timeout (%u >= %u)\n",
+                        tthread->name.c_str(),
+                        (uint32_t)clock_cur_us(),
+                        (uint32_t)tthread->block_until.to_us());
+#endif
+                    tthread->set_is_blocking(false, true);
                     tthread->block_until = 0ULL;
                 }
                 else if(!cur_earliest_blocker.is_valid() || tthread->block_until < cur_earliest_blocker)
@@ -215,7 +221,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
                     continue;
                 }
                 
-                if(cval->is_blocking == false &&
+                if(cval->get_is_blocking() == false &&
                     (cval->tss.affinity == CPUAffinity::Either ||
                     cval->tss.affinity == OnlyMe ||
                     cval->tss.affinity == PreferMe))
@@ -327,26 +333,29 @@ Thread *Scheduler::get_blocker(Thread *t)
 
 void Scheduler::unblock_delayer(Thread *t)
 {
-    if(t->is_blocking && t->block_until.is_valid() && clock_cur() >= t->block_until)
+    if(t->get_is_blocking() && t->block_until.is_valid() && clock_cur() >= t->block_until)
     {
 #if DEBUG_SCHEDULER
         {
-            klog("sched: awaken sleeping thread %s\n",
-                t->name.c_str());
+            klog("sched: awaken sleeping thread %s (%u -> %u)\n",
+                t->name.c_str(),
+                (uint32_t)clock_cur_us(),
+                (uint32_t)t->block_until.to_us()
+            );
         }
 #endif
-        t->is_blocking = false;
+        t->set_is_blocking(false, true);
         t->block_until.invalidate();
         t->blocking_on = nullptr;
     }
-    if(t->is_blocking && (((uint32_t)(uintptr_t)t->blocking_on) & 0x3U) == 0x1U &&
+    if(t->get_is_blocking() && (((uint32_t)(uintptr_t)t->blocking_on) & 0x3U) == 0x1U &&
         ((SimpleSignal *)(((uint32_t)(uintptr_t)t->blocking_on) & ~0x3U))->waiting_thread != t)
     {
         {
             klog("scheduler: spurious blocking on already triggered SimpleSignal for thread %s\n",
                 t->name.c_str());
         }
-        t->is_blocking = false;
+        t->set_is_blocking(false, true);
         t->block_until.invalidate();
         t->blocking_on = nullptr;
     }
@@ -366,7 +375,7 @@ void Block(kernel_time until, Thread *block_on)
     auto t = GetCurrentThreadForCore();
     {
         CriticalGuard cg;
-        t->is_blocking = true;
+        t->set_is_blocking(true);
         t->blocking_on = block_on;
         t->block_until = until;
     }
@@ -438,4 +447,29 @@ void Scheduler::ChangePriority(Thread *t, int old_p, int new_p)
             return;
         }
     }
+}
+
+void Thread::set_is_blocking(bool val, bool is_sched)
+{
+    CriticalGuard cg;
+#if DEBUG_SCHEDULER
+    if(val)
+    {
+        klog("sched: thread %s blocked by %s\n", name.c_str(),
+            is_sched ? "scheduler" :
+            GetCurrentThreadForCore()->name.c_str());
+    }
+    else
+    {
+        klog("sched: thread %s unblocked by %s\n", name.c_str(),
+            is_sched ? "scheduler" :
+            GetCurrentThreadForCore()->name.c_str());
+    }
+#endif
+    is_blocking = val;
+}
+
+bool Thread::get_is_blocking() const
+{
+    return is_blocking;
 }

@@ -626,7 +626,7 @@ int syscall_pthread_exit(void **retval, int *_errno)
                 *t->join_thread_retval = *retval;
             }
             t->join_thread->blocking_on = nullptr;
-            t->join_thread->is_blocking = false;
+            t->join_thread->set_is_blocking(false);
             if(t->join_thread->base_priority > t->base_priority) Yield();
             t->join_thread = nullptr;
         }

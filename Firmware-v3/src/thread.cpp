@@ -309,7 +309,7 @@ void SetNextThreadForCore(Thread *t, int coreid)
             t->tss.running_on_core = coreid + 1;
             t->cur_timeslice_start = clock_cur_us();
 
-            if(t->is_blocking)
+            if(t->get_is_blocking())
             {
                 while(true);
             }
