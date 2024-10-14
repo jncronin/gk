@@ -52,7 +52,12 @@ class Thread
 
         MemRegion stack;
 
+    private:
         bool is_blocking = false;
+
+    public:
+        void set_is_blocking(bool val, bool is_sched = false);
+        bool get_is_blocking() const;
         Thread *blocking_on = nullptr;
         kernel_time block_until;
 

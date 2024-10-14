@@ -41,7 +41,7 @@ class BaseQueue
             for(auto bt : waiting_threads)
             {
                 CriticalGuard cg;
-                bt->is_blocking = false;
+                bt->set_is_blocking(false);
                 bt->block_until.invalidate();
                 bt->blocking_on = nullptr;
                 signal_thread_woken(bt);
@@ -128,7 +128,7 @@ class BaseQueue
                     {
                         auto t = GetCurrentThreadForCore();
                         waiting_threads.insert(t);
-                        t->is_blocking = true;
+                        t->set_is_blocking(true);
                         t->blocking_on = BLOCKING_ON_QUEUE(this);
                         if(timeout.is_valid())
                             t->block_until = timeout;

@@ -191,7 +191,7 @@ static void end_process(Process &p)
     {
         CriticalGuard cg2(pt->sl);
         pt->for_deletion = true;
-        pt->is_blocking = true;
+        pt->set_is_blocking(true);
     }
 
     p.rc = 0;

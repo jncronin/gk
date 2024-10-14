@@ -223,7 +223,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 {
                     CriticalGuard cg2(pt->sl);
                     pt->for_deletion = true;
-                    pt->is_blocking = true;
+                    pt->set_is_blocking(true);
                 }
 
                 p.rc = rc;
@@ -494,7 +494,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 {
                     CriticalGuard cg(curt->sl);
                     curt->block_until = tout;
-                    curt->is_blocking = true;
+                    curt->set_is_blocking(true);
                     curt->blocking_on = nullptr;
                     *reinterpret_cast<int *>(r1) = 0;
                     Yield();
@@ -509,7 +509,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 {
                     CriticalGuard cg(curt->sl);
                     curt->block_until = tout;
-                    curt->is_blocking = true;
+                    curt->set_is_blocking(true);
                     curt->blocking_on = nullptr;
                     *reinterpret_cast<int *>(r1) = 0;
                     Yield();

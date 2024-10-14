@@ -43,7 +43,7 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
         return ret;
     }
     waiting_thread = t;
-    t->is_blocking = true;
+    t->set_is_blocking(true);
     t->blocking_on = BLOCKING_ON_SS(this);   
     if(tout.is_valid())
         t->block_until = tout;
@@ -79,7 +79,7 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
     if(waiting_thread)
     {
         //CriticalGuard cg2(waiting_thread->sl);
-        waiting_thread->is_blocking = false;
+        waiting_thread->set_is_blocking(false);
         waiting_thread->blocking_on = nullptr;
         if(waiting_thread->base_priority > t->base_priority)
             hpt = true;
@@ -129,7 +129,7 @@ void Condition::Wait(kernel_time tout, int *signalled_ret)
     auto t = GetCurrentThreadForCore();
     timeout to { tout, signalled_ret };
     waiting_threads.insert_or_assign(t, to);
-    t->is_blocking = true;
+    t->set_is_blocking(true);
     t->blocking_on = BLOCKING_ON_CONDITION(this);
     if(tout.is_valid())
         t->block_until = tout;
@@ -180,7 +180,7 @@ Condition::~Condition()
     for(auto &bt : waiting_threads)
     {
         //CriticalGuard cg2(bt.first->sl);
-        bt.first->is_blocking = false;
+        bt.first->set_is_blocking(false);
         bt.first->blocking_on = nullptr;
         bt.first->block_until.invalidate();
         if(bt.first->base_priority > t->base_priority)
@@ -217,7 +217,7 @@ void Condition::Signal(bool signal_all)
                 if(bt.second.signalled)
                     *bt.second.signalled = true;
                 
-                bt.first->is_blocking = false;
+                bt.first->set_is_blocking(false);
                 bt.first->blocking_on = nullptr;
                 bt.first->block_until.invalidate();
                 if(bt.first->base_priority > t->base_priority)
@@ -246,7 +246,7 @@ void Condition::Signal(bool signal_all)
                 if(tp.signalled)
                     *tp.signalled = true;
                 
-                iter->first->is_blocking = false;
+                iter->first->set_is_blocking(false);
                 iter->first->blocking_on = nullptr;
                 iter->first->block_until.invalidate();
                 if(iter->first->base_priority > t->base_priority)
@@ -309,7 +309,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
         else
         {
             // non-error checking non-recursive mutex already owned - deadlock
-            t->is_blocking = true;
+            t->set_is_blocking(true);
             t->blocking_on = nullptr;
             Yield();
             return false;
@@ -321,7 +321,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 
         if(block)
         {
-            t->is_blocking = true;
+            t->set_is_blocking(true);
             t->blocking_on = owner;
             waiting_threads.insert(t);
 
@@ -346,7 +346,7 @@ bool Mutex::unlock(int *reason)
     {
         for(auto wt : waiting_threads)
         {
-            wt->is_blocking = false;
+            wt->set_is_blocking(false);
             wt->block_until.invalidate();
             wt->blocking_on = nullptr;
 
@@ -368,7 +368,7 @@ bool Mutex::try_delete(int *reason)
     {
         for(auto wt : waiting_threads)
         {
-            wt->is_blocking = false;
+            wt->set_is_blocking(false);
             wt->block_until.invalidate();
             wt->blocking_on = nullptr;
         }
@@ -395,7 +395,7 @@ bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
             if(reason) *reason = EBUSY;
             if(block)
             {
-                t->is_blocking = true;
+                t->set_is_blocking(true);
                 t->blocking_on = wrowner;
                 waiting_threads.insert(t);
 
@@ -427,7 +427,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
             if(reason) *reason = EBUSY;
             if(block)
             {
-                t->is_blocking = true;
+                t->set_is_blocking(true);
                 t->blocking_on = wrowner;
                 waiting_threads.insert(t);
 
@@ -450,7 +450,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
             if(reason) *reason = EBUSY;
             if(block)
             {
-                t->is_blocking = true;
+                t->set_is_blocking(true);
                 t->blocking_on = *rdowners.begin();
                 waiting_threads.insert(t);
 
@@ -476,7 +476,7 @@ bool RwLock::unlock(int *reason)
         {
             for(auto wt : waiting_threads)
             {
-                wt->is_blocking = false;
+                wt->set_is_blocking(false);
                 wt->block_until.invalidate();
                 wt->blocking_on = nullptr;
 
@@ -512,7 +512,7 @@ bool RwLock::unlock(int *reason)
     {
         for(auto wt : waiting_threads)
         {
-            wt->is_blocking = false;
+            wt->set_is_blocking(false);
             wt->block_until.invalidate();
             wt->blocking_on = nullptr;
 
@@ -550,7 +550,7 @@ bool UserspaceSemaphore::try_wait(int *reason, bool block, kernel_time tout)
         if(reason) *reason = EBUSY;
         if(block)
         {
-            t->is_blocking = true;
+            t->set_is_blocking(true);
             t->blocking_on = BLOCKING_ON_CONDITION(this);
             waiting_threads.insert(t);
 
@@ -569,7 +569,7 @@ void UserspaceSemaphore::post(int n, bool add)
     {
         for(auto wt : waiting_threads)
         {
-            wt->is_blocking = false;
+            wt->set_is_blocking(false);
             wt->block_until.invalidate();
             wt->blocking_on = 0;
 

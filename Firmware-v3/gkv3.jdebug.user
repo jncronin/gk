@@ -1,44 +1,55 @@
 
 
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_other.cpp:42, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/sound.cpp:209:13, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/clocks.cpp:299:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/main.cpp:156:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/sound.cpp:216:13, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/clocks.cpp:306:1, State=BP_STATE_DISABLED
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/sd.cpp:734, Permitted Impl.=BP_TYPE_MIXED, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/init_thread.cpp:18:5, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:86:5, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:108:5, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:130:5, State=BP_STATE_DISABLED
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:152:1, State=BP_STATE_ON
-Breakpoint=0x70005C16, State=BP_STATE_DISABLED
-Breakpoint=0x70015DF6, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:74:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:97:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:120:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:143:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:166:5, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp:188:1, State=BP_STATE_DISABLED
+Breakpoint=0x70005C1A, State=BP_STATE_DISABLED
+Breakpoint=0x700083D8, State=BP_STATE_DISABLED
+Breakpoint=0x70015E0C, State=BP_STATE_DISABLED
 Breakpoint=0x9101AA80, State=BP_STATE_DISABLED
 Breakpoint=0x9101AA84, State=BP_STATE_DISABLED
 Breakpoint=0x9101AA88, State=BP_STATE_DISABLED
 Breakpoint=0x912BA884, State=BP_STATE_DISABLED
 Breakpoint=0x912BA894, State=BP_STATE_DISABLED
 Breakpoint=0x912BBE8C, State=BP_STATE_DISABLED
-OpenDocument="gkv3.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/gkv3.jdebug", Line=21
-OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/main.cpp", Line=52
+OpenDocument="new_allocator.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/new_allocator.h", Line=80
+OpenDocument="elf.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/elf.cpp", Line=822
+OpenDocument="mutex.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/mutex.cpp", Line=16
+OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/main.cpp", Line=89
+OpenDocument="faults.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp", Line=64
+OpenDocument="stl_tree.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/stl_tree.h", Line=726
+OpenDocument="pwr.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/pwr.cpp", Line=27
+OpenDocument="init_thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/init_thread.cpp", Line=16
+OpenDocument="cmsis_gcc.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/cmsis_core/Include/cmsis_gcc.h", Line=272
+OpenDocument="memblk.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/memblk.cpp", Line=211
+OpenDocument="switcher.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/switcher.cpp", Line=62
+OpenDocument="logger.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/logger.h", Line=0
 OpenDocument="sd.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/sd.cpp", Line=1027
-OpenDocument="hashtable_policy.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable_policy.h", Line=343
+OpenDocument="unordered_set.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/unordered_set.h", Line=411
 OpenDocument="ctp.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/ctp.cpp", Line=69
-OpenDocument="faults.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/faults.cpp", Line=77
-OpenDocument="syscalls_thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_thread.cpp", Line=379
-OpenDocument="clocks.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/clocks.cpp", Line=178
+OpenDocument="scheduler.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/scheduler.cpp", Line=346
+OpenDocument="alloc_traits.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/alloc_traits.h", Line=59
+OpenDocument="process.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/process.cpp", Line=30
 OpenDocument="gpu.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/gpu.cpp", Line=689
 OpenDocument="ext4_bcache.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_bcache.c", Line=270
-OpenDocument="sound.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/sound.cpp", Line=156
-OpenDocument="syscalls_other.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_other.cpp", Line=22
-OpenDocument="buttons.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/buttons.cpp", Line=120
+OpenDocument="buttons.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/buttons.cpp", Line=193
+OpenDocument="sound.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/sound.cpp", Line=63
+OpenDocument="supervisor.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/supervisor/supervisor.cpp", Line=357
 OpenDocument="cache.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/cache.cpp", Line=40
-OpenDocument="screen.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/screen.cpp", Line=652
-OpenDocument="cmsis_gcc.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/cmsis_core/Include/cmsis_gcc.h", Line=240
-OpenDocument="init_thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/init_thread.cpp", Line=5
+OpenDocument="screen.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/screen.cpp", Line=99
+OpenDocument="util.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/util.h", Line=6
+OpenDocument="syscalls_other.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_other.cpp", Line=32
 OpenDocument="gamepad.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/gamepad.cpp", Line=41
 OpenDocument="ostypes.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/ostypes.h", Line=48
-OpenDocument="switcher.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/switcher.cpp", Line=131
-OpenDocument="new_allocator.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/new_allocator.h", Line=70
-OpenDocument="elf.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/elf.cpp", Line=572
+OpenDocument="gkv3.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/gkv3.jdebug", Line=0
+OpenDocument="syscalls_thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_thread.cpp", Line=392
 OpenDocument="kernel_time.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/kernel_time.cpp", Line=18
 OpenDocument="unordered_map.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/unordered_map.h", Line=780
 OpenDocument="ext4.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/ext4.cpp", Line=390
@@ -49,66 +60,65 @@ OpenDocument="ext4_cache_malloc.cpp", FilePath="C:/Users/jncro/source/repos/gk/F
 OpenDocument="ext4_dir.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_dir.c", Line=294
 OpenDocument="ext4.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4.c", Line=3135
 OpenDocument="ext4_dir.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/include/ext4_dir.h", Line=96
-OpenDocument="hashtable.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable.h", Line=1965
+OpenDocument="hashtable_policy.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable_policy.h", Line=196
 OpenDocument="ext4_mbr.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_mbr.c", Line=86
-OpenDocument="mutex.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/mutex.cpp", Line=48
+OpenDocument="osqueue.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/osqueue.h", Line=156
 OpenDocument="debounce.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/debounce.h", Line=52
 OpenDocument="ext4_inode.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_inode.c", Line=88
 OpenDocument="ext4_trans.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_trans.c", Line=68
-OpenDocument="lib.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/lib.cpp", Line=34
+OpenDocument="lib.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/lib.cpp", Line=24
 OpenDocument="SEGGER_RTT_printf.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/SEGGER_RTT_printf.c", Line=471
-OpenDocument="xspi.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/xspi.cpp", Line=103
+OpenDocument="xspi.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/xspi.cpp", Line=435
 OpenDocument="lsm_driver.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/lsm_driver.cpp", Line=9
 OpenDocument="mpuregions.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/mpuregions.h", Line=46
-OpenDocument="scheduler.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/scheduler.h", Line=72
-OpenDocument="memblk.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/memblk.cpp", Line=201
+OpenDocument="logger.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/logger.cpp", Line=218
+OpenDocument="thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/thread.cpp", Line=194
 OpenDocument="net_udp.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/net_udp.cpp", Line=112
-OpenDocument="osqueue.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/osqueue.h", Line=149
-OpenDocument="basic_string.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/basic_string.h", Line=792
+OpenDocument="tusb_common.h", FilePath="c:/users/jncro/source/repos/gk/firmware/tinyusb/src/common/tusb_common.h", Line=256
+OpenDocument="buddy.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/buddy.h", Line=301
 OpenDocument="stl_iterator.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/stl_iterator.h", Line=1062
-OpenDocument="process.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/process.cpp", Line=82
+OpenDocument="basic_string.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/basic_string.h", Line=3462
 OpenDocument="pwrbtn.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/pwrbtn.cpp", Line=0
 OpenDocument="pins.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/pins.cpp", Line=79
 OpenDocument="startup_stm32h7s7xx.s", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/startup_stm32h7s7xx.s", Line=170
 OpenDocument="syscalls.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls.cpp", Line=16
-OpenDocument="thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/thread.cpp", Line=15
+OpenDocument="clocks.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/clocks.cpp", Line=230
 OpenDocument="i2c_task.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/i2c_task.cpp", Line=304
 OpenDocument="core_cm7.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/cmsis_core/Include/core_cm7.h", Line=1906
 OpenDocument="system.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/system.cpp", Line=31
-OpenDocument="SEGGER_RTT.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/SEGGER_RTT.c", Line=313
+OpenDocument="SEGGER_RTT.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/SEGGER_RTT.c", Line=1191
 OpenDocument="cachel1_armv7.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/cmsis_core/Include/cachel1_armv7.h", Line=342
-OpenDocument="scheduler.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/scheduler.cpp", Line=154
+OpenDocument="scheduler.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/inc/scheduler.h", Line=75
 OpenDocument="ext4_blockdev.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_blockdev.c", Line=236
-OpenDocument="logger.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/logger.cpp", Line=296
+OpenDocument="hashtable.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable.h", Line=893
 OpenDocument="sbrk.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/sbrk.cpp", Line=0
 OpenDocument="syscalls_process.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_process.cpp", Line=121
 OpenDocument="i2c_poll.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/i2c_poll.cpp", Line=207
-OpenDocument="pwr.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/pwr.cpp", Line=0
 OpenToolbar="Debug", Floating=0, x=0, y=0
-OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=4, w=1475, h=248, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=1475, h=231, TabPos=1, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Break & Tracepoints", DockArea=BOTTOM, x=0, y=0, w=390, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=255
-OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=921, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0xE000ED90
-OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1475, h=233, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1475, h=251, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=0, w=1475, h=231, TabPos=0, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=609, h=736, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Call Stack", DockArea=RIGHT, x=0, y=4, w=1475, h=249, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=1475, h=230, TabPos=1, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Break & Tracepoints", DockArea=BOTTOM, x=0, y=0, w=390, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=127
+OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=921, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x1DA58
+OpenWindow="Global Data", DockArea=RIGHT, x=0, y=2, w=1475, h=237, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Local Data", DockArea=RIGHT, x=0, y=3, w=1475, h=252, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=0, w=1475, h=230, TabPos=0, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=609, h=732, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Terminal", DockArea=BOTTOM, x=2, y=0, w=1365, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Data Sampling", DockArea=LEFT, x=0, y=1, w=609, h=579, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
-OpenWindow="Timeline", DockArea=RIGHT, x=0, y=1, w=1475, h=311, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=1, DataPaneShown=1, PowerPaneShown=1, CodePaneShown=1, PinCursor="Cursor Movable", TimePerDiv="100 ms / Div", TimeStampFormat="Time", DataGraphDrawAsPoints=0, DataGraphLegendShown=1, DataGraphUniformSampleSpacing=0, DataGraphLegendPosition="142;-137", DataGraphShowNamesAtCursor=1, PowerGraphDrawAsPoints=0, PowerGraphLegendShown=1, PowerGraphAvgFilterTime=Off, PowerGraphAvgFilterLen=Off, PowerGraphUniformSampleSpacing=0, PowerGraphLegendPosition="1107;-137", CodeGraphLegendShown=1, CodeGraphLegendPosition="937;0"
+OpenWindow="Data Sampling", DockArea=LEFT, x=0, y=1, w=609, h=583, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Timeline", DockArea=RIGHT, x=0, y=1, w=1475, h=306, TabPos=0, TopOfStack=1, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=1, DataPaneShown=1, PowerPaneShown=1, CodePaneShown=1, PinCursor="Cursor Movable", TimePerDiv="100 ms / Div", TimeStampFormat="Time", DataGraphDrawAsPoints=0, DataGraphLegendShown=1, DataGraphUniformSampleSpacing=0, DataGraphLegendPosition="142;-137", DataGraphShowNamesAtCursor=1, PowerGraphDrawAsPoints=0, PowerGraphLegendShown=1, PowerGraphAvgFilterTime=Off, PowerGraphAvgFilterLen=Off, PowerGraphUniformSampleSpacing=0, PowerGraphLegendPosition="1107;-137", CodeGraphLegendShown=1, CodeGraphLegendPosition="937;0"
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=521, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
+TableHeader="Task List", SortCol="None", SortOrder="ASCENDING", VisibleCols=["ID";"Name";"Priority";"PC";"Status";"BlockingOn";"Stack";"Runtime (us) / %"], ColWidths=[110;110;110;180;110;618;307;572]
 TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh";"Access"], ColWidths=[396;266;131;682;108]
-TableHeader="Global Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[256;378;157;101;109;27;638]
+TableHeader="Global Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[256;378;157;101;109;27;413]
 TableHeader="Vector Catches", SortCol="", SortOrder="DESCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;500]
 TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;109;990;926]
-TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;178]
+TableHeader="Local Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;414]
+TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[3111;131;100;110;773;510]
 TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Frame";"Source";"Return Address";"Stack Used";"PC"], ColWidths=[281;299;168;387;280;100]
 TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time"], ColWidths=[100;509]
 TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[186;109;118;100;101;151;188;208;214]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
 TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
 TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;232;100;1406]
-TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[3111;131;100;110;773;510]
-TableHeader="Task List", SortCol="None", SortOrder="ASCENDING", VisibleCols=["ID";"Name";"Priority";"PC";"Status";"BlockingOn";"Stack";"Runtime (us) / %"], ColWidths=[110;110;110;110;110;110;110;705]
 WatchedExpression="*(uint32_t *)0x2406c440", Window=Watched Data 1

@@ -297,7 +297,7 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
         {
             CriticalGuard cg2(pt->sl);
             pt->for_deletion = true;
-            pt->is_blocking = true;
+            pt->set_is_blocking(true);
         }
 
         p->for_deletion = true;
