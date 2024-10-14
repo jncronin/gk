@@ -108,6 +108,7 @@ int main()
 
     system_init_cm7();
     memcpy(kernel_proc.p_mpu, mpu_default, sizeof(mpu_default));
+    kernel_proc.name = "kernel";
 
     init_memblk();
 
