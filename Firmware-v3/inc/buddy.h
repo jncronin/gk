@@ -368,6 +368,8 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
                 for(unsigned int cword = 0; cword < cwc; cword++)
                 {
                     auto cwval = b[cstart + cword];
+                    if(!cwval)
+                        continue;
                     for(unsigned int cbit = 0; cbit < 32; cbit++)
                     {
                         if((cwval >> cbit) & 0x1)
