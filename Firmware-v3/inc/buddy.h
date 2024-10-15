@@ -347,6 +347,43 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
         }
 
         constexpr uint32_t MinBuddySize() { return min_buddy_size; };
+
+        void dump(int (*print_func)(const char *format, ...))
+        {
+            auto cpsr = lock();
+
+            print_func("buddy: begin dump for region %08x-%08x, min_buddy_size: %u, nlevels: %u, nwords: %u\n",
+                base_addr, base_addr + tot_length,
+                min_buddy_size, num_levels(),
+                total_words());
+            for(unsigned int clevel = 0; clevel < num_levels(); clevel++)
+            {
+                auto cwc = level_word_counts[clevel];
+                auto cstart = level_starts[clevel];
+                auto cbs = level_buddy_size(clevel);
+
+                print_func("buddy:  level: %u, size: %u, start: %u, nwords: %u\n",
+                    clevel, cbs, cstart, cwc);
+
+                for(unsigned int cword = 0; cword < cwc; cword++)
+                {
+                    auto cwval = b[cstart + cword];
+                    for(unsigned int cbit = 0; cbit < 32; cbit++)
+                    {
+                        if((cwval >> cbit) & 0x1)
+                        {
+                            // found free bit
+                            auto addr = base_addr + (cword * 32 + cbit) * cbs;
+                            print_func("buddy:    FREE: %08x-%08x\n", addr, addr + cbs);
+                        }
+                    }
+                }
+            }
+
+            print_func("buddy: end buddy dump\n");
+
+            unlock(cpsr);
+        }
 };
 
 #endif

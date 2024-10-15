@@ -11,6 +11,7 @@
 #include "gpu.h"
 #include "buttons.h"
 #include "ctp.h"
+#include "buddy.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -111,6 +112,16 @@ int main()
     kernel_proc.name = "kernel";
 
     init_memblk();
+
+    extern BuddyAllocator<256, 0x80000, 0x24000000> b_axisram;
+    extern BuddyAllocator<256, 0x40000, 0x20000000> b_dtcm;
+    extern BuddyAllocator<256, 0x8000, 0x30000000> b_sram;
+    extern BuddyAllocator<1024, 0x40000, 0> b_itcm;
+
+    b_itcm.dump(klog);
+    b_dtcm.dump(klog);
+    b_axisram.dump(klog);
+    b_sram.dump(klog);    
 
     // Check _tls_pointers[] is valid
     klog("kernel: _tls_pointers[] at %x\n", (uint32_t)(uintptr_t)_tls_pointers);

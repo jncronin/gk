@@ -35,7 +35,7 @@ extern int _elwip_init_data;
 // dtcm
 extern int _edtcm_bss;
 extern int _edtcm2;
-extern int _ecm7_stack;
+extern int _ecm7_stack_align;
 
 // sram
 extern int _esram_bss;
@@ -142,8 +142,8 @@ extern "C" void init_memblk()
         edtcm = (uintptr_t)&_edtcm_bss;
     if((uintptr_t)&_edtcm2 > edtcm)
         edtcm = (uintptr_t)&_edtcm2;
-    if((uintptr_t)&_ecm7_stack > edtcm)
-        edtcm = (uintptr_t)&_ecm7_stack;
+    if((uintptr_t)&_ecm7_stack_align > edtcm)
+        edtcm = (uintptr_t)&_ecm7_stack_align;
 
     if((uintptr_t)&_esram_bss > esram)
         esram = (uintptr_t)&_esram_bss;
