@@ -44,10 +44,10 @@ __FLASH_SIZE   = 0x00010000;
 /* Memories definition */
 MEMORY
 {
-  AXISRAM       (xrw) : ORIGIN = 0x24020000,    LENGTH = 0x20000
+  AXISRAM       (xrw) : ORIGIN = 0x24000000,    LENGTH = 0x40000
   AXISRAM4  (xrw) : ORIGIN = 0x24060000, LENGTH = 0x12000
 
-  ITCM      (xrw) : ORIGIN = 0x00000000,    LENGTH = 0x00030000
+  ITCM      (xrw) : ORIGIN = 0x00000000,    LENGTH = 0x00010000
   DTCM       (rw) : ORIGIN = 0x20000000,    LENGTH = 0x00030000
   SRAMAHB   (rw)  : ORIGIN = 0x30000000,  LENGTH = 0x00008000
   BKPSRAM   (rw)  : ORIGIN = 0x38800000,  LENGTH = 0x00001000
@@ -203,7 +203,7 @@ SECTIONS
     *(.net_data)
     *(.net_data*)
     _elwip_init_data = .;
-  } >AXISRAM AT> FLASH
+  } >AXISRAM4 AT> FLASH
 
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
@@ -222,6 +222,13 @@ SECTIONS
   } >AXISRAM4
 
   . = ALIGN(4);
+  .kernel_heap 0x20000000 (NOLOAD) :
+  {
+    _kheap_start = .;
+    . = . + 128*1024;
+    _kheap_end = .;
+  } >DTCM
+
   .dtcm_bss (NOLOAD) :
   {
     /* This is used by the startup in order to initialize the .bss secion */
@@ -307,17 +314,17 @@ SECTIONS
   _ssdata4_flash = LOADADDR(.sram4);
 
   /* Initial stack for CM7 */
-  .cm7_stack 0x20001000 (NOLOAD)  :
+  .cm7_stack (NOLOAD)  :
   {
     _scm7_stack = .;
     . = . + 4K;
     _ecm7_stack_align = .;
     _ecm7_stack = . - (_ecm7_stack_align - _scm7_stack) / 8;
     _estack = _ecm7_stack;
-  } >DTCM
+  } >SRAMAHB
 
   /* RTT - put into WT memory region */
-  .rtt 0x30000000 :
+  .rtt :
   {
     _srtt = .;
     *(.rtt)

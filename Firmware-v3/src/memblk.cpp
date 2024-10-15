@@ -21,6 +21,15 @@ BuddyAllocator<4*1024, GK_SDRAM_SIZE, GK_SDRAM_BASE> b_sdram;
 BuddyAllocator<1024, 0x40000, 0> b_itcm;
 static bool inited = false;
 
+struct mempool
+{
+    uintptr_t base_addr;
+    uintptr_t length;
+    uintptr_t cur_end;
+};
+
+static mempool mp_itcm, mp_dtcm, mp_axisram, mp_axisram4, mp_sram, mp_sdram;
+
 // The following are the ends of all the input sections in the
 //  relevant memory region.  We choose the highest to init the
 //  memory manager.
@@ -48,37 +57,6 @@ extern int _elwip_data;
 // itcm
 extern int _eitcm;
 
-static void add_memory_region(uintptr_t base, uintptr_t size, MemRegionType type)
-{
-    BuddyEntry be;
-    be.base = base;
-    be.length = size;
-    
-    switch(type)
-    {
-        case MemRegionType::AXISRAM:
-            be.valid = is_power_of_2(size) && is_multiple_of(base, b_axisram.MinBuddySize());
-            b_axisram.release(be);
-            break;
-        case MemRegionType::DTCM:
-            be.valid = is_power_of_2(size) && is_multiple_of(base, b_dtcm.MinBuddySize());
-            b_dtcm.release(be);
-            break;
-        case MemRegionType::SDRAM:
-            be.valid = is_power_of_2(size) && is_multiple_of(base, b_sdram.MinBuddySize());
-            b_sdram.release(be);
-            break;
-        case MemRegionType::SRAM:
-            be.valid = is_power_of_2(size) && is_multiple_of(base, b_sram.MinBuddySize());
-            b_sram.release(be);
-            break;
-        case MemRegionType::ITCM:
-            be.valid = is_power_of_2(size) && is_multiple_of(base, b_itcm.MinBuddySize());
-            b_itcm.release(be);
-            break;
-    }
-}
-
 template<typename T> constexpr static T align_up(T val, T align)
 {
     if(val % align)
@@ -87,6 +65,49 @@ template<typename T> constexpr static T align_up(T val, T align)
         val += align;
     }
     return val;
+}
+
+static void add_memory_region(const mempool *mp, MemRegionType type)
+{
+    if(mp->cur_end >= mp->base_addr + mp->length)
+        return;
+    
+    BuddyEntry be;
+    be.base = mp->cur_end;
+    
+    switch(type)
+    {
+        case MemRegionType::AXISRAM:
+            be.base = align_up((uint32_t)mp->cur_end, b_axisram.MinBuddySize());
+            be.length = mp->base_addr + mp->length - be.base;
+            be.valid = is_power_of_2(be.length) && is_multiple_of(be.length, b_axisram.MinBuddySize()) && ((be.base - b_axisram.Base()) % be.length == 0);
+            b_axisram.release(be);
+            break;
+        case MemRegionType::DTCM:
+            be.base = align_up((uint32_t)mp->cur_end, b_dtcm.MinBuddySize());
+            be.length = mp->base_addr + mp->length - be.base;
+            be.valid = is_power_of_2(be.length) && is_multiple_of(be.length, b_dtcm.MinBuddySize()) && ((be.base - b_dtcm.Base()) % be.length == 0);
+            b_dtcm.release(be);
+            break;
+        case MemRegionType::SDRAM:
+            be.base = align_up((uint32_t)mp->cur_end, b_sdram.MinBuddySize());
+            be.length = mp->base_addr + mp->length - be.base;
+            be.valid = is_power_of_2(be.length) && is_multiple_of(be.length, b_sdram.MinBuddySize()) && ((be.base - b_sdram.Base()) % be.length == 0);
+            b_sdram.release(be);
+            break;
+        case MemRegionType::SRAM:
+            be.base = align_up((uint32_t)mp->cur_end, b_sram.MinBuddySize());
+            be.length = mp->base_addr + mp->length - be.base;
+            be.valid = is_power_of_2(be.length) && is_multiple_of(be.length, b_sram.MinBuddySize()) && ((be.base - b_sram.Base()) % be.length == 0);
+            b_sram.release(be);
+            break;
+        case MemRegionType::ITCM:
+            be.base = align_up((uint32_t)mp->cur_end, b_itcm.MinBuddySize());
+            be.length = mp->base_addr + mp->length - be.base;
+            be.valid = is_power_of_2(be.length) && is_multiple_of(be.length, b_itcm.MinBuddySize()) && ((be.base - b_itcm.Base()) % be.length == 0);
+            b_itcm.release(be);
+            break;
+    }
 }
 
 bool MemRegion::is_cacheable() const
@@ -98,19 +119,25 @@ bool MemRegion::is_cacheable() const
     return true;
 }
 
-static void incr_axisram(const void *addr, uintptr_t *eaxisram, uintptr_t *eaxisram4)
+static void incr_eptr(const void *addr, mempool *mp)
 {
     auto p = (uintptr_t)addr;
-    if(p >= 0x24020000U && p < 0x24040000U) // SRAM4 start
+    if(p >= mp->base_addr && p < (mp->base_addr + mp->length))
     {
-        if(p > *eaxisram)
-            *eaxisram = p;
+        if(p >= mp->cur_end)
+            mp->cur_end = p;
     }
-    else if(p >= 0x24060000U && p < 0x24072000U)
-    {
-        if(p > *eaxisram4)
-            *eaxisram4 = p;
-    }
+}
+
+
+static void incr_eptr(const void *addr)
+{
+    incr_eptr(addr, &mp_itcm);
+    incr_eptr(addr, &mp_dtcm);
+    incr_eptr(addr, &mp_axisram);
+    incr_eptr(addr, &mp_axisram4);
+    incr_eptr(addr, &mp_sram);
+    incr_eptr(addr, &mp_sdram);
 }
 
 extern "C" void init_memblk()
@@ -124,49 +151,6 @@ extern "C" void init_memblk()
     b_sram.init();
     b_itcm.init();
     
-    uintptr_t eaxisram = 0;
-    uintptr_t eaxisram4 = 0;
-    uintptr_t edtcm = 0;
-    uintptr_t esram = 0;
-    uintptr_t esdram = 0;
-    uintptr_t eitcm = 0;
-
-    // handle ends of axisram data in linker script - there may be a split at
-    //  the beginning of sram4 so be careful
-    incr_axisram(&_edata, &eaxisram, &eaxisram4);
-    incr_axisram(&_ebss, &eaxisram, &eaxisram4);
-    incr_axisram(&_elwip_init_data, &eaxisram, &eaxisram4);
-    incr_axisram(&_edata4, &eaxisram, &eaxisram4);
-
-    if((uintptr_t)&_edtcm_bss > edtcm)
-        edtcm = (uintptr_t)&_edtcm_bss;
-    if((uintptr_t)&_edtcm2 > edtcm)
-        edtcm = (uintptr_t)&_edtcm2;
-    if((uintptr_t)&_ecm7_stack_align > edtcm)
-        edtcm = (uintptr_t)&_ecm7_stack_align;
-
-    if((uintptr_t)&_esram_bss > esram)
-        esram = (uintptr_t)&_esram_bss;
-    if((uintptr_t)&_esramahb > esram)
-        esram = (uintptr_t)&_esramahb;
-    if((uintptr_t)&_ertt > esram)
-        esram = (uintptr_t)&_ertt;
-
-    if((uintptr_t)&_esdram > esdram)
-        esdram = (uintptr_t)&_esdram;
-    if((uintptr_t)&_elwip_data > esdram)
-        esdram = (uintptr_t)&_elwip_data;
-
-    if((uintptr_t)&_eitcm > eitcm)
-        eitcm = (uintptr_t)&_eitcm;
-
-    eaxisram = align_up(eaxisram, (uintptr_t)b_axisram.MinBuddySize());
-    eaxisram4 = align_up(eaxisram4, (uintptr_t)b_axisram.MinBuddySize());
-    edtcm = align_up(edtcm, (uintptr_t)b_dtcm.MinBuddySize());
-    esram = align_up(esram, (uintptr_t)b_sram.MinBuddySize());
-    esdram = align_up(esdram, (uintptr_t)b_sdram.MinBuddySize());
-    eitcm = align_up(eitcm, (uintptr_t)b_itcm.MinBuddySize());
-
     // Get sizes of the various memory regions
     // calculate total memory
     unsigned int itcm_size, dtcm_size, axisram_base, axisram_end, axisram_size, ahbsram_size;
@@ -208,6 +192,30 @@ extern "C" void init_memblk()
     axisram_size = axisram_end - axisram_base;
     ahbsram_size = 0x8000;
 
+    mp_itcm.base_addr = 0;
+    mp_itcm.length = itcm_size;
+    mp_itcm.cur_end = 0;
+
+    mp_dtcm.base_addr = 0x20000000;
+    mp_dtcm.length = dtcm_size;
+    mp_dtcm.cur_end = mp_dtcm.base_addr;
+
+    mp_axisram.base_addr = axisram_base;
+    mp_axisram.length = axisram_size;
+    mp_axisram.cur_end = mp_axisram.base_addr;
+
+    mp_axisram4.base_addr = 0x24060000;
+    mp_axisram4.length = (obw2sr & FLASH_OBW2SR_ECC_ON_SRAM) ? 0 : 0x12000;
+    mp_axisram4.cur_end = mp_axisram4.base_addr;
+
+    mp_sram.base_addr = 0x30000000;
+    mp_sram.length = 0x8000;
+    mp_sram.cur_end = mp_sram.base_addr;
+
+    mp_sdram.base_addr = 0x90000000;
+    mp_sdram.length = 0x8000000;
+    mp_sdram.cur_end = 0;
+
     SEGGER_RTT_printf(0, "memory_map:\n"
         "  ITCM:    0x00000000 - 0x%08x (%d kbytes)\n"
         "  DTCM:    0x20000000 - 0x%08x (%d kbytes)\n"
@@ -219,19 +227,34 @@ extern "C" void init_memblk()
         (obw2sr & FLASH_OBW2SR_ECC_ON_SRAM) ? "" : " and 0x24060000 - 0x24072000 (72 kbytes)",
         0x30000000U + ahbsram_size, ahbsram_size/1024);
 
-    if(eaxisram < axisram_base) eaxisram = axisram_base;
-    if(eaxisram4 < 0x24060000U) eaxisram4 = 0x24060000U;
-    if(edtcm < 0x20000000U) edtcm = 0x20000000U;
-    if(esdram < 0x90000000U) esdram = 0x90000000U;
 
-    add_memory_region(eaxisram, axisram_end - eaxisram, MemRegionType::AXISRAM);
-    if(!(obw2sr & FLASH_OBW2SR_ECC_ON_SRAM))
-        add_memory_region(eaxisram4, 0x24072000 - eaxisram4, MemRegionType::AXISRAM);
-    
-    add_memory_region(edtcm, 0x20000000U + dtcm_size - edtcm, MemRegionType::DTCM);
-    add_memory_region(esram, 0x30008000 - esram, MemRegionType::SRAM);
-    add_memory_region(esdram, GK_SDRAM_BASE + GK_SDRAM_SIZE - esdram, MemRegionType::SDRAM);
-    add_memory_region(eitcm, itcm_size - eitcm, MemRegionType::ITCM);
+    // handle ends of axisram data in linker script - there may be a split at
+    //  the beginning of sram4 so be careful
+
+    incr_eptr(&_edata);
+    incr_eptr(&_ebss);
+    incr_eptr(&_elwip_init_data);
+    incr_eptr(&_edata4);
+
+    incr_eptr(&_edtcm_bss);
+    incr_eptr(&_edtcm2);
+    incr_eptr(&_ecm7_stack_align);
+
+    incr_eptr(&_esram_bss);
+    incr_eptr(&_esramahb);
+    incr_eptr(&_ertt);
+
+    incr_eptr(&_esdram);
+    incr_eptr(&_elwip_data);
+
+    incr_eptr(&_eitcm);
+
+    add_memory_region(&mp_itcm, MemRegionType::ITCM);
+    add_memory_region(&mp_dtcm, MemRegionType::DTCM);
+    add_memory_region(&mp_axisram, MemRegionType::AXISRAM);
+    add_memory_region(&mp_axisram4, MemRegionType::AXISRAM);
+    add_memory_region(&mp_sram, MemRegionType::SRAM);
+    add_memory_region(&mp_sdram, MemRegionType::SDRAM);
 
     inited = true;
 }
@@ -532,9 +555,9 @@ extern "C" INTFLASH_FUNCTION int memblk_init_flash_opt_bytes()
     auto opw2_mask = FLASH_OBW2SR_DTCM_AXI_SHARE_Msk |
         FLASH_OBW2SR_ITCM_AXI_SHARE_Msk |
         FLASH_OBW2SR_ECC_ON_SRAM_Msk;
-    auto opw2_settings = (0U << FLASH_OBW2SRP_ECC_ON_SRAM_Pos) |
-        (2U << FLASH_OBW2SRP_DTCM_AXI_SHARE_Pos) |
-        (2U << FLASH_OBW2SRP_ITCM_AXI_SHARE_Pos);
+    unsigned int opw2_settings = ((GK_MEM_ECC_SHARE) << FLASH_OBW2SRP_ECC_ON_SRAM_Pos) |
+        ((GK_MEM_DTCM_SHARE) << FLASH_OBW2SRP_DTCM_AXI_SHARE_Pos) |
+        ((GK_MEM_ITCM_SHARE) << FLASH_OBW2SRP_ITCM_AXI_SHARE_Pos);
 
     // enable xspi HSLV
     auto opw1_mask = FLASH_OBW1SR_XSPI1_HSLV_Msk |

@@ -1,32 +1,22 @@
 #include <memblk.h>
 #include "gk_conf.h"
 
+extern int _kheap_start, _kheap_end;
+static uint32_t _khsp = (uint32_t)(uintptr_t)&_kheap_start;
+static uint32_t _khep = (uint32_t)(uintptr_t)&_kheap_end;
+
 extern "C" void * _sbrk(int n)
 {
-    static MemRegion mr = InvalidMemregion();
     static size_t mr_top = 0;
 
-    if(!mr.valid)
-    {
-        extern void init_memblk();
-        init_memblk();
-
-        mr = memblk_allocate(GK_KHEAP_SIZE, MemRegionType::AXISRAM, GK_MEMBLK_USAGE_KERNEL_HEAP);
-        if(!mr.valid)
-        {
-            __asm__ volatile("bkpt \n" ::: "memory");
-            while(true);
-        }
-    }
-
-    auto ret = (void *)(mr.address + mr_top);
+    auto ret = (void *)(_khsp + mr_top);
     if(n == 0)
     {
         return ret;
     }
     else if(n > 0)
     {
-        auto free_space = mr.length - mr_top;
+        auto free_space = (_khep - _khsp) - mr_top;
         if((size_t)n > free_space)
         {
             return (void *)-1;

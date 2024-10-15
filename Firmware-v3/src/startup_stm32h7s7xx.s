@@ -55,6 +55,12 @@ defined in linker script */
   .weak  Reset_Handler
   .type  Reset_Handler, %function
 Reset_Handler:
+  /* Enable access to SRAMs */
+  ldr.w r0, =0x5802453c // RCC->AHB2ENR
+  ldr r1, [r0]
+  orr r1, r1, #((0x1 << 29) | (0x1 << 30))
+  str r1, [r0]
+  
   ldr   r0, =_estack
   mov   sp, r0          /* set stack pointer */
 
@@ -89,12 +95,6 @@ LoopCopyRttInit:
   ldr.w r0, =0xe000ed88
   ldr r1, [r0]
   orr r1, r1, #(0xf << 20)
-  str r1, [r0]
-
-  /* Enable access to SRAMs */
-  ldr.w r0, =0x5802453c // RCC->AHB2ENR
-  ldr r1, [r0]
-  orr r1, r1, #((0x1 << 29) | (0x1 << 30))
   str r1, [r0]
 
 /* Copy the data segment initializers from flash to SRAM */

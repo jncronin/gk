@@ -23,6 +23,11 @@
 #define GK_ENABLE_PROFILE           1
 #define GK_DYNAMIC_SYSTICK          1
 
+/* STM32H7RS memory config */
+#define GK_MEM_DTCM_SHARE           2
+#define GK_MEM_ITCM_SHARE           0
+#define GK_MEM_ECC_SHARE            0
+
 #define GK_LOG_PERSISTENT           0
 #define GK_LOG_RTT                  1
 #define GK_LOG_USB                  0
