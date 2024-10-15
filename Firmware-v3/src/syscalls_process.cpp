@@ -52,9 +52,9 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, pid_t *pid
     param->pid_out = pid;
 
     // ensure pct stack is not in DTCM as this isn't handled by ext4_read yet
-    auto pct_stack = memblk_allocate(4096, MemRegionType::AXISRAM, "pct_stack");
+    auto pct_stack = memblk_allocate(4096, MemRegionType::SDRAM, "pct_stack");
     if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SRAM, "pct_stack");
-    if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::SDRAM, "pct_stack");
+    if(!pct_stack.valid) pct_stack = memblk_allocate(4096, MemRegionType::AXISRAM, "pct_stack");
 
     auto pct = Thread::Create(t->name + "_proccreate", proccreate_thread,
         param, true, t->base_priority, t->p, t->tss.affinity,
