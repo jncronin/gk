@@ -270,6 +270,7 @@ int elf_load_fildes(int fd,
     // they are currently stored within the main .text section bounded by __start_hot and __end_hot
     unsigned int shot = 0;
     unsigned int ehot = 0;
+    p.use_hot_region = false;
     if(p.use_hot_region)
     {
         for(unsigned int i = 0; i < ehdr.e_shnum; i++)
