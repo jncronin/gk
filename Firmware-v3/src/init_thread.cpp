@@ -76,7 +76,7 @@ void *init_thread(void *p)
     pt.with_focus = 1;
 
     // gkmenu
-    const char *args[] = { "Sonic the Hedgehog" };        // run a test game
+    const char *args[] = { "aa-Tuxracer" };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
