@@ -41,22 +41,34 @@ MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
     const std::string &usage, int *_errno)
 {
     MemRegion mr = InvalidMemregion();
-    if(allow_sram)
-        mr = memblk_allocate(len, MemRegionType::SRAM, usage);
-    if(!mr.valid)
-        mr = memblk_allocate(len, MemRegionType::AXISRAM, usage);
+    auto t = GetCurrentThreadForCore();
+    switch(t->p.stack_preference)
+    {
+        case STACK_PREFERENCE_SDRAM_RAM_TCM:
+            mr = memblk_allocate(len, MemRegionType::SDRAM, usage);
+            if(!mr.valid && allow_sram)
+                mr = memblk_allocate(len, MemRegionType::SRAM, usage);
+            if(!mr.valid)
+                mr = memblk_allocate(len, MemRegionType::AXISRAM, usage);
+            break;
+
+        case STACK_PREFERENCE_TCM_RAM_SDRAM:
+            if(allow_sram)
+                mr = memblk_allocate(len, MemRegionType::SRAM, usage);
+            if(!mr.valid)
+                mr = memblk_allocate(len, MemRegionType::AXISRAM, usage);
+            if(!mr.valid)
+                mr = memblk_allocate(len, MemRegionType::SDRAM, usage);
+            break;
+    }
+    
     if(!mr.valid)
     {
-        mr = memblk_allocate(len, MemRegionType::SDRAM, usage);
-        if(!mr.valid)
-        {
-            *_errno = ENOMEM;
-            return mr;
-        }
+        *_errno = ENOMEM;
+        return mr;
     }
 
     // get free mpu slot
-    auto t = GetCurrentThreadForCore();
 
     auto mpu_id = t->p.AddMPURegion({ mr, -1, 1, 1, 0, is_sync != 0 });
     if(mpu_id >= 0)
