@@ -44,6 +44,14 @@ static constexpr uint32_t align_up(uint32_t v)
     return v;
 }
 
+constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
+{
+    mpu_saved_state ret { 0, 0 };
+    ret.rbar = (reg_id & 0xfUL) | (1UL << 4);
+    ret.rasr = 0UL;
+    return ret;
+}
+
 constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     uint32_t length,
     uint32_t reg_id,
@@ -54,6 +62,8 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     uint32_t srd = 0U)
 {
     mpu_saved_state ret { 0, 0 };
+
+    if(length == 0) return MPUGenerateNonValid(reg_id);
 
     if(length < 32) length = 32;
 
@@ -112,14 +122,6 @@ constexpr mpu_saved_state MPUGenerate(uint32_t base_addr,
     ret.rasr = 1UL | (cur_i << 1) | ((tex_scb & 0x3f) << 16) | (ap << 24) | (executable ? 0UL : (1UL << 28)) |
         ((srd & 0xffU) << 8);
 
-    return ret;
-}
-
-constexpr mpu_saved_state MPUGenerateNonValid(uint32_t reg_id)
-{
-    mpu_saved_state ret { 0, 0 };
-    ret.rbar = (reg_id & 0xfUL) | (1UL << 4);
-    ret.rasr = 0UL;
     return ret;
 }
 
