@@ -347,6 +347,7 @@ template <uint32_t min_buddy_size, uint32_t tot_length, uint32_t base_addr> clas
         }
 
         constexpr uint32_t MinBuddySize() { return min_buddy_size; };
+        constexpr uint32_t Base() { return base_addr; }
 
         void dump(int (*print_func)(const char *format, ...))
         {
