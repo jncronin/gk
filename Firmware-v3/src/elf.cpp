@@ -270,7 +270,8 @@ int elf_load_fildes(int fd,
     // they are currently stored within the main .text section bounded by __start_hot and __end_hot
     unsigned int shot = 0;
     unsigned int ehot = 0;
-    p.use_hot_region = false;
+    if(p.stack_preference == STACK_PREFERENCE_SDRAM_RAM_TCM)
+        p.use_hot_region = false;
     if(p.use_hot_region)
     {
         for(unsigned int i = 0; i < ehdr.e_shnum; i++)
@@ -359,6 +360,10 @@ int elf_load_fildes(int fd,
         if(GetCoreID() == 0)
         {
             mr_itcm = memblk_allocate(hot_len, MemRegionType::ITCM, pname + " .text.hot");
+        }
+        if(!mr_itcm.valid)
+        {
+            mr_itcm = memblk_allocate(hot_len, MemRegionType::DTCM, pname + " .text.hot");
         }
         if(!mr_itcm.valid)
         {
