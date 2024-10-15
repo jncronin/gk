@@ -244,6 +244,9 @@ SECTIONS
   .dtcm :
   {
     . = ALIGN(4);
+      *(.vtors)
+    *(.vtors*)
+
     _sdtcm = .;       /* create a global symbol at ccmram start */
     *(.dtcm)
     *(.dtcm*)
@@ -257,9 +260,6 @@ SECTIONS
 
   .itcm 0x0 (NOLOAD) :
   {
-    *(.vtors)
-    *(.vtors*)
-
     . = ALIGN(4);
     _sitcm = .;       /* create a global symbol at ccmram start */
     *(.itcm)
