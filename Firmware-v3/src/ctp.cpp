@@ -11,14 +11,16 @@ static const constexpr pin CTP_INT { GPIOF, 2 };
 static const constexpr pin CTP_NRESET { GPIOC, 0 };
 const uint8_t ctp_addr = 0x5d;
 
-static void *ctp_thread(void *);
+[[maybe_unused]] static void *ctp_thread(void *);
 
 static BinarySemaphore ctp_sem;
 
 void init_ctp()
 {
+#if GK_ENABLE_TOUCH
     Schedule(Thread::Create("ctp", ctp_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc,
         CPUAffinity::PreferM4));
+#endif
 }
 
 static void ctp_reset()
