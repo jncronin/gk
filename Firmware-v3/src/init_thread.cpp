@@ -75,6 +75,8 @@ void *init_thread(void *p)
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     pt.with_focus = 1;
 
+    return nullptr;
+
     // gkmenu
     const char *args[] = { "Xenon 2 hatari" };        // run a test game
     pt.argv = args;
