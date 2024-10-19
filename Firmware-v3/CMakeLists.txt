@@ -110,6 +110,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
         "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source"
+        "${CMAKE_CURRENT_SOURCE_DIR}/nemagfx/inc"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -178,6 +179,7 @@ target_link_libraries(${PROJECT_NAME}
         #winc
         zlib
         #lvgl
+        ${CMAKE_CURRENT_SOURCE_DIR}/nemagfx/lib/libnemagfx-float-abi-hard.a
 
 )
 
