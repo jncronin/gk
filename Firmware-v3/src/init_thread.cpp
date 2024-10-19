@@ -75,6 +75,9 @@ void *init_thread(void *p)
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     pt.with_focus = 1;
 
+    extern void nematest();
+    nematest();
+    
     return nullptr;
 
     // gkmenu
