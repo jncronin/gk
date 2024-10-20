@@ -770,6 +770,8 @@ void *gpu_thread(void *p)
                     if(!cur_process->screen_ignore_vsync)
                     {
                         wait_dma2d();
+                        while(screen_flip_in_progress);
+                        scr_vsync.Wait();
                     }
                     {
                         auto t = g.sending_thread;
