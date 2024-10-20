@@ -58,6 +58,13 @@ static inline void wait_dma2d()
     //}
 }
 
+static inline void wait_nema()
+{
+    extern Mutex m_ehold;
+    m_ehold.lock();
+    m_ehold.unlock();
+}
+
 static inline size_t get_bpp(int pf)
 {
     switch(pf)
@@ -394,6 +401,9 @@ void *gpu_thread(void *p)
 {
     (void)p;
 
+    void init_nema();
+    init_nema();
+
     // Set up our scaling backbuffers (for 320x240 screen and 160x120 screen) - 32bpp
     scaling_bb[0] = (void *)0x9012c000;
     scaling_bb[1] = (void *)0x9032c000;
@@ -603,6 +613,7 @@ void *gpu_thread(void *p)
                     //if(!cur_process->screen_ignore_vsync)
                     {
                         wait_dma2d();
+                        wait_nema();
                     }
                     {
                         void *old_buf, *new_buf;

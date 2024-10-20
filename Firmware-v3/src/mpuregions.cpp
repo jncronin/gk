@@ -89,3 +89,14 @@ uint32_t mpu_saved_state::tex_scb() const
 {
     return (rasr >> 16) & 0x3f;
 }
+
+uint32_t mpu_saved_state::slot() const
+{
+    return rbar & 0xfU;
+}
+
+void mpu_saved_state::set_slot(unsigned int slot_id)
+{
+    slot_id &= 0xfU;
+    rbar = (rbar & ~0xfU) | slot_id;
+}
