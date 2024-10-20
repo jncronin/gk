@@ -75,6 +75,11 @@ void *init_thread(void *p)
     pt.pixel_format = GK_PIXELFORMAT_RGB565;
     pt.with_focus = 1;
 
+    //extern void nematest();
+    //nematest();
+
+    //return nullptr;
+
     // gkmenu
     const char *args[] = { "Xenon 2 hatari" };        // run a test game
     pt.argv = args;
@@ -84,7 +89,7 @@ void *init_thread(void *p)
     pt.heap_size = 4*1024*1024;
     pt.screen_w = 640;
     pt.screen_h = 480;
-    pt.pixel_format = GK_PIXELFORMAT_RGB565;
+    pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.keymap.gamepad_is_keyboard = true;
     pt.keymap.gamepad_is_mouse = true;
     pt.keymap.gamepad_is_joystick = false;
@@ -96,7 +101,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
     pt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM; // try to leave TCM for games
 
-    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
+    deferred_call(syscall_proccreate, "/nematest-0.1.1-gk/bin/nematest", &pt, &pid_gkmenu);
 
     extern Process p_supervisor;
     p_supervisor.events.Push({ .type = Event::CaptionChange });

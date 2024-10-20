@@ -882,6 +882,16 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_nemaenable:
+            {
+                auto p = reinterpret_cast<__syscall_nemaenable_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_nemaenable(p->mutexes,
+                    p->nmutexes, p->rb, (sem_t *)p->irq_sem,
+                    p->eof_mutex,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 klog("syscall: unhandled syscall %d\n", (int)sno);

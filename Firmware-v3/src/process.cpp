@@ -16,7 +16,7 @@ Process::~Process()
     proc_list.DeleteProcess(pid, this->rc);
 }
 
-int Process::AddMPURegion(const mmap_region &r)
+int Process::AddMPURegion(const mpu_saved_state &r)
 {
     CriticalGuard cg(sl);
 
@@ -41,10 +41,17 @@ int Process::AddMPURegion(const mmap_region &r)
     }
     else
     {
-        p_mpu[mpu_slot] = r.to_mpu(mpu_slot);
+        mpu_saved_state nr = r;
+        nr.set_slot(mpu_slot);
+        p_mpu[mpu_slot] = nr;
     }
     
     return mpu_slot;
+}
+
+int Process::AddMPURegion(const mmap_region &r)
+{
+    return AddMPURegion(r.to_mpu(0));
 }
 
 void Process::UpdateMPURegionsForThreads()

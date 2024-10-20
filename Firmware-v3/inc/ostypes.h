@@ -53,6 +53,8 @@ struct mpu_saved_state
     MemRegionAccess priv_access() const;
     MemRegionAccess unpriv_access() const;
     uint32_t tex_scb() const;
+    uint32_t slot() const;
+    void set_slot(unsigned int slot_id);
 
     constexpr bool operator==(const mpu_saved_state &other) const
     {
