@@ -333,11 +333,13 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
     }
 }
 
-bool Mutex::unlock(int *reason)
+bool Mutex::unlock(int *reason, bool force)
 {
     CriticalGuard cg;
     auto t = GetCurrentThreadForCore();
-    if(owner != t)
+    auto orig_owner = owner;
+    if(((owner != t) && (force == false)) ||
+        ((force == true) && owner->is_privileged))
     {
         if(reason) *reason = EPERM;
         return false;
@@ -356,7 +358,7 @@ bool Mutex::unlock(int *reason)
         owner = nullptr;
     }
 
-    delete_sync_primitive(this, t->locked_mutexes, t);
+    delete_sync_primitive(this, t->locked_mutexes, orig_owner);
 
     return true;
 }

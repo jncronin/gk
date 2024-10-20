@@ -608,8 +608,10 @@ void init_screen()
     }
     LTDC_Layer2->CR = LTDC_LxCR_CLUTEN;
     
-    scr_bufs[0] = 0;
-    scr_bufs[1] = 0;
+    // frame buffers
+    memset((void *)0x90000000, 0, 0x400000);
+    screen_set_frame_buffer((void *)0x90000000, (void *)0x90200000);
+    screen_set_overlay_frame_buffer((void *)0x90180000, (void *)0x90380000);
 
     /* Enable */
     LTDC->LIPCR = 499;

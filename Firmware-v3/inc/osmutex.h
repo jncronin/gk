@@ -46,7 +46,7 @@ class Mutex
 
         void lock();
         bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
-        bool unlock(int *reason = nullptr);
+        bool unlock(int *reason = nullptr, bool force = false);
         bool try_delete(int *reason = nullptr);
 };
 

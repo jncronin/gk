@@ -114,6 +114,10 @@ int syscall_get_env_count(int *_errno);
 int syscall_get_ienv_size(unsigned int idx, int *_errno);
 int syscall_get_ienv(char *bufout, size_t buflen, unsigned int idx, int *_errno);
 
+// nema gpu
+int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
+    void *nema_rb, sem_t *nema_irq_sem, pthread_mutex_t *eof_mutex, int *_errno);
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
