@@ -58,11 +58,16 @@ static inline void wait_dma2d()
     //}
 }
 
-static inline void wait_nema()
+static inline void wait_nema(const Process *cur_process)
 {
     extern Mutex m_ehold;
-    m_ehold.lock();
-    m_ehold.unlock();
+    /* Ignore cases where we've already got the mutex - normal lock()
+        breaks on EDEADLK */
+    m_ehold.try_lock();
+
+    /* Don't stop process using GPU2D during screen update if ignoring vsync */
+    if(cur_process->screen_ignore_vsync)
+        m_ehold.unlock();
 }
 
 static inline size_t get_bpp(int pf)
@@ -613,7 +618,7 @@ void *gpu_thread(void *p)
                     //if(!cur_process->screen_ignore_vsync)
                     {
                         wait_dma2d();
-                        wait_nema();
+                        wait_nema(cur_process);
                     }
                     {
                         void *old_buf, *new_buf;

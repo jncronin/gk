@@ -18,7 +18,7 @@
 
 #define GPU2D_FLAG_CLC                   0x00000001U              /*!< Command List Complete Interrupt Flag  */
 
-Mutex m_ehold;
+Mutex m_ehold(false, true);
 static UserspaceSemaphore sem_nema_irq;
 
 static nema_ringbuffer_t ring_buffer_str = {
