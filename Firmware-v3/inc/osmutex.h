@@ -44,7 +44,7 @@ class Mutex
     public:
         Mutex(bool recursive = false, bool error_check = false);
 
-        void lock();
+        void lock(bool allow_deadlk = false);
         bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool unlock(int *reason = nullptr, bool force = false);
         bool try_delete(int *reason = nullptr);

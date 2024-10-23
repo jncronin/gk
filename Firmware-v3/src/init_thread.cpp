@@ -101,6 +101,8 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
     pt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM; // try to leave TCM for games
 
+    pt.screen_ignore_vsync = 1;
+
     deferred_call(syscall_proccreate, "/nematest-0.1.1-gk/bin/nematest", &pt, &pid_gkmenu);
 
     extern Process p_supervisor;

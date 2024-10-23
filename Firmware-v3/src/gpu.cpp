@@ -61,9 +61,9 @@ static inline void wait_dma2d()
 static inline void wait_nema(const Process *cur_process)
 {
     extern Mutex m_ehold;
-    /* Ignore cases where we've already got the mutex - normal lock()
-        breaks on EDEADLK */
-    m_ehold.try_lock();
+    /* Ignore cases where we've already got the mutex - its only released on 
+        LTDC register updates which occasionally does happen 1:1 with wait_nema() */
+    m_ehold.lock(true);
 
     /* Don't stop process using GPU2D during screen update if ignoring vsync */
     if(cur_process->screen_ignore_vsync)
