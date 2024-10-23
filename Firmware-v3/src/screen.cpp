@@ -667,6 +667,9 @@ extern "C" void LTDC_IRQHandler()
     if(LTDC->ISR & LTDC_ISR_RRIF)
     {
         screen_flip_in_progress = false;
+
+        extern Mutex m_ehold;
+        m_ehold.unlock(); 
     }
 
     LTDC->ICR = 0xf;
