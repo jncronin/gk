@@ -275,11 +275,16 @@ Mutex::Mutex(bool recursive, bool error_check) :
     lockcount(0)
 {}
 
-void Mutex::lock()
+void Mutex::lock(bool allow_deadlk)
 {
     int reason;
     while(!try_lock(&reason))
     {
+        if(allow_deadlk && reason == EDEADLK)
+        {
+            return;
+        }
+        
         if(reason != EBUSY)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
