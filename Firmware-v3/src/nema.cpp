@@ -9,11 +9,7 @@
 #include "scheduler.h"
 #include "thread.h"
 #include "process.h"
-
-struct sem_t
-{
-    UserspaceSemaphore *s;
-};
+#include "syscalls_int.h"
 
 #define GPU2D_ITCTRL                    (0x0F8U)   /*!< GPU2D Interrupt Control Register Offset            */
 #define GPU2D_CLID                      (0x148U)   /*!< GPU2D Last Command List Identifier Register Offset */
