@@ -8651,7 +8651,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 133.0452 151.13 0)
 			(effects
 				(font
@@ -9569,76 +9569,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:C")
-		(at 132.08 132.08 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "5a1b324b-d51e-4720-9597-61d3898295c1")
-		(property "Reference" "C37"
-			(at 135.89 130.8099 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "2.2u"
-			(at 135.89 133.3499 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
-			(at 133.0452 135.89 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 132.08 132.08 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Unpolarized capacitor"
-			(at 132.08 132.08 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "668ca58f-a5b2-4883-a88e-14cd052886f7")
-		)
-		(pin "2"
-			(uuid "8710466e-e222-405f-82d2-f3cbc3f1d561")
-		)
-		(instances
-			(project "gk-pcbv3"
-				(path "/08730ac6-6084-459f-bdf1-86b322355ede/ac32e8dc-0b6c-41cd-b88e-0eb0784dc95b"
-					(reference "C37")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:VCC")
 		(at 222.25 128.27 90)
 		(unit 1)
@@ -9999,7 +9929,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 121.6152 151.13 0)
 			(effects
 				(font
@@ -12092,7 +12022,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 121.6152 135.89 0)
 			(effects
 				(font

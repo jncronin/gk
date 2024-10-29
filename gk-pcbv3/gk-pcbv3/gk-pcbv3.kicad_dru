@@ -31,3 +31,7 @@
 	(condition "(A.NetClass == 'xspi1_p1' || A.NetClass == 'xspi1_p2' || A.NetClass == 'xspi2_p') && B.NetName == 'GND' && B.Type == 'Zone'")
 	(constraint physical_clearance(min 8mil))
 )
+(rule "usb_coplanar"
+	(condition "(A.NetClass == 'USB') && B.NetName == 'GND' && B.Type == 'Zone'")
+	(constraint physical_clearance(min 8mil))
+)

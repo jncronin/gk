@@ -1917,12 +1917,6 @@
 		(uuid "46650630-d64b-41f7-ab14-e4133e04b729")
 	)
 	(junction
-		(at 170.18 143.51)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "46d3cb8b-d723-4b2e-8e7b-673cb3482a4e")
-	)
-	(junction
 		(at 170.18 154.94)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2119,6 +2113,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f2e96e1e-f658-4996-b29b-5c4692e9bc4e")
+	)
+	(junction
+		(at 170.18 142.24)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "f36cc37c-0906-4755-ad79-5eb21d66059e")
 	)
 	(junction
 		(at 50.8 53.34)
@@ -3144,6 +3144,16 @@
 	)
 	(wire
 		(pts
+			(xy 170.18 142.24) (xy 170.18 143.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "841b294c-40da-48e9-8c0b-09353d612d7b")
+	)
+	(wire
+		(pts
 			(xy 33.02 53.34) (xy 33.02 59.69)
 		)
 		(stroke
@@ -3181,16 +3191,6 @@
 			(type default)
 		)
 		(uuid "8979e09b-f048-46eb-9340-93a13caa27e6")
-	)
-	(wire
-		(pts
-			(xy 170.18 143.51) (xy 170.18 142.24)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "89ae2a26-6f97-49e7-b0a6-beeebbcbf0c6")
 	)
 	(wire
 		(pts
@@ -3954,7 +3954,7 @@
 	)
 	(wire
 		(pts
-			(xy 168.91 143.51) (xy 170.18 143.51)
+			(xy 168.91 142.24) (xy 170.18 142.24)
 		)
 		(stroke
 			(width 0)
@@ -4221,9 +4221,9 @@
 			)
 		)
 	)
-	(global_label "VREGIN"
+	(global_label "VREGIN_3V3"
 		(shape input)
-		(at 168.91 143.51 180)
+		(at 168.91 142.24 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -4233,7 +4233,7 @@
 		)
 		(uuid "7fafa6df-4ee4-40b2-9dd0-22fc1f96fa46")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 159.2119 143.51 0)
+			(at 154.7367 142.24 0)
 			(effects
 				(font
 					(size 1.27 1.27)

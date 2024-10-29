@@ -3272,16 +3272,6 @@
 	)
 	(wire
 		(pts
-			(xy 59.69 68.58) (xy 59.69 95.25)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0f132fb9-8b4e-4d43-b6e8-c35a3441f3a6")
-	)
-	(wire
-		(pts
 			(xy 220.98 82.55) (xy 220.98 88.9)
 		)
 		(stroke
@@ -4089,16 +4079,6 @@
 			(type default)
 		)
 		(uuid "b53876a6-049d-4a04-b6e7-7673a9ded03b")
-	)
-	(wire
-		(pts
-			(xy 58.42 68.58) (xy 59.69 68.58)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b8741056-be95-44d8-a0be-28d10cf2f7a3")
 	)
 	(wire
 		(pts
@@ -6779,7 +6759,7 @@
 				)
 			)
 		)
-		(property "Footprint" "PW14"
+		(property "Footprint" "STM32H7S7:PW14"
 			(at 196.85 105.41 0)
 			(effects
 				(font
