@@ -607,7 +607,7 @@
         "name": "wifi_spi",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.09,
+        "track_width": 0.1524,
         "via_diameter": 0.45,
         "via_drill": 0.2,
         "wire_width": 6
@@ -666,18 +666,18 @@
       {
         "bus_width": 12,
         "clearance": 0.1016,
-        "diff_pair_gap": 0.2032,
+        "diff_pair_gap": 0.3,
         "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.121666,
+        "diff_pair_width": 0.2,
         "line_style": 0,
-        "microvia_diameter": 0.3,
-        "microvia_drill": 0.1,
+        "microvia_diameter": 0.121666,
+        "microvia_drill": 0.35,
         "name": "xspi2_ck",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.121666,
-        "via_diameter": 0.35,
-        "via_drill": 0.2,
+        "via_diameter": 0.0,
+        "via_drill": 0.1016,
         "wire_width": 6
       },
       {

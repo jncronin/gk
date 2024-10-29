@@ -4,6 +4,10 @@
       (constraint length (min 89.5mm) (opt 89.74mm) (max 90.0mm))
       )
 (rule "target length and skew"
+      (condition "A.NetClass == 'wifi_spi'")
+      (constraint length (min 151.46mm) (opt 151.71mm) (max 151.96mm))
+      )
+(rule "target length and skew"
       (condition "A.NetClass == 'xspi2'")
       (constraint length (min 17.6mm) (opt 17.65mm) (max 18mm))
       )
