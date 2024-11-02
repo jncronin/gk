@@ -81,7 +81,7 @@ void *init_thread(void *p)
     //return nullptr;
 
     // gkmenu
-    const char *args[] = { "Xenon 2 hatari" };        // run a test game
+    const char *args[] = { /* "glgears" */ };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
@@ -101,9 +101,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
     pt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM; // try to leave TCM for games
 
-    pt.screen_ignore_vsync = 1;
-
-    deferred_call(syscall_proccreate, "/nematest-0.1.1-gk/bin/nematest", &pt, &pid_gkmenu);
+    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
 
     extern Process p_supervisor;
     p_supervisor.events.Push({ .type = Event::CaptionChange });

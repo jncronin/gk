@@ -12,6 +12,7 @@
 #include "buttons.h"
 #include "ctp.h"
 #include "buddy.h"
+#include "profile.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -154,6 +155,10 @@ int main()
     init_screen();
     init_buttons();
     init_ctp();
+
+#if GK_ENABLE_PROFILE
+    init_profile();
+#endif
 
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     if(!init_stack.valid)

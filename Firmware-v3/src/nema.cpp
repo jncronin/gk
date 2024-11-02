@@ -11,6 +11,11 @@
 #include "process.h"
 #include "syscalls_int.h"
 
+/* nema profiling:
+    userspace glgears, vsync off:
+        Mesa software 31 fps
+*/
+
 #define GPU2D_ITCTRL                    (0x0F8U)   /*!< GPU2D Interrupt Control Register Offset            */
 #define GPU2D_CLID                      (0x148U)   /*!< GPU2D Last Command List Identifier Register Offset */
 #define GPU2D_BREAKPOINT                (0x080U)   /*!< GPU2D Breakpoint Register Offset                   */

@@ -258,6 +258,7 @@ void *proccreate_thread(void *ptr)
     }
     
     proc->screen_ignore_vsync = pcinfo->screen_ignore_vsync != 0;
+    //proc->screen_ignore_vsync = true;   // for testing
 
     // Set cwd
     if(pcinfo->cwd)
