@@ -4034,12 +4034,6 @@
 		(uuid "457e5e68-7041-454e-b562-0d9bcd20f478")
 	)
 	(junction
-		(at 102.87 45.72)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "47e9fd3a-2606-4ad1-a9fb-8effdaab0638")
-	)
-	(junction
 		(at 81.28 50.8)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -4068,12 +4062,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "839948f5-c899-4b21-8ec7-3d24d8cb214b")
-	)
-	(junction
-		(at 114.3 64.77)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "8d24b0d0-a1bd-4435-a5ef-5a132edf1843")
 	)
 	(junction
 		(at 147.32 55.88)
@@ -4186,16 +4174,6 @@
 			(type default)
 		)
 		(uuid "09d23917-b10c-48fb-9cc6-1b2b3fae19a3")
-	)
-	(wire
-		(pts
-			(xy 114.3 64.77) (xy 114.3 60.96)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0a625047-0cff-4c5e-b4e2-9672550b7fc3")
 	)
 	(wire
 		(pts
@@ -4379,7 +4357,7 @@
 	)
 	(wire
 		(pts
-			(xy 102.87 45.72) (xy 102.87 33.02)
+			(xy 102.87 33.02) (xy 102.87 50.8)
 		)
 		(stroke
 			(width 0)
@@ -4426,16 +4404,6 @@
 			(type default)
 		)
 		(uuid "276fa952-1927-455f-af4f-65fcda14d203")
-	)
-	(wire
-		(pts
-			(xy 133.35 45.72) (xy 133.35 64.77)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "27a00ebd-a1d4-4ddb-886b-1ba972418c12")
 	)
 	(wire
 		(pts
@@ -4569,7 +4537,7 @@
 	)
 	(wire
 		(pts
-			(xy 114.3 60.96) (xy 113.03 60.96)
+			(xy 116.84 60.96) (xy 113.03 60.96)
 		)
 		(stroke
 			(width 0)
@@ -4699,16 +4667,6 @@
 	)
 	(wire
 		(pts
-			(xy 124.46 64.77) (xy 125.73 64.77)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "55850cb3-5cfa-491b-99c6-27c905fd7a4f")
-	)
-	(wire
-		(pts
 			(xy 49.53 102.87) (xy 49.53 125.73)
 		)
 		(stroke
@@ -4826,26 +4784,6 @@
 			(type default)
 		)
 		(uuid "64b903a9-ca23-4457-b13d-67fa1502d621")
-	)
-	(wire
-		(pts
-			(xy 116.84 64.77) (xy 114.3 64.77)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "68061610-a815-4c0d-8eda-2c6fe6f0e19d")
-	)
-	(wire
-		(pts
-			(xy 114.3 64.77) (xy 114.3 68.58)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6a06a98d-8775-4836-b398-ef30722fd286")
 	)
 	(wire
 		(pts
@@ -5129,16 +5067,6 @@
 	)
 	(wire
 		(pts
-			(xy 102.87 50.8) (xy 102.87 45.72)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c2de9821-6ae0-4cf2-a240-031d21528673")
-	)
-	(wire
-		(pts
 			(xy 52.07 48.26) (xy 54.61 48.26)
 		)
 		(stroke
@@ -5226,16 +5154,6 @@
 			(type default)
 		)
 		(uuid "d741868d-4b6c-4c32-add5-1746ff665a47")
-	)
-	(wire
-		(pts
-			(xy 102.87 45.72) (xy 133.35 45.72)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d78bb1fd-9d2a-488b-a78a-0e5d5bc1b64c")
 	)
 	(wire
 		(pts
@@ -5386,6 +5304,18 @@
 			(type default)
 		)
 		(uuid "fe7a12dc-5b17-4a2d-902b-38b61f5bca7e")
+	)
+	(text "VBAT_STAT -> PC5\nPC5 is 5V tolerant (actually allows up to ~8.3V)\nVBAT_STAT is tristate output, therefore read by checking\nvalues with either pullup and pulldown enabled\n\nLevel   PUP value   PDOWN value\nLow     Low         Low\nHigh    High        High\nHi-Z    Low         High"
+		(exclude_from_sim no)
+		(at 91.948 88.392 0)
+		(effects
+			(font
+				(face "Courier New")
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "0ae0cf48-5002-4bb3-a2a9-cb697c0988da")
 	)
 	(global_label "USB_D_P"
 		(shape input)
@@ -5587,7 +5517,7 @@
 	)
 	(global_label "VBAT_STAT"
 		(shape input)
-		(at 114.3 68.58 0)
+		(at 116.84 60.96 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -5597,7 +5527,7 @@
 		)
 		(uuid "b85bfcca-a85b-41af-b719-bf78ac770c49")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 126.8215 68.58 0)
+			(at 129.3615 60.96 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6691,74 +6621,6 @@
 			(project "gk-pcbv2"
 				(path "/08730ac6-6084-459f-bdf1-86b322355ede"
 					(reference "J2")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:LED")
-		(at 120.65 64.77 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "64c360d9-9002-439c-a732-5dfa6717fd02")
-		(property "Reference" "D3"
-			(at 119.0625 59.69 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "LED"
-			(at 119.0625 62.23 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "LED_SMD:LED_0603_1608Metric"
-			(at 120.65 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 120.65 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 120.65 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "a9889a81-1458-419e-ab8e-ace27c918ab3")
-		)
-		(pin "2"
-			(uuid "cafd40bd-5758-45e1-b721-2863e79af0b0")
-		)
-		(instances
-			(project "gk-pcbv2"
-				(path "/08730ac6-6084-459f-bdf1-86b322355ede"
-					(reference "D3")
 					(unit 1)
 				)
 			)
@@ -8612,74 +8474,6 @@
 			(project "gk-pcbv2"
 				(path "/08730ac6-6084-459f-bdf1-86b322355ede"
 					(reference "H4")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 129.54 64.77 90)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ce036a0f-8d41-40a4-8117-4c3d7b9f085d")
-		(property "Reference" "R2"
-			(at 129.54 59.69 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "1k"
-			(at 129.54 62.23 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 129.54 66.548 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 129.54 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 129.54 64.77 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "ed5b51d3-4893-4d33-bd1a-f36ab9653a21")
-		)
-		(pin "2"
-			(uuid "3bab4541-23a1-42c7-958c-5fb2d06c84bb")
-		)
-		(instances
-			(project "gk-pcbv2"
-				(path "/08730ac6-6084-459f-bdf1-86b322355ede"
-					(reference "R2")
 					(unit 1)
 				)
 			)

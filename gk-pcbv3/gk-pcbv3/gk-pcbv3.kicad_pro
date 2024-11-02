@@ -48,7 +48,7 @@
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.2
+          "min_clearance": 0.1
         }
       },
       "diff_pair_dimensions": [
@@ -622,7 +622,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi1_ck",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "pcb_color": "rgb(149, 166, 255)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.121666,
         "via_diameter": 0.35,
@@ -639,7 +639,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi1_p1",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "pcb_color": "rgb(209, 255, 209)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.156464,
         "via_diameter": 0.35,
@@ -656,7 +656,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi1_p2",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "pcb_color": "rgb(255, 248, 200)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.156464,
         "via_diameter": 0.35,
@@ -673,7 +673,7 @@
         "microvia_diameter": 0.121666,
         "microvia_drill": 0.35,
         "name": "xspi2_ck",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "pcb_color": "rgb(149, 166, 255)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.121666,
         "via_diameter": 0.0,
@@ -690,7 +690,7 @@
         "microvia_diameter": 0.3,
         "microvia_drill": 0.1,
         "name": "xspi2_p",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "pcb_color": "rgb(255, 173, 237)",
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.156464,
         "via_diameter": 0.35,
@@ -701,7 +701,12 @@
     "meta": {
       "version": 3
     },
-    "net_colors": null,
+    "net_colors": {
+      "+1V8": "rgb(133, 0, 107)",
+      "GND": "rgb(0, 169, 0)",
+      "VCAP": "rgb(114, 0, 185)",
+      "VCC": "rgb(160, 40, 0)"
+    },
     "netclass_assignments": null,
     "netclass_patterns": [
       {

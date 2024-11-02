@@ -5601,8 +5601,8 @@
 		(uuid "e4909c84-9b8d-499c-9769-2d287e3ae2ae")
 	)
 	(no_connect
-		(at 199.39 125.73)
-		(uuid "4eefe37d-c461-49dc-8d85-ebf1b773a953")
+		(at 179.07 59.69)
+		(uuid "37d5bd56-0fad-4cbd-81df-3c20ae23bfa8")
 	)
 	(no_connect
 		(at 113.03 125.73)
@@ -7440,22 +7440,22 @@
 	)
 	(global_label "LSM6DSL_INT1"
 		(shape input)
-		(at 179.07 59.69 90)
+		(at 199.39 125.73 270)
 		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left)
+			(justify right)
 		)
 		(uuid "959e6f63-4d3f-4fbb-95bb-fcb6ff3d579b")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 179.07 43.2187 90)
+			(at 199.39 142.2013 90)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
-				(justify left)
+				(justify right)
 				(hide yes)
 			)
 		)
