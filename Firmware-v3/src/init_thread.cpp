@@ -81,11 +81,7 @@ void *init_thread(void *p)
     //return nullptr;
 
     // gkmenu
-<<<<<<< HEAD
     const char *args[] = { /* "glgears" */ };        // run a test game
-=======
-    const char *args[] = { "Xenon 2 hatari" };        // run a test game
->>>>>>> aa8891f7e7fbf851aebbc9118380c651ff63890a
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";

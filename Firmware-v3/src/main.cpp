@@ -156,13 +156,10 @@ int main()
     init_buttons();
     init_ctp();
 
-<<<<<<< HEAD
 #if GK_ENABLE_PROFILE
     init_profile();
 #endif
 
-=======
->>>>>>> aa8891f7e7fbf851aebbc9118380c651ff63890a
     auto init_stack = memblk_allocate(8192, MemRegionType::AXISRAM, "init thread stack");
     if(!init_stack.valid)
         init_stack = memblk_allocate(8192, MemRegionType::SDRAM, "init thread stack");
