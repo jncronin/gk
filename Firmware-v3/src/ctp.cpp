@@ -8,7 +8,7 @@
 #include "gk_conf.h"
 
 static const constexpr pin CTP_INT { GPIOF, 2 };
-static const constexpr pin CTP_NRESET { GPIOC, 0 };
+static const constexpr pin CTP_NRESET { GPIOF, 3 };
 const uint8_t ctp_addr = 0x5d;
 
 [[maybe_unused]] static void *ctp_thread(void *);

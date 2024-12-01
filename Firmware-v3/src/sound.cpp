@@ -18,7 +18,7 @@ static constexpr const pin SAI1_FS_A { GPIOE, 4, 6 };
 static constexpr const pin SAI1_MCLK_A { GPIOE, 2, 6 };
 static constexpr const pin PCM_ZERO { GPIOB, 0 };   // input
 static constexpr const pin SPKR_NSD { GPIOB, 7 };   // speaker amp enable
-static constexpr const pin PCM_MUTE { GPIOO, 1 };   // headphone amp #enable
+static constexpr const pin PCM_MUTE { GPIOE, 7 };   // headphone amp #enable
 
 static constexpr const pin SPI2_MOSI { GPIOC, 1, 5 };
 static constexpr const pin SPI2_NSS { GPIOB, 9, 5 };

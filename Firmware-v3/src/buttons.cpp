@@ -4,12 +4,12 @@
 #include "debounce.h"
 #include "_gk_scancodes.h"
 
-constexpr const pin BTN_MENU { GPIOM, 2 };
-constexpr const pin BTN_VOLUP { GPIOM, 1 };
-constexpr const pin BTN_VOLDOWN { GPIOG, 3 };      // TODO changed to PA12 in v2
-constexpr const pin BTN_ONOFF { GPIOM, 3 };
+constexpr const pin BTN_MENU { GPIOD, 14 };
+constexpr const pin BTN_VOLUP { GPIOD, 13 };
+constexpr const pin BTN_VOLDOWN { GPIOG, 3 };      
+constexpr const pin BTN_ONOFF { GPIOE, 3 };
 constexpr const pin BTN_L { GPIOE, 15 };
-constexpr const pin BTN_R { GPIOM, 0 };
+constexpr const pin BTN_R { GPIOD, 12 };
 constexpr const pin BTN_U { GPIOG, 15 };
 constexpr const pin BTN_D { GPIOE, 14 };
 constexpr const pin BTN_A { GPIOD, 4 };
