@@ -440,7 +440,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     // Get ASP register
     auto aspr = xspi_ind_read16(XSPI2, 0);
-    if(aspr != 0xf6ffU)
+    if(aspr & (1U << 11))
     {    
         if(aspr != 0xfeffU) __BKPT();
 
