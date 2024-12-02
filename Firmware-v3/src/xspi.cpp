@@ -20,7 +20,9 @@ INTFLASH_RDATA static const constexpr pin XSPI_PINS[] =
     { GPION, 10, 9 },
     { GPION, 11, 9 },
     { GPIOO, 2, 9 },
+#if GK_XSPI_DUAL_MEMORY
     { GPIOO, 3, 9 },
+#endif
     { GPIOO, 4, 9 },
     { GPIOO, 5, 9 },
     { GPIOP, 0, 9 },
@@ -31,6 +33,7 @@ INTFLASH_RDATA static const constexpr pin XSPI_PINS[] =
     { GPIOP, 5, 9 },
     { GPIOP, 6, 9 },
     { GPIOP, 7, 9 },
+#if GK_XSPI_DUAL_MEMORY
     { GPIOP, 8, 9 },
     { GPIOP, 9, 9 },
     { GPIOP, 10, 9 },
@@ -39,19 +42,27 @@ INTFLASH_RDATA static const constexpr pin XSPI_PINS[] =
     { GPIOP, 13, 9 },
     { GPIOP, 14, 9 },
     { GPIOP, 15, 9 },
+#endif
 };
 
 INTFLASH_RDATA static const constexpr pin XSPI1_RESET { GPIOD, 1 };
 INTFLASH_RDATA static const constexpr pin XSPI2_RESET { GPIOD, 0 };
 
-uint32_t id0 = 0;
-uint32_t id1 = 0;
-uint32_t cr0 = 0;
-uint32_t cr1 = 0;
-uint32_t id0_1 = 0;
-uint32_t id1_1 = 0;
-uint32_t cr0_1 = 0;
-uint32_t cr1_1 = 0;
+#if GK_XSPI_DUAL_MEMORY
+typedef uint32_t uint_xspi;
+#else
+typedef uint16_t uint_xspi;
+#endif
+
+const constexpr unsigned int xspi_mult = sizeof(uint_xspi);
+uint_xspi id0 = 0;
+uint_xspi id1 = 0;
+uint_xspi cr0 = 0;
+uint_xspi cr1 = 0;
+uint_xspi id0_1 = 0;
+uint_xspi id1_1 = 0;
+uint_xspi cr0_1 = 0;
+uint_xspi cr1_1 = 0;
 
 template <typename T> INTFLASH_FUNCTION static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
 {
@@ -208,7 +219,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     // Power to XSPI pins
     PWR->CSR2 |= PWR_CSR2_EN_XSPIM1 | PWR_CSR2_EN_XSPIM2 |
-        (0U << PWR_CSR2_XSPICAP1_Pos);
+        (3U << PWR_CSR2_XSPICAP1_Pos);
         ;
 
     XSPIM->CR = 0;  // direct mode
@@ -221,12 +232,20 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
             - legacy wrapped burst
             - burst length 32 bytes
      */
-    XSPI1->CR = (1UL << XSPI_CR_FMODE_Pos) | XSPI_CR_EN | XSPI_CR_TCEN |
-        XSPI_CR_DMM;
+    XSPI1->CR = (1UL << XSPI_CR_FMODE_Pos) | XSPI_CR_EN | XSPI_CR_TCEN
+#if GK_XSPI_DUAL_MEMORY
+        | XSPI_CR_DMM
+#endif
+        ;
     XSPI1->LPTR = 0xffffU; // max - still < 1ms @ 200 MHz
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
         (2UL << XSPI_DCR1_CSHT_Pos) |
-        (26UL << XSPI_DCR1_DEVSIZE_Pos);
+#if GK_XSPI_DUAL_MEMORY
+        (26UL << XSPI_DCR1_DEVSIZE_Pos)
+#else
+        (25UL << XSPI_DCR1_DEVSIZE_Pos)
+#endif
+        ;
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
     XSPI1->DCR4 = 150 - 4 - 1;      // tCSM=1us/150 MHz
     XSPI1->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |     // start without wrap
@@ -263,24 +282,24 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI1->DLR = 3; // 2 bytes per register per chip
 
     xspi_ind_read(XSPI1, 4, 0, &id0);
-    if(id0 != 0x0f860f86U)
+    if(id0 != (uint_xspi)0x0f860f86U)
     {
         // try again
         xspi_ind_read(XSPI1, 4, 0, &id0);
-        if(id0 != 0x0f860f86U)
+        if(id0 != (uint_xspi)0x0f860f86U)
         {
             __asm__ volatile("bkpt \n" ::: "memory");
         }
     }
 
-    xspi_ind_read(XSPI1, 4, 1*4, &id1);
-    xspi_ind_read(XSPI1, 4, 0x800*4, &cr0);
-    xspi_ind_read(XSPI1, 4, 0x801*4, &cr1);
+    xspi_ind_read(XSPI1, xspi_mult, 1*xspi_mult, &id1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x800*xspi_mult, &cr0);
+    xspi_ind_read(XSPI1, xspi_mult, 0x801*xspi_mult, &cr1);
 
-    xspi_ind_read(XSPI1, 4, 0x80000*4, &id0_1);
-    xspi_ind_read(XSPI1, 4, 0x80001*4, &id1_1);
-    xspi_ind_read(XSPI1, 4, 0x80800*4, &cr0_1);
-    xspi_ind_read(XSPI1, 4, 0x80801*4, &cr1_1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x1000000*xspi_mult, &id0_1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x1000001*xspi_mult, &id1_1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x1000800*xspi_mult, &cr0_1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x1000801*xspi_mult, &cr1_1);
 
     // Try and enable differential clock...
     INTFLASH_STRING static char msg_xspi_enable_diffclk[] = "xspi: enabling differential clk\n";
@@ -298,15 +317,19 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI1->WCCR &= ~XSPI_WCCR_DQSE;
 
     
-    uint32_t new_cr1 = 0xff81ff81U;
-    xspi_ind_write(XSPI1, 4, 0x801U*4, &new_cr1);
+    uint_xspi new_cr1 = (uint_xspi)0xff81ff81U;
+    xspi_ind_write(XSPI1, xspi_mult, 0x801U*xspi_mult, &new_cr1);
 
-    uint32_t new_cr0 = 0x8f0a8f0aU; // hybrid burst, 16 byte burst, fixed latency
-    uint32_t drive_strength = 6U;       // 22 ohm.  Default is 34 ohm expecting 50 ohm traces.  Our traces are higher e.g. 90 ohm...
+#if GK_XSPI_DUAL_MEMORY
+    uint_xspi new_cr0 = 0x8f0a8f0aU; // hybrid burst, 16 byte burst, fixed latency
+#else
+    uint_xspi new_cr0 = (uint_xspi)0x8f0b8f0bU; // 32 byte burst in single memory mode
+#endif
+    uint_xspi drive_strength = 0U;       // default
     new_cr0 |= (drive_strength << 12) | (drive_strength << 28);
-    uint32_t latency = 1U;  // 6 clock @166 MHz max freq
+    uint_xspi latency = 1U;  // 6 clock @166 MHz max freq
     new_cr0 |= (latency << 4) | (latency << 20);
-    xspi_ind_write(XSPI1, 4, 0x800U*4, &new_cr0);
+    xspi_ind_write(XSPI1, xspi_mult, 0x800U*xspi_mult, &new_cr0);
 
     // set new latency
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -314,10 +337,10 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (6UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
 
-    xspi_ind_read(XSPI1, 4, 0x800U*4, &cr0);
-    xspi_ind_read(XSPI1, 4, 0x801U*4, &cr1);
-    xspi_ind_read(XSPI1, 4, 0x80800*4, &cr0_1);
-    xspi_ind_read(XSPI1, 4, 0x80801*4, &cr1_1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x800U*xspi_mult, &cr0);
+    xspi_ind_read(XSPI1, xspi_mult, 0x801U*xspi_mult, &cr1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x1000800*xspi_mult, &cr0_1);
+    xspi_ind_read(XSPI1, xspi_mult, 0x1000801*xspi_mult, &cr1_1);
 
     if(cr0 != new_cr0)
     {
@@ -336,10 +359,27 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR |= XSPI_WCCR_DQSE;
 
+    // Perform a indirect mode memory test
+    /*while(XSPI1->SR & XSPI_SR_BUSY);
+    XSPI1->DCR1 = (XSPI1->DCR1 & ~XSPI_DCR1_MTYP_Msk) | (4U << XSPI_DCR1_MTYP_Pos);
+    const uint32_t test_max = 0x10000U;
+    static uint32_t i = 0;
+    for(i = 0; i < test_max; i += 4)
+    {
+        uint_xspi val = i;
+        xspi_ind_write(XSPI1, xspi_mult, i, &val);
+    }*/
+    /*for(i = 0; i < test_max; i += 4)
+    {
+        static uint32_t j = 0;
+        xspi_ind_read(XSPI1, 4, i, &j);
+        if(i != j) __BKPT();
+    }*/
+
     // set higher interface speed with wrap enabled
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
-        (3UL << XSPI_DCR2_PRESCALER_Pos);               
+        (1UL << XSPI_DCR2_PRESCALER_Pos);               
 
 
     // XSPI timing calibration in memory mode
@@ -378,7 +418,13 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI1->CALMR = (coarse/4) << XSPI_CALMR_COARSE_Pos |
         (fine/4) << XSPI_CALMR_FINE_Pos;
     */
-    
+
+    // Fixed CALSOR - standard for 150 MHz clock seems to be 0x80003
+    //  increase a bit to deal with second chip write errors
+    //while(XSPI1->SR & XSPI_SR_BUSY);
+    //XSPI1->CALSOR = 0x8000f;
+    //while(XSPI1->SR & XSPI_SR_BUSY);
+    //XSPI1->CALSIR = 0x8000f;
 
     // set XSPI1 to memory mapped mode
     while(XSPI1->SR & XSPI_SR_BUSY);

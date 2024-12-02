@@ -23,6 +23,7 @@
 #define GK_MEMBLK_STATS             1
 #define GK_ENABLE_PROFILE           1
 #define GK_DYNAMIC_SYSTICK          1
+#define GK_XSPI_DUAL_MEMORY         1
 
 /* STM32H7RS memory config */
 #define GK_MEM_DTCM_SHARE           2
@@ -39,7 +40,11 @@
 #define GK_ENABLE_CTP340            0
 
 #define GK_SDRAM_BASE               0x90000000
+#if GK_XSPI_DUAL_MEMORY
 #define GK_SDRAM_SIZE               0x08000000
+#else
+#define GK_SDRAM_SIZE               0x04000000
+#endif
 
 #define GK_KHEAP_SIZE               (128*1024)
 

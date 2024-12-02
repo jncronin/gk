@@ -58,14 +58,19 @@ int main()
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 
     /* Memory test prior to enabling caches */
-#define GK_MEMTEST 0
+#define GK_MEMTEST 1
 #if GK_MEMTEST
-    for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
+#if GK_XSPI_DUAL_MEMORY
+    const uint32_t test_max = 0x98000000U;
+#else
+    const uint32_t test_max = 0x94000000U;
+#endif
+    for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
     {
         *(volatile uint32_t *)addr = addr;
     }
     uint64_t seed = 123456789U;
-    for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
+    for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
     {
         auto v = *(volatile uint32_t *)addr;
         if(v != addr)
@@ -78,7 +83,7 @@ int main()
                 for(int j = 0; j < 1024; j++)
                 {
                     seed = (1103515245ULL * seed + 12345ULL) % 0x80000000ULL;
-                    auto new_addr = 0x90000000U + (uint32_t)(seed % 0x08000000ULL);
+                    auto new_addr = 0x90000000U + (uint32_t)(seed % (unsigned long long)(test_max - 0x90000000UL));
                     *(volatile uint32_t *)(new_addr & ~0x3U);
                 }
                 auto v2 = *(volatile uint32_t *)addr;
@@ -89,7 +94,7 @@ int main()
     }
 
     // recheck calibration after test
-    (void)*(volatile uint32_t *)0x94000000U;
+    (void)*(volatile uint32_t *)(test_max - 4U);
     __DMB();
     __DSB();
     XSPI1->CR |= XSPI_CR_ABORT;
@@ -99,7 +104,7 @@ int main()
     XSPI1->DCR2 = XSPI1->DCR2;
 
     // dummy read
-    (void)*(volatile uint32_t *)0x92000000U;
+    (void)*(volatile uint32_t *)(test_max - 0x1000U);
     SEGGER_RTT_printf(0, "kernel: xspi1: calfcr: %x, calsor: %x, calsir: %x\n",
         XSPI1->CALFCR, XSPI1->CALSOR, XSPI1->CALSIR);
     SEGGER_RTT_printf(0, "kernel: xspi2: calfcr: %x, calsor: %x, calsir: %x\n",

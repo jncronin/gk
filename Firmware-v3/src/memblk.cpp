@@ -212,8 +212,8 @@ extern "C" void init_memblk()
     mp_sram.length = 0x8000;
     mp_sram.cur_end = mp_sram.base_addr;
 
-    mp_sdram.base_addr = 0x90000000;
-    mp_sdram.length = 0x8000000;
+    mp_sdram.base_addr = GK_SDRAM_BASE;
+    mp_sdram.length = GK_SDRAM_SIZE;
     mp_sdram.cur_end = 0;
 
     SEGGER_RTT_printf(0, "memory_map:\n"
