@@ -223,7 +223,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
      */
     XSPI1->CR = (1UL << XSPI_CR_FMODE_Pos) | XSPI_CR_EN | XSPI_CR_TCEN |
         XSPI_CR_DMM;
-    XSPI1->LPTR = 0xfffffU; // max - still < 1ms @ 200 MHz
+    XSPI1->LPTR = 0xffffU; // max - still < 1ms @ 200 MHz
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
         (2UL << XSPI_DCR1_CSHT_Pos) |
         (26UL << XSPI_DCR1_DEVSIZE_Pos);
