@@ -194,7 +194,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     // Pull-ups on NCS PN1/PO0
     PWR->PUCRN = PWR_PUCRN_PUN1;
-    PWR->PUCRO = PWR_PUCRO_PUO1;
+    PWR->PUCRO = PWR_PUCRO_PUO0;
     PWR->APCR |= PWR_APCR_APC;
 
 
