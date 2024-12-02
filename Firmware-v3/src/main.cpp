@@ -79,7 +79,7 @@ int main()
                 {
                     seed = (1103515245ULL * seed + 12345ULL) % 0x80000000ULL;
                     auto new_addr = 0x90000000U + (uint32_t)(seed % 0x08000000ULL);
-                    *(volatile uint32_t *)new_addr;
+                    *(volatile uint32_t *)(new_addr & ~0x3U);
                 }
                 auto v2 = *(volatile uint32_t *)addr;
                 SEGGER_RTT_printf(0, "memchk:   retry %d, got %x (%s)\n", i, v2,
