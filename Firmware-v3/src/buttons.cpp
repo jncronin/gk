@@ -2,6 +2,7 @@
 #include "pins.h"
 #include "supervisor.h"
 #include "debounce.h"
+#include "pwr.h"
 #include "_gk_scancodes.h"
 
 constexpr const pin BTN_MENU { GPIOD, 14 };
@@ -304,4 +305,45 @@ extern "C" void LPTIM2_IRQHandler()
 
     LPTIM2->ICR = LPTIM_ICR_ARRMCF;
     __DMB();
+}
+
+unsigned int joystick_get_x()
+{
+    return adc_vals[0];
+}
+
+unsigned int joystick_get_y()
+{
+    return adc_vals[1];
+}
+
+double pwr_get_vdda()
+{
+    // VREFINT is typically 1.216V
+    // Factory calibration gives the 12-bit ADC value for VREFINT with VDDA=3.3V
+    unsigned int calib_vref = *(volatile uint16_t *)0x8fff810;
+
+    /* Now we can calculate the actual VDDA+ supply:
+        (adc_vals[3]/65536)*VDDA = (calib_vref/4096)*3.3V
+        VDDA = (calib_vref * 3.3V * 16 / adc_vals[3]) */   
+    double vdda = (double)calib_vref * 52.8 / (double)adc_vals[3];
+
+    return vdda;
+}
+
+double temp_get_core()
+{
+    /* The temperature reading (12-bit) is calibrated at 30C and 130C */
+    unsigned int calib_30C = *(volatile uint16_t *)0x8fff814;
+    unsigned int calib_130C = *(volatile uint16_t *)0x8fff818;
+
+    /* Scale to 16-bit */
+    calib_30C *= 16;
+    calib_130C *= 16;
+
+    /* Interpolate between 30C and 100C */
+    double temp = ((double)adc_vals[2] - (double)calib_30C) / ((double)(calib_130C - calib_30C));
+    temp = temp * 100.0 + 30.0;
+
+    return temp;
 }
