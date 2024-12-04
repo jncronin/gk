@@ -333,7 +333,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     // set new latency
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->HLCR = (6UL << XSPI_HLCR_TRWR_Pos) |
+    XSPI1->HLCR = (7UL << XSPI_HLCR_TRWR_Pos) |
         (7UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
 
