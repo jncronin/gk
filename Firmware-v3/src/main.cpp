@@ -111,7 +111,15 @@ int main()
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 #endif
 
-    BKPT();
+    // Pull GPIOC0 low to halt on startup
+    const constexpr pin PC0 { GPIOC, 0 };
+    PC0.set_as_input(pin::PullUp);
+    for(int i = 0; i < 10000; i++) __DMB();
+
+    if(PC0.value() == false || CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+    {
+        BKPT();
+    }
 
     system_init_cm7();
     memcpy(kernel_proc.p_mpu, mpu_default, sizeof(mpu_default));
