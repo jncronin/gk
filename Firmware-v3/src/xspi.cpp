@@ -327,14 +327,14 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 #endif
     uint_xspi drive_strength = 0U;       // default
     new_cr0 |= (drive_strength << 12) | (drive_strength << 28);
-    uint_xspi latency = 1U;  // 6 clock @166 MHz max freq
+    uint_xspi latency = 2U;  // 7 clock @200 MHz max freq
     new_cr0 |= (latency << 4) | (latency << 20);
     xspi_ind_write(XSPI1, xspi_mult, 0x800U*xspi_mult, &new_cr0);
 
     // set new latency
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->HLCR = (6UL << XSPI_HLCR_TRWR_Pos) |
-        (6UL << XSPI_HLCR_TACC_Pos) |
+        (7UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
 
     xspi_ind_read(XSPI1, xspi_mult, 0x800U*xspi_mult, &cr0);
