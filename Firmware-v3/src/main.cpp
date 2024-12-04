@@ -58,7 +58,7 @@ int main()
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 
     /* Memory test prior to enabling caches */
-#define GK_MEMTEST 1
+#define GK_MEMTEST 0
 #if GK_MEMTEST
 #if GK_XSPI_DUAL_MEMORY
     const uint32_t test_max = 0x98000000U;
