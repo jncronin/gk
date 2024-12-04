@@ -77,7 +77,9 @@ void init_buttons()
     (void)ADC1->CR;
     delay_ms(1);
 
-    ADC12_COMMON->CCR = //ADC_CCR_TSEN |
+    ADC12_COMMON->CCR = ADC_CCR_TSEN |
+        //ADC_CCR_VBATEN |
+        ADC_CCR_VREFEN |
         (8U << ADC_CCR_PRESC_Pos) |         // /32
         ADC_CCR_DMACFG |                    // DMA circular mode
         (0xfU << ADC_CCR_DELAY_Pos);
@@ -104,11 +106,11 @@ void init_buttons()
     ADC1->CFGR2 = (0U << ADC_CFGR2_OVSS_Pos) |
         (3U << ADC_CFGR2_OVSR_Pos) |
         ADC_CFGR2_ROVSE;
-    ADC1->SQR1 = (3U << ADC_SQR1_L_Pos) |   // 2 conversions
+    ADC1->SQR1 = (3U << ADC_SQR1_L_Pos) |   // 4 conversions
         (4U << ADC_SQR1_SQ1_Pos) |          // JOY_X
         (3U << ADC_SQR1_SQ2_Pos) |          // JOY_Y
-        (3U << ADC_SQR1_SQ2_Pos) |          // JOY_Y
-        (16U << ADC_SQR1_SQ2_Pos);          // temperature
+        (16U << ADC_SQR1_SQ3_Pos) |          // temperature
+        (17U << ADC_SQR1_SQ4_Pos);          // VREFINT
     ADC1->SQR2 = 0;
     ADC1->SQR3 = 0;
     ADC1->SQR4 = 0;
@@ -130,7 +132,7 @@ void init_buttons()
         (smpr << ADC_SMPR2_SMP14_Pos) |
         (smpr << ADC_SMPR2_SMP15_Pos) |
         (1 << ADC_SMPR2_SMP16_Pos) |
-        (smpr << ADC_SMPR2_SMP17_Pos) |
+        (1 << ADC_SMPR2_SMP17_Pos) |
         (smpr << ADC_SMPR2_SMP18_Pos);
 
 
@@ -140,7 +142,7 @@ void init_buttons()
 
     dma->CCR = 0;
     dma->CTR1 = DMA_CTR1_DAP |
-        (3U << DMA_CTR1_DBL_1_Pos) |
+        (0U << DMA_CTR1_DBL_1_Pos) |
         DMA_CTR1_DINC |
         (1U << DMA_CTR1_DDW_LOG2_Pos) |
         (0U << DMA_CTR1_SBL_1_Pos) |
@@ -158,14 +160,36 @@ void init_buttons()
 
     ADC1->CR |= ADC_CR_ADSTART;
 
-    /*
+#if 0
     while(true)
     {
         delay_ms(5);
         SCB_InvalidateDCache_by_Addr(adc_vals, 32);
-        klog("adc: %u %u %u %u\n", adc_vals[0], adc_vals[1], adc_vals[2], adc_vals[3]);        
-    } */
+        klog("adc: %u %u %u %u\n", adc_vals[0], adc_vals[1], adc_vals[2], adc_vals[3]);
 
+        // Some calculations based on the above
+        // VREFINT is typically 1.216V
+        // Factory calibration gives the 12-bit ADC value for VREFINT with VDDA=3.3V
+        unsigned int calib_vref = *(volatile uint16_t *)0x8fff810;
+
+        /* Now we can calculate the actual VDDA+ supply:
+            (adc_vals[3]/65536)*VDDA = (calib_vref/4096)*3.3V
+            VDDA = (calib_vref * 3.3V * 16 / adc_vals[3]) */   
+        double vdda = (double)calib_vref * 52.8 / (double)adc_vals[3];
+
+        /* Similarly, the temperature reading (12-bit) is calibrated at 30C and 130C */
+        unsigned int calib_30C = *(volatile uint16_t *)0x8fff814;
+        unsigned int calib_130C = *(volatile uint16_t *)0x8fff818;
+
+        /* Scale to 16-bit */
+        calib_30C *= 16;
+        calib_130C *= 16;
+        double temp = ((double)adc_vals[2] - (double)calib_30C) / ((double)(calib_130C - calib_30C));
+        temp = temp * 100.0 + 30.0;
+
+        klog("adc: temp: %fC, vdda: %fV\n", temp, vdda);
+    } 
+#endif
 
     // Set up lptim2 for debouncing
     RCC->APB4ENR |= RCC_APB4ENR_LPTIM2EN;
