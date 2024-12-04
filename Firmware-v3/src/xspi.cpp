@@ -225,7 +225,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPIM->CR = 0;  // direct mode
 
     /* XSPI1 - dual-octal HyperBus 2x 64MByte, 200 MHz
-        Run at hclk5/2 = 150 MHz
+        Run at 184 MHz -> 1 clk = 5.43 ns
         Default:
             - initial latency 7 clk
             - fixed latency - 2 times initial
@@ -239,7 +239,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         ;
     XSPI1->LPTR = 0xffffU; // max - still < 1ms @ 200 MHz
     XSPI1->DCR1 = (5UL << XSPI_DCR1_MTYP_Pos) |
-        (2UL << XSPI_DCR1_CSHT_Pos) |
+        (1UL << XSPI_DCR1_CSHT_Pos) |
 #if GK_XSPI_DUAL_MEMORY
         (26UL << XSPI_DCR1_DEVSIZE_Pos)
 #else
