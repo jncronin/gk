@@ -247,7 +247,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 #endif
         ;
     XSPI1->DCR3 = (25UL << XSPI_DCR3_CSBOUND_Pos);      // cannot wrap > 1/2 of each chip (2 dies per chip)
-    XSPI1->DCR4 = 150 - 4 - 1;      // tCSM=1us/150 MHz
+    XSPI1->DCR4 = 184 - 4 - 1;      // tCSM=1us/184 MHz
     XSPI1->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |     // start without wrap
         (7UL << XSPI_DCR2_PRESCALER_Pos);               // start slow for id
     while(XSPI1->SR & XSPI_SR_BUSY);
