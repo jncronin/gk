@@ -124,7 +124,15 @@ class Process
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
         void HandleTiltEvent(int x, int y);
 
-        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z', 0, 0, 0, 0, 0, 0 };
+        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 
+            80, 79, 82, 81,         /* L, R, U, D */
+            224, 226, 225, 'z',     /* A, B, X, Y */
+            0, 0,                   /* Vol Down, Vol Up */
+            0, 0, 0, 0,             /* Tilt L, R, U, D */
+            0, 0,                   /* Menu, Power */
+            224,                    /* Joystick click */
+            80, 79, 82, 81,         /* Joystick (as digital input) L, R, U, D */
+        };
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;

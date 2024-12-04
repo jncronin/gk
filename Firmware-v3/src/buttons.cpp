@@ -3,6 +3,7 @@
 #include "supervisor.h"
 #include "debounce.h"
 #include "pwr.h"
+#include "buttons.h"
 #include "_gk_scancodes.h"
 
 constexpr const pin BTN_MENU { GPIOD, 14 };
@@ -286,6 +287,64 @@ template<int tick_period_ms,
     }
 }
 
+/* Handle hysteresis for the joystick being interpreted as a digital stick */
+class JoystickAxis
+{
+    private:
+        unsigned int (* _sample_func)();
+        Process::GamepadKey _high_key, _low_key;
+        bool high_signalled = false;
+        bool low_signalled = false;
+        const unsigned int threshold = 1000;    // from extremes of range
+        const unsigned int hysteresis = 1000;   // from threshold
+
+        // i.e.  0 ... threshold ... threshold+hysteresis ... 32768 ... 65535-threshold-hysteresis ... 65535-threshold ... 65535 
+        //         low_key      in hysteresis             neutral  neutral                        in hysteresis       high key
+    public:
+        JoystickAxis(unsigned int (* sample_func)(), Process::GamepadKey high_key, Process::GamepadKey low_key) :
+            _sample_func(sample_func), _high_key(high_key), _low_key(low_key) {}
+        
+        void Tick()
+        {
+            auto val = _sample_func();
+            if(high_signalled)
+            {
+                if(val < (65535 - threshold - hysteresis))
+                {
+                    high_signalled = false;
+                    recv_proc().HandleGamepadEvent(_high_key, false);
+                }
+            }
+            else
+            {
+                if(val > (65535 - threshold))
+                {
+                    high_signalled = true;
+                    recv_proc().HandleGamepadEvent(_high_key, true);
+                }
+            }
+            if(low_signalled)
+            {
+                if(val > (threshold + hysteresis))
+                {
+                    low_signalled = false;
+                    recv_proc().HandleGamepadEvent(_low_key, false);
+                }
+            }
+            else
+            {
+                if(val < threshold)
+                {
+                    low_signalled = true;
+                    recv_proc().HandleGamepadEvent(_low_key, true);
+                }
+            }
+        }
+};
+
+static JoystickAxis ja_x(joystick_get_x, (Process::GamepadKey)GK_KEYJOYDIGIRIGHT, (Process::GamepadKey)GK_KEYJOYDIGILEFT);
+static JoystickAxis ja_y(joystick_get_y, (Process::GamepadKey)GK_KEYJOYDIGIUP, (Process::GamepadKey)GK_KEYJOYDIGIDOWN);
+
 extern "C" void LPTIM2_IRQHandler()
 {
     handle_debounce_event(db_MENU);
@@ -300,6 +359,9 @@ extern "C" void LPTIM2_IRQHandler()
     handle_debounce_event(db_X);
     handle_debounce_event(db_Y);
     handle_debounce_event(db_JOY);
+
+    ja_x.Tick();
+    ja_y.Tick();
 
     longpress_count++;
 

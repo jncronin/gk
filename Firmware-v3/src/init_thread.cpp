@@ -99,6 +99,11 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::Down] = 258;    // PREV
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::A] = 40;        // RETURN
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::B] = 41;        // ESC
+    pt.keymap.gamepad_to_scancode[GK_KEYJOYDIGILEFT] = pt.keymap.gamepad_to_scancode[GK_KEYLEFT];
+    pt.keymap.gamepad_to_scancode[GK_KEYJOYDIGIRIGHT] = pt.keymap.gamepad_to_scancode[GK_KEYRIGHT];
+    pt.keymap.gamepad_to_scancode[GK_KEYJOYDIGIUP] = pt.keymap.gamepad_to_scancode[GK_KEYUP];
+    pt.keymap.gamepad_to_scancode[GK_KEYJOYDIGIDOWN] = pt.keymap.gamepad_to_scancode[GK_KEYDOWN];
+    pt.keymap.gamepad_to_scancode[GK_KEYJOY] = pt.keymap.gamepad_to_scancode[GK_KEYA];
     pt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM; // try to leave TCM for games
 
     deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
