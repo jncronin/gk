@@ -280,6 +280,16 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 
     /* Set up buffers */
     ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
+
+    /* Limit latency */
+#if GK_AUDIO_LATENCY_LIMIT_MS > 0
+    auto buf_length_ms = (buf_size_bytes / (nbits/8) / 2 * 1000) / freq;
+    auto buf_nlimit = (GK_AUDIO_LATENCY_LIMIT_MS + buf_length_ms - 1) / buf_length_ms;
+    if(buf_nlimit < 2) buf_nlimit = 2;
+    if(buf_nlimit > ac.nbuffers) buf_nlimit = ac.nbuffers;
+
+    ac.nbuffers = buf_nlimit;
+#endif
     ac.buf_size_bytes = buf_size_bytes;
     ac.buf_ndtr = buf_size_bytes * 8 / nbits;
     _clear_buffers(ac);
