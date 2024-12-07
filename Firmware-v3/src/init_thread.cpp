@@ -6,6 +6,7 @@
 #include "sound.h"
 #include "i2c.h"
 #include "usb.h"
+#include "screen.h"
 #include <cstring>
 #include <cmath>
 
@@ -56,6 +57,23 @@ void *init_thread(void *p)
     }
 #endif
 
+#if 0
+    // Video test pattern
+    auto vptr = reinterpret_cast<uint32_t *>(screen_flip());
+    for(int y = 0; y < 480; y++)
+    {
+        auto shift_y = (y / 160) * 8;
+        for(int x = 0; x < 640; x++)
+        {
+            auto shift = shift_y + x / 80;
+            *vptr++ = 1UL << shift;
+        }
+    }
+    screen_flip();
+    while(true);
+
+#endif
+
     // Provision root file system, then allow USB write access to MSC
     fs_provision();
 #if GK_ENABLE_USB
@@ -81,7 +99,7 @@ void *init_thread(void *p)
     //return nullptr;
 
     // gkmenu
-    const char *args[] = { /* "glgears" */ };        // run a test game
+    const char *args[] = { "Sonic the Hedgehog" };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
