@@ -513,6 +513,13 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
         (3U << XSPI_CR_FMODE_Pos);
 
+    // Now set IO compensation cell to use already calculated values
+    // see: https://community.st.com/t5/stm32-mcus-products/stm32h7s7l8h6h-xspi-instability/td-p/749315
+    SBS->CCSWVALR = SBS->CCVALR;
+    (void)SBS->CCSWVALR;
+    SBS->CCCSR |= SBS_CCCSR_XSPI1_COMP_CODESEL |
+        SBS_CCCSR_XSPI2_COMP_CODESEL;
+
     return 0;
 }
 
