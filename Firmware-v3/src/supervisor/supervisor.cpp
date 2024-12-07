@@ -8,6 +8,8 @@
 #include "btnled.h"
 #include "brightness.h"
 #include "sound.h"
+#include "buttons.h"
+#include "pwr.h"
 #include "gk_conf.h"
 #include "syscalls_int.h"
 
@@ -357,6 +359,19 @@ void *supervisor_thread(void *p)
         {
             do_update = true;
             do_volume_update = true;
+        }
+
+        static kernel_time last_temp_report;
+        if(clock_cur() > (last_temp_report + kernel_time::from_ms(1000)))
+        {
+            // dump temp to klog, eventually to screen
+            auto temp = temp_get_core();
+            auto vdd = pwr_get_vdd();
+
+            klog("supervisor: temp: %fC, vdd: %fV, SBS->CCVALR: %x, SBS->CCSWVALR: %x\n",
+                temp, vdd, SBS->CCVALR, SBS->CCSWVALR);
+
+            last_temp_report = clock_cur();
         }
 
         if(has_event)

@@ -379,7 +379,7 @@ unsigned int joystick_get_y()
     return adc_vals[1];
 }
 
-double pwr_get_vdda()
+double pwr_get_vdd()
 {
     // VREFINT is typically 1.216V
     // Factory calibration gives the 12-bit ADC value for VREFINT with VDDA=3.3V

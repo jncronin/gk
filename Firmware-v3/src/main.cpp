@@ -192,6 +192,10 @@ int main()
 
     //BKPT();
 
+    // Recheck IO compensation cell calibration
+    SBS->CCSWVALR = SBS->CCVALR;
+    (void)SBS->CCSWVALR;
+
     s().StartForCurrentCore();
     while(true);
 
