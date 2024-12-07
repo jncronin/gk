@@ -13,6 +13,7 @@
 #include "ctp.h"
 #include "buddy.h"
 #include "profile.h"
+#include "cleanup.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -179,6 +180,10 @@ int main()
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, kernel_proc, CPUAffinity::PreferM4, init_stack));
 
     Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
+
+    Schedule(Thread::Create("cleanup", cleanup_thread, (void*)0, true, GK_PRIORITY_VHIGH, kernel_proc,
+        CPUAffinity::M7Only,
+        memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "cleanup stack")));
 
     // Prepare systick
     SysTick->CTRL = 0;
