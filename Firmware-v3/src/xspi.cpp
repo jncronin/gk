@@ -269,7 +269,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         XSPI_WPCCR_ADSIZE |
         XSPI_WPCCR_DDTR | XSPI_WPCCR_ADDTR;
     while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->HLCR = (5UL << XSPI_HLCR_TRWR_Pos) |
+    XSPI1->HLCR = (7UL << XSPI_HLCR_TRWR_Pos) |
         (7UL << XSPI_HLCR_TACC_Pos) |
         XSPI_HLCR_LM;
     /*while(XSPI1->SR & XSPI_SR_BUSY);
