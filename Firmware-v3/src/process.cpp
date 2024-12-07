@@ -2,6 +2,8 @@
 #include <sys/types.h>
 #include <vector>
 #include "osmutex.h"
+#include "tilt.h"
+#include "screen.h"
 
 ProcessList proc_list;
 extern Process p_supervisor;
@@ -158,8 +160,7 @@ void ProcessList::DeleteProcess(pid_t pid, int retval)
     auto p = cpval.p;
     if(p == focus_process && p->ppid && pvals[p->ppid].is_alive)
     {
-        focus_process = pvals[p->ppid].p;
-        p_supervisor.events.Push({.type = Event::CaptionChange });
+        SetFocusProcess(pvals[p->ppid].p);
     }
 
     for(const auto &wait_t : cpval.waiting_threads)
@@ -231,4 +232,41 @@ bool ProcessList::IsChildOf(pid_t child, pid_t parent)
         
         child = pvals[child].p->ppid;
     }
+}
+
+bool SetFocusProcess(Process *proc)
+{
+    focus_process = proc;
+
+    if(proc->tilt_is_keyboard || proc->tilt_is_joystick)
+    {
+        tilt_enable(true);
+    }
+    else
+    {
+        tilt_enable(false);
+    }
+
+    screen_hardware_scale scl_x, scl_y;
+
+    if(proc->screen_w <= 160)
+        scl_x = x4;
+    else if(proc->screen_w <= 320)
+        scl_x = x2;
+    else
+        scl_x = x1;
+
+    if(proc->screen_h <= 120)
+        scl_y = x4;
+    else if(proc->screen_h <= 240)
+        scl_y = x2;
+    else
+        scl_y = x1;
+
+    /* set screen mode */
+    screen_set_hardware_scale(scl_x, scl_y);
+
+    p_supervisor.events.Push( { .type = Event::CaptionChange });
+
+    return true;
 }

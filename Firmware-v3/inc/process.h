@@ -194,4 +194,6 @@ class ProcessList
 
 extern ProcessList proc_list;
 
+bool SetFocusProcess(Process *proc);
+
 #endif

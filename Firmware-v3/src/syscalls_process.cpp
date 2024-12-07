@@ -285,24 +285,7 @@ void *proccreate_thread(void *ptr)
     // Set as focus if possible
     if(pcinfo->with_focus)
     {
-        focus_process = proc;
-
-        if(proc->tilt_is_keyboard || proc->tilt_is_joystick)
-        {
-            tilt_enable(true);
-        }
-        else
-        {
-            tilt_enable(false);
-        }
-
-        /* set screen mode */
-        if(pcinfo->screen_w == 320 && pcinfo->screen_h == 240)
-        {
-            screen_set_hardware_scale(x2, x2);
-        }
-
-        p_supervisor.events.Push( { .type = Event::CaptionChange });
+        SetFocusProcess(proc);
     }
 
 #if GK_MEMBLK_STATS
