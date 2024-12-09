@@ -7,11 +7,12 @@ void *pwr_monitor_thread(void *p)
 {
     const unsigned int dev_id = 0x78U >> 1;
 
-    uint8_t buck12_setup = 4U;            // 1.125 MHz switching frequency for buck 1/2
+    // Set bucks to burst mode
+    uint8_t buck12_setup = 0x24U;            // 1.125 MHz switching frequency for buck 1/2
     i2c_register_write(dev_id, (uint8_t)0x03, &buck12_setup, 1);
     i2c_register_write(dev_id, (uint8_t)0x04, &buck12_setup, 1);
 
-    uint8_t buck34_setup = 8U;            // 2.25 MHz switching frequency for buck 3/4, 50% out of phase with 1/2
+    uint8_t buck34_setup = 0x2cU;            // 1.125 MHz switching frequency for buck 3/4, 50% out of phase with 1/2
     i2c_register_write(dev_id, (uint8_t)0x01, &buck34_setup, 1);
     i2c_register_write(dev_id, (uint8_t)0x02, &buck34_setup, 1);
 
