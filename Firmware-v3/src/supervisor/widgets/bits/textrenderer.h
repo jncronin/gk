@@ -1,9 +1,5 @@
-#include "widget.h"
-#include "font_large.h"
-#include "font_small.h"
-#include "screen.h"
-
-void TextRenderer::RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
+template <unsigned int x_scale = 1, unsigned int y_scale = 1>
+void RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
             const std::string &text,
             color_t fg_color, color_t bg_color,
             HOffset hoffset, VOffset voffset,
@@ -80,7 +76,7 @@ void TextRenderer::RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
                 char f = fnt[fy * fs + fx / 8];
                 if(f & (1UL << fx % 8))
                 {
-                    fb[cx + cy * fb_stride] = _fg_color;
+                    fb[cx / x_scale + cy / y_scale * fb_stride / x_scale] = _fg_color;
                 }
             }
         }

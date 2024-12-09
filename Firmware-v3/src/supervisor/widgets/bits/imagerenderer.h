@@ -1,7 +1,5 @@
-#include "widget.h"
-#include "screen.h"
-
-void ImageRenderer::RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
+template<unsigned int x_scale = 1, unsigned int y_scale = 1>
+void RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
             coord_t img_w, coord_t img_h,
             HOffset hoffset, VOffset voffset,
             const color_t *img, color_t bg_color, alpha_t alpha)
@@ -41,7 +39,7 @@ void ImageRenderer::RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
                 continue;
 
             auto cv = MultiplyAlpha(img[cx + cy * img_w], alpha);
-            fb[actx + acty * fb_stride] = DoBlend(cv, bg_color);
+            fb[actx / x_scale + acty / y_scale * fb_stride / x_scale] = DoBlend(cv, bg_color);
         }
     }
 }

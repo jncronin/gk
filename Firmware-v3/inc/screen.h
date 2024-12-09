@@ -17,5 +17,6 @@ int screen_get_brightness();
 enum screen_hardware_scale { x1, x2, x4 };
 int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
     screen_hardware_scale scale_vert);
+screen_hardware_scale screen_get_hardware_scale_horiz();
 
 #endif

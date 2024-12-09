@@ -91,7 +91,9 @@ void *screen_flip_overlay(void **old_buf, bool visible, int alpha)
     scr_cbuf_overlay++;
     int wbuf = scr_cbuf_overlay & 0x1;
     int rbuf = wbuf ? 0 : 1;
+
     LTDC_Layer2->CFBAR = (uint32_t)(uintptr_t)scr_bufs_overlay[rbuf];
+    
     if(visible)
     {
         LTDC_Layer2->CR |= LTDC_LxCR_LEN;
@@ -308,7 +310,11 @@ static void screen_set_timings()
     LTDC_Layer1->WHPCR =
         ((((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL) << LTDC_LxWHPCR_WHSTPOS_Pos) |
         ((((LTDC->AWCR & LTDC_AWCR_AAW_Msk) >> LTDC_AWCR_AAW_Pos)) << LTDC_LxWHPCR_WHSPPOS_Pos);
-    
+
+    LTDC_Layer2->WHPCR =
+        ((((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL) << LTDC_LxWHPCR_WHSTPOS_Pos) |
+        ((((LTDC->AWCR & LTDC_AWCR_AAW_Msk) >> LTDC_AWCR_AAW_Pos)) << LTDC_LxWHPCR_WHSPPOS_Pos);
+
     LTDC->SRCR = LTDC_SRCR_VBR;
 }
 
@@ -700,6 +706,11 @@ void screen_set_brightness(int pct)
 int screen_get_brightness()
 {
     return scr_brightness;
+}
+
+screen_hardware_scale screen_get_hardware_scale_horiz()
+{
+    return _sc_h;
 }
 
 int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
