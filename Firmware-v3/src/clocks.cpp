@@ -152,7 +152,7 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
         (0U << RCC_CCIPR1_USBPHYCSEL_Pos) |             // USBPHY from HSE
         (0xaU << RCC_CCIPR1_USBREFCKSEL_Pos) |          // USBPHY is 24 MHz
         (0U << RCC_CCIPR1_XSPI2SEL_Pos) |               // XSPI2 from hclk5=300MHz
-        (1U << RCC_CCIPR1_XSPI1SEL_Pos) |               // XSPI1 from PLL2S=384MHz
+        (0U << RCC_CCIPR1_XSPI1SEL_Pos) |               // XSPI1 from hclk5=300MHz
         (1U << RCC_CCIPR1_SDMMC12SEL_Pos);              // SDMMC from PLL2T=192MHz
     RCC->CCIPR2 = (1U << RCC_CCIPR2_LPTIM1SEL_Pos) |    // LPTIM1 = PLL2P=32MHz
         (2U << RCC_CCIPR2_I2C1_I3C1SEL_Pos) |           // I2C1 = HSI64
