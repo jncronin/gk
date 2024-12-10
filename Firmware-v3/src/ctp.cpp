@@ -181,7 +181,9 @@ static int ctp_read(ctp_pts *pts)
             pt *curpt = (pt *)&data[0x10 + 0x08 * i];
             pts->pts[i] = *curpt;
 
+#if GK_DEBUG_TOUCH
             klog("ctp: (%u), %u,%u, %x\n",  i,curpt->x, curpt->y, data[0xe]);
+#endif
         }
         pts->valid = ntouch;
 
@@ -189,16 +191,20 @@ static int ctp_read(ctp_pts *pts)
         uint8_t dack = 0;
         i2c_register_write(ctp_addr, (uint16_t)0x4e81, &dack, 1);
 
+#if GK_DEBUG_TOUCH
         if(ntouch == 0)
         {
             klog("ctp: release %x\n", data[0xe]);
         }
+#endif
 
         return (int)ntouch;
     }
     else
     {
+#if GK_DEBUG_TOUCH
         klog("ctp: release2 %x\n", data[0xe]);
+#endif
         return 0;
     }
 } 
