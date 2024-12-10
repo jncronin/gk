@@ -53,7 +53,7 @@ void Process::HandleTouchEvent(unsigned int x, unsigned int y, TouchEventType ty
                 break;
             case TouchEventType::Release:
                 events.Push({ Event::event_type_t::MouseUp,
-                    .mouse_data = { .x = (int16_t)x, .y = (int16_t)y, .is_rel = false, .buttons = 0 }});
+                    .mouse_data = { .x = (int16_t)x, .y = (int16_t)y, .is_rel = false, .buttons = 1 }});
                 break;
         }
     }
