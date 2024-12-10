@@ -16,7 +16,7 @@ void RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
         {
             if(cy < 0 || cy >= fb_h || cx < 0 || cx >= fb_w)
                 continue;
-            fb[cx + cy * fb_stride] = _border_color;
+            fb[cx / x_scale + cy / y_scale * fb_stride / x_scale] = _border_color;
         }
     }
 
