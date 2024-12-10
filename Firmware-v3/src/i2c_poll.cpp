@@ -25,7 +25,7 @@ bool i2c_init = false;
 
 static int i2c_dotfer();
 
-INTFLASH_FUNCTION void i2c_reset()
+INTFLASH_FUNCTION void i2c_reset(bool irqs)
 {
     RCC->APB1ENR1 &= ~RCC_APB1ENR1_I2C2EN;
     (void)RCC->APB1ENR1;
@@ -59,7 +59,17 @@ INTFLASH_FUNCTION void i2c_reset()
         (0x1U << I2C_TIMINGR_SDADEL_Pos) |
         (0x3U << I2C_TIMINGR_SCLDEL_Pos);
 
-    i2c->CR1 = I2C_CR1_PE;
+    if(irqs)
+    {
+        i2c->CR1 = I2C_CR1_PE | I2C_CR1_TXIE | I2C_CR1_RXIE | I2C_CR1_ADDRIE |
+            I2C_CR1_NACKIE | I2C_CR1_STOPIE | I2C_CR1_TCIE | I2C_CR1_ERRIE;
+        NVIC_EnableIRQ(I2C2_ER_IRQn);
+        NVIC_EnableIRQ(I2C2_EV_IRQn);
+    }
+    else
+    {
+        i2c->CR1 = I2C_CR1_PE;
+    }
 
     for(int i = 0; i < 50000; i++) __DMB();
 }
@@ -230,7 +240,7 @@ INTFLASH_FUNCTION static int i2c_dotfer()
     if(!i2c_init)
     {
         SEGGER_RTT_printf(0, msg_i2c_init_starting);
-        i2c_reset();
+        i2c_reset(false);
         SEGGER_RTT_printf(0, msg_i2c_reset_complete);
         i2c_init = true;
     }
