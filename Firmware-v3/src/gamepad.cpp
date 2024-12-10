@@ -16,6 +16,49 @@ static inline short int get_axis_value(unsigned int btns, Process::GamepadKey po
         return INT16_MIN;
 }
 
+void Process::HandleJoystickEvent(unsigned int x, unsigned int y)
+{
+    if(joystick_is_joystick)
+    {
+        if(x != joy_last_x)
+        {
+            events.Push({ Event::event_type_t::AxisMotion, .axis_data = { 2, (short int)x }});
+        }
+        if(y != joy_last_y)
+        {
+            events.Push({ Event::event_type_t::AxisMotion, .axis_data = { 3, (short int)y }});
+        }
+    }
+    joy_last_x = x;
+    joy_last_y = y;
+}
+
+void Process::HandleTouchEvent(unsigned int x, unsigned int y, TouchEventType type)
+{
+    // scale to screen size
+    x = (x * screen_w) / 640;
+    y = (y * screen_h) / 480;
+
+    if(touch_is_mouse)
+    {
+        switch(type)
+        {
+            case TouchEventType::Press:
+                events.Push({ Event::event_type_t::MouseDown,
+                    .mouse_data = { .x = (int16_t)x, .y = (int16_t)y, .is_rel = false, .buttons = 1 }});
+                break;
+            case TouchEventType::Drag:
+                events.Push({ Event::event_type_t::MouseMove,
+                    .mouse_data = { .x = (int16_t)x, .y = (int16_t)y, .is_rel = false, .buttons = 1 }});
+                break;
+            case TouchEventType::Release:
+                events.Push({ Event::event_type_t::MouseUp,
+                    .mouse_data = { .x = (int16_t)x, .y = (int16_t)y, .is_rel = false, .buttons = 0 }});
+                break;
+        }
+    }
+}
+
 void Process::HandleTiltEvent(int x, int y)
 {
     if(tilt_is_joystick)

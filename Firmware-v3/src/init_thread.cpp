@@ -111,6 +111,7 @@ void *init_thread(void *p)
     pt.keymap.gamepad_is_keyboard = true;
     pt.keymap.gamepad_is_mouse = true;
     pt.keymap.gamepad_is_joystick = false;
+    pt.keymap.touch_is_mouse = true;
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::Left] = 259;    // NEXT
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::Right] = 258;   // PREV
     pt.keymap.gamepad_to_scancode[Process::GamepadKey::Up] = 259;      // NEXT

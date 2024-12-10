@@ -267,6 +267,7 @@ bool SetFocusProcess(Process *proc)
     screen_set_hardware_scale(scl_x, scl_y);
 
     p_supervisor.events.Push( { .type = Event::CaptionChange });
+    proc->events.Push( { .type = Event::RefreshScreen });
 
     return true;
 }

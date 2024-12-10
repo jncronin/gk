@@ -6,10 +6,20 @@
 #include "ctp.h"
 #include "osmutex.h"
 #include "gk_conf.h"
+#include <limits>
 
 static const constexpr pin CTP_INT { GPIOF, 2 };
 static const constexpr pin CTP_NRESET { GPIOF, 3 };
 const uint8_t ctp_addr = 0x5d;
+
+static const constexpr unsigned int ctp_npoints_max = 5;
+
+struct pt { uint16_t x; uint16_t y; };
+struct ctp_pts
+{
+    pt pts[ctp_npoints_max];
+    unsigned int valid;
+};
 
 [[maybe_unused]] static void *ctp_thread(void *);
 
@@ -152,34 +162,53 @@ static bool ctp_init()
     return true;
 }
 
-static bool ctp_read()
+static int ctp_read(ctp_pts *pts)
 {
     uint8_t data[0x36];
-    i2c_register_read(ctp_addr, (uint16_t)0x4081, data, 0x36);
+    if(i2c_register_read(ctp_addr, (uint16_t)0x4081, data, 0x36) < 0)
+        return -1;
+
+    pts->valid = 0U;
 
     if(data[0xe] & 0x80U)
     {
         // found data
 
-        // TODO: process data
+        // process data
         auto ntouch = data[0xe] & 0xfU;
         for(unsigned int i = 0; i < ntouch; i++)
         {
-            struct pt { uint16_t x; uint16_t y; };
             pt *curpt = (pt *)&data[0x10 + 0x08 * i];
-            klog("ctp: (%u), %u,%u\n",  i,curpt->x, curpt->y);
+            pts->pts[i] = *curpt;
+
+            klog("ctp: (%u), %u,%u, %x\n",  i,curpt->x, curpt->y, data[0xe]);
         }
+        pts->valid = ntouch;
 
         // acknowledge
         uint8_t dack = 0;
         i2c_register_write(ctp_addr, (uint16_t)0x4e81, &dack, 1);
+
+        if(ntouch == 0)
+        {
+            klog("ctp: release %x\n", data[0xe]);
+        }
+
+        return (int)ntouch;
     }
-    return true;
+    else
+    {
+        klog("ctp: release2 %x\n", data[0xe]);
+        return 0;
+    }
 } 
 
 void *ctp_thread(void *_p)
 {
     bool is_init = false;
+
+    pt cur_pt = { 0 };
+    bool pressed = false;
 
     while(true)
     {
@@ -190,7 +219,83 @@ void *ctp_thread(void *_p)
         else
         {
             ctp_sem.Wait();
-            is_init = ctp_read();
+
+            ctp_pts new_pts = { 0 };
+
+            auto cret = ctp_read(&new_pts);
+            if(cret < 0)
+            {
+                is_init = false;
+            }
+            else
+            {
+                // process points
+
+                // currently, only deal with single touch
+                //  LVGL does handle multi-touch gestures but they are passed as separate events
+
+                if(!pressed)
+                {
+                    if(new_pts.valid > 0)
+                    {
+                        // just use the first
+                        cur_pt = new_pts.pts[0];
+                        pressed = true;
+
+                        focus_process->HandleTouchEvent(cur_pt.x, cur_pt.y, Process::Press);
+                    }
+                }
+                else
+                {
+                    if(new_pts.valid == 0)
+                    {
+                        // released
+                        pressed = false;
+
+                        focus_process->HandleTouchEvent(cur_pt.x, cur_pt.y, Process::Release);
+                    }
+                    else if(new_pts.valid == 1)
+                    {
+                        // drag if moved
+                        if(cur_pt.x != new_pts.pts[0].x || cur_pt.y != new_pts.pts[0].y)
+                        {
+                            cur_pt = new_pts.pts[0];
+
+                            focus_process->HandleTouchEvent(cur_pt.x, cur_pt.y, Process::Drag);
+                        }
+                    }
+                    else
+                    {
+                        // drag but we need to decide which of the new points to interpret
+                        //  just choose the closest
+                        unsigned int cur_best = -1;
+                        unsigned int best_dist = std::numeric_limits<unsigned int>::max();
+                        for(unsigned int i = 0; i < new_pts.valid; i++)
+                        {
+                            unsigned int cur_x = cur_pt.x;
+                            unsigned int cur_y = cur_pt.y;
+                            unsigned int new_x = new_pts.pts[i].x;
+                            unsigned int new_y = new_pts.pts[i].y;
+                            unsigned int cur_x_dist = (cur_x > new_x) ? (cur_x - new_x) : (new_x - cur_x);
+                            unsigned int cur_y_dist = (cur_y > new_y) ? (cur_y - new_y) : (new_y - cur_y);
+                            unsigned int cur_dist = cur_x_dist * cur_x_dist + cur_y_dist * cur_y_dist;
+
+                            if(cur_dist < best_dist)
+                            {
+                                best_dist = cur_dist;
+                                cur_best = i;
+                            }
+                        }
+
+                        if(cur_pt.x != new_pts.pts[cur_best].x || cur_pt.y != new_pts.pts[cur_best].y)
+                        {
+                            cur_pt = new_pts.pts[cur_best];
+
+                            focus_process->HandleTouchEvent(cur_pt.x, cur_pt.y, Process::Drag);
+                        }
+                    }
+                }
+            }
         }
     }
 }

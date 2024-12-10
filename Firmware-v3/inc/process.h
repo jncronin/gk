@@ -103,6 +103,12 @@ class Process
         bool tilt_is_keyboard = true;
         char tilt_keyboard_state = 0;
 
+        bool joystick_is_joystick = false;
+        unsigned int joy_last_x = 32768;
+        unsigned int joy_last_y = 32768;
+
+        bool touch_is_mouse = false;
+
         enum GamepadKey {
             Left = GK_KEYLEFT,
             Right = GK_KEYRIGHT,
@@ -123,6 +129,9 @@ class Process
         unsigned char mouse_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
         void HandleTiltEvent(int x, int y);
+        void HandleJoystickEvent(unsigned int x, unsigned int y);
+        enum TouchEventType { Press, Release, Drag };
+        void HandleTouchEvent(unsigned int x, unsigned int y, TouchEventType type);
 
         unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 
             80, 79, 82, 81,         /* L, R, U, D */

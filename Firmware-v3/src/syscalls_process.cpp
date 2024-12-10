@@ -279,6 +279,8 @@ void *proccreate_thread(void *ptr)
     proc->gamepad_is_mouse = pcinfo->keymap.gamepad_is_mouse != 0;
     proc->tilt_is_keyboard = pcinfo->keymap.tilt_is_keyboard != 0;
     proc->tilt_is_joystick = pcinfo->keymap.tilt_is_joystick != 0;
+    proc->joystick_is_joystick = pcinfo->keymap.joystick_is_joystick != 0;
+    proc->touch_is_mouse = pcinfo->keymap.touch_is_mouse != 0;
     memcpy(proc->gamepad_to_scancode, pcinfo->keymap.gamepad_to_scancode,
         GK_NUMKEYS * sizeof(unsigned short int));
 

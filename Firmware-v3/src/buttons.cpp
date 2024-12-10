@@ -304,7 +304,7 @@ class JoystickAxis
         JoystickAxis(unsigned int (* sample_func)(), Process::GamepadKey high_key, Process::GamepadKey low_key) :
             _sample_func(sample_func), _high_key(high_key), _low_key(low_key) {}
         
-        void Tick()
+        unsigned int Tick()
         {
             auto val = _sample_func();
             if(high_signalled)
@@ -339,6 +339,7 @@ class JoystickAxis
                     recv_proc().HandleGamepadEvent(_low_key, true);
                 }
             }
+            return val;
         }
 };
 
@@ -360,8 +361,9 @@ extern "C" void LPTIM2_IRQHandler()
     handle_debounce_event(db_Y);
     handle_debounce_event(db_JOY);
 
-    ja_x.Tick();
-    ja_y.Tick();
+    auto jx = ja_x.Tick();
+    auto jy = ja_y.Tick();
+    focus_process->HandleJoystickEvent(jx, jy);
 
     longpress_count++;
 
