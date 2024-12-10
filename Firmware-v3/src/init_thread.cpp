@@ -99,14 +99,14 @@ void *init_thread(void *p)
     //return nullptr;
 
     // gkmenu
-    const char *args[] = { "Sonic the Hedgehog" };        // run a test game
+    const char *args[] = { /* "Sonic the Hedgehog" */ };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
     pt.stack_size = 64 * 1024;
     pt.heap_size = 4*1024*1024;
-    pt.screen_w = 640;
-    pt.screen_h = 480;
+    pt.screen_w = 320;
+    pt.screen_h = 240;
     pt.pixel_format = GK_PIXELFORMAT_ARGB8888;
     pt.keymap.gamepad_is_keyboard = true;
     pt.keymap.gamepad_is_mouse = true;
