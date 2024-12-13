@@ -15,6 +15,7 @@
 #include "profile.h"
 #include "cleanup.h"
 #include "pwr.h"
+#include "btnled.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -169,6 +170,7 @@ int main()
     init_ext4();
     init_screen();
     init_buttons();
+    init_btnled();
     init_ctp();
 
 #if GK_ENABLE_PROFILE

@@ -8,9 +8,9 @@ double btnled_brightness = 0.5;
 
 static constexpr pin btnled_pins[] =
 {
-    { GPIOE, 9, 1 },    // TIM1_CH3
+    { GPIOE, 9, 1 },    // TIM1_CH1
     { GPIOC, 3, 1 },    // TIM1_CH2
-    { GPIOE, 13, 1 }     // TIM1_CH1
+    { GPIOE, 13, 1 }     // TIM1_CH3
 };
 
 void init_btnled()
@@ -60,7 +60,7 @@ static inline unsigned int pwm_non_linear(unsigned int input)
 
 void btnled_setcolor(uint32_t rgb)
 {
-    TIM1->CCR3 = pwm_non_linear((rgb >> 16) & 0xffUL);
+    TIM1->CCR1 = pwm_non_linear((rgb >> 16) & 0xffUL);
     TIM1->CCR2 = pwm_non_linear((rgb >> 8) & 0xffUL);
-    TIM1->CCR1 = pwm_non_linear(rgb & 0xffUL);
+    TIM1->CCR3 = pwm_non_linear(rgb & 0xffUL);
 }
