@@ -77,6 +77,7 @@ class Process
         void UpdateMPURegionForThread(Thread *t);
         int AddMPURegion(const mmap_region &r);
         int AddMPURegion(const mpu_saved_state &r);
+        int DeleteMPURegion(const mpu_saved_state &r);
         int DeleteMPURegion(const mmap_region &r);
         int DeleteMPURegion(const MemRegion &r);
 

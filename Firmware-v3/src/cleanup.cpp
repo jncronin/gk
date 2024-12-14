@@ -67,10 +67,6 @@ void cleanup(Thread *t)
     unlock_all_thread_sync_primitives(t->locked_mutexes, t);
     unlock_all_thread_sync_primitives(t->locked_rwlocks, t);
     
-    /* Clean up thread resources */
-    memblk_deallocate(t->mr_tls);
-    memblk_deallocate(t->stack);
-
     /* Remove from schedulers */
 #if GK_DUAL_CORE_AMP
     scheds[0].Unschedule(t);
@@ -78,6 +74,15 @@ void cleanup(Thread *t)
 #else
     sched.Unschedule(t);
 #endif
+
+    /* Clean up thread resources */
+    t->p.DeleteMPURegion(t->stack);
+    t->p.DeleteMPURegion(t->mr_tls);
+
+    t->p.UpdateMPURegionsForThreads();
+
+    memblk_deallocate(t->mr_tls);
+    memblk_deallocate(t->stack);
 
     delete t;
 

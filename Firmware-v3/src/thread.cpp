@@ -91,10 +91,6 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
 
 void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
 {
-    while(true)
-    {
-        Yield();
-    }
     auto t = GetCurrentThreadForCore();
     t->Cleanup(tretval, false);
     while(true)

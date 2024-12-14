@@ -56,6 +56,45 @@ int Process::AddMPURegion(const mmap_region &r)
     return AddMPURegion(r.to_mpu(0));
 }
 
+int Process::DeleteMPURegion(const mmap_region &r)
+{
+    return DeleteMPURegion(r.to_mpu(0)); 
+}
+
+int Process::DeleteMPURegion(const MemRegion &r)
+{
+    if(!r.valid)
+        return -1;
+    mmap_region mr { .mr = r };
+    return DeleteMPURegion(mr.to_mpu(0));
+}
+
+int Process::DeleteMPURegion(const mpu_saved_state &r)
+{
+    int ret = -1;
+    if(!r.is_enabled())
+        return -1;
+
+    for(unsigned int i = 0; i < 16; i++)
+    {
+        // start at whatever is pointed to in mpu_saved_state
+        auto act_r = (i + r.slot()) % 16;
+
+        const auto &cmr = p_mpu[act_r];
+
+        if(cmr.is_enabled() &&
+            cmr.base_addr() == r.base_addr() &&
+            cmr.length() == r.length())
+        {
+            // this one
+            p_mpu[act_r] = MPUGenerateNonValid(act_r);
+            ret = (int)act_r;
+        }
+    }
+
+    return ret;
+}
+
 void Process::UpdateMPURegionsForThreads()
 {
     CriticalGuard cg(sl);
