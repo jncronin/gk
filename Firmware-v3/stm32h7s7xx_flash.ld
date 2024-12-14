@@ -377,6 +377,11 @@ SECTIONS
     QUAD(0);
     _tls_pointers = .;
     LONG(0);
+    adc_vals = .;
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    LONG(0);
 
     *(.rtcregs)
     *(.rtcregs*)
