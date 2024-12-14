@@ -32,10 +32,10 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
+  Edit.SysVar (VAR_HSS_SPEED, FREQ_200_HZ);
   Edit.Preference (PREF_TIMESTAMP_FORMAT, TIMESTAMP_FORMAT_INST_CNT);
   Edit.SysVar (VAR_TRACE_CORE_CLOCK, 600000000);
   Edit.SysVar (VAR_RTT_ENABLED, 1);
-  Edit.SysVar (VAR_HSS_SPEED, FREQ_2_KHZ);
   File.Open ("C:/Users/jncro/source/repos/gk/build/gkv3.elf");
   Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M7F.svd");
   Project.AddSvdFile ("$(InstallDir)/Config/Peripherals/ARMv7M.svd");
