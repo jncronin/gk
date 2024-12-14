@@ -42,7 +42,14 @@ static Debounce<5, 20, 20, 1000, Process::GamepadKey>
 
 static int longpress_count = 0;
 
-static __attribute__((aligned(32))) volatile uint16_t adc_vals[16];
+//static __attribute__((aligned(32))) volatile uint16_t adc_vals[16];
+
+/* We put the adc readings in backup registers not because we really need them backed up
+    but so we can take advantage of the pre-existing MPU region that sets this region
+    as DEV_S memory (needed because we DMA to it and we don't want to invalidate the cache
+    every read) and so that (eventually) userspace can get direct read access to the
+    joystick position. */
+extern uint32_t adc_vals[4];
 
 void init_buttons()
 {
@@ -146,17 +153,17 @@ void init_buttons()
     dma->CTR1 = DMA_CTR1_DAP |
         (0U << DMA_CTR1_DBL_1_Pos) |
         DMA_CTR1_DINC |
-        (1U << DMA_CTR1_DDW_LOG2_Pos) |
+        (2U << DMA_CTR1_DDW_LOG2_Pos) |
         (0U << DMA_CTR1_SBL_1_Pos) |
         (1U << DMA_CTR1_SDW_LOG2_Pos);
     dma->CTR2 = (0U << DMA_CTR2_REQSEL_Pos);
     dma->CTR3 = 0;
     dma->CBR1 = 8U |
         DMA_CBR1_BRDDEC |
-        (1U << DMA_CBR1_BRC_Pos);
+        (0U << DMA_CBR1_BRC_Pos);
     dma->CSAR = (uint32_t)(uintptr_t)&ADC1->DR;
     dma->CDAR = (uint32_t)(uintptr_t)adc_vals;
-    dma->CBR2 = (8U << DMA_CBR2_BRDAO_Pos);     // -8 every block
+    dma->CBR2 = (16U << DMA_CBR2_BRDAO_Pos);     // -16 every block
     dma->CLLR = 4U; // anything not zero
     dma->CCR |= DMA_CCR_EN;
 
