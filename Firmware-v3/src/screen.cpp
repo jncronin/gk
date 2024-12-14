@@ -329,9 +329,9 @@ void init_screen()
     LTDC_CLK_SELECT.set_as_output();
 
     /* B7 seems to be not connected - set G7 and R7 as NC to compensate */
-    const pin R7 { GPIOG, 0 }; R7.clear(); R7.set_as_output();
+    /*const pin R7 { GPIOG, 0 }; R7.clear(); R7.set_as_output();
     const pin B7 { GPIOA, 2 }; B7.clear(); B7.set_as_output();
-    const pin G7 { GPIOB, 10 }; G7.clear(); G7.set_as_output();
+    const pin G7 { GPIOB, 10 }; G7.clear(); G7.set_as_output();*/
 
     // Initial set-up is through SPI5, kernel clock 240 MHz off PLL3Q
     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
