@@ -5501,6 +5501,16 @@
 		)
 		(uuid "b11be95d-b84b-4448-ae0c-d4f208c648c0")
 	)
+	(text "TODO: either rework circuit or put VLITH label here on pin 4 of MCP73831"
+		(exclude_from_sim no)
+		(at 176.53 48.768 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "f83a7d1c-966a-4503-b3bb-db98ac1efbbf")
+	)
 	(global_label "USB_D_P"
 		(shape input)
 		(at 82.55 53.34 0)
