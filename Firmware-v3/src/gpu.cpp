@@ -642,7 +642,7 @@ void *gpu_thread(void *p)
                     }
                     if(!cur_process->screen_ignore_vsync)
                     {
-                        //while(screen_flip_in_progress);
+                        while(screen_flip_in_progress);
                         //scr_vsync.Wait();
                     }
 
@@ -734,6 +734,18 @@ void *gpu_thread(void *p)
 
                         extern Process p_supervisor;
                         p_supervisor.events.Push({ .type = Event::CaptionChange });
+                    }
+                    break;
+
+                case gpu_message_type::InvalidateCache:
+                    {
+                        auto start_addr = dest_addr + g.g.dx * bpp + g.g.dy * dest_pitch;
+                        auto len = g.g.h * dest_pitch + g.g.w * bpp;
+
+                        auto cache_line_start = start_addr & ~0x1fU;
+                        auto cache_line_end = (start_addr + len + 0x1fU) & ~0x1fU;
+
+                        InvalidateM7Cache(cache_line_start, cache_line_end - cache_line_start, CacheType_t::Data);
                     }
                     break;
 

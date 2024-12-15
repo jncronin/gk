@@ -174,6 +174,10 @@ class Process
 
         /* audio buffers */
         audio_conf audio;
+
+        /* graphics textures - mapped as WT */
+        MemRegion mr_gtext = InvalidMemregion();
+        size_t gtext_ptr = 0;
 };
 
 extern Process *focus_process;

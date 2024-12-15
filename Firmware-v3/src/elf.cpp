@@ -272,6 +272,7 @@ int elf_load_fildes(int fd,
     unsigned int ehot = 0;
     if(p.stack_preference == STACK_PREFERENCE_SDRAM_RAM_TCM)
         p.use_hot_region = false;
+    p.use_hot_region = false;
     if(p.use_hot_region && max_size < 16777216) // maximum size of bl relative jump
     {
         for(unsigned int i = 0; i < ehdr.e_shnum; i++)

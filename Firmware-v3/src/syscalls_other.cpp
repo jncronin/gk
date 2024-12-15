@@ -42,6 +42,23 @@ MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
 {
     MemRegion mr = InvalidMemregion();
     auto t = GetCurrentThreadForCore();
+
+    /* Are we after a graphics texture? */
+    if(is_sync && t->p.mr_gtext.valid)
+    {
+        if((t->p.mr_gtext.length - t->p.gtext_ptr) > len)
+        {
+            mr.address = t->p.mr_gtext.address + t->p.gtext_ptr;
+            mr.length = len;
+            mr.rt = t->p.mr_gtext.rt;
+            mr.valid = true;
+
+            t->p.gtext_ptr += len;
+
+            return mr;
+        }
+    }
+
     switch(t->p.stack_preference)
     {
         case STACK_PREFERENCE_SDRAM_RAM_TCM:
@@ -114,6 +131,15 @@ int syscall_memdealloc(size_t len, const void *addr, int *_errno)
     MemRegion mreg;
     {
         CriticalGuard cg(p.sl);
+        if(p.mr_gtext.valid)
+        {
+            auto paddr = (uint32_t)(uintptr_t)addr;
+            if(paddr >= p.mr_gtext.address && paddr < (p.mr_gtext.address + p.mr_gtext.length))
+            {
+                // do nothing
+                return 0;
+            }
+        }
         auto mr = p.get_mmap_region((uint32_t)(uintptr_t)addr, len);
         if(mr == p.mmap_regions.end())
         {

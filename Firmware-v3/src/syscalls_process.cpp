@@ -193,6 +193,25 @@ void *proccreate_thread(void *ptr)
     {
         proc->p_mpu_tls_id = proc->AddMPURegion({ .mr = InvalidMemregion() });
     }
+    // TODO: testing here - remove and use gkmenu instead to populate
+    auto gtext_size = pcinfo->graphics_texture_size;
+    gtext_size = 1*1024*1024;
+    if(pcinfo->graphics_texture_size)
+    {
+        proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::AXISRAM, std::string(pname) + " gtext");
+        if(!proc->mr_gtext.valid)
+            proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::SRAM, std::string(pname) + " gtext");
+        if(!proc->mr_gtext.valid)
+            proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::SDRAM, std::string(pname) + " gtext");
+
+        if(proc->mr_gtext.valid)
+        {
+            if(proc->AddMPURegion({ .mr = proc->mr_gtext, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = true }) < 0)
+            {
+                memblk_deallocate(proc->mr_gtext);
+            }
+        }
+    }
     
     // create startup thread
     auto start_t = Thread::Create(cpname + "_0",
