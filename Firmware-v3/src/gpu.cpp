@@ -29,9 +29,9 @@ SRAM4_DATA static int scaling_bb_idx = 0;
 static constexpr const unsigned int gpu_mdma_channel = 3;
 //static const auto mdma = ((MDMA_Channel_TypeDef *)(MDMA_BASE + 0x40U + 0x40U * gpu_mdma_channel));
 
-#if GK_GPU_SHOW_FPS
-SRAM4_DATA static uint64_t last_flip_time = 0ULL;
-#endif
+#define FPS_AVG_FRAMES      20
+static uint64_t last_flip_time = 0ULL;
+static uint64_t ticks_avg = 0;
 
 extern bool screen_flip_in_progress;
 
@@ -646,30 +646,30 @@ void *gpu_thread(void *p)
                         //scr_vsync.Wait();
                     }
 
-#if GK_GPU_SHOW_FPS
                     {
                         auto curt = clock_cur_us();
                         auto cticks = curt - last_flip_time;
 
-                        static uint64_t cticks_arr[32];
+                        static uint64_t cticks_arr[FPS_AVG_FRAMES];
                         static int cticks_arr_idx = 0;
 
                         cticks_arr[cticks_arr_idx++] = cticks;
-                        if(cticks_arr_idx >= 32) cticks_arr_idx = 0;
+                        if(cticks_arr_idx >= FPS_AVG_FRAMES) cticks_arr_idx = 0;
 
-                        uint64_t ticks_avg = 0;
-                        for(int j = 0; j < 32; j++)
+                        ticks_avg = 0;
+                        for(int j = 0; j < FPS_AVG_FRAMES; j++)
                             ticks_avg += cticks_arr[j];
-                        ticks_avg /= 32;
+                        ticks_avg /= FPS_AVG_FRAMES;
 
                         last_flip_time = curt;
+#if GK_GPU_SHOW_FPS
                         {
                             klog("gpu: cticks: %u, fps: %u (%u)\n",
                                 (uint32_t)cticks, 1000000U / (uint32_t)cticks,
                                 1000000U / (uint32_t)ticks_avg);
                         }
-                    }
 #endif
+                    }
                     break;
 
                 case gpu_message_type::FlipScaleBuffers:
@@ -950,3 +950,8 @@ extern "C" void DMA2D_IRQHandler()
     mdma->CIFCR = MDMA_CIFCR_CCTCIF;
     mdma_ready.Signal();
 } */
+
+double screen_get_fps()
+{
+    return 1000000.0 / (double)ticks_avg;
+}
