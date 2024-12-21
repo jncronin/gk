@@ -508,7 +508,10 @@ void *supervisor_thread(void *p)
                 char buf[64];
                 strftime(buf, 63, "%F %T", t);
                 buf[63] = 0;
-                l_time.text = std::string(buf);
+                char buf_line[128];
+                snprintf(buf_line, 127, "%s %.1fC %.2fV", buf, temp_get_core(), pwr_get_vdd());
+                buf_line[127] = 0;
+                l_time.text = std::string(buf_line);
 
                 scr_overlay.Update(scr_alpha);
                 scr_status.Update(scr_alpha);
