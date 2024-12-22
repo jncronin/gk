@@ -5,8 +5,6 @@
 #include <map>
 #include "osnet_dhcp.h"
 
-extern Spinlock s_rtt;
-
 /* DHCP server particularly suited for provisioning devices connected via the USB RNDIS port
 
     Based upon RFC 2131 i.e. DHCP v4
@@ -159,7 +157,7 @@ static void send_response(int sockfd, const char *buf, size_t len, const IP4Addr
 static void handle_dhcpdiscover(int sockfd, const char *buf, const std::map<int, int> &options, const sockaddr_in *caddr)
 {
     {
-        CriticalGuard cg(s_rtt);
+        CriticalGuard cg;
         klog("dhcpd: DHCPDISCOVER received, options:\n");
         for(const auto &opt : options)
         {
@@ -225,7 +223,7 @@ static void handle_dhcpdiscover(int sockfd, const char *buf, const std::map<int,
 static void handle_dhcprequest(int sockfd, const char *buf, const std::map<int, int> &options, const sockaddr_in *caddr)
 {
     {
-        CriticalGuard cg(s_rtt);
+        CriticalGuard cg;
         klog("dhcpd: DHCPREQUEST received, options:\n");
         for(const auto &opt : options)
         {
@@ -292,7 +290,7 @@ static void handle_dhcprequest(int sockfd, const char *buf, const std::map<int, 
 static void handle_dhcpinform(int sockfd, const char *buf, const std::map<int, int> &options, const sockaddr_in *caddr)
 {
     {
-        CriticalGuard cg(s_rtt);
+        CriticalGuard cg;
         klog("dhcpd: DHCPINFORM received, options:\n");
         for(const auto &opt : options)
         {
@@ -360,7 +358,7 @@ void *net_dhcpd_thread(void *p)
     int lsck = socket(AF_INET, SOCK_DGRAM, 0);
     if(lsck < 0)
     {
-        CriticalGuard cg(s_rtt);
+        CriticalGuard cg;
         klog("dhcpd: socket failed %d\n", errno);
         return nullptr;
     }
@@ -373,7 +371,6 @@ void *net_dhcpd_thread(void *p)
     int ret = bind(lsck, reinterpret_cast<sockaddr *>(&saddr), sizeof(saddr));
     if(ret < 0)
     {
-        CriticalGuard cg(s_rtt);
         klog("dhcpd: bind failed %d\n", errno);
         return nullptr;
     }
@@ -387,13 +384,11 @@ void *net_dhcpd_thread(void *p)
 
         if(ret == -1)
         {
-            CriticalGuard cg(s_rtt);
             klog("dhcpd: recvfrom failed %d\n", errno);
             return nullptr;
         }
         else
         {
-            CriticalGuard cg(s_rtt);
             klog("dhcpd: received %d bytes\n", ret);
         }
 
@@ -409,7 +404,6 @@ void *net_dhcpd_thread(void *p)
             auto options = &buf[OFFSET_OPTIONS];
             auto opt_len = ret - OFFSET_OPTIONS;
             {
-                CriticalGuard cg(s_rtt);
                 klog("dhcpd: received BOOTREQUEST from %s (%s), giaddr: %s, xid: %x\n",
                     chaddr.ToString().c_str(),
                     ciaddr.ToString().c_str(),

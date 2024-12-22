@@ -7,15 +7,13 @@
 #include "osnet.h"
 #include "gk_conf.h"
 
-extern Spinlock s_rtt;
-
 NET_DATA uint8_t tud_network_mac_address[6] = {0x02,0x02,0x84,0x6A,0x96,0x00};
 
 NET_BSS TUSBNetInterface rndis_if;
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
 {
-#if GK_ENABLE_NET
+#if GK_ENABLE_NETWORK
     if(size == 0)
         return true;
     if(size > PBUF_SIZE)
@@ -97,7 +95,7 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         return -1;
     }
 
-#if GK_ENABLE_NET
+#if GK_ENABLE_NETWORK
     if(tud_network_can_xmit(n))
     {
         // decorate packet
@@ -115,7 +113,7 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         auto crc = net_ethernet_calc_crc(buf, n + 14);
         *reinterpret_cast<uint32_t *>(&buf[n + 14]) = crc;
         {
-            CriticalGuard cg(s_rtt);
+            CriticalGuard cg;
             SEGGER_RTT_printf(0, "send packet:\n");
             for(unsigned int i = 0; i < n + 14; i++)
                 SEGGER_RTT_printf(0, "%02X ", buf[i]);

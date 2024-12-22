@@ -47,7 +47,6 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
     auto oper = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[6]));
 
     {
-        CriticalGuard cg(s_rtt);
         klog("net: arp packet %s %s(%s) -> %s(%s) on iface %s\n",
             (oper == 1) ? "request" : ((oper == 2) ? "reply" : "unknown"),
             ip_sender.ToString().c_str(),

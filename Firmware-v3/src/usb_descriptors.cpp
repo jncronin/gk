@@ -39,7 +39,7 @@ uint8_t const * tud_descriptor_device_cb(void)
 // Conf descriptor
 enum
 {
-#if GK_ENABLE_NET
+#if GK_ENABLE_NETWORK
     ITF_NUM_ETH = 0,
     ITH_NUM_ETH_DATA,
     ITF_NUM_CDC,

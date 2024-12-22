@@ -9,6 +9,8 @@ static void handle_inject_packet(const net_msg &m);
 static void handle_send_packet(const net_msg &m);
 static void handle_timeouts();
 
+Process p_net;
+
 static void *net_thread(void *_params)
 {
     (void)_params;
@@ -85,9 +87,13 @@ int net_ret_to_errno(int ret)
 
 void init_net()
 {
-    extern Process kernel_proc;
-    Schedule(Thread::Create("net", net_thread, nullptr, true, 5, kernel_proc,
+    Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net,
         CPUAffinity::PreferM4));
+
+    uint32_t myip = IP4Addr(192, 168, 7, 1).get();
+    Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
+    Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
+
 }
 
 static void handle_inject_packet(const net_msg &m)

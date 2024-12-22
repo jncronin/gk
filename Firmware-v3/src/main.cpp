@@ -16,6 +16,7 @@
 #include "cleanup.h"
 #include "pwr.h"
 #include "btnled.h"
+#include "osnet.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -190,6 +191,10 @@ int main()
 
     Schedule(Thread::Create("pwr_monitor", pwr_monitor_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc,
         CPUAffinity::PreferM4));
+
+#if GK_ENABLE_NETWORK
+    init_net();
+#endif
 
     // Prepare systick
     SysTick->CTRL = 0;

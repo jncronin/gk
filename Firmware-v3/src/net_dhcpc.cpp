@@ -5,8 +5,6 @@
 #include "clocks.h"
 #include "SEGGER_RTT.h"
 
-extern Spinlock s_rtt;
-
 struct dhcpc_request
 {
     NetInterface *iface;
@@ -178,7 +176,6 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
         {
             // timeout, try again
             {
-                CriticalGuard cg(s_rtt);
                 klog("dhcpc: timeout in state %d, restarting\n",
                     curreq.state);
             }
@@ -188,7 +185,6 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
     else
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("dhcpc: new request\n");
         }
         // store that we've made a request
@@ -249,7 +245,6 @@ template <> std::string opt_or_empty<std::string>(int id, const std::map<int, in
 int net_handle_dhcpc_packet(const UDPPacket &pkt)
 {
     {
-        CriticalGuard cg(s_rtt);
         klog("dhcpc: received packet\n");
     }
 
@@ -324,7 +319,6 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
     }
 
     {
-        CriticalGuard cg(s_rtt);
         klog("dhcpc: msg_type: %d, state: %d, yiaddr: %s\n",
             (int)msg_type, (int)dr.state,
             yiaddr.ToString().c_str());
@@ -359,7 +353,6 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
                 auto lease = ntohl(opt_or_empty<uint32_t>(51, opts, pkt.contents));
 
                 if(nm == 0UL) nm = 0xffffffff;
-                CriticalGuard cg(s_rtt);
                 klog("dhcpc: DHCPACK received\n");
                 klog("  IP: %s\n  NM: %s\n  GW: %s\n  DNS: %s\n  domain name: %s\n  lease: %d\n",
                     ip.ToString().c_str(),
@@ -415,7 +408,6 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
     }
 
     {
-        CriticalGuard cg(s_rtt);
         klog("dhcpc: msg %d in state %d\n",
             (int)msg_type, (int)dr.state);
     }

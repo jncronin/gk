@@ -234,6 +234,8 @@ struct net_msg
 #define NET_SIZE_UDP_OFFSET             (NET_SIZE_UDP_HEADER + NET_SIZE_IP_OFFSET)
 
 void init_net();
+void *net_telnet_thread(void *p);
+void *net_dhcpd_thread(void *p);
 
 int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface);
 char *net_allocate_pbuf(size_t n);

@@ -197,14 +197,6 @@ SECTIONS
 
   } >AXISRAM4 AT> FLASH
 
-  .net_data ALIGN(1 << LOG2CEIL(_elwip_data - _slwip_data)):
-  {
-    _slwip_data = .;
-    *(.net_data)
-    *(.net_data*)
-    _elwip_init_data = .;
-  } >AXISRAM4 AT> FLASH
-
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
   .bss :
@@ -286,6 +278,14 @@ SECTIONS
     . = ALIGN(4);
     _esdram = .;
   } >XSPI_RAM
+
+  .net_data :
+  {
+    _slwip_data = .;
+    *(.net_data)
+    *(.net_data*)
+    _elwip_init_data = .;
+  } >XSPI_RAM AT> FLASH
 
   .net_bss (NOLOAD):
   {
