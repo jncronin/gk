@@ -196,6 +196,24 @@ LoopFillZeronet_bss:
   cmp r2, r4
   bcc FillZeronet_bss
 
+/* Initialize the .net_data segment */
+  ldr r0, =_slwip_data
+  ldr r1, =_elwip_init_data
+  ldr r2, =_slwip_flash
+  movs r3, #0
+  b LoopCopyNetDataInit
+
+CopyNetDataInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopyNetDataInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopyNetDataInit
+
+
 
   /* TODO: initialize XSPI data/bss / itcm from xspiflash etc */
 
