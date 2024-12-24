@@ -12,6 +12,12 @@ time_t timegm (struct tm* tim_p);
 
 static void enable_backup_sram();
 
+#if GK_OVERCLOCK
+#define VOS_HIGH_PLL1N_MULT     81U
+#else
+#define VOS_HIGH_PLL1N_MULT     74U
+#endif
+
 extern "C" INTFLASH_FUNCTION void init_clocks()
 {
     SystemCoreClock = 64000000U;
@@ -64,10 +70,11 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->PLL2FRACR = 0U;
     RCC->PLL3FRACR = 0U;
 
-    /* PLL1 -> CPU at 600 (VOS high -> 8*75/1) or 400 (VOS low -> 8*100/2) */
+    /* PLL1 -> CPU at 600 (VOS high -> 8*75/1) or 400 (VOS low -> 8*100/2)
+        overclock: if VOS high -> 8 * 82/1 = 656 MHz */
     RCC->PLL1DIVR1 = (1U << RCC_PLL1DIVR1_DIVQ_Pos) |
         ((vos ? 0U : 1U) << RCC_PLL1DIVR1_DIVP_Pos) |
-        ((vos ? 74U : 99U) << RCC_PLL1DIVR1_DIVN_Pos);
+        ((vos ? VOS_HIGH_PLL1N_MULT : 99U) << RCC_PLL1DIVR1_DIVN_Pos);
     RCC->PLL1DIVR2 = (1U << RCC_PLL1DIVR2_DIVS_Pos);
 
     /* PLL2:
@@ -141,7 +148,11 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     while((RCC->CFGR & RCC_CFGR_SWS_Msk) != (3U << RCC_CFGR_SWS_Pos));
 
     if(vos)
+#if GK_OVERCLOCK
+        SystemCoreClock = 656000000U;
+#else
         SystemCoreClock = 600000000U;
+#endif
     else
         SystemCoreClock = 400000000U;
 
