@@ -21,7 +21,7 @@
 #define GK_OVERCLOCK                1
 #define GK_TICKLESS                 0
 #define GK_MEMBLK_STATS             1
-#define GK_ENABLE_PROFILE           1
+#define GK_ENABLE_PROFILE           0
 #define GK_DYNAMIC_SYSTICK          1
 #define GK_XSPI_DUAL_MEMORY         1
 #define GK_AUDIO_LATENCY_LIMIT_MS   150
