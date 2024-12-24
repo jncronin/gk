@@ -27,6 +27,7 @@ struct audio_conf
     uint32_t *silence;
     Thread *waiting_thread = nullptr;
     bool enabled = false;
+    unsigned int freq;
 
     MemRegion mr_sound = InvalidMemregion();
     Spinlock sl_sound;
