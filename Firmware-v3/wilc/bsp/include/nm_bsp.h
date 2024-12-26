@@ -378,6 +378,18 @@ void nm_bsp_free(void* pvMemBuffer);
 #define __M2M_DMA_BUF_ATT__
 #endif
 
+#ifdef __GAMEKID__
+#include <stdint.h>
+#include <stdbool.h>
+#define __M2M_DMA_BUF_ATT__
+#define NM_DEBUG		1
+#ifdef __cplusplus
+extern "C" 
+#endif
+int klog(const char *format, ...);
+#define NM_BSP_PRINTF	klog
+#endif
+
 
 #ifdef _NM_BSP_BIG_END
 #define NM_BSP_B_L_32(x) \

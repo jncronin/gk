@@ -37,6 +37,8 @@
  
 #include "common/include/nm_common.h"
 
+#include <stdint.h>
+
 #ifdef CONF_WILC_USE_SPI
 
 #define USE_OLD_SPI_SW
@@ -346,6 +348,8 @@ static sint8 spi_cmd_rsp(uint8 cmd)
 			result = N_FAIL;
 			goto _fail_;
 		}
+		if(rsp != cmd)
+			klog("spi_cmd_rsp: rsp: %x, expect: %x\n", rsp, cmd);
 	} while((rsp != cmd) && (s8RetryCnt-- >0));
 
 	if(s8RetryCnt <=0)
@@ -367,6 +371,8 @@ static sint8 spi_cmd_rsp(uint8 cmd)
 			result = N_FAIL;
 			goto _fail_;
 		}
+		if(rsp != 0)
+			klog("spi_cmd_rsp: rsp: %x, expect: %x\n", rsp, 0);
 	} while((rsp != 0x00) && (s8RetryCnt-- >0));
 	if(s8RetryCnt <=0)
 	{

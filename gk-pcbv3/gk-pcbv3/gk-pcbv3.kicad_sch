@@ -5501,7 +5501,7 @@
 		)
 		(uuid "b11be95d-b84b-4448-ae0c-d4f208c648c0")
 	)
-	(text "TODO: either rework circuit or put VLITH label here on pin 4 of MCP73831"
+	(text "TODO: either rework circuit or put VLITH label here on pin 4 of MCP73831\nConsider BQ24072 instead of MCP"
 		(exclude_from_sim no)
 		(at 176.53 48.768 0)
 		(effects
