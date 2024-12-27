@@ -4,7 +4,7 @@
 #include "SEGGER_RTT.h"
 
 //#define DEBUG_WIFI  1
-#define DEBUG_ETHERNET 1
+//#define DEBUG_ETHERNET 1
 
 #ifdef DEBUG_WIFI
 extern NetInterface wifi_if;

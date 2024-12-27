@@ -48,6 +48,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
         return NET_NOTSUPP;
     }
 
+#ifdef DEBUG_ICMP
     {
         CriticalGuard cg;
         klog("net: received ICMP %s -> %s, type %d code %d checksum %d id %d seq %d\n",
@@ -65,6 +66,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
         }
         klog("\n");
     }
+#endif
 
     IP4Route route;
     auto route_ret = net_ip_get_route_for_address(pkt.src, &route);

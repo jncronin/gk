@@ -112,6 +112,7 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
         }
         auto crc = net_ethernet_calc_crc(buf, n + 14);
         *reinterpret_cast<uint32_t *>(&buf[n + 14]) = crc;
+#if DEBUG_TUSB_LWIP
         {
             CriticalGuard cg;
             SEGGER_RTT_printf(0, "send packet:\n");
@@ -119,6 +120,7 @@ int TUSBNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
                 SEGGER_RTT_printf(0, "%02X ", buf[i]);
             SEGGER_RTT_printf(0, "\nchecksum: %8" PRIx32 "\n", crc);
         }
+#endif
         tud_network_xmit(const_cast<char *>(buf), n + 18);
         if(release_buffer)
             net_deallocate_pbuf(buf);
