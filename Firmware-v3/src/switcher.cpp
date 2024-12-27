@@ -183,6 +183,11 @@ extern "C" void PendSV_Handler()
         //MPU_LOAD_4()
 #endif
 
+        /* Load newlib reent pointer */
+        "add r0, r1, #" xstr(GK_TSS_REENT_OFFSET) "             \n"     // R0 = &newlib_reent
+        "ldr r4, =_impure_ptr           \n"
+        "str r0, [r4]                   \n"
+
         /* Load saved tss registers */
         "ldmia r1!, { r12 }         \n"     // load registers from tss
         "msr psp, r12               \n"
