@@ -50,7 +50,7 @@ static void add_extra_requests(char *buf, size_t *ptr,
     if(req_ip)
         add_extra_request(buf, ptr, 50, 4, req_ip->get());
     if(serv_id)
-        add_extra_request(buf, ptr, 54, 5, *serv_id);
+        add_extra_request(buf, ptr, 54, 4, *serv_id);
     
     /* req parameter list:
         1 = subnet mask
