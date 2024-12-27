@@ -99,6 +99,8 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             memcpy(&data[18], hw_sender.get(), 6);
             *reinterpret_cast<uint32_t *>(&data[24]) = ip_sender;
 
+            // cannot be within criticalguard as may switch
+            cg.~CriticalGuard();        // release the guard here because sending may take some time
             pkt.iface->SendEthernetPacket(data, 28, hw_sender, 0x0806, true);
         }
     }
