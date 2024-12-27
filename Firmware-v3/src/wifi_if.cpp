@@ -718,7 +718,10 @@ int WincNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
 #endif
 
     winc_mutex.lock();
-    auto ret = m2m_wifi_send_ethernet_pkt(reinterpret_cast<uint8 *>(buf), n + 18, STATION_INTERFACE);
+    /* For WINC3000 - data must start in the buffer at offset M2M_ETHERNET_HDR_OFFSET + M2M_ETH_PAD_SIZE.
+        These extra fields are not included in the packet size (but do include 18 bytes for ethernet header) */
+    auto ret = m2m_wifi_send_ethernet_pkt(reinterpret_cast<uint8 *>(buf) - M2M_ETHERNET_HDR_OFFSET - M2M_ETH_PAD_SIZE,
+        n + 18, STATION_INTERFACE);
     winc_mutex.unlock();
     
     if(release_buffer)
