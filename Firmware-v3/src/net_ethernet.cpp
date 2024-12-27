@@ -3,10 +3,8 @@
 #include "thread.h"
 #include "SEGGER_RTT.h"
 
-extern Spinlock s_rtt;
-
 //#define DEBUG_WIFI  1
-//#define DEBUG_ETHERNET 1
+#define DEBUG_ETHERNET 1
 
 #ifdef DEBUG_WIFI
 extern NetInterface wifi_if;
@@ -44,14 +42,17 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     
     uint16_t ethertype = *reinterpret_cast<const uint16_t *>(&buf[ptr]);
     ethertype = __builtin_bswap16(ethertype);
+    if(ethertype < 0x0600)
+        return NET_NOTSUPP;     // LLC frame or similar
     ptr += 2;
 
     // TODO check CRC
 
 #if DEBUG_ETHERNET
     {
-        CriticalGuard c(s_rtt);
-        SEGGER_RTT_printf(0, "net: ethernet recv: %s to %s, ethertype: %u\n",
+        CriticalGuard cg;
+        SEGGER_RTT_printf(0, "net: ethernet iface: %s, recv: %s to %s, ethertype: %u\n",
+            iface->GetHwAddr().ToString().c_str(),
             src.ToString().c_str(), dest.ToString().c_str(), ethertype);
     }
 #endif

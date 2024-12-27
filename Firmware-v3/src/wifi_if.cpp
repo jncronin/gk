@@ -461,6 +461,8 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
             static unsigned int pkt_offset = 0;
 
             auto ctrlbuf = reinterpret_cast<tstrM2MDataBufCtrl *>(pvCtrlBuf);
+            if(ctrlbuf->u8IfcId != STATION_INTERFACE)
+                break;
 #ifdef DEBUG_WIFI
             {
                 CriticalGuard cg;
@@ -477,7 +479,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
 
             if(ctrlbuf->u16RemainigDataSize == 0)
             {
-                net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg) - pkt_offset,
+                net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg) - pkt_offset + ctrlbuf->u8DataOffset,
                     ctrlbuf->u16DataSize + pkt_offset, &wifi_if);
                 
                 auto newbuf = net_allocate_pbuf(PBUF_SIZE);
@@ -493,7 +495,6 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
                     }
                     GetCurrentThreadForCore()->base_priority++;
                 }
-                klog("wifi: net buffer: %x\n", (uint32_t)(uintptr_t)newbuf);
                 m2m_wifi_set_receive_buffer(newbuf, PBUF_SIZE);
                 pkt_offset = 0;
             }
