@@ -187,7 +187,7 @@ int main()
 
     Schedule(Thread::Create("cleanup", cleanup_thread, (void*)0, true, GK_PRIORITY_VHIGH, kernel_proc,
         CPUAffinity::M7Only,
-        memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "cleanup stack")));
+        memblk_allocate_for_stack(4096, CPUAffinity::PreferM4, "cleanup stack")));
 
     Schedule(Thread::Create("pwr_monitor", pwr_monitor_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc,
         CPUAffinity::PreferM4));
