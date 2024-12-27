@@ -219,7 +219,7 @@ struct net_msg
 #define NET_KEEPPACKET  -8
 
 /* Keep these a multiple of cache line size */
-#define PBUF_SIZE       1568U
+#define PBUF_SIZE       1600U
 #define SPBUF_SIZE      128U
 
 #define NET_SIZE_ETHERNET_HEADER        14U

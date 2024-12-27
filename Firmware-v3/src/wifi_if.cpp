@@ -479,7 +479,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
 
             if(ctrlbuf->u16RemainigDataSize == 0)
             {
-                net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg) - pkt_offset + ctrlbuf->u8DataOffset,
+                net_inject_ethernet_packet(reinterpret_cast<char *>(pvMsg) - M2M_ETH_PAD_SIZE - 4,
                     ctrlbuf->u16DataSize + pkt_offset, &wifi_if);
                 
                 auto newbuf = net_allocate_pbuf(PBUF_SIZE);
