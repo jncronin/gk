@@ -44,13 +44,18 @@ static void add_extra_request(char *buf, size_t *ptr,
 static void add_extra_requests(char *buf, size_t *ptr,
     int reqtype,
     const IP4Addr *req_ip = nullptr,
-    const uint32_t *serv_id = nullptr)
+    const uint32_t *serv_id = nullptr,
+    const std::string &client_host_name = "")
 {
     add_extra_request(buf, ptr, 53, 1, reqtype);
     if(req_ip)
         add_extra_request(buf, ptr, 50, 4, req_ip->get());
     if(serv_id)
         add_extra_request(buf, ptr, 54, 4, *serv_id);
+    if(!client_host_name.empty())
+    {
+        add_extra_request(buf, ptr, 12, client_host_name.size(), client_host_name.c_str());
+    }
     
     /* req parameter list:
         1 = subnet mask
@@ -115,7 +120,8 @@ static int send_discover(dhcpc_request &dr)
 }
 
 static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
-    const IP4Addr &siaddr, const uint32_t *servid)
+    const IP4Addr &siaddr, const uint32_t *servid,
+    const std::string &client_host_name = "")
 {
     auto pbuf = net_allocate_pbuf(PBUF_SIZE);
     if(!pbuf)
@@ -152,7 +158,7 @@ static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
     datalen += 4;
 
     // extra requests
-    add_extra_requests(data, &datalen, DHCPREQUEST, &yiaddr, servid);
+    add_extra_requests(data, &datalen, DHCPREQUEST, &yiaddr, servid, client_host_name);
 
     dr.made_at = clock_cur_ms();
     dr.state = dhcpc_request::RequestSent;
@@ -337,7 +343,10 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
                 {
                     pservid = reinterpret_cast<const uint32_t *>(&pkt.contents[oiter->second + 2]);
                 }
-                return send_request(dr, yiaddr, pkt.ippacket.src, pservid);
+                char hwaddr_id[16];
+                auto hwaddr = pkt.ippacket.epacket.iface->GetHwAddr().get();
+                snprintf(hwaddr_id, 15, "%02X-%02X", hwaddr[4], hwaddr[5]);
+                return send_request(dr, yiaddr, pkt.ippacket.src, pservid, "gk-" + std::string(hwaddr_id));
             }
             break;
 
