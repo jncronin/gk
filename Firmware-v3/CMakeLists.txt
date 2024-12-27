@@ -88,7 +88,7 @@ target_compile_definitions(wilc
     _POSIX_THREAD_PROCESS_SHARED
     CONF_WILC_USE_SPI
     CONF_WILC_USE_3000_REV_A
-    NM_EDGE_INTERRUPT
+    NM_EDGE_INTERRUPT=1
 
 )
 

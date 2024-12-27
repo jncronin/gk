@@ -122,7 +122,7 @@ static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
     {
-        errno = _errno;
+        //errno = _errno;
         return ret;
     }
     if(ret == -2)
@@ -132,7 +132,7 @@ static inline int deferred_return(int ret, int _errno)
         while(!t->ss.Wait(SimpleSignal::Set, 0));
         if(t->ss_p.ival1 == -1)
         {
-            errno = t->ss_p.ival2;
+            //errno = t->ss_p.ival2;
             return -1;
         }
         else

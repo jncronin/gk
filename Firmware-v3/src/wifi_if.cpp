@@ -14,6 +14,8 @@
 SRAM4_DATA static BinarySemaphore wifi_irq;
 SRAM4_DATA static Mutex winc_mutex;
 
+static int n_irqs = 0;
+
 // Max transaction size on SPI bus
 SRAM4_DATA tstrNmBusCapabilities egstrNmBusCapabilities =
 {
@@ -28,6 +30,7 @@ class WincNetInterface : public NetInterface
         HwAddr hwaddr;
 
         std::vector<std::string> good_net_list, cur_net_list;
+        unsigned int scan_n_aps;
         void begin_scan();
         bool scan_in_progress = false;
         friend void *wifi_task(void *);
@@ -68,7 +71,7 @@ void init_wifi()
 {
     WIFI_CHIP_EN.set_as_output();
     WIFI_NRST.set_as_output();
-    WIFI_IRQ.set_as_input();
+    WIFI_IRQ.set_as_input(pin::PullUp);
     for(const auto &p : WIFI_SPI_PINS)
     {
         p.set_as_af();
@@ -103,7 +106,7 @@ void init_wifi()
     (void)RCC->APB1ENR1;
 
     SPI3->CR1 = 0UL;
-    SPI3->CFG1 = (1UL << SPI_CFG1_MBR_Pos) |
+    SPI3->CFG1 = (2UL << SPI_CFG1_MBR_Pos) |
         (0UL << SPI_CFG1_FTHLV_Pos) |
         (7UL << SPI_CFG1_DSIZE_Pos);
     SPI3->CFG2 = (0x0UL << SPI_CFG2_MSSI_Pos) |   // 0 cycles between SS low and 1st data
@@ -121,13 +124,13 @@ void init_wifi()
     SBS->EXTICR[1] = (SBS->EXTICR[1] & ~SBS_EXTICR2_PC_EXTI4_Msk) |
         (5U << SBS_EXTICR2_PC_EXTI4_Pos);
 
-    EXTI->FTSR1 &= ~EXTI_FTSR1_FT4;
-    EXTI->RTSR1 |= EXTI_RTSR1_RT4;
+    EXTI->FTSR1 |= EXTI_FTSR1_FT4;
+    EXTI->RTSR1 &= ~EXTI_RTSR1_RT4;
     EXTI->IMR1 |= EXTI_IMR1_IM4;
 
     wifi_if.connected = WincNetInterface::WIFI_UNINIT;
 
-    NVIC_EnableIRQ(EXTI4_IRQn);
+    //NVIC_EnableIRQ(EXTI4_IRQn);
 }
 
 void wifi_connect()
@@ -145,7 +148,7 @@ void wifi_connect()
         wauth.au8PSK[M2M_MAX_PSK_LEN - 1] = 0;
 
         auto ret = m2m_wifi_connect(const_cast<char *>(ssid.c_str()), ssid.length(),
-            M2M_WIFI_SEC_WPA_PSK, &wauth, M2M_WIFI_CH_ALL);
+            M2M_WIFI_SEC_WPA_PSK, &wauth, M2M_WIFI_CH_13);
 
         if(ret != M2M_SUCCESS)
         {
@@ -227,11 +230,14 @@ extern "C" void EXTI4_IRQHandler(void)
 #endif
     //rtt_printf_wrapper("WIFI IRQ\n");
     if(wifi_irq_function)
+    {
+        n_irqs++;
         wifi_irq_function();
+    }
 
-    wifi_irq.Signal();
     EXTI->PR1 = EXTI_PR1_PR4;
-    (void)EXTI->PR1;
+    wifi_irq.Signal();
+    __DMB();
 }
 
 static void wifi_poll()
@@ -457,7 +463,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
             auto ctrlbuf = reinterpret_cast<tstrM2MDataBufCtrl *>(pvCtrlBuf);
 #ifdef DEBUG_WIFI
             {
-                CriticalGuard cg(s_rtt);
+                CriticalGuard cg;
                 klog("wifi: rx packet %d/%d @ %x\n",
                     ctrlbuf->u16DataSize, ctrlbuf->u16RemainigDataSize,
                     pvMsg);
@@ -487,6 +493,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
                     }
                     GetCurrentThreadForCore()->base_priority++;
                 }
+                klog("wifi: net buffer: %x\n", (uint32_t)(uintptr_t)newbuf);
                 m2m_wifi_set_receive_buffer(newbuf, PBUF_SIZE);
                 pkt_offset = 0;
             }
@@ -518,20 +525,23 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
             {
                 auto state = reinterpret_cast<tstrM2mWifiStateChanged *>(p_eventData);
 
-                switch(state->u8CurrState)
+                if(state->u8IfcId == STATION_INTERFACE)
                 {
-                    case M2M_WIFI_CONNECTED:
-                        wifi_if.connected = WincNetInterface::WIFI_AWAIT_IP;
-                        klog("WIFI Connected\n");
+                    switch(state->u8CurrState)
+                    {
+                        case M2M_WIFI_CONNECTED:
+                            wifi_if.connected = WincNetInterface::WIFI_AWAIT_IP;
+                            klog("WIFI Connected\n");
 
-                        break;
+                            break;
 
-                    case M2M_WIFI_DISCONNECTED:
-                        wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
-                        //socket_wifi_disconnect();
-                        klog("WIFI Disconnected %i\n", state->u8ErrCode);
+                        case M2M_WIFI_DISCONNECTED:
+                            wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
+                            //socket_wifi_disconnect();
+                            klog("WIFI Disconnected %i\n", state->u8ErrCode);
 
-                        break;
+                            break;
+                    }
                 }
             }
             break;
@@ -541,13 +551,42 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
                 auto sr = reinterpret_cast<tstrM2mWifiscanResult *>(p_eventData);
                 auto ssid = std::string((char *)sr->au8SSID);
                 wifi_if.cur_net_list.push_back(ssid);
+
+                if(wifi_if.cur_net_list.size() >= wifi_if.scan_n_aps)
+                {
+                    // scan done
+                    wifi_if.good_net_list = wifi_if.cur_net_list;
+                    wifi_if.scan_in_progress = false;
+
+                    CriticalGuard cg;
+                    klog("wifi: scan complete, ssids:\n");
+                    for(const auto &cssid : wifi_if.good_net_list)
+                        klog(" - %s\n", cssid.c_str());
+                    klog("wifi: end of list\n");
+                }
+                else
+                {
+                    // request next
+                    m2m_wifi_req_scan_result(wifi_if.cur_net_list.size());
+                }
             }
             break;
 
         case M2M_WIFI_RESP_SCAN_DONE:
             {
-                wifi_if.good_net_list = wifi_if.cur_net_list;
-                wifi_if.scan_in_progress = false;
+                auto sd = reinterpret_cast<tstrM2mScanDone *>(p_eventData);
+                wifi_if.cur_net_list.clear();
+                wifi_if.scan_n_aps = sd->u8NumofCh;
+
+                if(wifi_if.scan_n_aps == 0)
+                {
+                    wifi_if.scan_in_progress = false;
+                    klog("wifi: scan complete, no APs found\n");
+                }
+                else
+                {
+                    m2m_wifi_req_scan_result(0);
+                }
             }
             break;
 
@@ -569,16 +608,23 @@ void *wifi_task(void *p)
 
     while(true)
     {
-        wifi_irq.Wait(clock_cur() + kernel_time::from_ms(200ULL));
+        auto irq_signalled = wifi_irq.Wait(clock_cur() + kernel_time::from_ms(200ULL));
         {
+            if(irq_signalled)
+            {
+                winc_mutex.lock();
+                wifi_poll();
+                winc_mutex.unlock();
+            }
+
             //rtt_printf_wrapper("wifi: event\n");
             static WincNetInterface::state old_state = WincNetInterface::WIFI_UNINIT;
             WincNetInterface::state ws = wifi_if.connected;
 
-            if(ws != WincNetInterface::WIFI_UNINIT && !wifi_if.scan_in_progress &&
+            if(ws == WincNetInterface::WIFI_DISCONNECTED && !wifi_if.scan_in_progress &&
                 (!last_scan_time || clock_cur_ms() >= last_scan_time + 5000ULL))
             {
-                m2m_wifi_request_scan(M2M_WIFI_CH_ALL);
+                m2m_wifi_request_scan(M2M_WIFI_CH_13);
                 wifi_if.scan_in_progress = true;
                 last_scan_time = clock_cur_ms();
             }
@@ -600,10 +646,11 @@ void *wifi_task(void *p)
                     Yield();
                     continue;
                 }
-                wip.strEthInitParam.u16ethRcvBufSize = sizeof(PBUF_SIZE);
+                wip.strEthInitParam.u16ethRcvBufSize = PBUF_SIZE;
         
                 if(m2m_wifi_init(&wip) == M2M_SUCCESS)
                 {
+                    NVIC_EnableIRQ(EXTI4_IRQn);
                     wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
 
                     uint8 hwaddr_ap[6], hwaddr_sta[6];
@@ -614,7 +661,7 @@ void *wifi_task(void *p)
                     }
                 }
             }
-            if(ws == WincNetInterface::WIFI_DISCONNECTED)
+            if(ws == WincNetInterface::WIFI_DISCONNECTED && !wifi_if.scan_in_progress)
             {
                 wifi_connect();
             }
@@ -659,6 +706,7 @@ int WincNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
     }
     auto crc = net_ethernet_calc_crc(buf, n + 14);
     *reinterpret_cast<uint32_t *>(&buf[n + 14]) = crc;
+#if 0
     {
         CriticalGuard cg;
         klog("send wifi packet:\n");
@@ -666,6 +714,7 @@ int WincNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest
             klog("%02X ", buf[i]);
         klog("\nchecksum: %8" PRIx32 "\n", crc);
     }
+#endif
 
     winc_mutex.lock();
     auto ret = m2m_wifi_send_ethernet_pkt(reinterpret_cast<uint8 *>(buf), n + 18, STATION_INTERFACE);
