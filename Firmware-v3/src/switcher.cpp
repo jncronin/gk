@@ -195,9 +195,10 @@ extern "C" void PendSV_Handler()
         "msr control, r12           \n"
         "ldmia r1!, { r4-r11, lr }  \n"
 
-        "tst lr, #0x10              \n"     // FPU load only if lazy store
-        "it eq                      \n"
-        "vldmiaeq r1!, {s16-s31}    \n"
+        //"tst lr, #0x10              \n"     // FPU load only if lazy store
+        //"it eq                      \n"
+        //"vldmiaeq r1!, {s16-s31}    \n"
+        "vldmia r1!, {s16-s31}    \n"
 
 #if GK_USE_IRQ_PRIORITIES
         "msr basepri, r3            \n"     // restore interrupts
