@@ -54,8 +54,16 @@ function task_get_process_name(t)
     var procaddraddr = Debug.evaluate("&((Thread *)" + t + ")->p");
     var procaddr = Debug.evaluate("*(void **)" + procaddraddr);
     var namelen = Debug.evaluate("((Process *)" + procaddr + ")->name._M_string_length");
+    if(namelen == 0)
+    {
+        return "undefined";
+    }
     var nameaddr = Debug.evaluate("&((Process *)" + procaddr + ")->name._M_dataplus._M_p");
     var nameaddr2 = Debug.evaluate("*(uint32_t *)" + nameaddr);
+    if(nameaddr2 == 0)
+    {
+        return "undefined";
+    }
 
     var namebytes = TargetInterface.peekBytes(nameaddr2, namelen);
     if(namebytes == undefined)
