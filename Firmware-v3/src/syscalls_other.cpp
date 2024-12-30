@@ -11,6 +11,7 @@
 #include "cache.h"
 #include "SEGGER_RTT.h"
 #include "cleanup.h"
+#include "pipe.h"
 
 extern Process kernel_proc;
 
@@ -427,5 +428,38 @@ int syscall_get_ienv(char *outbuf, size_t outbuf_len, unsigned int idx, int *_er
     }
 
     strncpy(outbuf, penv[idx].c_str(), outbuf_len);
+    return 0;
+}
+
+int syscall_pipe(int pipefd[2], int *_errno)
+{
+    // try and get free process file handles
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    CriticalGuard cg(p.sl);
+    int fd1 = get_free_fildes(p);
+    if(fd1 == -1)
+    {
+        *_errno = EMFILE;
+        return -1;
+    }
+    int fd2 = get_free_fildes(p);
+    if(fd2 == -1)
+    {
+        *_errno = EMFILE;
+        return -1;
+    }
+
+    auto newpipe = make_pipe();
+
+    if(!newpipe.first || !newpipe.second)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
+    p.open_files[fd1] = newpipe.first;
+    p.open_files[fd2] = newpipe.second;
+
     return 0;
 }
