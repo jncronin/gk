@@ -54,7 +54,10 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
     if(ret == 0)
     {
         if(p.open_files[file]->opts & O_NONBLOCK)
-            return 0;
+        {
+            *_errno = EWOULDBLOCK;
+            return -1;
+        }
         else
         {
             // TODO: block on some signal
