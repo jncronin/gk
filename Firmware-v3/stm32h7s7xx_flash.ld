@@ -317,7 +317,7 @@ SECTIONS
   .cm7_stack (NOLOAD)  :
   {
     _scm7_stack = .;
-    . = . + 4K;
+    . = . + 8K;
     _ecm7_stack_align = .;
     _ecm7_stack = . - (_ecm7_stack_align - _scm7_stack) / 8;
     _estack = _ecm7_stack;

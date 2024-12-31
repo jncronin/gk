@@ -7,7 +7,7 @@ void ButtonWidget::Update(alpha_t alpha)
 
     color_t bg_color, border_color, text_color;
 
-    if(is_clicked)
+    if(is_clicked || is_pretend_clicked)
     {
         bg_color = bg_clicked_color;
         border_color = border_clicked_color;
@@ -53,7 +53,7 @@ void ImageButtonWidget::Update(alpha_t alpha)
 
     color_t bg_color, border_color;
 
-    if(is_clicked)
+    if(is_clicked || is_pretend_clicked)
     {
         bg_color = bg_clicked_color;
         border_color = border_clicked_color;

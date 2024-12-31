@@ -78,8 +78,11 @@ class Widget
         virtual void KeyPressDown(unsigned short scancode);
         virtual void KeyPressUp(unsigned short  scancode);
 
+        virtual void SetClickedAppearance(bool v);
+
     protected:
         bool is_clicked = false;
+        bool is_pretend_clicked = false;
 
         bool new_hover = false;
         bool new_activated = false;
@@ -248,7 +251,7 @@ class ImageButtonWidget : public ClickableWidget, public BorderRenderer, public 
 class ContainerWidget : public NonactivatableWidget
 {
     public:
-        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
+        virtual void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
         virtual Widget *GetHighlightedChild() = 0;
         virtual bool CanHighlight();
         void AddChild(Widget &child);

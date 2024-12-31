@@ -211,14 +211,26 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
     }
 }
 
-void kbd_click_up(Widget *w, coord_t x, coord_t y, int key)
+void kbd_click_up(Widget *w, coord_t x, coord_t y, int key, bool is_shift, bool is_ctrl, bool is_alt)
 {
+    if(is_shift)
+        key |= GK_MODIFIER_SHIFT;
+    if(is_ctrl)
+        key |= GK_MODIFIER_CTRL;
+    if(is_alt)
+        key |= GK_MODIFIER_ALT;
     Event e { .type = Event::KeyUp, .key = (unsigned short)key };
     deferred_call(syscall_pushevents, deferred_call(syscall_get_focus_pid), &e, 1);
 }
 
-void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
+void kbd_click_down(Widget *w, coord_t x, coord_t y, int key, bool is_shift, bool is_ctrl, bool is_alt)
 {
+    if(is_shift)
+        key |= GK_MODIFIER_SHIFT;
+    if(is_ctrl)
+        key |= GK_MODIFIER_CTRL;
+    if(is_alt)
+        key |= GK_MODIFIER_ALT;
     Event e { .type = Event::KeyDown, .key = (unsigned short)key };
     deferred_call(syscall_pushevents, deferred_call(syscall_get_focus_pid), &e, 1);
 }
