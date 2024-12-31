@@ -900,6 +900,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_dup2:
+            {
+                auto p = reinterpret_cast<__syscall_dup_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_dup2(p->fd1, p->fd2,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 klog("syscall: unhandled syscall %d\n", (int)sno);

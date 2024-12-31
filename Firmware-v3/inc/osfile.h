@@ -40,6 +40,8 @@ class File
 
         FileType GetType() const;    // support type checking without rtti
 
+        uint32_t opts = 0;
+
         virtual ~File() noexcept = default;
 };
 

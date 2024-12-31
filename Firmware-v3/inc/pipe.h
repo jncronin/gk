@@ -32,8 +32,12 @@ class PipeFile : public File
         bool is_write_end = false;
 
         std::shared_ptr<Pipe> p;
+
+        PipeFile();
+
+        int Close();
 };
 
-std::pair<PipeFile *, PipeFile *> make_pipe();
+std::pair<std::shared_ptr<PipeFile>, std::shared_ptr<PipeFile>> make_pipe();
 
 #endif

@@ -78,7 +78,9 @@
         "lv_draw_sw_blend_to_argb8888.h": "c",
         "nmbus.h": "c",
         "nm_common.h": "c",
-        "nm_bsp.h": "c"
+        "nm_bsp.h": "c",
+        "charconv": "cpp",
+        "set": "cpp"
     },
     "cortex-debug.variableUseNaturalFormat": false,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",

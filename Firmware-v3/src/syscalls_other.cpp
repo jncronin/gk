@@ -433,22 +433,16 @@ int syscall_get_ienv(char *outbuf, size_t outbuf_len, unsigned int idx, int *_er
 
 int syscall_pipe(int pipefd[2], int *_errno)
 {
+    if(!pipefd)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
     // try and get free process file handles
     auto t = GetCurrentThreadForCore();
     auto &p = t->p;
     CriticalGuard cg(p.sl);
-    int fd1 = get_free_fildes(p);
-    if(fd1 == -1)
-    {
-        *_errno = EMFILE;
-        return -1;
-    }
-    int fd2 = get_free_fildes(p);
-    if(fd2 == -1)
-    {
-        *_errno = EMFILE;
-        return -1;
-    }
 
     auto newpipe = make_pipe();
 
@@ -458,8 +452,79 @@ int syscall_pipe(int pipefd[2], int *_errno)
         return -1;
     }
 
+    int fd1 = get_free_fildes(p);
+    if(fd1 == -1)
+    {
+        *_errno = EMFILE;
+        return -1;
+    }
     p.open_files[fd1] = newpipe.first;
+    int fd2 = get_free_fildes(p);
+    if(fd2 == -1)
+    {
+        *_errno = EMFILE;
+        p.open_files[fd1] = nullptr;
+        return -1;
+    }
     p.open_files[fd2] = newpipe.second;
 
+    pipefd[0] = fd1;
+    pipefd[1] = fd2;
+
     return 0;
+}
+
+int syscall_dup2(int oldfd, int newfd, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    CriticalGuard cg(p.sl);
+
+    if(oldfd < 0 || oldfd >= GK_MAX_OPEN_FILES)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    if(p.open_files[oldfd] == nullptr)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    if(newfd != -1)
+    {
+        if(newfd < 0 || newfd >= GK_MAX_OPEN_FILES)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+        if(p.open_files[newfd] == nullptr)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+        else
+        {
+            p.open_files[newfd]->Close(_errno);
+        }
+    }
+    else
+    {
+        newfd = get_free_fildes(p);
+        if(newfd < 0)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+    }
+
+    p.open_files[newfd] = p.open_files[oldfd];
+
+    if(p.open_files[newfd] == nullptr)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    return newfd;
 }

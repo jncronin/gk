@@ -105,6 +105,7 @@ int syscall_waitpid(pid_t pid, int *status, int options, int *_errno);
 void syscall_getheap(void **addr, size_t *sz);
 
 int syscall_pipe(int pipefd[2], int *_errno);
+int syscall_dup2(int oldfd, int newfd, int *_errno);
 
 // needed for supervisor
 pid_t syscall_get_focus_pid(int *_errno);

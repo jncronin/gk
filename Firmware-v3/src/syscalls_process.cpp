@@ -235,9 +235,9 @@ void *proccreate_thread(void *ptr)
 
     // TODO: inherit fds
     memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
-    proc->open_files[STDIN_FILENO] = new SeggerRTTFile(0, true, false);
-    proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
-    proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
+    proc->open_files[STDIN_FILENO] = std::make_shared<SeggerRTTFile>(0, true, false);
+    proc->open_files[STDOUT_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
+    proc->open_files[STDERR_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
 
     // Set default pixel mode
     switch(pcinfo->pixel_format)

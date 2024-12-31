@@ -54,7 +54,7 @@ class Process
         int rc;
         bool for_deletion = false;
 
-        File *open_files[GK_MAX_OPEN_FILES];
+        std::shared_ptr<File> open_files[GK_MAX_OPEN_FILES];
 
         CPUAffinity default_affinity;
 

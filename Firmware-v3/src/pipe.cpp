@@ -1,24 +1,21 @@
 #include "pipe.h"
 #include <string.h>
 
-std::pair<PipeFile *, PipeFile *> make_pipe()
+std::pair<std::shared_ptr<PipeFile>, std::shared_ptr<PipeFile>> make_pipe()
 {
-    auto p1 = new PipeFile();
+    auto p1 = std::make_shared<PipeFile>();
     if(!p1)
     {
         return std::make_pair(nullptr, nullptr);
     }
-    auto p2 = new PipeFile();
+    auto p2 = std::make_shared<PipeFile>();
     if(!p2)
     {
-        delete p1;
         return std::make_pair(nullptr, nullptr);
     }
     auto p = std::make_shared<Pipe>();
     if(!p)
     {
-        delete p1;
-        delete p2;
         return std::make_pair(nullptr, nullptr);
     }
 
@@ -98,7 +95,7 @@ int Pipe::write(const char *buf, unsigned int nbytes)
 
     auto to_write1 = std::min(to_write, GK_PIPESIZE - write_ptr);
     auto to_write2 = to_write - to_write1;
-    memcpy(&b[read_ptr], buf, to_write1);
+    memcpy(&b[write_ptr], buf, to_write1);
     if(to_write2)
     {
         memcpy(b, &buf[to_write1], to_write2);
@@ -140,4 +137,15 @@ unsigned int Pipe::writeable_size() const
     {
         return GK_PIPESIZE - (write_ptr - read_ptr) - 1;
     }
+}
+
+PipeFile::PipeFile()
+{
+    type = FileType::FT_Pipe;
+}
+
+int PipeFile::Close()
+{
+    p = nullptr;
+    return 0;
 }
