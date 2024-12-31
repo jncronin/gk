@@ -51,7 +51,7 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
     }
 
     auto ret = p.open_files[file]->Read(buf, nbytes, _errno);
-    if(ret == 0)
+    if(ret == -3)
     {
         if(p.open_files[file]->opts & O_NONBLOCK)
         {
@@ -62,7 +62,7 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
         {
             // TODO: block on some signal
             Yield();
-            return -2;
+            return -3;
         }
     }
     return ret;

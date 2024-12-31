@@ -64,7 +64,7 @@ int Pipe::read(char *buf, unsigned int nbytes)
     CriticalGuard cg(sl);
     auto rb = readable_size();
     if(!rb)
-        return 0;
+        return -3;      // try again
 
     auto to_read = std::min(rb, nbytes);
 
