@@ -908,6 +908,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_setsupervisorvisible:
+            {
+                auto p = reinterpret_cast<__syscall_setsupervisorvisible_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setsupervisorvisible(p->visible, p->screen,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 klog("syscall: unhandled syscall %d\n", (int)sno);

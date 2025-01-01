@@ -72,6 +72,25 @@ Widget *GridWidget::GetHighlightedChild()
     return row[curx];
 }
 
+void GridWidget::SetHighlightedChild(const Widget &child)
+{
+    for(unsigned int cy = 0; cy < rows.size(); cy++)
+    {
+        const auto row = rows[cy];
+        for(unsigned int cx = 0; cx < row.size(); cx++)
+        {
+            const auto c = row[cx];
+            if(c && c == &child)
+            {
+                cury = cy;
+                curx = cx;
+                ScrollToSelected();
+                return;
+            }
+        }
+    }
+}
+
 Widget *GridWidget::GetIndex(GridWidget::row_t &row, unsigned int idx)
 {
     if(row.size() <= idx)
@@ -246,8 +265,10 @@ static bool anim_scroll(Widget *w, void *p, time_ms_t ms_since_start)
     }
     else
     {
-        w->x = Anim_Interp_Linear(sp->x_from, sp->x_to, ms_since_start, sp->tot_t);
-        w->y = Anim_Interp_Linear(sp->y_from, sp->y_to, ms_since_start, sp->tot_t);
+        if(sp->x_from != sp->x_to)
+            w->x = Anim_Interp_Linear(sp->x_from, sp->x_to, ms_since_start, sp->tot_t);
+        if(sp->y_from != sp->y_to)
+            w->y = Anim_Interp_Linear(sp->y_from, sp->y_to, ms_since_start, sp->tot_t);
         return false;
     }
 }
@@ -267,6 +288,11 @@ void ContainerWidget::ScrollToSelected()
     while((sel_y + y_scroll) < 0) y_scroll += h;
     while((sel_y + y_scroll) >= h) y_scroll -= h;
 
+    ScrollTo(x_scroll, y_scroll);
+}
+
+void ContainerWidget::ScrollTo(coord_t x_scroll, coord_t y_scroll)
+{
     if(x_scroll || y_scroll)
     {
         auto al = GetAnimationList();

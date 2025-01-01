@@ -12,11 +12,14 @@
 #include "pwr.h"
 #include "gk_conf.h"
 #include "syscalls_int.h"
+#include <array>
 
 SRAM4_DATA Process p_supervisor;
 static SRAM4_DATA bool overlay_visible = false;
 static SRAM4_DATA bool volume_visible = false;
 SRAM4_DATA static WidgetAnimationList wl;
+
+const int n_screens = 5;
 
 bool is_overlay_visible()
 {
@@ -239,6 +242,10 @@ void *supervisor_thread(void *p)
 {
     // Set up widgets
 
+    // Store a reference to the first button in each screen (used for scrolling purposes)
+    std::array<Widget *, n_screens> first_button;
+    first_button.fill(nullptr);
+
     // Main overlay screen:
     scr_overlay.x = 0;
     scr_overlay.y = btn_overlay_y;
@@ -278,6 +285,8 @@ void *supervisor_thread(void *p)
     bw_exit.OnClick = btn_exit_click;
     scr_overlay.AddChildOnGrid(bw_exit);
 
+    first_button[0] = &bw_exit;
+
     // Screen 2 is options
     cur_scr += 640;
 
@@ -311,6 +320,8 @@ void *supervisor_thread(void *p)
     imb_bright_up.OnClick = imb_brightness_click;
     scr_overlay.AddChildOnGrid(imb_bright_up);
 
+    first_button[1] = &imb_bright_down;
+
     // Screen 3 is an on-screen keyboard
     cur_scr += 640;
 
@@ -319,6 +330,8 @@ void *supervisor_thread(void *p)
     kw.OnKeyboardButtonClick = kbd_click_up;
     kw.OnKeyboardButtonClickBegin = kbd_click_down;
     scr_overlay.AddChildOnGrid(kw);
+
+    first_button[2] = &kw;
 
     // Volume control    
     pb_volume.x = 640-64-32;
@@ -492,6 +505,11 @@ void *supervisor_thread(void *p)
                     }
                     break;
 
+                case Event::SupervisorSetVisible:
+                    AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_overlay, (void*)(int)e.setvis_data.visible);
+                    scr_overlay.SetHighlightedChild(*first_button[e.setvis_data.screen]);
+                    break;
+
                 default:
                     // ignore
                     break;
@@ -552,4 +570,14 @@ bool supervisor_is_active(unsigned int *x, unsigned int *y, unsigned int *w, uns
         if(h) *h = 240;
     }
     return overlay_visible; 
+}
+
+int syscall_setsupervisorvisible(int visible, int screen, int *_errno)
+{
+    Event e;
+    e.type = Event::SupervisorSetVisible;
+    e.setvis_data.visible = visible;
+    e.setvis_data.screen = screen;
+    p_supervisor.events.Push(e);
+    return 0;
 }

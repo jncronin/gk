@@ -253,8 +253,10 @@ class ContainerWidget : public NonactivatableWidget
     public:
         virtual void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
         virtual Widget *GetHighlightedChild() = 0;
+        virtual void SetHighlightedChild(const Widget &child) = 0;
         virtual bool CanHighlight();
         void AddChild(Widget &child);
+        void ScrollTo(coord_t x_scroll, coord_t y_scroll);
     
     protected:
         std::vector<Widget *> children;
@@ -268,6 +270,7 @@ class GridWidget : public ContainerWidget
         void AddChildOnGrid(Widget &child, int x = -1, int y = -1);
         virtual bool IsChildHighlighted(const Widget &child);
         virtual Widget *GetHighlightedChild();
+        virtual void SetHighlightedChild(const Widget &child);
         virtual void KeyPressDown(unsigned short  scancode);
         virtual void KeyPressUp(unsigned short  scancode);
 
