@@ -362,21 +362,22 @@ int syscall_unlink(const char *pathname, int *_errno)
         return -1;
     }
 
+    auto act_name = parse_fname(pathname);
+
     // check len as malloc'ing in sram4
-    auto pnlen = strlen(pathname);
-    if(pnlen > 4096)
+    if(act_name.length() > 4096)
     {
         *_errno = ENAMETOOLONG;
         return -1;
     }
 
-    auto npname = (char *)malloc(pnlen + 1);
+    auto npname = (char *)malloc(act_name.length() + 1);
     if(!npname)
     {
         *_errno = ENAMETOOLONG;
         return -1;
     }
-    strcpy(npname, pathname);
+    strcpy(npname, act_name.c_str());
 
     auto t = GetCurrentThreadForCore();
     auto msg = ext4_unlink_message(npname, t->ss, t->ss_p);
