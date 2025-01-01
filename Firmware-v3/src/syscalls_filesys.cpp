@@ -183,6 +183,9 @@ static std::string parse_fname(const std::string &pname)
         ss.str().c_str());
 #endif
 
+    if(ss.str().size() == 0)
+        return "/";         // opendir("/")
+
     return ss.str();
 }
 

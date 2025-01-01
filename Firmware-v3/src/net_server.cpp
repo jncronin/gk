@@ -108,7 +108,7 @@ void init_net()
 
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
     Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
-    Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
+    //Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
 }
 
 static void handle_inject_packet(const net_msg &m)
