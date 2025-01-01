@@ -126,6 +126,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/nemagfx/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/wilc"
         "${CMAKE_CURRENT_SOURCE_DIR}/inih"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 target_compile_definitions(${PROJECT_NAME}

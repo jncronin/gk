@@ -105,10 +105,11 @@ void *init_thread(void *p)
     //return nullptr;
 
     // gkmenu
-    const char *args[] = { "Shell" };        // run a test game
+    const char *args[] = { "Castlevania IV" };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
+    pt.osd = nullptr;
     pt.stack_size = 64 * 1024;
     pt.heap_size = 4*1024*1024;
     pt.screen_w = 320;

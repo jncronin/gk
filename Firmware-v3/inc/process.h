@@ -15,6 +15,7 @@ class Thread;
 #include "gk_conf.h"
 #include <sys/types.h>
 #include <unordered_set>
+#include "supervisor/widgets/widget.h"
 
 struct audio_conf
 {
@@ -179,6 +180,17 @@ class Process
         /* graphics textures - mapped as WT */
         MemRegion mr_gtext = InvalidMemregion();
         size_t gtext_ptr = 0;
+
+    protected:
+        /* specific supervisor buttons */
+        bool has_osd = false;
+        bool osd_prepped = false;
+        std::string osd_text;
+        std::vector<Widget *> osd;
+
+    public:
+        const std::vector<Widget *> &get_osd();
+        void set_osd(const std::string &osd_text);
 };
 
 extern Process *focus_process;

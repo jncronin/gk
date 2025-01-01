@@ -22,6 +22,30 @@ void ContainerWidget::AddChild(Widget &child)
     child.parent = this;
 }
 
+void ContainerWidget::RemoveChild(Widget &child)
+{
+    for(auto iter = children.begin(); iter < children.end();)
+    {
+        if(*iter == &child)
+            iter = children.erase(iter);
+        else
+            iter++;
+    }
+}
+
+void GridWidget::RemoveChild(Widget &child)
+{
+    for(auto row : rows)
+    {
+        for(unsigned int i = 0; i < row.size(); i++)
+        {
+            if(row[i] == &child)
+                row[i] = nullptr;
+        }
+    }
+    ContainerWidget::RemoveChild(child);
+}
+
 void GridWidget::AddChildOnGrid(Widget &child, int xpos, int ypos)
 {
     if(ypos == -1)

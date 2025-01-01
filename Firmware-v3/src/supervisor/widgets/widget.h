@@ -256,6 +256,7 @@ class ContainerWidget : public NonactivatableWidget
         virtual void SetHighlightedChild(const Widget &child) = 0;
         virtual bool CanHighlight();
         void AddChild(Widget &child);
+        virtual void RemoveChild(Widget &child);
         void ScrollTo(coord_t x_scroll, coord_t y_scroll);
     
     protected:
@@ -268,6 +269,7 @@ class GridWidget : public ContainerWidget
 {
     public:
         void AddChildOnGrid(Widget &child, int x = -1, int y = -1);
+        virtual void RemoveChild(Widget &child);
         virtual bool IsChildHighlighted(const Widget &child);
         virtual Widget *GetHighlightedChild();
         virtual void SetHighlightedChild(const Widget &child);

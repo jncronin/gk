@@ -162,6 +162,11 @@ void *proccreate_thread(void *ptr)
     proc->is_priv = is_priv;
     proc->default_stack_size = stack_size;
     proc->stack_preference = pcinfo->stack_preference;
+    if(pcinfo->osd)
+    {
+        std::string sosd(pcinfo->osd);
+        proc->set_osd(sosd);
+    }
     
     // load the elf file
     uint32_t epoint;

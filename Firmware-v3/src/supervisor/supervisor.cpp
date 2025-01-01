@@ -19,6 +19,8 @@ static SRAM4_DATA bool overlay_visible = false;
 static SRAM4_DATA bool volume_visible = false;
 SRAM4_DATA static WidgetAnimationList wl;
 
+const std::vector<Widget *> &default_osd();
+
 const int n_screens = 5;
 
 bool is_overlay_visible()
@@ -158,50 +160,6 @@ bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
     return false;
 }
 
-bool anim_handle_quit_failed(Widget *wdg, void *p, time_ms_t t)
-{
-    const constexpr time_ms_t quit_delay = 5000;
-    
-    if(t < quit_delay)
-        return false;
-
-    auto pid = (pid_t)p;
-    
-    if(deferred_call(syscall_get_pid_valid, pid))
-    {
-        klog("supervisor: request to quit pid %u failed, force-quitting\n", pid);
-
-        deferred_call(syscall_kill, pid, SIGKILL);
-    }
-
-    return true;
-}
-
-void btn_exit_click(Widget *w, coord_t x, coord_t y)
-{
-    auto fpid = deferred_call(syscall_get_focus_pid);
-    if(fpid >= 0)
-    {
-        auto fppid = deferred_call(syscall_get_proc_ppid, fpid);
-        extern pid_t pid_gkmenu;
-
-        // only quit processes started by gkmenu
-        if(fppid >= 0 && fppid == pid_gkmenu)
-        {
-            // TODO: make game-specific
-            Event e[2];
-            e[0].type = Event::KeyDown;
-            e[0].key = GK_SCANCODE_F12;
-            e[1].type = Event::KeyUp;
-            e[1].key = GK_SCANCODE_F12;
-            deferred_call(syscall_pushevents, fpid, e, 2);
-
-            // backup quit incase the above didn't work
-            AddAnimation(wl, clock_cur_ms(), anim_handle_quit_failed, nullptr, (void *)fpid);
-        }
-    }
-}
-
 void imb_brightness_click(Widget *w, coord_t x, coord_t y)
 {
     if(w == &imb_bright_down)
@@ -246,6 +204,9 @@ void *supervisor_thread(void *p)
     std::array<Widget *, n_screens> first_button;
     first_button.fill(nullptr);
 
+    // Store the widgets that form part of the custom osd
+    std::vector<Widget *> custom_osd;
+
     // Main overlay screen:
     scr_overlay.x = 0;
     scr_overlay.y = btn_overlay_y;
@@ -275,17 +236,10 @@ void *supervisor_thread(void *p)
     lab_caption.text = "GKMenu";
     scr_overlay.AddChild(lab_caption);
 
-    // TODO: game customisation
-    ButtonWidget bw_exit;
-    bw_exit.w = 80;
-    bw_exit.h = 80;
-    bw_exit.x = cur_scr + (scr_overlay.w - bw_exit.w) / 2;
-    bw_exit.y = (scr_overlay.h - bw_exit.h) / 2;
-    bw_exit.text = "Quit";
-    bw_exit.OnClick = btn_exit_click;
-    scr_overlay.AddChildOnGrid(bw_exit);
-
-    first_button[0] = &bw_exit;
+    for(auto cosd : default_osd())
+    {
+        scr_overlay.AddChildOnGrid(*cosd);
+    }
 
     // Screen 2 is options
     cur_scr += 640;
@@ -501,6 +455,25 @@ void *supervisor_thread(void *p)
                             std::to_string(focus_process->screen_h) + ")") : "";
 
                         lab_caption.text = capt + scr_capt;
+
+                        const auto &new_osd = focus_process ?
+                            focus_process->get_osd() :
+                            default_osd();
+
+                        // set new osd
+                        for(auto cosd : custom_osd)
+                        {
+                            scr_overlay.RemoveChild(*cosd);
+                        }
+                        first_button[0] = nullptr;
+                        custom_osd = new_osd;
+                        for(auto nosd : custom_osd)
+                        {
+                            if(nosd->CanHighlight() && first_button[0] == nullptr)
+                                first_button[0] = nosd;
+                            scr_overlay.AddChildOnGrid(*nosd);
+                        }
+                        
                         do_update = true;
                     }
                     break;
