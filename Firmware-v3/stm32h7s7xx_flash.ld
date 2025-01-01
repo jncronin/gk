@@ -217,7 +217,7 @@ SECTIONS
   .kernel_heap 0x20000000 (NOLOAD) :
   {
     _kheap_start = .;
-    . = . + 128*1024;
+    . = . + (192*1024 - 8*172);
     _kheap_end = .;
   } >DTCM
 

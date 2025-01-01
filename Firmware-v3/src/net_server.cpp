@@ -96,12 +96,13 @@ void init_net()
     p_net.default_affinity = PreferM4;
     p_net.for_deletion = false;
     p_net.heap = InvalidMemregion();
-    p_net.name = "supervisor";
+    p_net.name = "net";
     p_net.next_key = 0;
     for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
         p_net.open_files[i] = nullptr;
     p_net.screen_h = 480;
     p_net.screen_w = 640;
+    memcpy(p_net.p_mpu, mpu_default, sizeof(mpu_default));
 
     Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net,
         CPUAffinity::PreferM4));

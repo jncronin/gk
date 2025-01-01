@@ -63,7 +63,8 @@ class Widget
         virtual bool HandleMove(int x, int y);
 
         int x, y, w, h;
-        int ctrl_id;
+        int ch_x, ch_y;
+        void *d;
 
         Widget *parent;
 
