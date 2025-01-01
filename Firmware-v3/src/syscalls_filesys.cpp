@@ -129,7 +129,7 @@ static inline bool starts_with(const std::string &s, char c)
 
 static void add_part(std::vector<std::string> &output, const std::string &input)
 {
-    if(input == ".")
+    if(input == "." || input == "")
     {
         return;
     }
@@ -174,10 +174,14 @@ static std::string parse_fname(const std::string &pname)
     std::ostringstream ss;
     for(auto iter = pnames.begin(); iter != pnames.end(); iter++)
     {
+        ss << "/";
         ss << *iter;
-        if(iter != pnames.end() - 1)
-            ss << "/";
     }
+
+#if 0
+    klog("parse_fname: %s, cwd=%s -> %s\n", pname.c_str(), GetCurrentThreadForCore()->p.cwd.c_str(),
+        ss.str().c_str());
+#endif
 
     return ss.str();
 }
