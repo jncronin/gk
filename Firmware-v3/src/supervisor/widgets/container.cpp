@@ -341,3 +341,57 @@ void ContainerWidget::ScrollTo(coord_t x_scroll, coord_t y_scroll)
         }
     }
 }
+
+Widget *GridWidget::GetEdgeChild(int xedge, int yedge)
+{
+    // just handle four edges for now
+    if(yedge < 0)
+    {
+        for(unsigned int i = 0; i < rows.size(); i++)
+        {
+            auto &crow = rows[i];
+            for(unsigned int j = 0; j < crow.size(); j++)
+            {
+                if(crow[j] != nullptr)
+                    return crow[j];
+            }
+        }
+    }
+    else if(yedge > 0)
+    {
+        for(unsigned int i = rows.size() - 1; i >= 0; i--)
+        {
+            auto &crow = rows[i];
+            for(unsigned int j = 0; j < crow.size(); j++)
+            {
+                if(crow[j] != nullptr)
+                    return crow[j];
+            }
+        }
+    }
+    else if(xedge < 0)
+    {
+        for(unsigned int i = 0; i < rows.size(); i++)
+        {
+            auto &crow = rows[i];
+            for(unsigned int j = 0; j < crow.size(); j++)
+            {
+                if(crow[j] != nullptr)
+                    return crow[j];
+            }
+        }
+    }
+    else if(xedge > 0)
+    {
+        for(unsigned int i = 0; i < rows.size(); i++)
+        {
+            auto &crow = rows[i];
+            for(unsigned int j = crow.size() - 1; j >= 0; j--)
+            {
+                if(crow[j] != nullptr)
+                    return crow[j];
+            }
+        }
+    }
+    return nullptr;
+}

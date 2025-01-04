@@ -276,6 +276,8 @@ class GridWidget : public ContainerWidget
         virtual void SetHighlightedChild(const Widget &child);
         virtual void KeyPressDown(unsigned short  scancode);
         virtual void KeyPressUp(unsigned short  scancode);
+        //virtual bool HandleMove(int x, int y);
+        virtual Widget *GetEdgeChild(int xedge, int yedge);
 
     protected:
         using row_t = std::vector<Widget *>;
@@ -290,6 +292,12 @@ class GridWidget : public ContainerWidget
 
         bool TryMoveVert(int change);
         bool TryMoveHoriz(int change);
+};
+
+class HorizontalScreen : public GridWidget
+{
+    public:
+
 };
 
 class StaticPadProvider
