@@ -387,12 +387,20 @@ void ContainerWidget::ScrollTo(coord_t x_scroll, coord_t y_scroll)
             if(al)
             {
                 auto sp = new scroll_params();
-                sp->x_from = c->x;
-                sp->x_to = c->x + x_scroll;
-                sp->y_from = c->y;
-                sp->y_to = c->y + y_scroll;
-                sp->tot_t = 150UL;
-                AddAnimation(*al, clock_cur_ms(), anim_scroll, c, sp);
+                if(sp)
+                {
+                    sp->x_from = c->x;
+                    sp->x_to = c->x + x_scroll;
+                    sp->y_from = c->y;
+                    sp->y_to = c->y + y_scroll;
+                    sp->tot_t = 150UL;
+                    AddAnimation(*al, clock_cur_ms(), anim_scroll, c, sp);
+                }
+                else
+                {
+                    c->x += x_scroll;
+                    c->y += y_scroll;
+                }
             }
             else
             {

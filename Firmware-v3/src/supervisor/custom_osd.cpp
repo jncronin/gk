@@ -209,7 +209,12 @@ static void add_property(Widget *w, const std::string &tname,
             if(!cw->d)
             {
                 cw->d = new std::vector<Event>();
-                cw->OnClick = key_handler;
+                if(cw->d)
+                    cw->OnClick = key_handler;
+                else
+                {
+                    klog("supervisor: couldn't create new std::vector\n");
+                }
             }
             auto i = str_to_key(val);
             auto sv = (std::vector<Event> *)cw->d;
@@ -234,6 +239,11 @@ Widget *Process::get_osd()
         INIReader rdr(strreader, (void *)&iprov);
 
         auto nosd = new GridWidget();
+        if(!nosd)
+        {
+            klog("supervisor: couldn't create new GridWidget\n");
+            return default_osd();
+        }
         nosd->x = 0;
         nosd->y = 0;
         nosd->w = scr_overlay.w;
@@ -244,6 +254,9 @@ Widget *Process::get_osd()
             auto sname = rdr.GetSection(sect);
             Widget *w = nullptr;
             bool on_grid = true;
+            int gx = -1;
+            int gy = -1;
+
             if(sname == "label")
             {
                 w = new LabelWidget();
@@ -261,11 +274,16 @@ Widget *Process::get_osd()
                     auto kname = rdr.GetKey(key);
                     auto kval = rdr.Get(key);
 
-                    add_property(w, sname, kname, kval);
+                    if(kname == "gx")
+                        gx = getint(kval);
+                    else if(kname == "gy")
+                        gy = getint(kval);
+                    else
+                        add_property(w, sname, kname, kval);
                 }
 
                 if(on_grid)
-                    nosd->AddChildOnGrid(*w);
+                    nosd->AddChildOnGrid(*w, gx, gy);
                 else
                     nosd->AddChild(*w);
             }
