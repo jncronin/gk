@@ -844,6 +844,7 @@ void *sd_thread(void *param)
             {
                 // need to copy memory to the sram buffer
                 do_mdma_transfer((uint32_t)(uintptr_t)sdr.mem_address, (uint32_t)(uintptr_t)unaligned_buf);
+                CleanM7Cache((uint32_t)(uintptr_t)unaligned_buf, unaligned_buf_size, CacheType_t::Data);
             }
 
             SDMMC2->DCTRL = 0;
@@ -966,7 +967,18 @@ void *sd_thread(void *param)
             if(!is_valid && sdr.is_read)
             {
                 // need to copy memory from the sram buffer
+                InvalidateM7Cache((uint32_t)(uintptr_t)unaligned_buf, unaligned_buf_size,
+                    CacheType_t::Data, true);
                 do_mdma_transfer((uint32_t)(uintptr_t)unaligned_buf, (uint32_t)(uintptr_t)sdr.mem_address);
+
+                // because in the calling function we invalidate sdr.mem_address, first clean to it here
+                //  TODO: make this more efficient with only a single invalidate call i.e. that above
+                //   or just use HPDMA in do_mdma_transfer
+                mem_start = (uint32_t)(uintptr_t)sdr.mem_address;
+                auto cache_start = mem_start & ~0x1fU;
+                auto cache_end = (mem_start + unaligned_buf_size + 0x1fU) & ~0x1fU;
+
+                CleanM7Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
             }
 
             if(sdr.completion_event)
