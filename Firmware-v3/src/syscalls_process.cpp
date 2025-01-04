@@ -44,6 +44,12 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, pid_t *pid
     auto t = GetCurrentThreadForCore();
 
     auto param = new pct_params();
+    if(!param)
+    {
+        klog("proccreate: coulnt'd create new pct_params\n");
+        *_errno = ENOMEM;
+        return -1;
+    }
     param->calling_thread = t;
     param->ss = &t->ss;
     param->ss_p = (int *)&t->ss_p.ival1;
@@ -149,12 +155,23 @@ void *proccreate_thread(void *ptr)
             klog("process_create: could not allocate heap of %d\n", heap_size);
         }
         close(fd);
+        memblk_deallocate(stack);
         *ss_p = ENOMEM;
         ss->Signal();
         return nullptr;
     }
 
     auto proc = new Process();
+    if(!proc)
+    {
+        klog("proccreate: couldn't create new Process structure\n");
+        memblk_deallocate(heap);
+        memblk_deallocate(stack);
+        close(fd);
+        *ss_p = ENOMEM;
+        ss->Signal();
+        return nullptr;
+    }
     proc->name = cpname;
     proc->heap = heap;
     proc->default_affinity = (CPUAffinity)core_affinity;

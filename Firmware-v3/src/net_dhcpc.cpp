@@ -197,6 +197,11 @@ int net_dhcpc_begin_for_iface(NetInterface *iface)
         dhcpc_request dr;
         dr.iface = iface;
         dr.sck = new UDPSocket();
+        if(!dr.sck)
+        {
+            klog("dhcpc: couldn't create new socket\n");
+            return NET_NOMEM;
+        }
         dr.sck->port = htons(68);
         dr.xid = rand();
         return send_discover(reqs.insert_or_assign(iface, dr).first->second);

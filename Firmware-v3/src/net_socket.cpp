@@ -92,6 +92,12 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
                         case SOCK_STREAM:
                             {
                                 auto tcpsck = new TCPSocket();
+                                if(!tcpsck)
+                                {
+                                    klog("socket: couldn't create new TCPSocket\n");
+                                    *_errno = ENOMEM;
+                                    return -1;
+                                }
                                 tcpsck->is_dgram = false;
                                 sck = tcpsck;
                             }
@@ -110,6 +116,12 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
                         case SOCK_DGRAM:
                             {
                                 auto udpsck = new UDPSocket();
+                                if(!udpsck)
+                                {
+                                    klog("socket: couldn't create UDPSocket\n");
+                                    *_errno = ENOMEM;
+                                    return -1;
+                                }
                                 udpsck->is_dgram = true;
                                 sck = udpsck;
                             }
