@@ -5,6 +5,13 @@
 
 WidgetAnimationList *GetAnimationList();
 
+/* data for a key click */
+struct key_click
+{
+    std::vector<Event> events;
+    bool is_quit = false;
+};
+
 void Process::set_osd(const std::string &_osd_text)
 {
     has_osd = true;
@@ -208,7 +215,7 @@ static void add_property(Widget *w, const std::string &tname,
         {
             if(!cw->d)
             {
-                cw->d = new std::vector<Event>();
+                cw->d = new key_click();
                 if(cw->d)
                     cw->OnClick = key_handler;
                 else
@@ -216,12 +223,32 @@ static void add_property(Widget *w, const std::string &tname,
                     klog("supervisor: couldn't create new std::vector\n");
                 }
             }
-            auto i = str_to_key(val);
-            auto sv = (std::vector<Event> *)cw->d;
-            Event epush { .type = Event::KeyDown, .key = i };
-            Event erelease { .type = Event::KeyUp, .key = i };
-            sv->push_back(epush);
-            sv->push_back(erelease);
+            if(cw->d)
+            {
+                auto i = str_to_key(val);
+                auto &sv = ((key_click *)cw->d)->events;
+                Event epush { .type = Event::KeyDown, .key = i };
+                Event erelease { .type = Event::KeyUp, .key = i };
+                sv.push_back(epush);
+                sv.push_back(erelease);
+            }
+        }
+        else if(name == "clickquit")
+        {
+            if(!cw->d)
+            {
+                cw->d = new key_click();
+                if(cw->d)
+                    cw->OnClick = key_handler;
+                else
+                {
+                    klog("supervisor: couldn't create new std::vector\n");
+                }
+            }
+            if(cw->d)
+            {
+                ((key_click *)cw->d)->is_quit = true;
+            }
         }
     }
 }
@@ -297,14 +324,74 @@ Widget *Process::get_osd()
     return osd;
 }
 
+struct passkeystrokes_data
+{
+    std::vector<Event> events;
+    unsigned int next_idx;
+};
+
+static bool anim_passkeystrokes(Widget *wdg, void *p, time_ms_t t)
+{
+    auto p_next_idx = reinterpret_cast<passkeystrokes_data *>(p);
+    auto next_idx = p_next_idx->next_idx;
+    if(next_idx < p_next_idx->events.size())
+    {
+        if(t > next_idx * 17)
+        {
+            // one frame 16.6 ms
+            auto cev = p_next_idx->events[next_idx];
+            if(focus_process)
+            {
+                focus_process->events.Push(cev);
+            }
+
+            next_idx++;
+            p_next_idx->next_idx = next_idx;
+        }
+    }
+
+    if(next_idx >= p_next_idx->events.size())
+    {
+        delete p_next_idx;
+        return true;
+    }
+
+    return false;
+}
+
 void key_handler(Widget *w, coord_t x, coord_t y)
 {
     if(w->d && focus_process)
     {
-        auto l = reinterpret_cast<std::vector<Event> *>(w->d);
-        for(const auto &e : *l)
+        auto l = reinterpret_cast<key_click *>(w->d);
+        if(l->events.size() > 0)
         {
-            focus_process->events.Push(e);
+            // begin passing keystrokes at regular intervals
+
+            // hold the next keystroke to pass
+            auto next_idx = new passkeystrokes_data();
+            if(next_idx)
+            {
+                next_idx->next_idx = 0;
+                next_idx->events = l->events;       // copy in case process is destroyed during animation
+                AddAnimation(*GetAnimationList(), clock_cur_ms(), anim_passkeystrokes, nullptr, next_idx);
+            }
+            else
+            {
+                // failed to allocate structures - just pass the keystrokes (but we will probably crash anyway)
+                for(const auto &e : l->events)
+                {
+                    focus_process->events.Push(e);
+                }
+            }
+        }
+
+        if(l->is_quit)
+        {
+            auto fpid = deferred_call(syscall_get_focus_pid);
+
+            // backup quit incase the above didn't work
+            AddAnimation(*GetAnimationList(), clock_cur_ms(), anim_handle_quit_failed, nullptr, (void *)fpid);
         }
     }
 }
