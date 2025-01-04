@@ -186,10 +186,10 @@ class Process
         bool has_osd = false;
         bool osd_prepped = false;
         std::string osd_text;
-        std::vector<Widget *> osd;
+        Widget *osd = nullptr;
 
     public:
-        const std::vector<Widget *> &get_osd();
+        Widget *get_osd();
         void set_osd(const std::string &osd_text);
 };
 

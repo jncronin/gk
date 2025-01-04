@@ -19,9 +19,10 @@ static SRAM4_DATA bool overlay_visible = false;
 static SRAM4_DATA bool volume_visible = false;
 SRAM4_DATA static WidgetAnimationList wl;
 
-const std::vector<Widget *> &default_osd();
+GridWidget *default_osd();
 
 const int n_screens = 5;
+Widget *scrs[n_screens];
 
 bool is_overlay_visible()
 {
@@ -38,7 +39,7 @@ static const constexpr coord_t status_h = 32;
 
 ButtonWidget rw_test, rw_test2;
 ImageButtonWidget imb_bright_up, imb_bright_down;
-GridWidget scr_overlay, scr_status;
+GridWidget scr_overlay, scr_status, scr1, scr2;
 LabelWidget lab_caption;
 KeyboardWidget kw;
 ProgressBarWidget pb_volume;
@@ -200,10 +201,6 @@ void *supervisor_thread(void *p)
 {
     // Set up widgets
 
-    // Store a reference to the first button in each screen (used for scrolling purposes)
-    std::array<Widget *, n_screens> first_button;
-    first_button.fill(nullptr);
-
     // Store the widgets that form part of the custom osd
     std::vector<Widget *> custom_osd;
 
@@ -213,48 +210,31 @@ void *supervisor_thread(void *p)
     scr_overlay.w = 640;
     scr_overlay.h = btn_overlay_h;
 
-    RectangleWidget rw;
-    rw.x = 0;
-    rw.y = 0;
-    rw.w = scr_overlay.w * 3;
-    rw.h = scr_overlay.h;
-    rw.bg_inactive_color = 0x87;
-    rw.border_width = 0;
-
-    scr_overlay.AddChild(rw);
-
     // Screen 0 is specific to the game.  Without any extra customisation, it simply shows
     //  the game name and an exit button.
     coord_t cur_scr = 0;
+    auto scr0 = default_osd();
+    scr0->x = cur_scr;
+    scr_overlay.AddChild(*scr0);
 
-    lab_caption.x = cur_scr;
-    lab_caption.y = 0;
-    lab_caption.w = scr_overlay.w;
-    lab_caption.h = 32;
-    lab_caption.bg_inactive_color = 0x87;
-    lab_caption.border_width = 0;
-    lab_caption.text = "GKMenu";
-    scr_overlay.AddChild(lab_caption);
-
-    for(auto cosd : default_osd())
-    {
-        scr_overlay.AddChildOnGrid(*cosd);
-    }
-
-    // Screen 2 is options
+    // Screen 1 is options
     cur_scr += 640;
+    scr1.x = cur_scr;
+    scr1.y = 0;
+    scr1.w = scr_overlay.w;
+    scr1.h = scr_overlay.h;
 
     LabelWidget l_options;
-    l_options.x = cur_scr;
+    l_options.x = 0;
     l_options.y = 0;
     l_options.w = scr_overlay.w;
     l_options.h = 32;
     l_options.bg_inactive_color = 0x87;
     l_options.border_width = 0;
     l_options.text = "Options";
-    scr_overlay.AddChild(l_options);
+    scr1.AddChild(l_options);
 
-    imb_bright_down.x = cur_scr + 64;
+    imb_bright_down.x = 64;
     imb_bright_down.w = 80;
     imb_bright_down.y = 64;
     imb_bright_down.h = 80;
@@ -262,7 +242,7 @@ void *supervisor_thread(void *p)
     imb_bright_down.img_w = 64;
     imb_bright_down.img_h = 64;
     imb_bright_down.OnClick = imb_brightness_click;
-    scr_overlay.AddChildOnGrid(imb_bright_down);
+    scr1.AddChildOnGrid(imb_bright_down);
 
     imb_bright_up.x = imb_bright_down.x + imb_bright_down.w + 32;
     imb_bright_up.w = 80;
@@ -272,20 +252,29 @@ void *supervisor_thread(void *p)
     imb_bright_up.img_w = 64;
     imb_bright_up.img_h = 64;
     imb_bright_up.OnClick = imb_brightness_click;
-    scr_overlay.AddChildOnGrid(imb_bright_up);
+    scr1.AddChildOnGrid(imb_bright_up);
 
-    first_button[1] = &imb_bright_down;
-
-    // Screen 3 is an on-screen keyboard
+    // Screen 2 is an on-screen keyboard
     cur_scr += 640;
+    scr2.x = cur_scr;
+    scr2.y = 0;
+    scr2.w = scr_overlay.w;
+    scr2.h = scr_overlay.h;
 
-    kw.x = cur_scr + (scr_overlay.w - kw.w) / 2;
+    kw.x = (scr_overlay.w - kw.w) / 2;
     kw.y = 8;
     kw.OnKeyboardButtonClick = kbd_click_up;
     kw.OnKeyboardButtonClickBegin = kbd_click_down;
-    scr_overlay.AddChildOnGrid(kw);
+    scr2.AddChildOnGrid(kw);
 
-    first_button[2] = &kw;
+    // Add screens to main overlay
+    scr_overlay.AddChildOnGrid(*scr0);
+    scr_overlay.AddChildOnGrid(scr1);
+    scr_overlay.AddChildOnGrid(scr2);
+
+    scrs[0] = scr0;
+    scrs[1] = &scr1;
+    scrs[2] = &scr2;
 
     // Volume control    
     pb_volume.x = 640-64-32;
@@ -456,22 +445,16 @@ void *supervisor_thread(void *p)
 
                         lab_caption.text = capt + scr_capt;
 
-                        const auto &new_osd = focus_process ?
+                        auto new_osd = focus_process ?
                             focus_process->get_osd() :
                             default_osd();
 
                         // set new osd
+                        scr_overlay.ReplaceChildOnGrid(*scrs[0], *new_osd);
+                        scrs[0] = new_osd;
                         for(auto cosd : custom_osd)
                         {
                             scr_overlay.RemoveChild(*cosd);
-                        }
-                        first_button[0] = nullptr;
-                        custom_osd = new_osd;
-                        for(auto nosd : custom_osd)
-                        {
-                            if(nosd->CanHighlight() && first_button[0] == nullptr)
-                                first_button[0] = nosd;
-                            scr_overlay.AddChildOnGrid(*nosd);
                         }
                         
                         do_update = true;
@@ -480,7 +463,8 @@ void *supervisor_thread(void *p)
 
                 case Event::SupervisorSetVisible:
                     AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_overlay, (void*)(int)e.setvis_data.visible);
-                    scr_overlay.SetHighlightedChild(*first_button[e.setvis_data.screen]);
+                    if(e.setvis_data.screen >= 0 && e.setvis_data.screen < n_screens)
+                        scr_overlay.SetHighlightedChild(*scrs[e.setvis_data.screen]);
                     break;
 
                 default:

@@ -9,16 +9,16 @@ void Process::set_osd(const std::string &_osd_text)
 {
     has_osd = true;
     osd_prepped = false;
-    osd.clear();
+    osd = nullptr;
     osd_text = _osd_text;
 }
 
-static std::vector<Widget *> _def_osd;
+static GridWidget _def_osd;
 static bool _def_osd_init = false;
 extern LabelWidget lab_caption;
 extern GridWidget scr_overlay;
 static ButtonWidget bw_exit;
-
+static RectangleWidget rw;
 
 bool anim_handle_quit_failed(Widget *wdg, void *p, time_ms_t t)
 {
@@ -64,10 +64,34 @@ static void btn_exit_click(Widget *w, coord_t x, coord_t y)
     }
 }
 
-const std::vector<Widget *> &default_osd()
+GridWidget *default_osd()
 {
     if(!_def_osd_init)
     {
+        _def_osd.x = 0;
+        _def_osd.y = 0;
+        _def_osd.w = scr_overlay.w;
+        _def_osd.h = scr_overlay.h;
+
+        // background
+        rw.x = 0;
+        rw.y = 0;
+        rw.w = scr_overlay.w;
+        rw.h = scr_overlay.h;
+        rw.bg_inactive_color = 0x87;
+        rw.border_width = 0;
+        _def_osd.AddChild(rw);
+
+        // Display name of current game
+        lab_caption.x = 0;
+        lab_caption.y = 0;
+        lab_caption.w = scr_overlay.w;
+        lab_caption.h = 32;
+        lab_caption.bg_inactive_color = 0x87;
+        lab_caption.border_width = 0;
+        lab_caption.text = "GKMenu";
+        _def_osd.AddChild(lab_caption);
+
         // TODO: game customisation
         bw_exit.w = 80;
         bw_exit.h = 80;
@@ -75,9 +99,9 @@ const std::vector<Widget *> &default_osd()
         bw_exit.y = (scr_overlay.h - bw_exit.h) / 2;
         bw_exit.text = "Quit";
         bw_exit.OnClick = btn_exit_click;
-        _def_osd.push_back(&bw_exit);
+        _def_osd.AddChildOnGrid(bw_exit);
     }
-    return _def_osd;
+    return &_def_osd;
 }
 
 struct ini_str_provider
@@ -197,7 +221,7 @@ static void add_property(Widget *w, const std::string &tname,
     }
 }
 
-const std::vector<Widget *> &Process::get_osd()
+Widget *Process::get_osd()
 {
     if(!has_osd)
     {
@@ -209,13 +233,21 @@ const std::vector<Widget *> &Process::get_osd()
         ini_str_provider iprov { .buf = (char *)osd_text.c_str(), .pos = 0 };
         INIReader rdr(strreader, (void *)&iprov);
 
+        auto nosd = new GridWidget();
+        nosd->x = 0;
+        nosd->y = 0;
+        nosd->w = scr_overlay.w;
+        nosd->h = scr_overlay.h;
+
         for(const auto &sect : rdr.SectionLinenums())
         {
             auto sname = rdr.GetSection(sect);
             Widget *w = nullptr;
+            bool on_grid = true;
             if(sname == "label")
             {
                 w = new LabelWidget();
+                on_grid = false;
             }
             else if(sname == "button")
             {
@@ -232,9 +264,14 @@ const std::vector<Widget *> &Process::get_osd()
                     add_property(w, sname, kname, kval);
                 }
 
-                osd.push_back(w);
+                if(on_grid)
+                    nosd->AddChildOnGrid(*w);
+                else
+                    nosd->AddChild(*w);
             }
         }
+
+        osd = nosd;
 
         osd_prepped = true;
         osd_text.clear();

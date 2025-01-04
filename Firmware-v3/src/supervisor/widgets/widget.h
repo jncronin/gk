@@ -270,13 +270,14 @@ class GridWidget : public ContainerWidget
 {
     public:
         void AddChildOnGrid(Widget &child, int x = -1, int y = -1);
+        void ReplaceChildOnGrid(Widget &cur_child, Widget &new_child);
         virtual void RemoveChild(Widget &child);
         virtual bool IsChildHighlighted(const Widget &child);
         virtual Widget *GetHighlightedChild();
         virtual void SetHighlightedChild(const Widget &child);
         virtual void KeyPressDown(unsigned short  scancode);
         virtual void KeyPressUp(unsigned short  scancode);
-        //virtual bool HandleMove(int x, int y);
+        virtual bool HandleMove(int x, int y);
         virtual Widget *GetEdgeChild(int xedge, int yedge);
 
     protected:

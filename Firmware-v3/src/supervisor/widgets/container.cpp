@@ -115,6 +115,33 @@ void GridWidget::SetHighlightedChild(const Widget &child)
     }
 }
 
+void GridWidget::ReplaceChildOnGrid(Widget &cur_child, Widget &new_child)
+{
+    for(unsigned int cy = 0; cy < rows.size(); cy++)
+    {
+        auto &row = rows[cy];
+        for(unsigned int cx = 0; cx < row.size(); cx++)
+        {
+            auto c = row[cx];
+            if(c && c == &cur_child)
+            {
+                row[cx] = &new_child;
+            }
+        }
+    }
+
+    for(unsigned int i = 0; i < children.size(); i++)
+    {
+        auto c = children[i];
+        if(c && c == &cur_child)
+        {
+            children[i] = &new_child;
+        }
+    }
+
+    new_child.parent = this;
+}
+
 Widget *GridWidget::GetIndex(GridWidget::row_t &row, unsigned int idx)
 {
     if(row.size() <= idx)
@@ -134,6 +161,26 @@ void GridWidget::KeyPressUp(unsigned short  key)
             child->KeyPressUp(key);
         }
     }
+}
+
+bool GridWidget::HandleMove(int xm, int ym)
+{
+    auto child = GetHighlightedChild();
+    if(child)
+    {
+        if(xm != 0)
+            return child->HandleMove(xm, 0) || TryMoveHoriz(xm);
+        else if(ym != 0)
+            return child->HandleMove(0, ym) || TryMoveVert(ym);
+    }
+    else
+    {
+        if(xm != 0)
+            return TryMoveHoriz(xm);
+        else if(ym != 0)
+            return TryMoveVert(ym);
+    }
+    return false;
 }
 
 void GridWidget::KeyPressDown(unsigned short  key)
@@ -299,18 +346,32 @@ static bool anim_scroll(Widget *w, void *p, time_ms_t ms_since_start)
 
 void ContainerWidget::ScrollToSelected()
 {
-    // we scroll all items by the current size of the container for now
+    // scroll so that the selected item fits in the container
+    //  first make the rightmost/bottommost extent fit, then the leftmost/topmost
+    //  this means for children bigger than the container we alighn the topleft corners
+
     coord_t x_scroll = 0;
     coord_t y_scroll = 0;
 
     auto sel = GetHighlightedChild();
+    if(sel == nullptr)
+        return;
     auto sel_x = sel->x;
     auto sel_y = sel->y;
 
-    while((sel_x + x_scroll) < 0) x_scroll += w;
-    while((sel_x + x_scroll) >= w) x_scroll -= w;
-    while((sel_y + y_scroll) < 0) y_scroll += h;
-    while((sel_y + y_scroll) >= h) y_scroll -= h;
+    auto new_x = sel->x;
+    auto new_y = sel->y;
+    if((sel_x + sel->w) > w)
+        new_x = w - sel->w;
+    if((sel_y + sel->h) > h)
+        new_y = h - sel->y;
+    if(sel_x < 0)
+        new_x = 0;
+    if(sel_y < 0)
+        new_y = 0;
+
+    x_scroll = new_x - sel_x;
+    y_scroll = new_y - sel_y;
 
     ScrollTo(x_scroll, y_scroll);
 }
@@ -359,7 +420,7 @@ Widget *GridWidget::GetEdgeChild(int xedge, int yedge)
     }
     else if(yedge > 0)
     {
-        for(unsigned int i = rows.size() - 1; i >= 0; i--)
+        for(int i = rows.size() - 1; i >= 0; i--)
         {
             auto &crow = rows[i];
             for(unsigned int j = 0; j < crow.size(); j++)
@@ -386,7 +447,7 @@ Widget *GridWidget::GetEdgeChild(int xedge, int yedge)
         for(unsigned int i = 0; i < rows.size(); i++)
         {
             auto &crow = rows[i];
-            for(unsigned int j = crow.size() - 1; j >= 0; j--)
+            for(int j = crow.size() - 1; j >= 0; j--)
             {
                 if(crow[j] != nullptr)
                     return crow[j];
