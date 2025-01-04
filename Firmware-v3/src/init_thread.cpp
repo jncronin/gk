@@ -87,12 +87,15 @@ void *init_thread(void *p)
 #if GK_ENABLE_NETWORK
     //deferred_call(syscall_proccreate, "/bin/tftpd", &pt, &errno);
     //deferred_call(syscall_proccreate, "/bin/echo", &pt);
+
+#if GK_ENABLE_WIFI
     extern void *wifi_task(void *);
     extern void init_wifi();
     extern Process p_net;
     init_wifi();
     Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, p_net,
         CPUAffinity::PreferM4));
+#endif
 #endif
 
     pt.core_mask = M7Only;
