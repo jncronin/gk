@@ -230,7 +230,7 @@ Thread *Thread::Create(std::string name,
     return t;
 }
 
-Thread *GetCurrentThreadForCore(int coreid)
+INTFLASH_FUNCTION Thread *GetCurrentThreadForCore(int coreid)
 {
 #if GK_DUAL_CORE | GK_DUAL_CORE_AMP
     if(coreid == -1)

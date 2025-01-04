@@ -212,6 +212,14 @@ static void end_process(Process &p)
 
 INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
 {
+    if((!(RCC->AHB5ENR & RCC_AHB5ENR_XSPI1EN)) || (!(RCC->AHB5ENR & RCC_AHB5ENR_XSPI2EN)) ||
+        (!(XSPI1->CR & XSPI_CR_EN)) || (!(XSPI2->CR & XSPI_CR_EN)) ||
+        ((XSPI1->CR & XSPI_CR_FMODE_Msk) != (3U << XSPI_CR_FMODE_Pos)) ||
+        ((XSPI1->CR & XSPI_CR_FMODE_Msk) != (3U << XSPI_CR_FMODE_Pos)))
+    {
+        // hard fault prior to XSPI init
+        BKPT();
+    }
     auto t = GetCurrentThreadForCore();
     auto p = t ? &t->p : nullptr;
     auto tname = t ? t->name.c_str() : "unknown";
