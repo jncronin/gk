@@ -504,7 +504,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_sleep_us:
             {
-                auto tout = kernel_time::from_us(clock_cur_us() + *reinterpret_cast<unsigned long *>(r2));
+                auto tout = kernel_time::from_us(clock_cur_us() + *reinterpret_cast<uint64_t *>(r2));
                 auto curt = GetCurrentThreadForCore();
                 {
                     CriticalGuard cg(curt->sl);
@@ -888,6 +888,30 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = syscall_nemaenable(p->mutexes,
                     p->nmutexes, p->rb, (sem_t *)p->irq_sem,
                     p->eof_mutex,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pipe:
+            {
+                auto p = reinterpret_cast<int *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pipe(p,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_dup2:
+            {
+                auto p = reinterpret_cast<__syscall_dup_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_dup2(p->fd1, p->fd2,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_setsupervisorvisible:
+            {
+                auto p = reinterpret_cast<__syscall_setsupervisorvisible_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setsupervisorvisible(p->visible, p->screen,
                     reinterpret_cast<int *>(r3));
             }
             break;

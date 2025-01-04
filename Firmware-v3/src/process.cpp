@@ -2,6 +2,8 @@
 #include <sys/types.h>
 #include <vector>
 #include "osmutex.h"
+#include "tilt.h"
+#include "screen.h"
 
 ProcessList proc_list;
 extern Process p_supervisor;
@@ -52,6 +54,45 @@ int Process::AddMPURegion(const mpu_saved_state &r)
 int Process::AddMPURegion(const mmap_region &r)
 {
     return AddMPURegion(r.to_mpu(0));
+}
+
+int Process::DeleteMPURegion(const mmap_region &r)
+{
+    return DeleteMPURegion(r.to_mpu(0)); 
+}
+
+int Process::DeleteMPURegion(const MemRegion &r)
+{
+    if(!r.valid)
+        return -1;
+    mmap_region mr { .mr = r };
+    return DeleteMPURegion(mr.to_mpu(0));
+}
+
+int Process::DeleteMPURegion(const mpu_saved_state &r)
+{
+    int ret = -1;
+    if(!r.is_enabled())
+        return -1;
+
+    for(unsigned int i = 0; i < 16; i++)
+    {
+        // start at whatever is pointed to in mpu_saved_state
+        auto act_r = (i + r.slot()) % 16;
+
+        const auto &cmr = p_mpu[act_r];
+
+        if(cmr.is_enabled() &&
+            cmr.base_addr() == r.base_addr() &&
+            cmr.length() == r.length())
+        {
+            // this one
+            p_mpu[act_r] = MPUGenerateNonValid(act_r);
+            ret = (int)act_r;
+        }
+    }
+
+    return ret;
 }
 
 void Process::UpdateMPURegionsForThreads()
@@ -158,8 +199,7 @@ void ProcessList::DeleteProcess(pid_t pid, int retval)
     auto p = cpval.p;
     if(p == focus_process && p->ppid && pvals[p->ppid].is_alive)
     {
-        focus_process = pvals[p->ppid].p;
-        p_supervisor.events.Push({.type = Event::CaptionChange });
+        SetFocusProcess(pvals[p->ppid].p);
     }
 
     for(const auto &wait_t : cpval.waiting_threads)
@@ -231,4 +271,42 @@ bool ProcessList::IsChildOf(pid_t child, pid_t parent)
         
         child = pvals[child].p->ppid;
     }
+}
+
+bool SetFocusProcess(Process *proc)
+{
+    focus_process = proc;
+
+    if(proc->tilt_is_keyboard || proc->tilt_is_joystick)
+    {
+        tilt_enable(true);
+    }
+    else
+    {
+        tilt_enable(false);
+    }
+
+    screen_hardware_scale scl_x, scl_y;
+
+    if(proc->screen_w <= 160)
+        scl_x = x4;
+    else if(proc->screen_w <= 320)
+        scl_x = x2;
+    else
+        scl_x = x1;
+
+    if(proc->screen_h <= 120)
+        scl_y = x4;
+    else if(proc->screen_h <= 240)
+        scl_y = x2;
+    else
+        scl_y = x1;
+
+    /* set screen mode */
+    screen_set_hardware_scale(scl_x, scl_y);
+
+    p_supervisor.events.Push( { .type = Event::CaptionChange });
+    proc->events.Push( { .type = Event::RefreshScreen });
+
+    return true;
 }

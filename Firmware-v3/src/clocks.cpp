@@ -12,6 +12,12 @@ time_t timegm (struct tm* tim_p);
 
 static void enable_backup_sram();
 
+#if GK_OVERCLOCK
+#define VOS_HIGH_PLL1N_MULT     81U
+#else
+#define VOS_HIGH_PLL1N_MULT     74U
+#endif
+
 extern "C" INTFLASH_FUNCTION void init_clocks()
 {
     SystemCoreClock = 64000000U;
@@ -64,22 +70,23 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     RCC->PLL2FRACR = 0U;
     RCC->PLL3FRACR = 0U;
 
-    /* PLL1 -> CPU at 600 (VOS high -> 8*75/1) or 400 (VOS low -> 8*100/2) */
+    /* PLL1 -> CPU at 600 (VOS high -> 8*75/1) or 400 (VOS low -> 8*100/2)
+        overclock: if VOS high -> 8 * 82/1 = 656 MHz */
     RCC->PLL1DIVR1 = (1U << RCC_PLL1DIVR1_DIVQ_Pos) |
         ((vos ? 0U : 1U) << RCC_PLL1DIVR1_DIVP_Pos) |
-        ((vos ? 74U : 99U) << RCC_PLL1DIVR1_DIVN_Pos);
+        ((vos ? VOS_HIGH_PLL1N_MULT : 99U) << RCC_PLL1DIVR1_DIVN_Pos);
     RCC->PLL1DIVR2 = (1U << RCC_PLL1DIVR2_DIVS_Pos);
 
     /* PLL2:
         P -> LPTIM1 @ 32 MHz
-        S -> XSPI1,2 @ 288 MHz (then prescaled /2)
+        S -> XSPI1 @ 384 MHz (then prescaled /2)
         T -> SD @ 192 MHz */
     RCC->PLL2DIVR1 = (1U << RCC_PLL2DIVR1_DIVR_Pos) |
         (1U << RCC_PLL2DIVR1_DIVQ_Pos) |
-        (35U << RCC_PLL2DIVR1_DIVP_Pos) |
-        (191U << RCC_PLL2DIVR1_DIVN_Pos);
-    RCC->PLL2DIVR2 = (5U << RCC_PLL2DIVR2_DIVT_Pos) |
-        (3U << RCC_PLL2DIVR2_DIVS_Pos);
+        (23U << RCC_PLL2DIVR1_DIVP_Pos) |
+        (127U << RCC_PLL2DIVR1_DIVN_Pos);
+    RCC->PLL2DIVR2 = (3U << RCC_PLL2DIVR2_DIVT_Pos) |
+        (1U << RCC_PLL2DIVR2_DIVS_Pos);
 
     /* PLL3:
         P -> SPI2,3 @240 MHz
@@ -141,7 +148,11 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
     while((RCC->CFGR & RCC_CFGR_SWS_Msk) != (3U << RCC_CFGR_SWS_Pos));
 
     if(vos)
+#if GK_OVERCLOCK
+        SystemCoreClock = 656000000U;
+#else
         SystemCoreClock = 600000000U;
+#endif
     else
         SystemCoreClock = 400000000U;
 
@@ -151,9 +162,9 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
         (3U << RCC_CCIPR1_OTGFSSEL_Pos) |               // OTGFS from USBPHYC
         (0U << RCC_CCIPR1_USBPHYCSEL_Pos) |             // USBPHY from HSE
         (0xaU << RCC_CCIPR1_USBREFCKSEL_Pos) |          // USBPHY is 24 MHz
-        (0U << RCC_CCIPR1_XSPI2SEL_Pos) |               // XSPI2 from PLL2S=266MHz
-        (0U << RCC_CCIPR1_XSPI1SEL_Pos) |               // XSPI1 from PLL2S=266MHz
-        (2U << RCC_CCIPR1_SDMMC12SEL_Pos);              // SDMMC from PLL2T=200MHz
+        (0U << RCC_CCIPR1_XSPI2SEL_Pos) |               // XSPI2 from hclk5=300MHz
+        (0U << RCC_CCIPR1_XSPI1SEL_Pos) |               // XSPI1 from hclk5=300MHz
+        (1U << RCC_CCIPR1_SDMMC12SEL_Pos);              // SDMMC from PLL2T=192MHz
     RCC->CCIPR2 = (1U << RCC_CCIPR2_LPTIM1SEL_Pos) |    // LPTIM1 = PLL2P=32MHz
         (2U << RCC_CCIPR2_I2C1_I3C1SEL_Pos) |           // I2C1 = HSI64
         (2U << RCC_CCIPR2_I2C23SEL_Pos) |               // I2C2/3 = HSI64

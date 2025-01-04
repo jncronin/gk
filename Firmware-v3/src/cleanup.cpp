@@ -67,10 +67,6 @@ void cleanup(Thread *t)
     unlock_all_thread_sync_primitives(t->locked_mutexes, t);
     unlock_all_thread_sync_primitives(t->locked_rwlocks, t);
     
-    /* Clean up thread resources */
-    memblk_deallocate(t->mr_tls);
-    memblk_deallocate(t->stack);
-
     /* Remove from schedulers */
 #if GK_DUAL_CORE_AMP
     scheds[0].Unschedule(t);
@@ -78,6 +74,15 @@ void cleanup(Thread *t)
 #else
     sched.Unschedule(t);
 #endif
+
+    /* Clean up thread resources */
+    t->p.DeleteMPURegion(t->stack);
+    t->p.DeleteMPURegion(t->mr_tls);
+
+    t->p.UpdateMPURegionsForThreads();
+
+    memblk_deallocate(t->mr_tls);
+    memblk_deallocate(t->stack);
 
     delete t;
 
@@ -107,6 +112,10 @@ void cleanup(Process *p)
     memblk_deallocate(p->code_data);
     if(p->mr_hot.valid)
         memblk_deallocate(p->mr_hot);
+    if(p->audio.mr_sound.valid)
+        memblk_deallocate(p->audio.mr_sound);
+    if(p->mr_gtext.valid)
+        memblk_deallocate(p->mr_gtext);
 
     /* cleanup mutexes etc */
     delete_all_process_sync_primitives(p->owned_conditions, p);

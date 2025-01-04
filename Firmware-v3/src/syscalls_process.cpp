@@ -162,6 +162,11 @@ void *proccreate_thread(void *ptr)
     proc->is_priv = is_priv;
     proc->default_stack_size = stack_size;
     proc->stack_preference = pcinfo->stack_preference;
+    if(pcinfo->osd)
+    {
+        std::string sosd(pcinfo->osd);
+        proc->set_osd(sosd);
+    }
     
     // load the elf file
     uint32_t epoint;
@@ -193,6 +198,25 @@ void *proccreate_thread(void *ptr)
     {
         proc->p_mpu_tls_id = proc->AddMPURegion({ .mr = InvalidMemregion() });
     }
+    // TODO: testing here - remove and use gkmenu instead to populate
+    auto gtext_size = pcinfo->graphics_texture_size;
+    gtext_size = 1*1024*1024;
+    if(pcinfo->graphics_texture_size)
+    {
+        proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::AXISRAM, std::string(pname) + " gtext");
+        if(!proc->mr_gtext.valid)
+            proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::SRAM, std::string(pname) + " gtext");
+        if(!proc->mr_gtext.valid)
+            proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::SDRAM, std::string(pname) + " gtext");
+
+        if(proc->mr_gtext.valid)
+        {
+            if(proc->AddMPURegion({ .mr = proc->mr_gtext, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = true }) < 0)
+            {
+                memblk_deallocate(proc->mr_gtext);
+            }
+        }
+    }
     
     // create startup thread
     auto start_t = Thread::Create(cpname + "_0",
@@ -216,9 +240,9 @@ void *proccreate_thread(void *ptr)
 
     // TODO: inherit fds
     memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
-    proc->open_files[STDIN_FILENO] = new SeggerRTTFile(0, true, false);
-    proc->open_files[STDOUT_FILENO] = new SeggerRTTFile(0, false, true);
-    proc->open_files[STDERR_FILENO] = new SeggerRTTFile(0, false, true);
+    proc->open_files[STDIN_FILENO] = std::make_shared<SeggerRTTFile>(0, true, false);
+    proc->open_files[STDOUT_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
+    proc->open_files[STDERR_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
 
     // Set default pixel mode
     switch(pcinfo->pixel_format)
@@ -279,30 +303,15 @@ void *proccreate_thread(void *ptr)
     proc->gamepad_is_mouse = pcinfo->keymap.gamepad_is_mouse != 0;
     proc->tilt_is_keyboard = pcinfo->keymap.tilt_is_keyboard != 0;
     proc->tilt_is_joystick = pcinfo->keymap.tilt_is_joystick != 0;
+    proc->joystick_is_joystick = pcinfo->keymap.joystick_is_joystick != 0;
+    proc->touch_is_mouse = pcinfo->keymap.touch_is_mouse != 0;
     memcpy(proc->gamepad_to_scancode, pcinfo->keymap.gamepad_to_scancode,
         GK_NUMKEYS * sizeof(unsigned short int));
 
     // Set as focus if possible
     if(pcinfo->with_focus)
     {
-        focus_process = proc;
-
-        if(proc->tilt_is_keyboard || proc->tilt_is_joystick)
-        {
-            tilt_enable(true);
-        }
-        else
-        {
-            tilt_enable(false);
-        }
-
-        /* set screen mode */
-        if(pcinfo->screen_w == 320 && pcinfo->screen_h == 240)
-        {
-            screen_set_hardware_scale(x2, x2);
-        }
-
-        p_supervisor.events.Push( { .type = Event::CaptionChange });
+        SetFocusProcess(proc);
     }
 
 #if GK_MEMBLK_STATS

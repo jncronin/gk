@@ -36,10 +36,8 @@ file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
 )
 
 file(GLOB_RECURSE WINC_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/common/source/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/driver/source/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/socket/source/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/winc1500/spi_flash/source/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/wilc/common/source/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/*.c
 )
 
 add_library(tusb)
@@ -69,32 +67,47 @@ target_sources(tusb
         ${TUSB_SOURCES}
 )
 
-#[[
-add_library(winc)
-target_include_directories(winc
+
+add_library(wilc)
+target_include_directories(wilc
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7/Include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7rs/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
+        "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc"
 )
-target_compile_definitions(winc
+target_compile_definitions(wilc
     PRIVATE
-    STM32H747xx
+    STM32H7S7xx
     CORE_CM7
     ETH_MODE
     _POSIX_READER_WRITER_LOCKS
     _UNIX98_THREAD_MUTEX_ATTRIBUTES
     _POSIX_THREAD_PRIO_PROTECT
     _POSIX_THREAD_PROCESS_SHARED
+    CONF_WILC_USE_SPI
+    CONF_WILC_USE_3000_REV_A
+    NM_EDGE_INTERRUPT=1
 
 )
 
-target_sources(winc
-PRIVATE
-    ${WINC_SOURCES}
+target_sources(wilc
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/common/source/nm_common.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/m2m_hif.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/m2m_periph.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/m2m_wifi.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/nmasic.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/nmbus.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/nmdrv.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/nmi2c.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/nmsdio.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/nmspi.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/driver/source/spi_flash.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc/drv_hash/PMK.c"
 )
-]]
+
 
 add_executable(${PROJECT_NAME})
 
@@ -111,6 +124,9 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
         "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source"
         "${CMAKE_CURRENT_SOURCE_DIR}/nemagfx/inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/wilc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/inih"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -176,7 +192,7 @@ target_link_libraries(${PROJECT_NAME}
         -lm
         lwext4
         tusb
-        #winc
+        wilc
         zlib
         #lvgl
         ${CMAKE_CURRENT_SOURCE_DIR}/nemagfx/lib/libnemagfx-float-abi-hard.a

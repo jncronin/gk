@@ -12,7 +12,8 @@ enum FileType
     FT_Unknown = 0,
     FT_SeggerRTT,
     FT_Lwext,
-    FT_Socket
+    FT_Socket,
+    FT_Pipe
 };
 
 class File
@@ -39,7 +40,9 @@ class File
 
         FileType GetType() const;    // support type checking without rtti
 
-        virtual ~File() = default;
+        uint32_t opts = 0;
+
+        virtual ~File() noexcept = default;
 };
 
 class SeggerRTTFile : public File

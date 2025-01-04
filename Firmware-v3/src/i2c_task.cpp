@@ -28,9 +28,14 @@
 static const constexpr pin I2C2_SDA { GPIOF, 0, 4 };
 static const constexpr pin I2C2_SCL { GPIOF, 1, 4 };
 extern bool i2c_init;
-extern void i2c_reset();
+extern void i2c_reset(bool irqs);
 
 static void *i2c_thread(void *p);
+
+static uint32_t i2c_wait_irq(uint32_t mask, kernel_time tout = kernel_time::from_ms(50U));
+static const constexpr uint32_t i2c_timeout = 0xffffffffU;
+
+static SimpleSignal sem_i2c;
 
 struct i2c_msg
 {
@@ -254,13 +259,15 @@ static uint32_t calc_cr2(unsigned int i2c_address, bool is_read,
 
 void *i2c_thread(void *params)
 {
+    uint32_t isr;
+
     while(true)
     {
         if(i2c_msgs.Pop(const_cast<i2c_msg *>(&cur_i2c_msg)))
         {
             if(!i2c_init)
             {
-                i2c_reset();
+                i2c_reset(/* true */ false);
             }
 
             i2c->ICR = 0x3f38U;
@@ -278,19 +285,28 @@ void *i2c_thread(void *params)
             unsigned int wait_flag = cur_i2c_msg.is_read ? I2C_ISR_RXNE : I2C_ISR_TXIS;
 
             // synchronous for now
-            while(!(i2c->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)));
-            if(i2c->ISR & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO))
+            isr = i2c_wait_irq(wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO);
+            if(isr == i2c_timeout)
+            {
+                i2c_init = false;
+                if(cur_i2c_msg.ss)
+                {
+                    cur_i2c_msg.ss->Signal(SimpleSignal::Set, 0x80000000UL | isr);
+                }
+                continue;
+            }
+            if(isr & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO))
             {
                 // fail
                 if(cur_i2c_msg.ss)
                 {
-                    cur_i2c_msg.ss->Signal(SimpleSignal::Set, 0x80000000UL | i2c->ISR);
+                    cur_i2c_msg.ss->Signal(SimpleSignal::Set, 0x80000000UL | isr);
                 }
-                if(i2c->ISR & (I2C_ISR_BERR | I2C_ISR_ARLO))
+                if(isr & (I2C_ISR_BERR | I2C_ISR_ARLO))
                 {
 #if DEBUG_I2C
                     {
-                        klog("i2c: transfer failing %x\n", i2c->ISR);
+                        klog("i2c: transfer failing %x\n", isr);
                     }
 #endif
                     i2c_init = false;
@@ -311,14 +327,34 @@ void *i2c_thread(void *params)
                 bool cont = true;
                 while(cont)
                 {
-                    while(!(i2c->ISR & wait_flag));
+                    isr = i2c_wait_irq(wait_flag);
+                    if(isr == i2c_timeout)
+                    {
+                        cont = false;
+                        i2c_init = false;
+                        if(cur_i2c_msg.ss)
+                        {
+                            cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                        }
+                        break;
+                    }
                     auto d = i2c->RXDR;
                     *cur_buf_p((i2c_msg*)&cur_i2c_msg, n_xmit++) = d;
                     if(n_xmit == n_tc_end)
                     {
-                        while(!(i2c->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
-                        if((cur_i2c_msg.restart_after_read && (i2c->ISR & I2C_ISR_TC)) ||
-                            (i2c->ISR & I2C_ISR_STOPF))
+                        isr = i2c_wait_irq(I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF);
+                        if(isr == i2c_timeout)
+                        {
+                            cont = false;
+                            i2c_init = false;
+                            if(cur_i2c_msg.ss)
+                            {
+                                cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                            }
+                            break;
+                        }
+                        if((cur_i2c_msg.restart_after_read && (isr & I2C_ISR_TC)) ||
+                            (isr & I2C_ISR_STOPF))
                         {
                             // finished
                             cont = false;
@@ -335,7 +371,7 @@ void *i2c_thread(void *params)
                             }
 #endif
                         }
-                        else if(i2c->ISR & I2C_ISR_TCR)
+                        else if(isr & I2C_ISR_TCR)
                         {
                             // reload
                             i2c->CR2 = calc_cr2(cur_i2c_msg.i2c_address, cur_i2c_msg.is_read,
@@ -346,7 +382,7 @@ void *i2c_thread(void *params)
                         {
 #if DEBUG_I2C
                             {
-                                klog("i2c: early read finish %u, %x\n", n_xmit, i2c->ISR);
+                                klog("i2c: early read finish %u, %x\n", n_xmit, isr);
                             }
 #endif
                             // early finish
@@ -365,18 +401,38 @@ void *i2c_thread(void *params)
                 bool cont = true;
                 while(cont)
                 {
-                    while(!(i2c->ISR & wait_flag));
+                    isr = i2c_wait_irq(wait_flag);
+                    if(isr == i2c_timeout)
+                    {
+                        cont = false;
+                        i2c_init = false;
+                        if(cur_i2c_msg.ss)
+                        {
+                            cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                        }
+                        break;
+                    }
                     auto d = *cur_buf_p((i2c_msg *)&cur_i2c_msg, n_xmit++);
                     i2c->TXDR = d;
                     if(n_xmit == n_tc_end)
                     {
-                        while(!(i2c->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
-                        if(i2c->ISR & I2C_ISR_NACKF)
+                        isr = i2c_wait_irq(I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF);
+                        if(isr == i2c_timeout)
+                        {
+                            cont = false;
+                            i2c_init = false;
+                            if(cur_i2c_msg.ss)
+                            {
+                                cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
+                            }
+                            break;
+                        }
+                        if(isr & I2C_ISR_NACKF)
                         {
                             klog("i2c: NACKF during write phase\n");
                         }
-                        if((cur_i2c_msg.restart_after_read && (i2c->ISR & I2C_ISR_TC)) ||
-                            (i2c->ISR & I2C_ISR_STOPF))
+                        if((cur_i2c_msg.restart_after_read && (isr & I2C_ISR_TC)) ||
+                            (isr & I2C_ISR_STOPF))
                         {
                             // finished
                             cont = false;
@@ -393,7 +449,7 @@ void *i2c_thread(void *params)
                             }
 #endif
                         }
-                        else if(i2c->ISR & I2C_ISR_TCR)
+                        else if(isr & I2C_ISR_TCR)
                         {
                             // reload
                             i2c->CR2 = calc_cr2(cur_i2c_msg.i2c_address, cur_i2c_msg.is_read,
@@ -404,7 +460,7 @@ void *i2c_thread(void *params)
                         {
 #if DEBUG_I2C
                             {
-                                klog("i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
+                                klog("i2c: early write finish %u, %x\n", n_xmit, isr);
                             }
 #endif
                             // early finish
@@ -419,4 +475,31 @@ void *i2c_thread(void *params)
             }
         }
     }
+}
+
+uint32_t i2c_wait_irq(uint32_t mask, kernel_time tout)
+{
+    kernel_time wait_until = clock_cur() + tout;
+
+    do
+    {
+        auto isr = i2c->ISR;
+        if(isr & mask)
+        {
+            return isr;
+        }
+        sem_i2c.Wait(SimpleSignal::Set, 0U, clock_cur() + kernel_time::from_ms(1));        
+    } while(clock_cur() < wait_until);
+
+    return i2c_timeout;
+}
+
+extern "C" void I2C2_EV_IRQHandler()
+{
+    // TODO
+}
+
+extern "C" void I2C2_ER_IRQHandler()
+{
+    // TODO
 }

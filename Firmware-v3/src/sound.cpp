@@ -18,7 +18,7 @@ static constexpr const pin SAI1_FS_A { GPIOE, 4, 6 };
 static constexpr const pin SAI1_MCLK_A { GPIOE, 2, 6 };
 static constexpr const pin PCM_ZERO { GPIOB, 0 };   // input
 static constexpr const pin SPKR_NSD { GPIOB, 7 };   // speaker amp enable
-static constexpr const pin PCM_MUTE { GPIOO, 1 };   // headphone amp #enable
+static constexpr const pin PCM_MUTE { GPIOE, 7 };   // headphone amp #enable
 
 static constexpr const pin SPI2_MOSI { GPIOC, 1, 5 };
 static constexpr const pin SPI2_NSS { GPIOB, 9, 5 };
@@ -88,6 +88,7 @@ static void pcm_mute_set(bool val)
 {
     uint16_t pcmreg = val ? 0x1203U : 0x1200U;
     pcm1753_write(&pcmreg, 1);
+    klog("sound: pcm_mute(%s)\n", val ? "true" : "false");
 }
 
 void init_sound()
@@ -141,6 +142,7 @@ void init_sound()
         0x1300,         // enable both DACs
         0x1404,         // I2S format
         0x1606,         // single ZEROA pin
+        0x1203,         // mute both
     };
     pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
 
@@ -164,7 +166,7 @@ void init_sound()
     RCC->AHB1ENR |= RCC_AHB1ENR_GPDMA1EN;
     (void)RCC->AHB1ENR;
 
-    sound_set_volume(50);
+    //sound_set_volume(50);
 }
 
 int syscall_audiosetfreq(int freq, int *_errno)
@@ -280,9 +282,20 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 
     /* Set up buffers */
     ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
+
+    /* Limit latency */
+#if GK_AUDIO_LATENCY_LIMIT_MS > 0
+    auto buf_length_ms = (buf_size_bytes / (nbits/8) / 2 * 1000) / freq;
+    auto buf_nlimit = (GK_AUDIO_LATENCY_LIMIT_MS + buf_length_ms - 1) / buf_length_ms;
+    if(buf_nlimit < 2) buf_nlimit = 2;
+    if(buf_nlimit > ac.nbuffers) buf_nlimit = ac.nbuffers;
+
+    ac.nbuffers = buf_nlimit;
+#endif
     ac.buf_size_bytes = buf_size_bytes;
     ac.buf_ndtr = buf_size_bytes * 8 / nbits;
     _clear_buffers(ac);
+    ac.freq = (unsigned)freq;
 
     if(ac.nbuffers < 2)
     {
@@ -363,14 +376,22 @@ int syscall_audioenable(int enable, int *_errno)
         pcm_mute_set(false);
         SPKR_NSD.set();
         PCM_MUTE.clear();
+
+        // attenuates 0.5 dB for every 8/fs seconds
+        unsigned int us_delay = (8000000U * 128U) / ac.freq;
+        Block(clock_cur() + kernel_time::from_us(us_delay));
     }
-    else if(ac.enabled)
+    else if(!enable && ac.enabled)
     {
         PCM_MUTE.set();
         SPKR_NSD.clear();
         pcm_mute_set(true);
         SAI1_Block_A->CR1 &= ~SAI_xCR1_SAIEN;
         dma->CCR &= ~DMA_CCR_EN;
+
+        // attenuates 0.5 dB for every 8/fs seconds
+        unsigned int us_delay = (8000000U * 128U) / ac.freq;
+        Block(clock_cur() + kernel_time::from_us(us_delay));
     }
     ac.enabled = enable;
     return 0;

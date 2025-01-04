@@ -50,7 +50,22 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
         return -1;
     }
 
-    return p.open_files[file]->Read(buf, nbytes, _errno);
+    auto ret = p.open_files[file]->Read(buf, nbytes, _errno);
+    if(ret == -3)
+    {
+        if(p.open_files[file]->opts & O_NONBLOCK)
+        {
+            *_errno = EWOULDBLOCK;
+            return -1;
+        }
+        else
+        {
+            // TODO: block on some signal
+            Yield();
+            return -3;
+        }
+    }
+    return ret;
 }
 
 int syscall_isatty(int file, int *_errno)
@@ -114,7 +129,7 @@ static inline bool starts_with(const std::string &s, char c)
 
 static void add_part(std::vector<std::string> &output, const std::string &input)
 {
-    if(input == ".")
+    if(input == "." || input == "")
     {
         return;
     }
@@ -159,10 +174,17 @@ static std::string parse_fname(const std::string &pname)
     std::ostringstream ss;
     for(auto iter = pnames.begin(); iter != pnames.end(); iter++)
     {
+        ss << "/";
         ss << *iter;
-        if(iter != pnames.end() - 1)
-            ss << "/";
     }
+
+#if 0
+    klog("parse_fname: %s, cwd=%s -> %s\n", pname.c_str(), GetCurrentThreadForCore()->p.cwd.c_str(),
+        ss.str().c_str());
+#endif
+
+    if(ss.str().size() == 0)
+        return "/";         // opendir("/")
 
     return ss.str();
 }
@@ -191,7 +213,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             *_errno = ENOTDIR;
             return -1;
         }
-        p.open_files[fd] = new SeggerRTTFile(0, true, false);
+        p.open_files[fd] = std::make_shared<SeggerRTTFile>(0, true, false);
         return fd;
     }
     if(act_name == "/dev/stdout")
@@ -201,7 +223,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             *_errno = ENOTDIR;
             return -1;
         }
-        p.open_files[fd] = new SeggerRTTFile(0, false, true);
+        p.open_files[fd] = std::make_shared<SeggerRTTFile>(0, false, true);
         return fd;
     }
     if(act_name == "/dev/stderr")
@@ -211,7 +233,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             *_errno = ENOTDIR;
             return -1;
         }
-        p.open_files[fd] = new SeggerRTTFile(0, false, true);
+        p.open_files[fd] = std::make_shared<SeggerRTTFile>(0, false, true);
         return fd;
     }
     if(act_name == "/dev/ttyUSB0")
@@ -230,7 +252,8 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
 
     // use lwext4
-    auto lwf = new LwextFile({ 0 }, act_name);
+    ext4_file _f = { 0 };
+    auto lwf = std::make_shared<LwextFile>(_f, act_name);
     p.open_files[fd] = lwf;
     auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
         p, fd, t->ss, t->ss_p);
@@ -238,7 +261,6 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         return -2;  // deferred return
     else
     {
-        delete p.open_files[fd];
         p.open_files[fd] = nullptr;
         *_errno = ENOMEM;
         return -1;
@@ -260,7 +282,10 @@ int syscall_close1(int file, int *_errno)
         return -1;
     }
 
-    return p.open_files[file]->Close(_errno);
+    if(p.open_files[file].use_count() == 1)
+        return p.open_files[file]->Close(_errno);
+    else
+        return 0;
 }
 
 int syscall_close2(int file, int *_errno)
@@ -273,8 +298,9 @@ int syscall_close2(int file, int *_errno)
         return -1;
     }
 
-    int ret = p.open_files[file]->Close2(_errno);
-    delete p.open_files[file];
+    int ret = 0;
+    if(p.open_files[file].use_count() == 1)
+        ret = p.open_files[file]->Close2(_errno);
     p.open_files[file] = nullptr;
 
     return ret;
@@ -336,21 +362,22 @@ int syscall_unlink(const char *pathname, int *_errno)
         return -1;
     }
 
+    auto act_name = parse_fname(pathname);
+
     // check len as malloc'ing in sram4
-    auto pnlen = strlen(pathname);
-    if(pnlen > 4096)
+    if(act_name.length() > 4096)
     {
         *_errno = ENAMETOOLONG;
         return -1;
     }
 
-    auto npname = (char *)malloc(pnlen + 1);
+    auto npname = (char *)malloc(act_name.length() + 1);
     if(!npname)
     {
         *_errno = ENAMETOOLONG;
         return -1;
     }
-    strcpy(npname, pathname);
+    strcpy(npname, act_name.c_str());
 
     auto t = GetCurrentThreadForCore();
     auto msg = ext4_unlink_message(npname, t->ss, t->ss_p);

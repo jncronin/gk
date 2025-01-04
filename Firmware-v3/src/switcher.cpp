@@ -183,6 +183,11 @@ extern "C" void PendSV_Handler()
         //MPU_LOAD_4()
 #endif
 
+        /* Load newlib reent pointer */
+        "add r0, r1, #" xstr(GK_TSS_REENT_OFFSET) "             \n"     // R0 = &newlib_reent
+        "ldr r4, =_impure_ptr           \n"
+        "str r0, [r4]                   \n"
+
         /* Load saved tss registers */
         "ldmia r1!, { r12 }         \n"     // load registers from tss
         "msr psp, r12               \n"
@@ -190,9 +195,10 @@ extern "C" void PendSV_Handler()
         "msr control, r12           \n"
         "ldmia r1!, { r4-r11, lr }  \n"
 
-        "tst lr, #0x10              \n"     // FPU load only if lazy store
-        "it eq                      \n"
-        "vldmiaeq r1!, {s16-s31}    \n"
+        //"tst lr, #0x10              \n"     // FPU load only if lazy store
+        //"it eq                      \n"
+        //"vldmiaeq r1!, {s16-s31}    \n"
+        "vldmia r1!, {s16-s31}    \n"
 
 #if GK_USE_IRQ_PRIORITIES
         "msr basepri, r3            \n"     // restore interrupts

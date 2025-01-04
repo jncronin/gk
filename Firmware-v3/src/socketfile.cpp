@@ -10,14 +10,12 @@ SocketFile::SocketFile(Socket *_sck)
 
 ssize_t SocketFile::Write(const char *buf, size_t count, int *_errno)
 {
-    *_errno = ENOTSUP;
-    return -1;
+    return sck->SendToAsync(buf, count, 0, nullptr, 0, _errno);
 }
 
 ssize_t SocketFile::Read(char *buf, size_t count, int *_errno)
 {
-    *_errno = ENOTSUP;
-    return -1;
+    return sck->RecvFromAsync(buf, count, 0, nullptr, nullptr, _errno);
 }
 
 int SocketFile::Bind(void *addr, unsigned int addrlen, int *_errno)

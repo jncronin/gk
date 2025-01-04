@@ -476,7 +476,7 @@ int fs_provision()
                         }
                         else
                         {
-                            p.open_files[fd] = new FatfsFile(&fp, std::string(fi.fname));
+                            p.open_files[fd] = std::make_shared<FatfsFile>(&fp, std::string(fi.fname));
                         }
                     }
 

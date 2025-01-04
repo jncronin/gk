@@ -33,26 +33,6 @@ kernel_time kernel_time::from_timespec(const timespec *ts, int clock_id)
     }
 }
 
-kernel_time::kernel_time(uint64_t us)
-{
-    _us = us;
-}
-
-kernel_time kernel_time::from_ms(uint64_t ms)
-{
-    return kernel_time::from_us(ms * 1000ULL);
-}
-
-kernel_time kernel_time::from_ns(uint64_t ns)
-{
-    return kernel_time::from_us(ns / 1000ULL);
-}
-
-kernel_time kernel_time::from_us(uint64_t us)
-{
-    return kernel_time(us);
-}
-
 uint64_t kernel_time::to_ms() const
 {
     return _us / 1000ULL;

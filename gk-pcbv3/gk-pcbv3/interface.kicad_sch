@@ -4023,6 +4023,16 @@
 		)
 		(uuid "03f820d8-9119-4402-aa79-a95e33429cc7")
 	)
+	(text "TODO: add bumper buttons\n"
+		(exclude_from_sim no)
+		(at 60.452 128.27 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "b33463df-2559-472f-aea6-1e0a2de66ad6")
+	)
 	(global_label "I2C2_SDA"
 		(shape input)
 		(at 25.4 81.28 180)

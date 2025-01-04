@@ -197,14 +197,6 @@ SECTIONS
 
   } >AXISRAM4 AT> FLASH
 
-  .net_data ALIGN(1 << LOG2CEIL(_elwip_data - _slwip_data)):
-  {
-    _slwip_data = .;
-    *(.net_data)
-    *(.net_data*)
-    _elwip_init_data = .;
-  } >AXISRAM4 AT> FLASH
-
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
   .bss :
@@ -225,7 +217,7 @@ SECTIONS
   .kernel_heap 0x20000000 (NOLOAD) :
   {
     _kheap_start = .;
-    . = . + 128*1024;
+    . = . + (192*1024 - 8*172);
     _kheap_end = .;
   } >DTCM
 
@@ -287,6 +279,14 @@ SECTIONS
     _esdram = .;
   } >XSPI_RAM
 
+  .net_data :
+  {
+    _slwip_data = .;
+    *(.net_data)
+    *(.net_data*)
+    _elwip_init_data = .;
+  } >XSPI_RAM AT> FLASH
+
   .net_bss (NOLOAD):
   {
     _slwip_bss_data = .;
@@ -317,7 +317,7 @@ SECTIONS
   .cm7_stack (NOLOAD)  :
   {
     _scm7_stack = .;
-    . = . + 4K;
+    . = . + 8K;
     _ecm7_stack_align = .;
     _ecm7_stack = . - (_ecm7_stack_align - _scm7_stack) / 8;
     _estack = _ecm7_stack;
@@ -376,6 +376,11 @@ SECTIONS
     QUAD(0);
     QUAD(0);
     _tls_pointers = .;
+    LONG(0);
+    adc_vals = .;
+    LONG(0);
+    LONG(0);
+    LONG(0);
     LONG(0);
 
     *(.rtcregs)

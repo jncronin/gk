@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "gk_conf.h"
+#include <sys/reent.h>
 
 
 #if GK_DUAL_CORE_AMP
@@ -84,15 +85,18 @@ struct thread_saved_state
     int chosen_for_core = 0;
     int deschedule_from_core = 0;
     int pinned_on_core = 0;
+
+    _reent newlib_reent;
 };
 
-#define GK_TSS_SIZE                 256
+#define GK_TSS_SIZE                 (256+288)
 #define GK_TSS_MPUSS_OFFSET         108
 #define GK_TSS_AFFINITY_OFFSET      236
 #define GK_TSS_ROC_OFFSET           240
 #define GK_TSS_CFC_OFFSET           244
 #define GK_TSS_DFC_OFFSET           248
 #define GK_TSS_POC_OFFSET           252
+#define GK_TSS_REENT_OFFSET         256
 
 #ifdef __cplusplus
 static_assert(sizeof(thread_saved_state) == GK_TSS_SIZE);
@@ -102,6 +106,7 @@ static_assert(offsetof(thread_saved_state, running_on_core) == GK_TSS_ROC_OFFSET
 static_assert(offsetof(thread_saved_state, chosen_for_core) == GK_TSS_CFC_OFFSET);
 static_assert(offsetof(thread_saved_state, deschedule_from_core) == GK_TSS_DFC_OFFSET);
 static_assert(offsetof(thread_saved_state, pinned_on_core) == GK_TSS_POC_OFFSET);
+static_assert(offsetof(thread_saved_state, newlib_reent) == GK_TSS_REENT_OFFSET);
 #endif
 
 #endif

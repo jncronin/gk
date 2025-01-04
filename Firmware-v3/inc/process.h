@@ -15,6 +15,7 @@ class Thread;
 #include "gk_conf.h"
 #include <sys/types.h>
 #include <unordered_set>
+#include "supervisor/widgets/widget.h"
 
 struct audio_conf
 {
@@ -27,6 +28,7 @@ struct audio_conf
     uint32_t *silence;
     Thread *waiting_thread = nullptr;
     bool enabled = false;
+    unsigned int freq;
 
     MemRegion mr_sound = InvalidMemregion();
     Spinlock sl_sound;
@@ -53,7 +55,7 @@ class Process
         int rc;
         bool for_deletion = false;
 
-        File *open_files[GK_MAX_OPEN_FILES];
+        std::shared_ptr<File> open_files[GK_MAX_OPEN_FILES];
 
         CPUAffinity default_affinity;
 
@@ -77,6 +79,7 @@ class Process
         void UpdateMPURegionForThread(Thread *t);
         int AddMPURegion(const mmap_region &r);
         int AddMPURegion(const mpu_saved_state &r);
+        int DeleteMPURegion(const mpu_saved_state &r);
         int DeleteMPURegion(const mmap_region &r);
         int DeleteMPURegion(const MemRegion &r);
 
@@ -103,6 +106,12 @@ class Process
         bool tilt_is_keyboard = true;
         char tilt_keyboard_state = 0;
 
+        bool joystick_is_joystick = false;
+        unsigned int joy_last_x = 32768;
+        unsigned int joy_last_y = 32768;
+
+        bool touch_is_mouse = false;
+
         enum GamepadKey {
             Left = GK_KEYLEFT,
             Right = GK_KEYRIGHT,
@@ -123,8 +132,19 @@ class Process
         unsigned char mouse_buttons = 0;
         void HandleGamepadEvent(GamepadKey key, bool pressed, bool ongoing_press = false);
         void HandleTiltEvent(int x, int y);
+        void HandleJoystickEvent(unsigned int x, unsigned int y);
+        enum TouchEventType { Press, Release, Drag };
+        void HandleTouchEvent(unsigned int x, unsigned int y, TouchEventType type);
 
-        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 80, 79, 82, 81, 224, 226, 225, 'z', 0, 0, 0, 0, 0, 0 };
+        unsigned short int gamepad_to_scancode[GK_NUMKEYS] = { 
+            80, 79, 82, 81,         /* L, R, U, D */
+            224, 226, 225, 'z',     /* A, B, X, Y */
+            0, 0,                   /* Vol Down, Vol Up */
+            0, 0, 0, 0,             /* Tilt L, R, U, D */
+            0, 0,                   /* Menu, Power */
+            224,                    /* Joystick click */
+            80, 79, 82, 81,         /* Joystick (as digital input) L, R, U, D */
+        };
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
@@ -156,6 +176,21 @@ class Process
 
         /* audio buffers */
         audio_conf audio;
+
+        /* graphics textures - mapped as WT */
+        MemRegion mr_gtext = InvalidMemregion();
+        size_t gtext_ptr = 0;
+
+    protected:
+        /* specific supervisor buttons */
+        bool has_osd = false;
+        bool osd_prepped = false;
+        std::string osd_text;
+        std::vector<Widget *> osd;
+
+    public:
+        const std::vector<Widget *> &get_osd();
+        void set_osd(const std::string &osd_text);
 };
 
 extern Process *focus_process;
@@ -185,5 +220,7 @@ class ProcessList
 };
 
 extern ProcessList proc_list;
+
+bool SetFocusProcess(Process *proc);
 
 #endif

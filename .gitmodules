@@ -25,3 +25,6 @@
 [submodule "Firmware-v3/cmsis_device_h7rs"]
 	path = Firmware-v3/cmsis_device_h7rs
 	url = https://github.com/STMicroelectronics/cmsis_device_h7rs.git
+[submodule "Firmware-v3/inih"]
+	path = Firmware-v3/inih
+	url = https://github.com/jtilly/inih.git

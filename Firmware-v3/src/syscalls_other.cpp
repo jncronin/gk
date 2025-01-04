@@ -11,6 +11,7 @@
 #include "cache.h"
 #include "SEGGER_RTT.h"
 #include "cleanup.h"
+#include "pipe.h"
 
 extern Process kernel_proc;
 
@@ -42,6 +43,23 @@ MemRegion syscall_memalloc_int(size_t len, int is_sync, int allow_sram,
 {
     MemRegion mr = InvalidMemregion();
     auto t = GetCurrentThreadForCore();
+
+    /* Are we after a graphics texture? */
+    if(is_sync && t->p.mr_gtext.valid)
+    {
+        if((t->p.mr_gtext.length - t->p.gtext_ptr) > len)
+        {
+            mr.address = t->p.mr_gtext.address + t->p.gtext_ptr;
+            mr.length = len;
+            mr.rt = t->p.mr_gtext.rt;
+            mr.valid = true;
+
+            t->p.gtext_ptr += len;
+
+            return mr;
+        }
+    }
+
     switch(t->p.stack_preference)
     {
         case STACK_PREFERENCE_SDRAM_RAM_TCM:
@@ -114,6 +132,15 @@ int syscall_memdealloc(size_t len, const void *addr, int *_errno)
     MemRegion mreg;
     {
         CriticalGuard cg(p.sl);
+        if(p.mr_gtext.valid)
+        {
+            auto paddr = (uint32_t)(uintptr_t)addr;
+            if(paddr >= p.mr_gtext.address && paddr < (p.mr_gtext.address + p.mr_gtext.length))
+            {
+                // do nothing
+                return 0;
+            }
+        }
         auto mr = p.get_mmap_region((uint32_t)(uintptr_t)addr, len);
         if(mr == p.mmap_regions.end())
         {
@@ -402,4 +429,102 @@ int syscall_get_ienv(char *outbuf, size_t outbuf_len, unsigned int idx, int *_er
 
     strncpy(outbuf, penv[idx].c_str(), outbuf_len);
     return 0;
+}
+
+int syscall_pipe(int pipefd[2], int *_errno)
+{
+    if(!pipefd)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    // try and get free process file handles
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    CriticalGuard cg(p.sl);
+
+    auto newpipe = make_pipe();
+
+    if(!newpipe.first || !newpipe.second)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
+    int fd1 = get_free_fildes(p);
+    if(fd1 == -1)
+    {
+        *_errno = EMFILE;
+        return -1;
+    }
+    p.open_files[fd1] = newpipe.first;
+    int fd2 = get_free_fildes(p);
+    if(fd2 == -1)
+    {
+        *_errno = EMFILE;
+        p.open_files[fd1] = nullptr;
+        return -1;
+    }
+    p.open_files[fd2] = newpipe.second;
+
+    pipefd[0] = fd1;
+    pipefd[1] = fd2;
+
+    return 0;
+}
+
+int syscall_dup2(int oldfd, int newfd, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    CriticalGuard cg(p.sl);
+
+    if(oldfd < 0 || oldfd >= GK_MAX_OPEN_FILES)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    if(p.open_files[oldfd] == nullptr)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    if(newfd != -1)
+    {
+        if(newfd < 0 || newfd >= GK_MAX_OPEN_FILES)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+        if(p.open_files[newfd] == nullptr)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+        else
+        {
+            p.open_files[newfd]->Close(_errno);
+        }
+    }
+    else
+    {
+        newfd = get_free_fildes(p);
+        if(newfd < 0)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+    }
+
+    p.open_files[newfd] = p.open_files[oldfd];
+
+    if(p.open_files[newfd] == nullptr)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    return newfd;
 }

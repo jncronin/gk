@@ -184,6 +184,12 @@ extern "C" INTFLASH_FUNCTION void NMI_Handler()
     ::: "memory");
 }
 
+extern "C" INTFLASH_FUNCTION void FPU_IRQHandler()
+{
+    BKPT();
+    while(true);
+}
+
 static void end_process(Process &p)
 {
     CriticalGuard cg(p.sl);

@@ -6,6 +6,10 @@
 #include <list>
 #include <limits>
 
+#include "screen.h"
+#include "font_large.h"
+#include "font_small.h"
+
 typedef unsigned char color_t;
 typedef unsigned char alpha_t;
 typedef short int coord_t;
@@ -59,7 +63,8 @@ class Widget
         virtual bool HandleMove(int x, int y);
 
         int x, y, w, h;
-        int ctrl_id;
+        int ch_x, ch_y;
+        void *d;
 
         Widget *parent;
 
@@ -74,8 +79,11 @@ class Widget
         virtual void KeyPressDown(unsigned short scancode);
         virtual void KeyPressUp(unsigned short  scancode);
 
+        virtual void SetClickedAppearance(bool v);
+
     protected:
         bool is_clicked = false;
+        bool is_pretend_clicked = false;
 
         bool new_hover = false;
         bool new_activated = false;
@@ -137,34 +145,25 @@ class TextRenderer
         const static int FONT_SMALL = 1;
 
     protected:
-        void RenderText(coord_t x, coord_t y, coord_t w, coord_t h,
-            const std::string &text,
-            color_t fg_color, color_t bg_color,
-            HOffset hoffset, VOffset voffset,
-            int font, alpha_t alpha);
+#include "bits/textrenderer.h"
 };
 
 class BorderRenderer
 {
     protected:
-        void RenderBorder(coord_t x, coord_t y, coord_t w, coord_t h,
-            color_t border_color, coord_t border_width, alpha_t alpha);
+#include "bits/borderrenderer.h"
 };
 
 class BackgroundRenderer
 {
     protected:
-        void RenderBackground(coord_t x, coord_t y, coord_t w, coord_t h,
-            color_t bg_color, alpha_t alpha);
+#include "bits/backgroundrenderer.h"
 };
 
 class ImageRenderer
 {
     protected:
-        void RenderImage(coord_t x, coord_t y, coord_t w, coord_t h,
-            coord_t img_w, coord_t img_h,
-            HOffset hoffset, VOffset voffset,
-            const color_t *img, color_t bg_color, alpha_t alpha);
+#include "bits/imagerenderer.h"
 };
 
 class DynamicTextProvider
@@ -253,10 +252,13 @@ class ImageButtonWidget : public ClickableWidget, public BorderRenderer, public 
 class ContainerWidget : public NonactivatableWidget
 {
     public:
-        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
+        virtual void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
         virtual Widget *GetHighlightedChild() = 0;
+        virtual void SetHighlightedChild(const Widget &child) = 0;
         virtual bool CanHighlight();
         void AddChild(Widget &child);
+        virtual void RemoveChild(Widget &child);
+        void ScrollTo(coord_t x_scroll, coord_t y_scroll);
     
     protected:
         std::vector<Widget *> children;
@@ -268,8 +270,10 @@ class GridWidget : public ContainerWidget
 {
     public:
         void AddChildOnGrid(Widget &child, int x = -1, int y = -1);
+        virtual void RemoveChild(Widget &child);
         virtual bool IsChildHighlighted(const Widget &child);
         virtual Widget *GetHighlightedChild();
+        virtual void SetHighlightedChild(const Widget &child);
         virtual void KeyPressDown(unsigned short  scancode);
         virtual void KeyPressUp(unsigned short  scancode);
 

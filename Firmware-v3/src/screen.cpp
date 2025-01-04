@@ -91,7 +91,9 @@ void *screen_flip_overlay(void **old_buf, bool visible, int alpha)
     scr_cbuf_overlay++;
     int wbuf = scr_cbuf_overlay & 0x1;
     int rbuf = wbuf ? 0 : 1;
+
     LTDC_Layer2->CFBAR = (uint32_t)(uintptr_t)scr_bufs_overlay[rbuf];
+    
     if(visible)
     {
         LTDC_Layer2->CR |= LTDC_LxCR_LEN;
@@ -308,7 +310,11 @@ static void screen_set_timings()
     LTDC_Layer1->WHPCR =
         ((((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL) << LTDC_LxWHPCR_WHSTPOS_Pos) |
         ((((LTDC->AWCR & LTDC_AWCR_AAW_Msk) >> LTDC_AWCR_AAW_Pos)) << LTDC_LxWHPCR_WHSPPOS_Pos);
-    
+
+    LTDC_Layer2->WHPCR =
+        ((((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL) << LTDC_LxWHPCR_WHSTPOS_Pos) |
+        ((((LTDC->AWCR & LTDC_AWCR_AAW_Msk) >> LTDC_AWCR_AAW_Pos)) << LTDC_LxWHPCR_WHSPPOS_Pos);
+
     LTDC->SRCR = LTDC_SRCR_VBR;
 }
 
@@ -321,6 +327,11 @@ void init_screen()
     lcd_reset.set_as_output();
     LTDC_CLK_SELECT.clear();
     LTDC_CLK_SELECT.set_as_output();
+
+    /* B7 seems to be not connected - set G7 and R7 as NC to compensate */
+    /*const pin R7 { GPIOG, 0 }; R7.clear(); R7.set_as_output();
+    const pin B7 { GPIOA, 2 }; B7.clear(); B7.set_as_output();
+    const pin G7 { GPIOB, 10 }; G7.clear(); G7.set_as_output();*/
 
     // Initial set-up is through SPI5, kernel clock 240 MHz off PLL3Q
     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
@@ -695,6 +706,11 @@ void screen_set_brightness(int pct)
 int screen_get_brightness()
 {
     return scr_brightness;
+}
+
+screen_hardware_scale screen_get_hardware_scale_horiz()
+{
+    return _sc_h;
 }
 
 int screen_set_hardware_scale(screen_hardware_scale scale_horiz,

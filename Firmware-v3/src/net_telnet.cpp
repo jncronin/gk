@@ -2,18 +2,15 @@
 #include "SEGGER_RTT.h"
 #include "unistd.h"
 
-extern Spinlock s_rtt;
-
-void net_telnet_thread(void *p)
+void *net_telnet_thread(void *p)
 {
     (void)p;
 
     int lsck = socket(AF_INET, SOCK_STREAM, 0);
     if(lsck < 0)
     {
-        CriticalGuard cg(s_rtt);
         klog("telnetd: socket failed\n");
-        return;
+        return nullptr;
     }
 
     struct sockaddr_in saddr;
@@ -24,17 +21,15 @@ void net_telnet_thread(void *p)
     int ret = bind(lsck, (sockaddr *)&saddr, sizeof(saddr));
     if(ret < 0)
     {
-        CriticalGuard cg(s_rtt);
         klog("telnetd: bind failed %d\n", errno);
-        return;
+        return nullptr;
     }
 
     ret = listen(lsck, 0);
     if(ret < 0)
     {
-        CriticalGuard cg(s_rtt);
         klog("telnetd: listen failed %d\n", errno);
-        return;
+        return nullptr;
     }
     while(true)
     {
@@ -43,13 +38,11 @@ void net_telnet_thread(void *p)
         ret = accept(lsck, (sockaddr *)&caddr, &caddrlen);
         if(ret < 0)
         {
-            CriticalGuard cg(s_rtt);
             klog("telnetd: accept failed %d\n", errno);
-            return;
+            return nullptr;
         }
         else
         {
-            CriticalGuard cg(s_rtt);
             klog("telnetd: accept succeeded %d\n", ret);
         }
 
@@ -61,7 +54,6 @@ void net_telnet_thread(void *p)
             {
                 buf[br] = 0;
                 {
-                    CriticalGuard cg(s_rtt);
                     klog("telnetd: received %d bytes: %s\n", br, buf);
                 }
 
@@ -70,13 +62,11 @@ void net_telnet_thread(void *p)
             }
             else if(br < 0)
             {
-                CriticalGuard cg(s_rtt);
                 klog("telnetd: recv failed %d\n", errno);
                 break;
             }
             else
             {
-                CriticalGuard cg(s_rtt);
                 klog("telnetd: socket closed by peer\n");
                 // graceful close
                 close(ret);

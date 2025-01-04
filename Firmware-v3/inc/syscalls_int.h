@@ -104,10 +104,14 @@ int syscall_waitpid(pid_t pid, int *status, int options, int *_errno);
 
 void syscall_getheap(void **addr, size_t *sz);
 
+int syscall_pipe(int pipefd[2], int *_errno);
+int syscall_dup2(int oldfd, int newfd, int *_errno);
+
 // needed for supervisor
 pid_t syscall_get_focus_pid(int *_errno);
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno);
 int syscall_get_pid_valid(pid_t pid, int *_errno);
+int syscall_setsupervisorvisible(int visible, int screen, int *_errno);
 
 // environment variable support
 int syscall_get_env_count(int *_errno);
@@ -122,7 +126,7 @@ static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
     {
-        errno = _errno;
+        //errno = _errno;
         return ret;
     }
     if(ret == -2)
@@ -132,7 +136,7 @@ static inline int deferred_return(int ret, int _errno)
         while(!t->ss.Wait(SimpleSignal::Set, 0));
         if(t->ss_p.ival1 == -1)
         {
-            errno = t->ss_p.ival2;
+            //errno = t->ss_p.ival2;
             return -1;
         }
         else

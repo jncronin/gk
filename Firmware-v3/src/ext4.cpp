@@ -214,7 +214,6 @@ static void handle_open_message(ext4_message &msg)
 
             if(is_opendir)
             {
-                delete msg.params.open_params.p->open_files[msg.params.open_params.f];
                 msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
 
                 msg.ss_p->ival1 = -1;
@@ -222,7 +221,7 @@ static void handle_open_message(ext4_message &msg)
                 msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
             }
             auto lwfile = reinterpret_cast<LwextFile *>(
-                msg.params.open_params.p->open_files[msg.params.open_params.f]);
+                msg.params.open_params.p->open_files[msg.params.open_params.f].get());
             lwfile->f = f;
             msg.ss_p->ival1 = msg.params.open_params.f;
             msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
@@ -240,7 +239,7 @@ static void handle_open_message(ext4_message &msg)
                 if(extret == EOK)
                 {
                     auto lwfile = reinterpret_cast<LwextFile *>(
-                        msg.params.open_params.p->open_files[msg.params.open_params.f]);
+                        msg.params.open_params.p->open_files[msg.params.open_params.f].get());
                     lwfile->d = d;
                     lwfile->is_dir = true;
                     msg.ss_p->ival1 = msg.params.open_params.f;
@@ -254,7 +253,6 @@ static void handle_open_message(ext4_message &msg)
                             msg.params.open_params.pathname, extret);
                     }
 #endif
-                    delete msg.params.open_params.p->open_files[msg.params.open_params.f];
                     msg.params.open_params.p->open_files[msg.params.open_params.f] = nullptr;
 
                     msg.ss_p->ival1 = -1;

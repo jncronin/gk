@@ -4,7 +4,6 @@ void ProgressBarWidget::Update(alpha_t alpha)
 {
     coord_t actx, acty;
     GetAbsolutePosition(&actx, &acty);
-    RenderBackground(actx, acty, w, h, bg_inactive_color, alpha);
 
     coord_t fg_w = 0, fg_h = 0, fg_x = 0, fg_y = 0;
 
@@ -45,8 +44,24 @@ void ProgressBarWidget::Update(alpha_t alpha)
             break;
     }
 
-    RenderBackground(fg_x + actx, fg_y + acty, fg_w, fg_h, fg_inactive_color, alpha);
-    RenderBorder(actx, acty, w, h, border_inactive_color, border_width, alpha);
+    switch(screen_get_hardware_scale_horiz())
+    {
+        case x1:
+            RenderBackground(actx, acty, w, h, bg_inactive_color, alpha);
+            RenderBackground(fg_x + actx, fg_y + acty, fg_w, fg_h, fg_inactive_color, alpha);
+            RenderBorder(actx, acty, w, h, border_inactive_color, border_width, alpha);
+            break;
+        case x2:
+            RenderBackground<2,1>(actx, acty, w, h, bg_inactive_color, alpha);
+            RenderBackground<2,1>(fg_x + actx, fg_y + acty, fg_w, fg_h, fg_inactive_color, alpha);
+            RenderBorder<2,1>(actx, acty, w, h, border_inactive_color, border_width, alpha);
+            break;
+        case x4:
+            RenderBackground<4,1>(actx, acty, w, h, bg_inactive_color, alpha);
+            RenderBackground<4,1>(fg_x + actx, fg_y + acty, fg_w, fg_h, fg_inactive_color, alpha);
+            RenderBorder<4,1>(actx, acty, w, h, border_inactive_color, border_width, alpha);
+            break;
+    }
 }
 
 ProgressBarWidget::Orientation_t ProgressBarWidget::GetOrientation()

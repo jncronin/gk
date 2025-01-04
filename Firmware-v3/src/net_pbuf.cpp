@@ -71,8 +71,8 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
 constexpr const unsigned int npbufs = 32;
 constexpr const unsigned int nspbufs = 256;
 
-NET_BSS static char pbufs[npbufs * PBUF_SIZE];
-NET_BSS static char spbufs[nspbufs * SPBUF_SIZE];
+NET_BSS __attribute__((aligned(32))) static char pbufs[npbufs * PBUF_SIZE];
+NET_BSS __attribute__((aligned(32))) static char spbufs[nspbufs * SPBUF_SIZE];
 
 NET_BSS static pbuf_data pd[npbufs];
 NET_BSS static pbuf_data spd[nspbufs];

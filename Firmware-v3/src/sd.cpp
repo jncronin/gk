@@ -18,7 +18,7 @@
 extern Spinlock s_rtt;
 extern Process kernel_proc;
 
-#define SDCLK 200000000
+#define SDCLK 192000000
 
 #define SDCLK_IDENT     200000
 #define SDCLK_DS        25000000

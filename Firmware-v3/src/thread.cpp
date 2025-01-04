@@ -12,6 +12,8 @@
 #include "process.h"
 #include "cleanup.h"
 
+#include <sys/reent.h>
+
 extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
@@ -91,10 +93,6 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
 
 void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
 {
-    while(true)
-    {
-        Yield();
-    }
     auto t = GetCurrentThreadForCore();
     t->Cleanup(tretval, false);
     while(true)
@@ -123,6 +121,8 @@ Thread *Thread::Create(std::string name,
 
     t->tss.lr = 0xfffffffdUL;               // return to thread mode, normal frame, use PSP
     t->tss.control = is_priv ? 2UL : 3UL;   // bit0 = !privilege, bit1 = use PSP
+
+    _REENT_INIT_PTR(&t->tss.newlib_reent);
 
     /* Create TLS, if any */
     if(owning_process.has_tls)

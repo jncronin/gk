@@ -12,6 +12,8 @@
 #include "osringbuffer.h"
 #include "_netinet_in.h"
 
+#include <driver/include/m2m_types.h>
+
 #define GK_NET_SOCKET_BUFSIZE       4096
 
 #define NET_DATA __attribute__((section(".net_data")))
@@ -216,12 +218,14 @@ struct net_msg
 #define NET_NOROUTE     -7
 #define NET_KEEPPACKET  -8
 
-#define PBUF_SIZE       1542U
+/* Keep these a multiple of cache line size */
+#define PBUF_SIZE       1600U
 #define SPBUF_SIZE      128U
 
 #define NET_SIZE_ETHERNET_HEADER        14U
 #define NET_SIZE_ETHERNET_FOOTER        4U
-#define NET_SIZE_ETHERNET               (NET_SIZE_ETHERNET_HEADER + NET_SIZE_ETHERNET_FOOTER)
+#define NET_SIZE_WIFI_HEADER            (M2M_ETHERNET_HDR_OFFSET + M2M_ETH_PAD_SIZE)
+#define NET_SIZE_ETHERNET               (NET_SIZE_ETHERNET_HEADER + NET_SIZE_WIFI_HEADER + NET_SIZE_ETHERNET_FOOTER)
 #define NET_SIZE_IP_HEADER              20U
 #define NET_SIZE_UDP_HEADER             8U
 #define NET_SIZE_TCP_HEADER             20U
@@ -229,11 +233,13 @@ struct net_msg
 #define NET_SIZE_IP                     (NET_SIZE_IP_HEADER + NET_SIZE_ETHERNET)
 #define NET_SIZE_UDP                    (NET_SIZE_UDP_HEADER + NET_SIZE_IP)
 #define NET_SIZE_TCP                    (NET_SIZE_TCP_HEADER + NET_SIZE_IP)
-#define NET_SIZE_IP_OFFSET              (NET_SIZE_ETHERNET_HEADER + NET_SIZE_IP_HEADER)
+#define NET_SIZE_IP_OFFSET              (NET_SIZE_ETHERNET_HEADER + NET_SIZE_WIFI_HEADER + NET_SIZE_IP_HEADER)
 #define NET_SIZE_TCP_OFFSET             (NET_SIZE_TCP_HEADER + NET_SIZE_IP_OFFSET)
 #define NET_SIZE_UDP_OFFSET             (NET_SIZE_UDP_HEADER + NET_SIZE_IP_OFFSET)
 
 void init_net();
+void *net_telnet_thread(void *p);
+void *net_dhcpd_thread(void *p);
 
 int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface);
 char *net_allocate_pbuf(size_t n);

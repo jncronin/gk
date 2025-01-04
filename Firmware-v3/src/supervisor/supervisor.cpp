@@ -8,13 +8,20 @@
 #include "btnled.h"
 #include "brightness.h"
 #include "sound.h"
+#include "buttons.h"
+#include "pwr.h"
 #include "gk_conf.h"
 #include "syscalls_int.h"
+#include <array>
 
 SRAM4_DATA Process p_supervisor;
 static SRAM4_DATA bool overlay_visible = false;
 static SRAM4_DATA bool volume_visible = false;
 SRAM4_DATA static WidgetAnimationList wl;
+
+const std::vector<Widget *> &default_osd();
+
+const int n_screens = 5;
 
 bool is_overlay_visible()
 {
@@ -153,50 +160,6 @@ bool anim_showhide_overlay(Widget *wdg, void *p, time_ms_t t)
     return false;
 }
 
-bool anim_handle_quit_failed(Widget *wdg, void *p, time_ms_t t)
-{
-    const constexpr time_ms_t quit_delay = 5000;
-    
-    if(t < quit_delay)
-        return false;
-
-    auto pid = (pid_t)p;
-    
-    if(deferred_call(syscall_get_pid_valid, pid))
-    {
-        klog("supervisor: request to quit pid %u failed, force-quitting\n", pid);
-
-        deferred_call(syscall_kill, pid, SIGKILL);
-    }
-
-    return true;
-}
-
-void btn_exit_click(Widget *w, coord_t x, coord_t y)
-{
-    auto fpid = deferred_call(syscall_get_focus_pid);
-    if(fpid >= 0)
-    {
-        auto fppid = deferred_call(syscall_get_proc_ppid, fpid);
-        extern pid_t pid_gkmenu;
-
-        // only quit processes started by gkmenu
-        if(fppid >= 0 && fppid == pid_gkmenu)
-        {
-            // TODO: make game-specific
-            Event e[2];
-            e[0].type = Event::KeyDown;
-            e[0].key = GK_SCANCODE_F12;
-            e[1].type = Event::KeyUp;
-            e[1].key = GK_SCANCODE_F12;
-            deferred_call(syscall_pushevents, fpid, e, 2);
-
-            // backup quit incase the above didn't work
-            AddAnimation(wl, clock_cur_ms(), anim_handle_quit_failed, nullptr, (void *)fpid);
-        }
-    }
-}
-
 void imb_brightness_click(Widget *w, coord_t x, coord_t y)
 {
     if(w == &imb_bright_down)
@@ -209,14 +172,26 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
     }
 }
 
-void kbd_click_up(Widget *w, coord_t x, coord_t y, int key)
+void kbd_click_up(Widget *w, coord_t x, coord_t y, int key, bool is_shift, bool is_ctrl, bool is_alt)
 {
+    if(is_shift)
+        key |= GK_MODIFIER_SHIFT;
+    if(is_ctrl)
+        key |= GK_MODIFIER_CTRL;
+    if(is_alt)
+        key |= GK_MODIFIER_ALT;
     Event e { .type = Event::KeyUp, .key = (unsigned short)key };
     deferred_call(syscall_pushevents, deferred_call(syscall_get_focus_pid), &e, 1);
 }
 
-void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
+void kbd_click_down(Widget *w, coord_t x, coord_t y, int key, bool is_shift, bool is_ctrl, bool is_alt)
 {
+    if(is_shift)
+        key |= GK_MODIFIER_SHIFT;
+    if(is_ctrl)
+        key |= GK_MODIFIER_CTRL;
+    if(is_alt)
+        key |= GK_MODIFIER_ALT;
     Event e { .type = Event::KeyDown, .key = (unsigned short)key };
     deferred_call(syscall_pushevents, deferred_call(syscall_get_focus_pid), &e, 1);
 }
@@ -224,6 +199,13 @@ void kbd_click_down(Widget *w, coord_t x, coord_t y, int key)
 void *supervisor_thread(void *p)
 {
     // Set up widgets
+
+    // Store a reference to the first button in each screen (used for scrolling purposes)
+    std::array<Widget *, n_screens> first_button;
+    first_button.fill(nullptr);
+
+    // Store the widgets that form part of the custom osd
+    std::vector<Widget *> custom_osd;
 
     // Main overlay screen:
     scr_overlay.x = 0;
@@ -254,15 +236,10 @@ void *supervisor_thread(void *p)
     lab_caption.text = "GKMenu";
     scr_overlay.AddChild(lab_caption);
 
-    // TODO: game customisation
-    ButtonWidget bw_exit;
-    bw_exit.w = 80;
-    bw_exit.h = 80;
-    bw_exit.x = cur_scr + (scr_overlay.w - bw_exit.w) / 2;
-    bw_exit.y = (scr_overlay.h - bw_exit.h) / 2;
-    bw_exit.text = "Quit";
-    bw_exit.OnClick = btn_exit_click;
-    scr_overlay.AddChildOnGrid(bw_exit);
+    for(auto cosd : default_osd())
+    {
+        scr_overlay.AddChildOnGrid(*cosd);
+    }
 
     // Screen 2 is options
     cur_scr += 640;
@@ -297,6 +274,8 @@ void *supervisor_thread(void *p)
     imb_bright_up.OnClick = imb_brightness_click;
     scr_overlay.AddChildOnGrid(imb_bright_up);
 
+    first_button[1] = &imb_bright_down;
+
     // Screen 3 is an on-screen keyboard
     cur_scr += 640;
 
@@ -305,6 +284,8 @@ void *supervisor_thread(void *p)
     kw.OnKeyboardButtonClick = kbd_click_up;
     kw.OnKeyboardButtonClickBegin = kbd_click_down;
     scr_overlay.AddChildOnGrid(kw);
+
+    first_button[2] = &kw;
 
     // Volume control    
     pb_volume.x = 640-64-32;
@@ -357,6 +338,19 @@ void *supervisor_thread(void *p)
         {
             do_update = true;
             do_volume_update = true;
+        }
+
+        static kernel_time last_temp_report;
+        if(clock_cur() > (last_temp_report + kernel_time::from_ms(1000)))
+        {
+            // dump temp to klog, eventually to screen
+            /*auto temp = temp_get_core();
+            auto vdd = pwr_get_vdd();
+
+            klog("supervisor: temp: %fC, vdd: %fV, SBS->CCVALR: %x, SBS->CCSWVALR: %x\n",
+                temp, vdd, SBS->CCVALR, SBS->CCSWVALR);*/
+
+            last_temp_report = clock_cur();
         }
 
         if(has_event)
@@ -461,8 +455,32 @@ void *supervisor_thread(void *p)
                             std::to_string(focus_process->screen_h) + ")") : "";
 
                         lab_caption.text = capt + scr_capt;
+
+                        const auto &new_osd = focus_process ?
+                            focus_process->get_osd() :
+                            default_osd();
+
+                        // set new osd
+                        for(auto cosd : custom_osd)
+                        {
+                            scr_overlay.RemoveChild(*cosd);
+                        }
+                        first_button[0] = nullptr;
+                        custom_osd = new_osd;
+                        for(auto nosd : custom_osd)
+                        {
+                            if(nosd->CanHighlight() && first_button[0] == nullptr)
+                                first_button[0] = nosd;
+                            scr_overlay.AddChildOnGrid(*nosd);
+                        }
+                        
                         do_update = true;
                     }
+                    break;
+
+                case Event::SupervisorSetVisible:
+                    AddAnimation(wl, clock_cur_ms(), anim_showhide_overlay, &scr_overlay, (void*)(int)e.setvis_data.visible);
+                    scr_overlay.SetHighlightedChild(*first_button[e.setvis_data.screen]);
                     break;
 
                 default:
@@ -493,7 +511,10 @@ void *supervisor_thread(void *p)
                 char buf[64];
                 strftime(buf, 63, "%F %T", t);
                 buf[63] = 0;
-                l_time.text = std::string(buf);
+                char buf_line[128];
+                snprintf(buf_line, 127, "%s %.1f FPS %.1fC %.2fV", buf, screen_get_fps(), temp_get_core(), pwr_get_vdd());
+                buf_line[127] = 0;
+                l_time.text = std::string(buf_line);
 
                 scr_overlay.Update(scr_alpha);
                 scr_status.Update(scr_alpha);
@@ -522,4 +543,14 @@ bool supervisor_is_active(unsigned int *x, unsigned int *y, unsigned int *w, uns
         if(h) *h = 240;
     }
     return overlay_visible; 
+}
+
+int syscall_setsupervisorvisible(int visible, int screen, int *_errno)
+{
+    Event e;
+    e.type = Event::SupervisorSetVisible;
+    e.setvis_data.visible = visible;
+    e.setvis_data.screen = screen;
+    p_supervisor.events.Push(e);
+    return 0;
 }

@@ -169,7 +169,7 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
         }
 
         sck->sockfd = fildes;
-        auto sfile = new SocketFile(sck);
+        auto sfile = std::make_shared<SocketFile>(sck);
         p.open_files[fildes] = sfile;
 
         return fildes;
@@ -203,7 +203,7 @@ Socket *fildes_to_sck(int fildes)
         {
             return nullptr;
         }
-        return reinterpret_cast<SocketFile *>(p.open_files[fildes])->sck;
+        return reinterpret_cast<SocketFile *>(p.open_files[fildes].get())->sck;
     }
 }
 

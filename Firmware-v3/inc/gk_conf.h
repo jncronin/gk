@@ -3,12 +3,12 @@
 
 #include "logger.h"
 
-#define GK_ENABLE_NETWORK           0
+#define GK_ENABLE_NETWORK           1
 #define GK_ENABLE_USB               1
 #define GK_ENABLE_USB_MASS_STORAGE  1
 #define GK_ENABLE_LWEXT4_WRITE      0
 #define GK_ENABLE_TEST_THREADS      0
-#define GK_ENABLE_TOUCH             0
+#define GK_ENABLE_TOUCH             1
 #define GK_USE_IRQ_PRIORITIES       0
 #define GK_DUAL_CORE                0
 #define GK_USE_CACHE                1
@@ -16,13 +16,16 @@
 #define GK_EXT_READONLY             0
 #define GK_EXT_USE_JOURNAL          0
 #define GK_SD_USE_HS_MODE           1
-#define GK_GPU_SHOW_FPS             1
+#define GK_GPU_SHOW_FPS             0
 #define GK_DUAL_CORE_AMP            0
 #define GK_OVERCLOCK                1
 #define GK_TICKLESS                 0
 #define GK_MEMBLK_STATS             1
-#define GK_ENABLE_PROFILE           1
+#define GK_ENABLE_PROFILE           0
 #define GK_DYNAMIC_SYSTICK          1
+#define GK_XSPI_DUAL_MEMORY         1
+#define GK_AUDIO_LATENCY_LIMIT_MS   150
+#define GK_PIPESIZE                 1024
 
 /* STM32H7RS memory config */
 #define GK_MEM_DTCM_SHARE           2
@@ -39,7 +42,11 @@
 #define GK_ENABLE_CTP340            0
 
 #define GK_SDRAM_BASE               0x90000000
+#if GK_XSPI_DUAL_MEMORY
 #define GK_SDRAM_SIZE               0x08000000
+#else
+#define GK_SDRAM_SIZE               0x04000000
+#endif
 
 #define GK_KHEAP_SIZE               (128*1024)
 

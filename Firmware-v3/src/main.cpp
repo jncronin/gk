@@ -13,13 +13,17 @@
 #include "ctp.h"
 #include "buddy.h"
 #include "profile.h"
+#include "cleanup.h"
+#include "pwr.h"
+#include "btnled.h"
+#include "osnet.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
 
 uint32_t test_range[256];
 
-static const constexpr pin CTP_NRESET { GPIOC, 0 };
+static const constexpr pin CTP_NRESET { GPIOF, 3 };
 void system_init_cm7();
 
 Scheduler sched;
@@ -60,12 +64,17 @@ int main()
     /* Memory test prior to enabling caches */
 #define GK_MEMTEST 0
 #if GK_MEMTEST
-    for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
+#if GK_XSPI_DUAL_MEMORY
+    const uint32_t test_max = 0x98000000U;
+#else
+    const uint32_t test_max = 0x94000000U;
+#endif
+    for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
     {
         *(volatile uint32_t *)addr = addr;
     }
     uint64_t seed = 123456789U;
-    for(uint32_t addr = 0x98000000U - 4U; addr >= 0x90000000U; addr -= 4)
+    for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
     {
         auto v = *(volatile uint32_t *)addr;
         if(v != addr)
@@ -78,8 +87,8 @@ int main()
                 for(int j = 0; j < 1024; j++)
                 {
                     seed = (1103515245ULL * seed + 12345ULL) % 0x80000000ULL;
-                    auto new_addr = 0x90000000U + (uint32_t)(seed % 0x08000000ULL);
-                    *(volatile uint32_t *)new_addr;
+                    auto new_addr = 0x90000000U + (uint32_t)(seed % (unsigned long long)(test_max - 0x90000000UL));
+                    *(volatile uint32_t *)(new_addr & ~0x3U);
                 }
                 auto v2 = *(volatile uint32_t *)addr;
                 SEGGER_RTT_printf(0, "memchk:   retry %d, got %x (%s)\n", i, v2,
@@ -89,7 +98,7 @@ int main()
     }
 
     // recheck calibration after test
-    (void)*(volatile uint32_t *)0x94000000U;
+    (void)*(volatile uint32_t *)(test_max - 4U);
     __DMB();
     __DSB();
     XSPI1->CR |= XSPI_CR_ABORT;
@@ -99,14 +108,22 @@ int main()
     XSPI1->DCR2 = XSPI1->DCR2;
 
     // dummy read
-    (void)*(volatile uint32_t *)0x92000000U;
+    (void)*(volatile uint32_t *)(test_max - 0x1000U);
     SEGGER_RTT_printf(0, "kernel: xspi1: calfcr: %x, calsor: %x, calsir: %x\n",
         XSPI1->CALFCR, XSPI1->CALSOR, XSPI1->CALSIR);
     SEGGER_RTT_printf(0, "kernel: xspi2: calfcr: %x, calsor: %x, calsir: %x\n",
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 #endif
 
-    BKPT();
+    // Pull GPIOC0 low to halt on startup
+    const constexpr pin PC0 { GPIOC, 0 };
+    PC0.set_as_input(pin::PullUp);
+    for(int i = 0; i < 10000; i++) __DMB();
+
+    if(PC0.value() == false || CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+    {
+        BKPT();
+    }
 
     system_init_cm7();
     memcpy(kernel_proc.p_mpu, mpu_default, sizeof(mpu_default));
@@ -154,6 +171,7 @@ int main()
     init_ext4();
     init_screen();
     init_buttons();
+    init_btnled();
     init_ctp();
 
 #if GK_ENABLE_PROFILE
@@ -167,12 +185,27 @@ int main()
 
     Schedule(Thread::Create("gpu", gpu_thread, nullptr, true, GK_PRIORITY_VHIGH, kernel_proc, CPUAffinity::PreferM4));
 
+    Schedule(Thread::Create("cleanup", cleanup_thread, (void*)0, true, GK_PRIORITY_VHIGH, kernel_proc,
+        CPUAffinity::M7Only,
+        memblk_allocate_for_stack(4096, CPUAffinity::PreferM4, "cleanup stack")));
+
+    Schedule(Thread::Create("pwr_monitor", pwr_monitor_thread, nullptr, true, GK_PRIORITY_HIGH, kernel_proc,
+        CPUAffinity::PreferM4));
+
+#if GK_ENABLE_NETWORK
+    init_net();
+#endif
+
     // Prepare systick
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
     SysTick->LOAD = 7680000UL - 1UL;    // 20 ms tick at 384 MHz
 
     //BKPT();
+
+    // Recheck IO compensation cell calibration
+    SBS->CCSWVALR = SBS->CCVALR;
+    (void)SBS->CCSWVALR;
 
     s().StartForCurrentCore();
     while(true);

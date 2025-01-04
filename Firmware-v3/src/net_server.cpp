@@ -9,6 +9,8 @@ static void handle_inject_packet(const net_msg &m);
 static void handle_send_packet(const net_msg &m);
 static void handle_timeouts();
 
+Process p_net;
+
 static void *net_thread(void *_params)
 {
     (void)_params;
@@ -85,9 +87,29 @@ int net_ret_to_errno(int ret)
 
 void init_net()
 {
-    extern Process kernel_proc;
-    Schedule(Thread::Create("net", net_thread, nullptr, true, 5, kernel_proc,
+    p_net.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
+    p_net.argc = 0;
+    p_net.argv = nullptr;
+    p_net.brk = 0;
+    p_net.code_data = InvalidMemregion();
+    p_net.cwd = "/";
+    p_net.default_affinity = PreferM4;
+    p_net.for_deletion = false;
+    p_net.heap = InvalidMemregion();
+    p_net.name = "net";
+    p_net.next_key = 0;
+    for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
+        p_net.open_files[i] = nullptr;
+    p_net.screen_h = 480;
+    p_net.screen_w = 640;
+    memcpy(p_net.p_mpu, mpu_default, sizeof(mpu_default));
+
+    Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net,
         CPUAffinity::PreferM4));
+
+    uint32_t myip = IP4Addr(192, 168, 7, 1).get();
+    Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
+    //Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
 }
 
 static void handle_inject_packet(const net_msg &m)

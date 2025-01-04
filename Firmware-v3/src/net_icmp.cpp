@@ -1,8 +1,6 @@
 #include "osnet.h"
 #include "SEGGER_RTT.h"
 
-extern Spinlock s_rtt;
-
 static int net_handle_icmp_echo_request(const IP4Packet &pkt, const IP4Route *route)
 {
     // build reply packet, including any data sent in the request
@@ -50,8 +48,9 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
         return NET_NOTSUPP;
     }
 
+#ifdef DEBUG_ICMP
     {
-        CriticalGuard cg(s_rtt);
+        CriticalGuard cg;
         klog("net: received ICMP %s -> %s, type %d code %d checksum %d id %d seq %d\n",
             IP4Addr(pkt.src).ToString().c_str(),
             IP4Addr(pkt.dest).ToString().c_str(),
@@ -67,6 +66,7 @@ int net_handle_icmp_packet(const IP4Packet &pkt)
         }
         klog("\n");
     }
+#endif
 
     IP4Route route;
     auto route_ret = net_ip_get_route_for_address(pkt.src, &route);

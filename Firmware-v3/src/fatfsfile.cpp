@@ -78,3 +78,4 @@ int FatfsFile::Close(int *_errno)
         return -1;
     }
 }
+

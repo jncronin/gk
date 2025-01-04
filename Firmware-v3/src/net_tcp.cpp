@@ -8,8 +8,6 @@
 #include "ossharedmem.h"
 #include "process.h"
 
-extern Spinlock s_rtt;
-
 #define FLAG_FIN    0x1
 #define FLAG_SYN    0x2
 #define FLAG_RST    0x4
@@ -41,7 +39,7 @@ static uint16_t get_wnd_size();
 int net_handle_tcp_packet(const IP4Packet &pkt)
 {
     {
-        CriticalGuard cg(s_rtt);
+        CriticalGuard cg;
         klog("net: tcp: received packet:\n");
         for(unsigned int i = 0; i < pkt.epacket.link_layer_n; i++)
         {
@@ -214,7 +212,6 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
     CriticalGuard cg(sl);
 
     {
-        CriticalGuard cg2(s_rtt);
         klog("net: tcpsocket: packet: state %d, flags %x, len %u\n", 
             (int)state, flags, n);
     }
@@ -565,7 +562,6 @@ int TCPSocket::PairConnectAccept(const pending_accept_req &req,
     int __errno;
     int ret;
     TCPSocket *nsck;
-    SocketFile *sfile;
     auto &p = t->p;
     sockaddr_pair sp;
     int fildes;
@@ -602,7 +598,7 @@ int TCPSocket::PairConnectAccept(const pending_accept_req &req,
         }
 
         nsck->sockfd = fildes;
-        sfile = new SocketFile(nsck);
+        auto sfile = std::make_shared<SocketFile>(nsck);
         if(!sfile)
         {
             __errno = ENOMEM;

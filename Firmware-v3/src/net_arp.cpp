@@ -46,8 +46,8 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
     IP4Addr ip_target(&pkt.contents[24]);
     auto oper = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[6]));
 
+#ifdef DEBUG_ARP
     {
-        CriticalGuard cg(s_rtt);
         klog("net: arp packet %s %s(%s) -> %s(%s) on iface %s\n",
             (oper == 1) ? "request" : ((oper == 2) ? "reply" : "unknown"),
             ip_sender.ToString().c_str(),
@@ -56,6 +56,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             hw_target.ToString().c_str(),
             net_ip_get_address(pkt.iface).ToString().c_str());
     }
+#endif
     
     {
         CriticalGuard cg(s_arp);
@@ -100,6 +101,8 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             memcpy(&data[18], hw_sender.get(), 6);
             *reinterpret_cast<uint32_t *>(&data[24]) = ip_sender;
 
+            // cannot be within criticalguard as may switch
+            cg.~CriticalGuard();        // release the guard here because sending may take some time
             pkt.iface->SendEthernetPacket(data, 28, hw_sender, 0x0806, true);
         }
     }
