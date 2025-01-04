@@ -22,7 +22,7 @@ SRAM4_DATA static WidgetAnimationList wl;
 GridWidget *default_osd();
 
 const int n_screens = 5;
-Widget *scrs[n_screens];
+Widget *scrs[n_screens] = { 0 };
 
 bool is_overlay_visible()
 {
