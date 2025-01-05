@@ -175,7 +175,14 @@ int syscall_audiosetfreq(int freq, int *_errno)
     return 0;
 }
 
-int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, int *_errno)
+int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes,
+    int *_errno)
+{
+    return syscall_audiosetmodeex(nchan, nbits, freq, buf_size_bytes, 0, _errno);
+}
+
+int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes, size_t nbufs,
+    int *_errno)
 {    
     auto &ac = GetCurrentThreadForCore()->p.audio;
     CriticalGuard cg(ac.sl_sound);
@@ -281,7 +288,10 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
 
     /* Set up buffers */
-    ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
+    if(nbufs)
+        ac.nbuffers = nbufs;
+    else
+        ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
 
     /* Limit latency */
 #if GK_AUDIO_LATENCY_LIMIT_MS > 0
@@ -297,7 +307,8 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
     _clear_buffers(ac);
     ac.freq = (unsigned)freq;
 
-    if(ac.nbuffers < 2)
+    // special case selecting only one buffer
+    if((ac.nbuffers == 0) || ((nbufs != 1) && (ac.nbuffers == 1)))
     {
         *_errno = EINVAL;
         return -1;
@@ -319,7 +330,7 @@ int syscall_audiosetmode(int nchan, int nbits, int freq, size_t buf_size_bytes, 
 
     /* Set up silence buffer - last one */
     ac.silence = (uint32_t *)(ac.mr_sound.address + buf_size_bytes * ac.nbuffers);
-    memset(ac.silence, 0, buf_size_bytes);
+    memset((void *)ac.mr_sound.address, 0, buf_size_bytes * (ac.nbuffers + 1)); // zero all buffers including silence
 
     /* Set up DMA linked lists - always point back to each other */
     ll[0].sar = ac.silence;
@@ -400,7 +411,12 @@ int syscall_audioenable(int enable, int *_errno)
 [[maybe_unused]] void _queue_if_possible(audio_conf &ac)
 {
     uint32_t next_buffer;
-    if(ac.rd_ready_ptr != ac.wr_ptr)
+    if(ac.nbuffers == 1)
+    {
+        // continuous ring buffer
+        next_buffer = ac.mr_sound.address;
+    }
+    else if(ac.rd_ready_ptr != ac.wr_ptr)
     {
         // we can queue the next buffer
         next_buffer = ac.mr_sound.address + ac.wr_ptr * ac.buf_size_bytes;
