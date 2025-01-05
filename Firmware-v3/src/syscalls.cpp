@@ -819,6 +819,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_audiogetbufferpos:
+            {
+                auto p = reinterpret_cast<__syscall_audiogetbufferpos_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audiogetbufferpos(p->nbufs, p->curbuf,
+                    p->buflen, p->bufpos, p->nchan, p->nbits, p->freq,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         case __syscall_audiowaitfree:
             {
                 *reinterpret_cast<int *>(r1) = syscall_audiowaitfree(reinterpret_cast<int *>(r3));

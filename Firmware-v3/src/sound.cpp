@@ -306,6 +306,8 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     ac.buf_ndtr = buf_size_bytes * 8 / nbits;
     _clear_buffers(ac);
     ac.freq = (unsigned)freq;
+    ac.nbits = nbits;
+    ac.nchan = nchan;
 
     // special case selecting only one buffer
     if((ac.nbuffers == 0) || ((nbufs != 1) && (ac.nbuffers == 1)))
@@ -766,6 +768,28 @@ int sound_set_extfreq(double freq)
     // enable PLL1
     static uint8_t pllcfg2 = 0x6d;
     i2c_register_write(cdce_address, (uint8_t)0x94U, &pllcfg2, 1, false);
+
+    return 0;
+}
+
+int syscall_audiogetbufferpos(size_t *nbufs, size_t *curbuf, size_t *buflen, size_t *bufpos,
+    int *nchan, int *nbits, int *freq, int *_errno)
+{
+    auto &ac = GetCurrentThreadForCore()->p.audio;
+    if(!ac.mr_sound.valid)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    CriticalGuard cg(ac.sl_sound);
+    if(nbufs) *nbufs = ac.nbuffers;
+    if(curbuf) *curbuf = (dma->CSAR - ac.mr_sound.address) / ac.buf_size_bytes;
+    if(buflen) *buflen = ac.buf_size_bytes;
+    if(bufpos) *bufpos = ac.buf_size_bytes - (dma->CBR1 & DMA_CBR1_BNDT_Msk);
+    if(nchan) *nchan = ac.nchan;
+    if(nbits) *nbits = ac.nbits;
+    if(freq) *freq = ac.freq;
 
     return 0;
 }

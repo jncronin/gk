@@ -11,6 +11,8 @@ int syscall_audioenable(int enable, int *_errno);
 int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno);
 int syscall_audiowaitfree(int *_errno);
 int syscall_audiosetfreq(int freq, int *_errno);
+int syscall_audiogetbufferpos(size_t *nbufs, size_t *curbuf, size_t *buflen, size_t *bufpos,
+    int *nchan, int *nbits, int *freq, int *_errno);
 
 extern MemRegion sound_get_buffer();
 
