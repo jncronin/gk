@@ -464,14 +464,21 @@ int syscall_audioqueuebuffer(const void *buffer, void **next_buffer, int *_errno
     }
     if(next_buffer)
     {
-        if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
+        if(ac.nbuffers == 1)
         {
-            // buffers full
-            *_errno = EBUSY;
-            return -3;
+            *next_buffer = (void *)ac.mr_sound.address;
         }
-        *next_buffer = (void *)(ac.mr_sound.address + ac.rd_ptr * ac.buf_size_bytes);
-        ac.rd_ptr = _ptr_plus_one(ac.rd_ptr, ac);
+        else
+        {
+            if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
+            {
+                // buffers full
+                *_errno = EBUSY;
+                return -3;
+            }
+            *next_buffer = (void *)(ac.mr_sound.address + ac.rd_ptr * ac.buf_size_bytes);
+            ac.rd_ptr = _ptr_plus_one(ac.rd_ptr, ac);
+        }
     }
     return 0;
 }
