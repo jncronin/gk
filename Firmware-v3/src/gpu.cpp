@@ -878,6 +878,10 @@ void *gpu_thread(void *p)
                 case ClearScreen:
                     // shouldn't get here
                     break;
+
+
+                default:
+                    break;
             }
 #if GPU_DEBUG
             {
