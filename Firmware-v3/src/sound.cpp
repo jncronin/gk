@@ -30,7 +30,7 @@ static constexpr const pin I2S_CKIN { GPIOC, 9, 5 };
 #define dma_irq GPDMA1_Channel12_IRQn
 #define dma_irqhandler GPDMA1_Channel12_IRQHandler
 
-RTCREG_DATA int volume_pct;
+extern int volume_pct;
 
 /* We define 2 linked list DMA structures to provide a double buffer mode similar to older STMH7s */
 struct ll_dma
