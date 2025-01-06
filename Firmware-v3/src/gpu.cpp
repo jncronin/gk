@@ -875,6 +875,21 @@ void *gpu_thread(void *p)
                     }
                     break;
 
+                case SetBlitPalette:
+                    {
+                        wait_dma2d();
+                        if(g.g.src_addr_color)
+                        {
+                            auto ncols = std::min(256U, (unsigned int)g.g.w);
+                            auto pal = reinterpret_cast<uint32_t *>(g.g.src_addr_color);
+                            for(unsigned int ccol = 0; ccol < ncols; ccol++)
+                            {
+                                DMA2D->FGCLUT[ccol] = pal[ccol];
+                            }
+                        }
+                    }
+                    break;
+
                 case ClearScreen:
                     // shouldn't get here
                     break;
