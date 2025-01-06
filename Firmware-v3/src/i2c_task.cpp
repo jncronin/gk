@@ -13,7 +13,6 @@
 
 /* The I2C1 bus runs at 400 kHz and contains:
         LSM6DSL gyro/accelerometer:         Address 0x6a
-        CST340 touch screen controller:     Address 0x1a (see https://sbexr.rabexc.org/latest/sources/b1/4dc8ab017aac8c.html)
         MAX17048 battery charge monitor:    Address 0x36
         GT911 touch screen:                 Address 0x5d
         LTC3380 VREG:                       Address 0x3c
@@ -135,7 +134,7 @@ int i2c_register_write(unsigned int addr, uint8_t reg, const void *buf, size_t n
     }
 
     if(wait)
-        GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+        return (int)GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
     return 0;
 }
 
@@ -160,7 +159,7 @@ int i2c_register_write(unsigned int addr, uint16_t reg, const void *buf, size_t 
     }
 
     if(wait)
-        GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+        return (int)GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
     return 0;
 }
 
@@ -191,7 +190,7 @@ int i2c_register_read(unsigned int addr, uint8_t reg, void *buf, size_t nbytes, 
     }
 
     if(wait)
-        GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+        return (int)GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
     return 0;
 }
 
@@ -223,7 +222,7 @@ int i2c_register_read(unsigned int addr, uint16_t reg, void *buf, size_t nbytes,
     }
 
     if(wait)
-        GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
+        return (int)GetCurrentThreadForCore()->ss.Wait(SimpleSignal::SignalOperation::Set, 0);
     return 0;
 }
 

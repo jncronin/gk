@@ -277,7 +277,7 @@ bool SetFocusProcess(Process *proc)
 {
     focus_process = proc;
 
-    if(proc->tilt_is_keyboard || proc->tilt_is_joystick)
+    if(proc->tilt_is_keyboard || proc->tilt_is_joystick || proc->tilt_raw)
     {
         tilt_enable(true);
     }

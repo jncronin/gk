@@ -17,6 +17,7 @@
 #include "pwr.h"
 #include "btnled.h"
 #include "osnet.h"
+#include "tilt.h"
 #include "SEGGER_RTT.h"
 
 uint32_t test_val;
@@ -194,6 +195,10 @@ int main()
 
 #if GK_ENABLE_NETWORK
     init_net();
+#endif
+
+#if GK_ENABLE_TILT
+    init_tilt();
 #endif
 
     // Prepare systick

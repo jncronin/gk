@@ -1,23 +1,3 @@
-void tilt_enable(bool en)
-{
-    if(en)
-        __asm__ volatile("bkpt \n" ::: "memory");
-
-#if 0
-    if(en)
-    {
-        is_running = true;
-        needs_calib = true;
-        s_en.Signal();
-    }
-    else
-    {
-        is_running = false;
-    }
-#endif
-}
-
-#if 0
 #include "i2c.h"
 #include "LSM6DSL_ACC_GYRO_Driver.h"
 #include "scheduler.h"
@@ -31,7 +11,7 @@ extern Process *focus_process;
 
 // see https://github.com/stm32duino/LSM6DSL/blob/main/src/LSM6DSLSensor.cpp for an example
 
-static bool init_lsm();
+static bool _init_lsm();
 static SRAM4_DATA volatile bool is_running = false;
 static SRAM4_DATA volatile bool needs_calib = false;
 static SRAM4_DATA volatile float calib_y = 0;
@@ -46,8 +26,9 @@ static const constexpr unsigned int f_samp = 25;    // tilt sample frequency
 static const constexpr int fsr_deg = 80;            // +/- maximum tilt
 static const constexpr int deadzone_deg = 10;       // +/- deadzone
 static const constexpr int move_deg = 2;            // number of degrees needed to move to report a new sample
+extern int tilt_pos[2];
 
-extern Spinlock s_rtt;
+Process p_tilt;
 
 void *lsm_thread(void *param)
 {
@@ -63,7 +44,7 @@ void *lsm_thread(void *param)
             last_running = true;
             while(!is_init)
             {
-                is_init = init_lsm();
+                is_init = _init_lsm();
 
                 if(is_init)
                 {
@@ -71,7 +52,6 @@ void *lsm_thread(void *param)
                     uint8_t who;
                     LSM6DSL_ACC_GYRO_R_WHO_AM_I(nullptr, &who);
                     {
-                        CriticalGuard cg(s_rtt);
                         klog("lsm: whoami: %x\n", (uint32_t)who);
                     }
                     if(who != 0x6a)
@@ -82,6 +62,10 @@ void *lsm_thread(void *param)
                         //LSM6DSL_ACC_GYRO_W_ODR_G(nullptr, LSM6DSL_ACC_GYRO_ODR_G_104Hz);
                         LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_104Hz);
                     }
+                }
+                else
+                {
+                    Block(clock_cur() + kernel_time::from_ms(1000));
                 }
             }
 
@@ -108,6 +92,10 @@ void *lsm_thread(void *param)
                 if(std::abs(x) < (float)deadzone_deg) x = 0;
                 if(std::abs(y) < (float)deadzone_deg) y = 0;
 
+                auto joy_x = x * 32767.0f / (float)fsr_deg;
+                auto joy_y = y * 32767.0f / (float)fsr_deg;
+                tilt_pos[0] = (int)rint(joy_x);
+                tilt_pos[1] = (int)rint(joy_y);
 
                 bool to_report = false;
                 if(needs_calib)
@@ -133,13 +121,9 @@ void *lsm_thread(void *param)
 
                 if(to_report)
                 {
-                    auto joy_x = x * 32767.0f / (float)fsr_deg;
-                    auto joy_y = y * 32767.0f / (float)fsr_deg;
-
                     focus_process->HandleTiltEvent(joy_x, joy_y);
 
                     {
-                        CriticalGuard cg(s_rtt);
                         klog("lsm6dsl: %d,%d\n", (int)joy_x, (int)joy_y);
                     }
                 }
@@ -173,14 +157,13 @@ void tilt_enable(bool en)
     }
 }
 
-bool init_lsm()
+bool _init_lsm()
 {
     /* Enable register address automatically incremented during a multiple byte
         access with a serial interface. */
     if ( LSM6DSL_ACC_GYRO_W_IF_Addr_Incr( nullptr, LSM6DSL_ACC_GYRO_IF_INC_ENABLED ) == MEMS_ERROR )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 0\n");
         }
         return false;
@@ -190,7 +173,6 @@ bool init_lsm()
     if ( LSM6DSL_ACC_GYRO_W_BDU( nullptr, LSM6DSL_ACC_GYRO_BDU_BLOCK_UPDATE ) == MEMS_ERROR )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 1\n");
         }
         return false;
@@ -200,7 +182,6 @@ bool init_lsm()
     if ( LSM6DSL_ACC_GYRO_W_FIFO_MODE( nullptr, LSM6DSL_ACC_GYRO_FIFO_MODE_BYPASS ) == MEMS_ERROR )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 2\n");
         }
         return false;
@@ -210,7 +191,6 @@ bool init_lsm()
     if ( LSM6DSL_ACC_GYRO_W_ODR_XL( nullptr, LSM6DSL_ACC_GYRO_ODR_XL_POWER_DOWN ) == MEMS_ERROR )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 3\n");
         }
         return false;
@@ -220,7 +200,6 @@ bool init_lsm()
     if ( Set_X_FS( 2.0f ) == false )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 4\n");
         }
         return false;
@@ -230,7 +209,6 @@ bool init_lsm()
     if ( LSM6DSL_ACC_GYRO_W_ODR_G( nullptr, LSM6DSL_ACC_GYRO_ODR_G_POWER_DOWN ) == MEMS_ERROR )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 5\n");
         }
         return false;
@@ -240,14 +218,12 @@ bool init_lsm()
     if ( Set_G_FS( 2000.0f ) == false )
     {
         {
-            CriticalGuard cg(s_rtt);
             klog("lsm6dsl: init failed 6\n");
         }
         return false;
     }
 
     {
-        CriticalGuard cg(s_rtt);
         klog("lsm6dsl: init success\n");
     }
 
@@ -309,12 +285,33 @@ bool Set_G_FS(float fullScale)
 
 extern "C" uint8_t LSM6DSL_IO_Write(void *handle, uint8_t WriteAddr, uint8_t *pBuffer, uint16_t nBytesToWrite)
 {
-    return i2c_register_write(addr, WriteAddr, pBuffer, nBytesToWrite) == 0 ? 0 : 1;
+    return i2c_register_write(addr, WriteAddr, pBuffer, nBytesToWrite) > 0 ? 0 : 1;
 }
 
 extern "C" uint8_t LSM6DSL_IO_Read(void *handle, uint8_t ReadAddr, uint8_t *pBuffer, uint16_t nBytesToRead)
 {
-    return i2c_register_read(addr, ReadAddr, pBuffer, nBytesToRead) == 0 ? 0 : 1;
+    return i2c_register_read(addr, ReadAddr, pBuffer, nBytesToRead) > 0 ? 0 : 1;
 }
 
-#endif
+void init_tilt()
+{
+    p_tilt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
+    p_tilt.argc = 0;
+    p_tilt.argv = nullptr;
+    p_tilt.brk = 0;
+    p_tilt.code_data = InvalidMemregion();
+    p_tilt.cwd = "/";
+    p_tilt.default_affinity = PreferM4;
+    p_tilt.for_deletion = false;
+    p_tilt.heap = InvalidMemregion();
+    p_tilt.name = "tilt";
+    p_tilt.next_key = 0;
+    for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
+        p_tilt.open_files[i] = nullptr;
+    p_tilt.screen_h = 480;
+    p_tilt.screen_w = 640;
+    memcpy(p_tilt.p_mpu, mpu_default, sizeof(mpu_default));
+
+    Schedule(Thread::Create("tilt", lsm_thread, nullptr, true, GK_PRIORITY_HIGH, p_tilt,
+        CPUAffinity::PreferM4));
+}

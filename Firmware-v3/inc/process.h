@@ -104,6 +104,7 @@ class Process
 
         bool tilt_is_joystick = true;
         bool tilt_is_keyboard = true;
+        bool tilt_raw = true;
         char tilt_keyboard_state = 0;
 
         bool joystick_is_joystick = false;

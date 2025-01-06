@@ -65,7 +65,7 @@ static bool ctp_init()
     uint32_t pid;
     auto nr = i2c_register_read(ctp_addr, (uint16_t)0x4081, &pid, 4);
 
-    if(nr == 0 && pid == 0x313139U)
+    if(nr == 4 && pid == 0x313139U)
     {
         klog("ctp: detected ctp controller, pid: %x\n", pid);
     }
@@ -82,7 +82,7 @@ static bool ctp_init()
     uint8_t ctp_config_expect[] = { 0x00, 0x80, 0x02, 0xe0, 0x01, 0x05, 0x8c };
     uint8_t ctp_config_cur[sizeof(ctp_config_expect)];
     nr = i2c_register_read(ctp_addr, (uint16_t)0x4780, ctp_config_cur, sizeof(ctp_config_cur));
-    if(nr != 0)
+    if(nr != sizeof(ctp_config_cur))
     {
         klog("ctp: failed to read config\n");
         return false;
@@ -125,7 +125,7 @@ static bool ctp_init()
 
         nr = i2c_register_write(ctp_addr, (uint16_t)0x4780, ctp_conf, sizeof(ctp_conf));
 
-        if(nr != 0)
+        if(nr != sizeof(ctp_conf))
         {
             klog("ctp: failed to send config\n");
             return false;
@@ -140,7 +140,7 @@ static bool ctp_init()
     uint8_t command = 0;
     nr = i2c_register_write(ctp_addr, (uint16_t)0x4080, &command, 1);
 
-    if(nr != 0)
+    if(nr <= 0)
     {
         klog("ctp: failed to send command\n");
         return false;
