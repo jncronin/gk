@@ -740,7 +740,7 @@ void *gpu_thread(void *p)
                 case gpu_message_type::InvalidateCache:
                     {
                         auto start_addr = dest_addr + g.g.dx * bpp + g.g.dy * dest_pitch;
-                        auto len = g.g.h * dest_pitch + g.g.w * bpp;
+                        auto len = dest_h * dest_pitch + g.g.w * bpp;
 
                         auto cache_line_start = start_addr & ~0x1fU;
                         auto cache_line_end = (start_addr + len + 0x1fU) & ~0x1fU;
@@ -752,7 +752,7 @@ void *gpu_thread(void *p)
                 case gpu_message_type::CleanCache:
                     {
                         auto start_addr = dest_addr + g.g.dx * bpp + g.g.dy * dest_pitch;
-                        auto len = g.g.h * dest_pitch;
+                        auto len = dest_h * dest_pitch;
 
                         auto cache_line_start = start_addr & ~0x1fU;
                         auto cache_line_end = (start_addr + len + 0x1fU) & ~0x1fU;
