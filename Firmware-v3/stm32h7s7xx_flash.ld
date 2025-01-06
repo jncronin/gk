@@ -382,6 +382,11 @@ SECTIONS
     LONG(0);
     LONG(0);
     LONG(0);
+    volume_pct = .;
+    LONG(0);
+    tilt_pos = .;
+    LONG(0);
+    LONG(0);
 
     *(.rtcregs)
     *(.rtcregs*)
