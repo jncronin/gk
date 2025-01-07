@@ -5703,10 +5703,6 @@
 		(uuid "e4909c84-9b8d-499c-9769-2d287e3ae2ae")
 	)
 	(no_connect
-		(at 113.03 125.73)
-		(uuid "5efe40fd-457e-41ce-9bcb-4ce75705229f")
-	)
-	(no_connect
 		(at 143.51 59.69)
 		(uuid "8d55327d-0c98-4f3b-a3ec-1bd117876f46")
 	)
@@ -6312,6 +6308,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "BTN_MCU_LB"
+		(shape input)
+		(at 95.25 125.73 270)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "0eda0b33-97fd-4275-9027-1d66cf2a5036")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 95.25 140.5685 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -7348,6 +7366,28 @@
 			)
 		)
 	)
+	(global_label "BTN_MCU_RB"
+		(shape input)
+		(at 113.03 125.73 270)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "7d083254-75a9-41bc-a251-e47ef144581d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 113.03 140.8104 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "UART7_RX"
 		(shape input)
 		(at 186.69 59.69 90)
@@ -7432,28 +7472,6 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "NTC_MCU"
-		(shape input)
-		(at 95.25 125.73 270)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "8ae3fdc1-52e5-45e5-923b-40debe6045fd")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 95.25 137.3028 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
 				(hide yes)
 			)
 		)

@@ -7064,7 +7064,7 @@
 			)
 		)
 	)
-	(global_label "VREGIN_1V8"
+	(global_label "VREGIN"
 		(shape input)
 		(at 22.86 53.34 90)
 		(fields_autoplaced yes)
@@ -7076,7 +7076,7 @@
 		)
 		(uuid "f376144d-e53c-459e-8197-56cd6ca7a8db")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 22.86 39.1667 90)
+			(at 22.86 43.6419 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7247,7 +7247,7 @@
 				)
 			)
 		)
-		(property "Value" "35R"
+		(property "Value" "360R"
 			(at 228.6 115.57 90)
 			(effects
 				(font
@@ -7522,7 +7522,7 @@
 				)
 			)
 		)
-		(property "Value" "45R"
+		(property "Value" "360R"
 			(at 228.6 99.06 90)
 			(effects
 				(font
@@ -7948,7 +7948,7 @@
 				)
 			)
 		)
-		(property "Value" "45R"
+		(property "Value" "360R"
 			(at 228.6 123.19 90)
 			(effects
 				(font
@@ -9137,7 +9137,7 @@
 				)
 			)
 		)
-		(property "Value" "130R"
+		(property "Value" "360R"
 			(at 228.6 83.82 90)
 			(effects
 				(font
@@ -9424,7 +9424,7 @@
 		(fields_autoplaced yes)
 		(uuid "bd28510f-1fd4-4192-9a61-7e5e084228af")
 		(property "Reference" "U11"
-			(at 195.58 83.82 0)
+			(at 195.58 82.55 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9432,14 +9432,14 @@
 			)
 		)
 		(property "Value" "ULN2003A"
-			(at 195.58 86.36 0)
+			(at 195.58 85.09 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-16W_5.3x10.2mm_P1.27mm"
+		(property "Footprint" "Package_SO:SOIC-16_3.9x9.9mm_P1.27mm"
 			(at 196.85 114.3 0)
 			(effects
 				(font
@@ -9967,7 +9967,7 @@
 				)
 			)
 		)
-		(property "Value" "35R"
+		(property "Value" "360R"
 			(at 228.6 91.44 90)
 			(effects
 				(font
@@ -10380,7 +10380,7 @@
 				)
 			)
 		)
-		(property "Value" "130R"
+		(property "Value" "360R"
 			(at 228.6 107.95 90)
 			(effects
 				(font

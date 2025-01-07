@@ -6453,7 +6453,7 @@
 				)
 			)
 		)
-		(property "Value" "68u"
+		(property "Value" "10u"
 			(at 183.261 33.02 90)
 			(effects
 				(font
