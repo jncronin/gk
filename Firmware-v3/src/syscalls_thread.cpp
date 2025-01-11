@@ -168,11 +168,12 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
         return -1;
     }
     ADDR_CHECK_STRUCT_W(mutex);
-    ADDR_CHECK_STRUCT_R(until);
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
 
     bool block = clock_id != CLOCK_TRY_ONCE;
+    if(block)
+        ADDR_CHECK_STRUCT_R(until);
     auto tout = kernel_time::from_timespec(until, clock_id);
 
     int reason;
@@ -242,10 +243,11 @@ int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int clock_id, const
         return -1;
     }
     ADDR_CHECK_STRUCT_W(lock);
-    ADDR_CHECK_STRUCT_R(until);
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     bool block = clock_id != CLOCK_TRY_ONCE;
+    if(block)
+        ADDR_CHECK_STRUCT_R(until);
     auto tout = kernel_time::from_timespec(until, clock_id);
 
     int reason;
@@ -269,10 +271,11 @@ int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int clock_id, const
         return -1;
     }
     ADDR_CHECK_STRUCT_W(lock);
-    ADDR_CHECK_STRUCT_R(until);
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     bool block = clock_id != CLOCK_TRY_ONCE;
+    if(block)
+        ADDR_CHECK_STRUCT_R(until);
     auto tout = kernel_time::from_timespec(until, clock_id);
 
 
@@ -417,9 +420,10 @@ int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_e
         return -1;
     }
     ADDR_CHECK_STRUCT_W(sem);
-    ADDR_CHECK_STRUCT_R(until);
 
     bool block = clock_id != CLOCK_TRY_ONCE;
+    if(block)
+        ADDR_CHECK_STRUCT_R(until);
     auto tout = kernel_time::from_timespec(until, clock_id);
 
     int reason;
