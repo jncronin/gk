@@ -100,6 +100,11 @@ class Thread
             CPUAffinity affinity = CPUAffinity::Either,
             MemRegion stack = InvalidMemregion(),
             void *p_r1 = nullptr);
+
+
+        /* determine if a given address range is within the memory accessible by
+            this thread */
+        bool addr_is_valid(const void *buf, size_t len, bool for_write = false) const;
 };
 
 #endif

@@ -336,3 +336,57 @@ std::map<uint32_t, Process::mmap_region>::iterator Process::get_mmap_region(uint
     }
     return mmap_regions.end();
 }
+
+bool Thread::addr_is_valid(const void *addr, size_t len, bool for_write) const
+{
+    /* just check against the valid mpu regions of this thread.
+        This function is used by syscalls, gpu, ext4 etc which
+        operate with the default background map, so they will
+        allow memory access outside of the areas protected by
+        the MPU, so do a check here instead.
+    */
+
+    if(is_privileged)
+        return true;
+
+    auto start = (uint32_t)(uintptr_t)addr;
+    auto end = start + len;
+    
+    for(int i = 0; i < 16; i++)
+    {
+        const auto &cmpu = tss.mpuss[i];
+        if(cmpu.is_enabled())
+        {
+            auto up_access = cmpu.unpriv_access();
+            if(up_access == NoAccess)
+                continue;
+            if(for_write && up_access != RW)
+                continue;
+
+            auto c_start = cmpu.base_addr();
+            auto c_len = cmpu.length();
+
+            // check SRD bits
+            auto srd = (cmpu.rasr >> 8) & 0xffU;
+
+            if(srd != 0)
+            {
+                if(srd != 0x81U)
+                {
+                    BKPT();     // not supported
+                    c_len = 0;
+                }
+
+                c_start += c_len / 8;
+                c_len -= c_len / 4;
+            }
+
+            auto c_end = c_start + c_len;
+
+            if(start >= c_start && end <= c_end)
+                return true;
+        }
+    }
+
+    return false;
+}
