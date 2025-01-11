@@ -388,5 +388,10 @@ bool Thread::addr_is_valid(const void *addr, size_t len, bool for_write) const
         }
     }
 
+    klog("kernel: userspace (%s - %s) invalid %s access at %08x to %08x\n",
+        name.c_str(), p.name.c_str(),
+        for_write ? "write" : "read",
+        start, end);
+
     return false;
 }
