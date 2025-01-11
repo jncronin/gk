@@ -57,16 +57,7 @@ static void btn_exit_click(Widget *w, coord_t x, coord_t y)
         // only quit processes started by gkmenu
         if(fppid >= 0 && fppid == pid_gkmenu)
         {
-            // TODO: make game-specific
-            Event e[2];
-            e[0].type = Event::KeyDown;
-            e[0].key = GK_SCANCODE_F12;
-            e[1].type = Event::KeyUp;
-            e[1].key = GK_SCANCODE_F12;
-            deferred_call(syscall_pushevents, fpid, e, 2);
-
-            // backup quit incase the above didn't work
-            AddAnimation(*GetAnimationList(), clock_cur_ms(), anim_handle_quit_failed, nullptr, (void *)fpid);
+            deferred_call(syscall_kill, fpid, SIGKILL);
         }
     }
 }
