@@ -143,6 +143,11 @@ static void add_part(std::vector<std::string> &output, const std::string &input)
             output.pop_back();
         }
     }
+    else if(input == "~")
+    {
+        output.push_back("home");
+        output.push_back("user");
+    }
     else
     {
         output.push_back(input);
@@ -166,7 +171,7 @@ static std::string parse_fname(const std::string &pname)
 {
     std::vector<std::string> pnames;
 
-    if(!starts_with(pname, '/'))
+    if(!starts_with(pname, '/') && !starts_with(pname, '~'))
     {
         // add cwd
         auto cwd = GetCurrentThreadForCore()->p.cwd;
