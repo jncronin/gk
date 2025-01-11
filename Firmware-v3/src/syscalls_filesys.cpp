@@ -23,6 +23,7 @@ int syscall_fstat(int file, struct stat *st, int *_errno)
         *_errno = EBADF;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(st);
 
     return p.open_files[file]->Fstat(st, _errno);
 }
@@ -36,6 +37,7 @@ int syscall_write(int file, char *buf, int nbytes, int *_errno)
         *_errno = EBADF;
         return -1;
     }
+    ADDR_CHECK_BUFFER_W(buf, nbytes);
 
     return p.open_files[file]->Write(buf, nbytes, _errno);
 }
@@ -49,6 +51,7 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
         *_errno = EBADF;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(buf, nbytes);
 
     auto ret = p.open_files[file]->Read(buf, nbytes, _errno);
     if(ret == -3)
@@ -202,6 +205,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         *_errno = EMFILE;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(pathname, 1);
 
     auto act_name = parse_fname(pathname);
 
@@ -313,6 +317,7 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
         *_errno = EFAULT;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(pathname, 1);
 
     // check len as malloc'ing in sram4
     auto pnlen = strlen(pathname);
@@ -350,6 +355,7 @@ int syscall_readdir(int file, dirent *de, int *_errno)
         *_errno = EBADF;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(de);
 
     return p.open_files[file]->ReadDir(de, _errno);
 }
@@ -361,6 +367,7 @@ int syscall_unlink(const char *pathname, int *_errno)
         *_errno = EFAULT;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(pathname, 1);
 
     auto act_name = parse_fname(pathname);
 
@@ -397,6 +404,7 @@ int syscall_chdir(const char *pathname, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(pathname, 1);
 
     auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard cg(p.sl);

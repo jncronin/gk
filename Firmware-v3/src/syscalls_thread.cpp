@@ -34,6 +34,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R((void *)start_func, 1);
 
     auto curt = GetCurrentThreadForCore();
     auto &p = curt->p;
@@ -87,6 +88,9 @@ int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(mutex);
+    if(attr)
+        ADDR_CHECK_STRUCT_R(attr);
 
     bool is_recursive = attr && (attr->recursive || attr->type == PTHREAD_MUTEX_RECURSIVE);
     bool is_errorcheck = attr && (attr->type == PTHREAD_MUTEX_ERRORCHECK);
@@ -138,6 +142,7 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(mutex);
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
     auto ret = m->try_delete();
@@ -162,6 +167,8 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(mutex);
+    ADDR_CHECK_STRUCT_R(until);
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
 
@@ -190,6 +197,7 @@ int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(mutex);
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
     if(m->unlock())
@@ -208,6 +216,9 @@ int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(lock);
+    if(attr)
+        ADDR_CHECK_STRUCT_R(attr);
 
     auto l = new RwLock();
     if(!l)
@@ -230,6 +241,8 @@ int syscall_pthread_rwlock_tryrdlock(pthread_rwlock_t *lock, int clock_id, const
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(lock);
+    ADDR_CHECK_STRUCT_R(until);
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     bool block = clock_id != CLOCK_TRY_ONCE;
@@ -255,6 +268,8 @@ int syscall_pthread_rwlock_trywrlock(pthread_rwlock_t *lock, int clock_id, const
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(lock);
+    ADDR_CHECK_STRUCT_R(until);
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     bool block = clock_id != CLOCK_TRY_ONCE;
@@ -281,6 +296,7 @@ int syscall_pthread_rwlock_unlock(pthread_rwlock_t *lock, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(lock);
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     if(l->unlock())
@@ -299,6 +315,7 @@ int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(lock);
 
     auto l = *reinterpret_cast<RwLock **>(lock);
     if(l->try_delete())
@@ -325,6 +342,7 @@ int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(sem);
 
     sem->s = new UserspaceSemaphore(value);
     if(!sem->s)
@@ -346,6 +364,7 @@ int syscall_sem_destroy(sem_t *sem, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(sem);
 
     int reason;
     if(!sem->s->try_delete(&reason))
@@ -370,6 +389,8 @@ int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(sem);
+    ADDR_CHECK_STRUCT_W(outval);
 
     *outval = (int)sem->s->get_value();
     return 0;
@@ -382,6 +403,7 @@ int syscall_sem_post(sem_t *sem, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(sem);
 
     sem->s->post();
     return 0;
@@ -394,6 +416,8 @@ int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_e
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(sem);
+    ADDR_CHECK_STRUCT_R(until);
 
     bool block = clock_id != CLOCK_TRY_ONCE;
     auto tout = kernel_time::from_timespec(until, clock_id);
@@ -418,6 +442,9 @@ int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), i
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(key);
+    if(destructor)
+        ADDR_CHECK_BUFFER_R((void *)destructor, 1);
 
     auto t = GetCurrentThreadForCore();
     {
@@ -474,6 +501,8 @@ int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno)
     auto t = GetCurrentThreadForCore();
     CriticalGuard cg_t(t->sl);
 
+    ADDR_CHECK_STRUCT_W(retval);
+
     auto iter = t->tls_data.find(key);
     if(iter == t->tls_data.end())
     {
@@ -493,6 +522,8 @@ int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *at
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(cond);
+    ADDR_CHECK_STRUCT_R(attr);
 
     auto c = new Condition();
     if(!c)
@@ -515,6 +546,7 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(cond);
 
     auto c = *reinterpret_cast<Condition **>(cond);
 
@@ -534,6 +566,12 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(cond);
+    ADDR_CHECK_STRUCT_W(mutex);
+    if(abstime)
+        ADDR_CHECK_STRUCT_R(abstime);
+    if(signalled)
+        ADDR_CHECK_STRUCT_W(signalled);
 
     auto c = *reinterpret_cast<Condition **>(cond);
     auto m = *reinterpret_cast<Mutex **>(mutex);
@@ -556,6 +594,8 @@ int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno)
         return -1;
     }
 
+    ADDR_CHECK_STRUCT_W(cond);
+
     auto c = *reinterpret_cast<Condition **>(cond);
     c->Signal(false);
     return 0;
@@ -565,6 +605,9 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
 {
     // we need to make sure the thread hasn't already been destroyed
     auto t = GetCurrentThreadForCore();
+    if(retval)
+        ADDR_CHECK_STRUCT_W(retval);
+    
     auto &p = t->p;
     {
         CriticalGuard cg_p(p.sl);
@@ -612,6 +655,8 @@ int syscall_pthread_join(Thread *thread, void **retval, int *_errno)
 
 int syscall_pthread_exit(void **retval, int *_errno)
 {
+    ADDR_CHECK_STRUCT_R(retval);
+
     auto t = GetCurrentThreadForCore();
     {
         CriticalGuard cg(t->sl);
@@ -645,6 +690,7 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(name, 1);
     if(strlen(name) > 64)
     {
         *_errno = ERANGE;

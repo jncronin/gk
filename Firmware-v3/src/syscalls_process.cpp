@@ -38,6 +38,12 @@ int syscall_proccreate(const char *fname, const proccreate_t *pcinfo, pid_t *pid
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(fname, 1);
+    ADDR_CHECK_STRUCT_R(pcinfo);
+    if(pid)
+    {
+        ADDR_CHECK_STRUCT_W(pid);
+    }
 
     /* Create a separate thread that will do the heavy lifting here,
         needed because we cannot do complex work in a syscall */
@@ -355,6 +361,9 @@ void *proccreate_thread(void *ptr)
 
 int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
 {
+    if(retval)
+        ADDR_CHECK_STRUCT_W(retval);
+    
     auto wret = proc_list.GetReturnValue(pid, retval,
         (options & WNOHANG) == 0);
     if(wret == -1)
@@ -369,13 +378,22 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
     return pid;
 }
 
-void syscall_getheap(void **ptr, size_t *sz)
+int syscall_getheap(void **ptr, size_t *sz, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
     auto &p = t->p;
 
-    if(ptr) *ptr = (void *)p.heap.address;
-    if(sz) *sz = (size_t)p.heap.length;
+    if(ptr)
+    {
+        ADDR_CHECK_STRUCT_W(ptr);
+        *ptr = (void *)p.heap.address;
+    }
+    if(sz)
+    {
+        ADDR_CHECK_STRUCT_W(sz);
+        *sz = (size_t)p.heap.length;
+    }
+    return 0;
 }
 
 pid_t syscall_get_focus_pid(int *_errno)
@@ -404,6 +422,7 @@ int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno)
         *_errno = EINVAL;
         return (pid_t)-1;
     }
+    ADDR_CHECK_BUFFER_R(e, sizeof(Event) * nevents);
     return p->events.Push(e, nevents);
 }
 

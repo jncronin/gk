@@ -102,7 +102,7 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno);
 
 int syscall_waitpid(pid_t pid, int *status, int options, int *_errno);
 
-void syscall_getheap(void **addr, size_t *sz);
+int syscall_getheap(void **addr, size_t *sz, int *_errno);
 
 int syscall_pipe(int pipefd[2], int *_errno);
 int syscall_dup2(int oldfd, int newfd, int *_errno);
@@ -153,5 +153,49 @@ template<typename Func, class... Args> int deferred_call(Func f, Args... a)
     int ret = f(a..., &_errno);
     return deferred_return(ret, _errno);
 }
+
+/* inline functions to support quick checking of usermode pointers for syscalls */
+#if GK_CHECK_USER_ADDRESSES
+template<typename T> static inline bool addr_is_valid(const T *buf, bool is_write = false)
+{
+    return GetCurrentThreadForCore()->addr_is_valid(buf, sizeof(T), is_write);
+}
+
+static inline bool addr_is_valid(const void *buf, size_t len, bool is_write = false)
+{
+    return GetCurrentThreadForCore()->addr_is_valid(buf, len, is_write);
+}
+
+#define ADDR_CHECK_BUFFER_RW(buf, len, is_write) \
+    do { \
+        if(!addr_is_valid(buf, len, is_write)) { \
+            *_errno = EFAULT; \
+            BKPT(); \
+            return -1; \
+        } \
+    } while(0)
+
+#define ADDR_CHECK_STRUCT_RW(buf, is_write) \
+    do { \
+        if(!addr_is_valid(buf, is_write)) { \
+            *_errno = EFAULT; \
+            BKPT(); \
+            return -1; \
+        } \
+    } while(0)
+
+#define ADDR_CHECK_BUFFER_R(buf, len) ADDR_CHECK_BUFFER_RW(buf, len, false)
+#define ADDR_CHECK_BUFFER_W(buf, len) ADDR_CHECK_BUFFER_RW(buf, len, true)
+#define ADDR_CHECK_STRUCT_R(buf) ADDR_CHECK_STRUCT_RW(buf, false)
+#define ADDR_CHECK_STRUCT_W(buf) ADDR_CHECK_STRUCT_RW(buf, true)
+
+#else
+
+#define ADDR_CHECK_BUFFER_R(buf, len) do {} while(0)
+#define ADDR_CHECK_BUFFER_W(buf, len) do {} while(0)
+#define ADDR_CHECK_STRUCT_R(buf) do {} while(0)
+#define ADDR_CHECK_STRUCT_W(buf) do {} while(0)
+
+#endif
 
 #endif

@@ -22,6 +22,7 @@ int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_W(tv);
 
     timespec ts;
     clock_get_now(&ts);
@@ -30,6 +31,7 @@ int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 
     if(tz)
     {
+        ADDR_CHECK_STRUCT_W(tz);
         // just return UTC for now
         tz->tz_minuteswest = 0;
         tz->tz_dsttime = DST_NONE;
@@ -109,6 +111,7 @@ int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_STRUCT_R(retaddr);
 
     auto ret = syscall_memalloc_int(len, is_sync, 0, "mmap", _errno);
     if(ret.valid)
@@ -244,6 +247,7 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(msgs, sizeof(gpu_message) * nmsg);
 
     *nsent = GPUEnqueueMessages(msgs, nmsg);
     if(*nsent == nmsg && nmsg && msgs[nmsg - 1].type == gpu_message_type::SignalThread)
@@ -254,6 +258,7 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
 
 int syscall_peekevent(Event *ev, int *_errno)
 {
+    ADDR_CHECK_STRUCT_W(ev);
     auto &p = GetCurrentThreadForCore()->p;
     CriticalGuard cg(p.sl);
     if(p.events.TryPop(ev))
@@ -273,6 +278,7 @@ clock_t syscall_times(tms *buf, int *_errno)
         *_errno = EFAULT;
         return (clock_t)-1;
     }
+    ADDR_CHECK_STRUCT_W(buf);
 
     uint64_t tot_us = 0ULL;
     uint64_t tot_s = 0ULL;
@@ -362,6 +368,7 @@ int syscall_setwindowtitle(const char *title, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_R(title, 1);
 
     auto &p = GetCurrentThreadForCore()->p;
     {
@@ -413,6 +420,8 @@ int syscall_get_ienv_size(unsigned int idx, int *_errno)
 
 int syscall_get_ienv(char *outbuf, size_t outbuf_len, unsigned int idx, int *_errno)
 {
+    ADDR_CHECK_BUFFER_W(outbuf, 1);
+
     const auto &penv = gk_env;
 
     if(idx >= penv.size())
@@ -438,6 +447,7 @@ int syscall_pipe(int pipefd[2], int *_errno)
         *_errno = EINVAL;
         return -1;
     }
+    ADDR_CHECK_BUFFER_W(pipefd, sizeof(int) * 2);
 
     // try and get free process file handles
     auto t = GetCurrentThreadForCore();
