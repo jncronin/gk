@@ -98,6 +98,8 @@ GridWidget *default_osd()
         bw_exit.text = "Quit";
         bw_exit.OnClick = btn_exit_click;
         _def_osd.AddChildOnGrid(bw_exit);
+
+        _def_osd_init = true;
     }
     return &_def_osd;
 }
