@@ -411,3 +411,19 @@ int syscall_chdir(const char *pathname, int *_errno)
     p.cwd = parse_fname(std::string(pathname));
     return 0;
 }
+
+int syscall_realpath(const char *path, char *resolved_path, size_t len, int *_errno)
+{
+    // we should really do this in userland, looping on each element to see if it is a symlink
+    //  instead, just resolve .. etc
+
+    ADDR_CHECK_BUFFER_R(path, 1);
+    ADDR_CHECK_BUFFER_W(resolved_path, len);
+
+    auto act_name = parse_fname(path);
+
+    strncpy(resolved_path, act_name.c_str(), len-1);
+    resolved_path[len-1] = 0;
+
+    return 0;
+}

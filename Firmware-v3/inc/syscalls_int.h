@@ -107,6 +107,8 @@ int syscall_getheap(void **addr, size_t *sz, int *_errno);
 int syscall_pipe(int pipefd[2], int *_errno);
 int syscall_dup2(int oldfd, int newfd, int *_errno);
 
+int syscall_realpath(const char *path, char *resolved_path, size_t len, int *_errno);
+
 // needed for supervisor
 pid_t syscall_get_focus_pid(int *_errno);
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno);
