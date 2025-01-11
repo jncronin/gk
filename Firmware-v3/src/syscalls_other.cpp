@@ -13,7 +13,7 @@
 #include "cleanup.h"
 #include "pipe.h"
 
-extern Process kernel_proc;
+extern Process kernel_proc, p_supervisor;
 
 int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 {
@@ -321,6 +321,10 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
     // unless we are the kernel, we can only send signals to child processes
     bool is_valid = false;
     if(&GetCurrentThreadForCore()->p == &kernel_proc)
+    {
+        is_valid = true;
+    }
+    else if(&GetCurrentThreadForCore()->p == &p_supervisor)
     {
         is_valid = true;
     }
