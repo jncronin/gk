@@ -2732,12 +2732,6 @@
 		(uuid "4f459ab8-8f41-4112-98d1-bfc77cc0433a")
 	)
 	(junction
-		(at 243.84 148.59)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "4f66ea15-4c9b-4cf8-ba62-f90d7ce0485b")
-	)
-	(junction
 		(at 191.77 110.49)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2862,12 +2856,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "b907b45a-70ba-475e-ad4a-b8b399854d8f")
-	)
-	(junction
-		(at 243.84 158.75)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "baaa1008-2101-4aa2-8170-bed3dca96857")
 	)
 	(junction
 		(at 198.12 110.49)
@@ -3016,16 +3004,6 @@
 			(type default)
 		)
 		(uuid "03c077f9-ec77-46bb-abd7-9ae1df4152bf")
-	)
-	(wire
-		(pts
-			(xy 255.27 148.59) (xy 255.27 149.86)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "089eabee-2194-4b9c-9a87-21a0a7d62e2d")
 	)
 	(wire
 		(pts
@@ -3559,16 +3537,6 @@
 	)
 	(wire
 		(pts
-			(xy 243.84 148.59) (xy 255.27 148.59)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6d82d89b-51dd-49f4-bc9f-90a156f85b81")
-	)
-	(wire
-		(pts
 			(xy 38.1 185.42) (xy 60.96 185.42)
 		)
 		(stroke
@@ -3819,16 +3787,6 @@
 	)
 	(wire
 		(pts
-			(xy 243.84 158.75) (xy 255.27 158.75)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b19e5463-2bef-447d-b3ef-16ca693e8799")
-	)
-	(wire
-		(pts
 			(xy 269.24 144.78) (xy 275.59 144.78)
 		)
 		(stroke
@@ -3926,16 +3884,6 @@
 			(type default)
 		)
 		(uuid "c68fdd7d-1e7a-4f37-98fe-703b83274cd4")
-	)
-	(wire
-		(pts
-			(xy 255.27 157.48) (xy 255.27 158.75)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c6996870-d377-47a6-ba0a-c8f99e0176e5")
 	)
 	(wire
 		(pts
@@ -6810,76 +6758,6 @@
 			(project "gk-pcbv3"
 				(path "/08730ac6-6084-459f-bdf1-86b322355ede/3806a1c8-8d1e-497f-b14b-4fe834c820d3"
 					(reference "#PWR0159")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C")
-		(at 255.27 153.67 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "56a76a43-7925-456b-8112-a7536335e213")
-		(property "Reference" "C92"
-			(at 259.08 152.3999 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "22u"
-			(at 259.08 154.9399 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
-			(at 256.2352 157.48 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "~"
-			(at 255.27 153.67 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Unpolarized capacitor"
-			(at 255.27 153.67 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "0229f712-9023-4043-9b8e-4da59a23bb60")
-		)
-		(pin "2"
-			(uuid "258ba255-ad2a-4efe-8f71-1ea137cb1d09")
-		)
-		(instances
-			(project "gk-pcbv3"
-				(path "/08730ac6-6084-459f-bdf1-86b322355ede/3806a1c8-8d1e-497f-b14b-4fe834c820d3"
-					(reference "C92")
 					(unit 1)
 				)
 			)

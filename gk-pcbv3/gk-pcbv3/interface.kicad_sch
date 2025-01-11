@@ -1177,6 +1177,126 @@
 				)
 			)
 		)
+		(symbol "VCC_1"
+			(power)
+			(pin_numbers hide)
+			(pin_names
+				(offset 0) hide)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#PWR"
+				(at 0 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "VCC"
+				(at 0 3.556 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Power symbol creates a global label with name \"VCC\""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "global power"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "VCC_1_0_1"
+				(polyline
+					(pts
+						(xy -0.762 1.27) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 2.54) (xy 0.762 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "VCC_1_1_1"
+				(pin power_in line
+					(at 0 0 90)
+					(length 0)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+		)
 		(symbol "gk-syms:XBOX_THUMB"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -1932,12 +2052,6 @@
 		(uuid "02abf310-d5ee-4d85-9c78-165144ab9bb2")
 	)
 	(junction
-		(at 102.87 154.94)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "09b5eeee-1133-44e0-b91e-78937e9072bf")
-	)
-	(junction
 		(at 92.71 187.96)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2306,6 +2420,10 @@
 	(no_connect
 		(at 96.52 73.66)
 		(uuid "d8da40b3-9ebe-42fe-9f03-3e9a706c40da")
+	)
+	(no_connect
+		(at 96.52 71.12)
+		(uuid "dbbe8065-8fdf-4467-a63f-b036155799ef")
 	)
 	(wire
 		(pts
@@ -3436,16 +3554,6 @@
 			(type default)
 		)
 		(uuid "81981ce0-ee3d-454d-a1f1-7d58e8188209")
-	)
-	(wire
-		(pts
-			(xy 102.87 154.94) (xy 148.59 154.94)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "822d6ab1-3286-44b6-90e0-62b2e70443a6")
 	)
 	(wire
 		(pts
@@ -4760,28 +4868,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "LSM6DSL_INT1"
-		(shape input)
-		(at 96.52 71.12 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "75c0fdf4-c39b-49f5-a4aa-efaee6513087")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 112.9119 71.12 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 				(hide yes)
 			)
 		)
@@ -8282,7 +8368,7 @@
 		(fields_autoplaced yes)
 		(uuid "59f8d077-3800-474c-8e4a-2d18ba7efe1b")
 		(property "Reference" "SW_LB1"
-			(at 171.45 123.825 90)
+			(at 171.45 123.1899 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8291,7 +8377,7 @@
 			)
 		)
 		(property "Value" "SW_Push"
-			(at 171.45 126.365 90)
+			(at 171.45 125.7299 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8299,7 +8385,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Button_Switch_THT:SW_Tactile_SKHH_Angled"
+		(property "Footprint" "TerminalBlock:TerminalBlock_bornier-3_P5.08mm"
 			(at 165.1 124.46 0)
 			(effects
 				(font
@@ -10685,6 +10771,73 @@
 		)
 	)
 	(symbol
+		(lib_name "VCC_1")
+		(lib_id "power:VCC")
+		(at 148.59 154.94 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "c5e41a7b-0de6-4cd6-9260-8889d9d51647")
+		(property "Reference" "#PWR0145"
+			(at 148.59 158.75 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "VCC"
+			(at 148.59 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 148.59 154.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 148.59 154.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VCC\""
+			(at 148.59 154.94 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "542ad92f-87a1-4a97-b99f-b82101760669")
+		)
+		(instances
+			(project ""
+				(path "/08730ac6-6084-459f-bdf1-86b322355ede/fa96f0b5-5dfb-45a6-bb43-c2cb84c619a5"
+					(reference "#PWR0145")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Transistor_FET:2N7002")
 		(at 100.33 167.64 0)
 		(unit 1)
@@ -11186,7 +11339,7 @@
 		(fields_autoplaced yes)
 		(uuid "cde77eb8-618f-4e9c-88c7-d5d2fc572fb9")
 		(property "Reference" "SW_RB1"
-			(at 209.55 123.825 90)
+			(at 209.55 123.1899 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11195,7 +11348,7 @@
 			)
 		)
 		(property "Value" "SW_Push"
-			(at 209.55 126.365 90)
+			(at 209.55 125.7299 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11203,7 +11356,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "Button_Switch_THT:SW_Tactile_SKHH_Angled"
+		(property "Footprint" "TerminalBlock:TerminalBlock_bornier-3_P5.08mm"
 			(at 203.2 124.46 0)
 			(effects
 				(font
