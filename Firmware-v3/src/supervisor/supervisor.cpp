@@ -450,6 +450,8 @@ void *supervisor_thread(void *p)
                             default_osd();
 
                         // set new osd
+                        new_osd->x = scrs[0]->x;
+                        new_osd->y = scrs[0]->y;
                         scr_overlay.ReplaceChildOnGrid(*scrs[0], *new_osd);
                         scrs[0] = new_osd;
                         for(auto cosd : custom_osd)
