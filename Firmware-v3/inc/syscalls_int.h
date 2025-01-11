@@ -170,7 +170,6 @@ static inline bool addr_is_valid(const void *buf, size_t len, bool is_write = fa
     do { \
         if(!addr_is_valid(buf, len, is_write)) { \
             *_errno = EFAULT; \
-            BKPT(); \
             return -1; \
         } \
     } while(0)
@@ -179,7 +178,6 @@ static inline bool addr_is_valid(const void *buf, size_t len, bool is_write = fa
     do { \
         if(!addr_is_valid(buf, is_write)) { \
             *_errno = EFAULT; \
-            BKPT(); \
             return -1; \
         } \
     } while(0)

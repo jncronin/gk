@@ -63,7 +63,19 @@
           "width": 0.366268
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        "items_not_allowed|133172200|170180000|cbd3a7a6-9a86-4f7f-b181-3a5e716bfbee|00000000-0000-0000-0000-000000000000",
+        "length_out_of_range|120798305|22983800|50e49eea-6551-4301-8274-8bede079c20b|87e0b482-3c09-439b-8202-c09c89bb0d49",
+        "length_out_of_range|121848305|22983800|07a737f4-d8b5-49bc-8b3e-5726f61e386d|6371b152-53cb-4f95-b9aa-ec6311ebe4f6",
+        "length_out_of_range|126248305|22983800|c2d6626b-433e-402c-a000-d87eb1b89112|2947f031-92a5-4fca-a002-59b002195957",
+        "length_out_of_range|127348305|22983800|584df6db-6106-4539-9297-11cf843404f4|eff8d7b3-edf6-4dcb-bed0-43c879702e8a",
+        "length_out_of_range|128448305|22983800|474e878d-1676-40bd-b659-48b03b04cbb8|96745261-4c62-4473-98ed-b0354c05db99",
+        "length_out_of_range|81788000|50292000|fc2b6e98-6a84-45ff-a98f-e3d3f9949312|d5a3ef88-534b-43d8-a94c-e5159cc63195",
+        "length_out_of_range|84013000|49007000|bad5c8f6-2aa7-483b-9f6e-4d58189510a5|29eb28e1-35fb-4892-8f16-318d8785a9c3",
+        "length_out_of_range|88016501|81573600|ef427376-7252-4300-a420-867e12879f86|5954d0da-de94-4d63-bd87-ef9e5edf9600",
+        "length_out_of_range|88816501|81573600|e0f9b290-5611-49c7-8352-837fdb08f3d2|16e5000a-4a53-47ab-a472-62a473dd6851",
+        "length_out_of_range|89616500|83173600|a5c084a3-e269-42a3-b008-0e7a76a73c59|81822011-eb7c-4103-a405-508860edaece"
+      ],
       "meta": {
         "version": 2
       },
