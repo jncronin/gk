@@ -364,8 +364,8 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     NVIC_EnableIRQ(dma_irq);
 
     {
-        klog("audiosetmode: set %d hz, %d channels, %d bit, %u bytes/buffer, %u buffers\n",
-            freq, nchan, nbits, ac.buf_size_bytes, ac.nbuffers);
+        klog("audiosetmode: set %d hz, %d channels, %d bit, %u bytes/buffer, %u buffers @ %08x\n",
+            freq, nchan, nbits, ac.buf_size_bytes, ac.nbuffers, ac.mr_sound.address);
     }
     
     return 0;
