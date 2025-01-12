@@ -160,10 +160,10 @@ int syscall_memdealloc(size_t len, const void *addr, int *_errno)
 
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno)
 {
-    // find MPU slot containing addr
+    // find highest MPU slot containing addr
     auto t = GetCurrentThreadForCore();
     int mpu_slot = -1;
-    for(int i = 0; i < 16; i++)
+    for(int i = 15; i >= 0; i--)
     {
         const auto &cmpu = t->tss.mpuss[i];
         if(cmpu.is_enabled() &&
@@ -392,7 +392,68 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
         klog("cacheflush: %x, %x, %d\n", (uint32_t)addr, len, is_exec);
     }
 #endif
-    CleanOrInvalidateM7Cache((uint32_t)addr, len, CacheType_t::Data);
+    /* Is this already in a sync'd area? */
+    const auto t = GetCurrentThreadForCore();
+    bool is_sync = false;
+    bool is_valid = false;
+    auto start = (uint32_t)(uintptr_t)addr;
+    auto end = start + len;
+    for(int i = 0; i < 16; i++)
+    {
+        const auto &cmpu = t->tss.mpuss[i];
+        if(cmpu.is_enabled() == false)
+            continue;
+        auto up_access = cmpu.unpriv_access();
+        if(up_access == NoAccess)
+            continue;
+
+        auto c_start = cmpu.base_addr();
+        auto c_len = cmpu.length();
+
+        // check SRD bits
+        auto srd = (cmpu.rasr >> 8) & 0xffU;
+
+        if(srd != 0)
+        {
+            if(srd != 0x81U)
+            {
+                BKPT();     // not supported
+                c_len = 0;
+            }
+
+            c_start += c_len / 8;
+            c_len -= c_len / 4;
+        }
+
+        auto c_end = c_start + c_len;
+
+        if(start >= c_start && end <= c_end)
+        {
+            is_valid = true;
+            if(cmpu.tex_scb() == WT_NS)
+            {
+                is_sync = true;
+            }
+            else
+            {
+                is_sync = false;
+            }
+        }
+    }
+    if(!is_valid)
+    {
+        klog("cacheflush: invalid address\n");
+        *_errno = EFAULT;
+        return -1;
+    }
+    if(is_sync)
+    {
+        klog("cacheflush: already sync'd\n");
+    }
+    else
+    {
+        CleanOrInvalidateM7Cache((uint32_t)addr, len, CacheType_t::Data);
+    }
     if(is_exec)
     {
         InvalidateM7Cache((uint32_t)addr, len, CacheType_t::Instruction);
