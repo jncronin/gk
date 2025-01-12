@@ -162,10 +162,13 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
 {
     // find highest MPU slot containing addr
     auto t = GetCurrentThreadForCore();
+    auto &p = t->p;
+    CriticalGuard cg_p(p.sl);
+
     int mpu_slot = -1;
     for(int i = 15; i >= 0; i--)
     {
-        const auto &cmpu = t->tss.mpuss[i];
+        const auto &cmpu = p.p_mpu[i];
         if(cmpu.is_enabled() &&
             (uint32_t)(uintptr_t)addr >= cmpu.base_addr() &&
             (uint32_t)(uintptr_t)addr < (cmpu.base_addr() + cmpu.length()))
@@ -196,10 +199,7 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
             mpu_slot, is_exec != 0, cmpu.priv_access(), unpriv_access,
             cmpu.tex_scb());
 
-        auto &p = t->p;
-
         {
-            CriticalGuard cg_p(p.sl);
             auto iter = p.mmap_regions.find(cmpu.base_addr());
             if(iter != p.mmap_regions.end())
             {
@@ -207,35 +207,11 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
                 iter->second.is_read = is_read;
                 iter->second.is_write = is_write;
             }
-        }
 
-        // set mpu region for this thread and all others
-        for(auto curt : p.threads)
-        {
-            CriticalGuard cg_t(curt->sl);
-            curt->tss.mpuss[mpu_slot] = mpur;
-
-            // Invalidate here on the off-chance the M7 cache has entries for the 0x38000000 range
-            // When MPU is disabled in task switch, cache may be re-enabled for reads from this
-            //  region
-            // No longer required with MPU-safe switch
-            //InvalidateM7Cache((uint32_t)(uintptr_t)&curt->tss.mpuss[0],
-            //    8 * sizeof(mpu_saved_state), CacheType_t::Data);
-        }
-
-        // and for this thread
-        {
-            CriticalGuard cg_t(t->sl);
-            auto ctrl = MPU->CTRL;
-            MPU->CTRL = 0;
-            MPU->RBAR = mpur.rbar;
-            MPU->RASR = mpur.rasr;
-            MPU->CTRL = ctrl;
-            __DSB();
-            __ISB();
+            p.p_mpu[mpu_slot] = mpur;
+            p.UpdateMPURegionsForThreads();
         }
     }
-
 
     return 0;
 }
