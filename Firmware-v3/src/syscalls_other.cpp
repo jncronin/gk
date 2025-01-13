@@ -363,7 +363,7 @@ int syscall_setwindowtitle(const char *title, int *_errno)
 
 int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
 {
-#if 1
+#if 0
     {
         klog("cacheflush: %x, %x, %d\n", (uint32_t)addr, len, is_exec);
     }
@@ -424,7 +424,9 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
     }
     if(is_sync)
     {
+#if 0
         klog("cacheflush: already sync'd\n");
+#endif
     }
     else
     {
