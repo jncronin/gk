@@ -42,9 +42,13 @@ void Thread::Cleanup(void *tretval, bool from_cleanup)
                             // non-null
                             has_nonnull = true;
 
-                            // run destructor
+                            // run destructor - TODO - needs to run in user space with a valid MPU mapping
                             if(d)
-                                d(t_iter->second);
+                            {
+                                klog("cleanup: TODO: not able to run destructors yet\n");
+                                //d(t_iter->second);
+
+                            }
                         }
                     }
                 }
