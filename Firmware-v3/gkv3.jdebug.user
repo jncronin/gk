@@ -1,8 +1,8 @@
 
 
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware-v3/src/gpu.cpp:791, State=BP_STATE_DISABLED
-GraphedExpression="*(int*)0x58004530", DisplayFormat=DISPLAY_FORMAT_DEC, Color=#e56a6f, Show=0
-GraphedExpression="*(int *)0x58004534", Color=#35792b, Show=0
+GraphedExpression="*(int *)0x5800451c", DisplayFormat=DISPLAY_FORMAT_DEC, Color=#e56a6f, Show=0
+GraphedExpression="*(int*)0x58004520", DisplayFormat=DISPLAY_FORMAT_DEC, Color=#35792b, Show=0
 OpenDocument="syscalls_thread.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/syscalls_thread.cpp", Line=161
 OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/main.cpp", Line=108
 OpenDocument="net_ethernet.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware-v3/src/net_ethernet.cpp", Line=50
@@ -107,9 +107,9 @@ OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=921, h=432, FilterBarShown=0
 OpenWindow="Global Data", DockArea=RIGHT, x=0, y=1, w=1475, h=326, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Local Data", DockArea=RIGHT, x=0, y=2, w=1475, h=329, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=0, w=1475, h=291, TabPos=0, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=609, h=688, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=609, h=686, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Terminal", DockArea=BOTTOM, x=2, y=0, w=1365, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Data Sampling", DockArea=LEFT, x=0, y=1, w=609, h=627, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Data Sampling", DockArea=LEFT, x=0, y=1, w=609, h=629, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=521, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
 TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh";"Access"], ColWidths=[396;266;131;682;108]
@@ -119,7 +119,7 @@ TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCol
 TableHeader="Local Data", SortCol="Scope", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;178]
 TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[28127;131;100;110;773;542]
 TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Frame";"Source";"Return Address";"Stack Used";"PC"], ColWidths=[281;299;168;387;280;100]
-TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" *(int*)0x58004530";" *(int *)0x58004534"], ColWidths=[100;100;100;100]
+TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" *(int *)0x5800451c";" *(int*)0x58004520"], ColWidths=[100;100;100;100]
 TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[398;109;118;100;101;151;188;208;214]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
 TableHeader="Task List", SortCol="None", SortOrder="ASCENDING", VisibleCols=["ID";"Name";"Process";"Priority";"PC";"Status";"BlockingOn";"Stack";"Runtime (us) / %"], ColWidths=[110;110;110;110;110;110;110;110;561]
