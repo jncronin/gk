@@ -119,7 +119,36 @@ static bool check_mutex(pthread_mutex_t *mutex)
     }
     if(*mutex < 0x20000000U || *mutex >= 0x38010000u)
         return false;
-    return true;    // TODO: check against list of mutexes this process can access
+    auto t = GetCurrentThreadForCore();
+    auto ret = sync_primitive_exists(*(Mutex**)mutex, t->p.owned_mutexes, &t->p);
+    if(!ret)
+    {
+        klog("pthread: mutex %08x invalid (Mutex = %08x)\n",
+            (uint32_t)(uintptr_t)mutex,
+            (uint32_t)(uintptr_t)*(Mutex **)mutex);
+    }
+    return ret;
+}
+
+static bool check_cond(pthread_cond_t *mutex)
+{
+    if(!mutex)
+        return false;
+    if(*mutex == _PTHREAD_COND_INITIALIZER)
+    {
+        syscall_pthread_cond_init(mutex, nullptr, nullptr);
+    }
+    if(*mutex < 0x20000000U || *mutex >= 0x38010000u)
+        return false;
+    auto t = GetCurrentThreadForCore();
+    auto ret = sync_primitive_exists(*(Condition**)mutex, t->p.owned_conditions, &t->p);
+    if(!ret)
+    {
+        klog("pthread: cond %08x invalid (Condition = %08x)\n",
+            (uint32_t)(uintptr_t)mutex,
+            (uint32_t)(uintptr_t)*(Condition **)mutex);
+    }
+    return ret;
 }
 
 static bool check_rwlock(pthread_rwlock_t *lock)
@@ -132,7 +161,15 @@ static bool check_rwlock(pthread_rwlock_t *lock)
     }
     if(*lock < 0x30000000U || *lock >= 0x38010000u)
         return false;
-    return true;
+    auto t = GetCurrentThreadForCore();
+    auto ret = sync_primitive_exists(*(RwLock**)lock, t->p.owned_rwlocks, &t->p);
+    if(!ret)
+    {
+        klog("pthread: rwlock %08x invalid (RwLock = %08x)\n",
+            (uint32_t)(uintptr_t)lock,
+            (uint32_t)(uintptr_t)*(RwLock **)lock);
+    }
+    return ret;
 }
 
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
@@ -521,13 +558,14 @@ int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno)
 
 int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr, int *_errno)
 {
-    if(!cond || !attr)
+    if(!cond)
     {
         *_errno = EINVAL;
         return -1;
     }
     ADDR_CHECK_STRUCT_W(cond);
-    ADDR_CHECK_STRUCT_R(attr);
+    if(attr)
+        ADDR_CHECK_STRUCT_R(attr);
 
     auto c = new Condition();
     if(!c)
@@ -545,7 +583,7 @@ int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *at
 
 int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
 {
-    if(!check_mutex(cond))
+    if(!check_cond(cond))
     {
         *_errno = EINVAL;
         return -1;
@@ -565,7 +603,7 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
     pthread_mutex_t *mutex, const struct timespec *abstime,
     int *signalled, int *_errno)
 {
-    if(!check_mutex(cond) || !check_mutex(mutex))
+    if(!check_cond(cond) || !check_mutex(mutex))
     {
         *_errno = EINVAL;
         return -1;
@@ -592,7 +630,7 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
 
 int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno)
 {
-    if(!check_mutex(cond))
+    if(!check_cond(cond))
     {
         *_errno = EINVAL;
         return -1;
@@ -601,6 +639,7 @@ int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno)
     ADDR_CHECK_STRUCT_W(cond);
 
     auto c = *reinterpret_cast<Condition **>(cond);
+
     c->Signal(false);
     return 0;
 }

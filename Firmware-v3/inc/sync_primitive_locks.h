@@ -20,6 +20,14 @@ template <class PrimType, class OwnerType> void delete_sync_primitive(PrimType *
         pset.erase(iter);
 }
 
+template <class PrimType, class OwnerType> bool sync_primitive_exists(PrimType *primitive,
+    std::unordered_set<PrimType *> &pset,
+    OwnerType *owner)
+{
+    CriticalGuard cg;
+    return pset.find(primitive) != pset.end();
+}
+
 template <class PrimType> void delete_all_process_sync_primitives(
     const std::unordered_set<PrimType *> &pset,
     Process *p)
