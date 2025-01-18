@@ -817,6 +817,12 @@ void *gpu_thread(void *p)
                         (3UL << DMA2D_CR_MODE_Pos) | DMA2D_CR_START;
                     break;
 
+                case gpu_message_type::BlitImageNoBlendIf:
+                    if(cur_process->screen_overwritten_each_frame)
+                        break;
+                    
+                    /* fallthrough */
+
                 case gpu_message_type::BlitImage:
                 case gpu_message_type::BlitImageNoBlend:
                     if(!dest_w || !dest_h)
