@@ -13,6 +13,7 @@
 #include "cleanup.h"
 #include "sound.h"
 #include "btnled.h"
+#include "util.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -939,6 +940,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             {
                 auto p = reinterpret_cast<__syscall_realpath_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_realpath(p->path, p->resolved_path, p->len,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_cmpxchg:
+            {
+                auto p = reinterpret_cast<__syscall_cmpxchg_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_cmpxchg(p->ptr, p->oldval, p->newval, p->sz,
                     reinterpret_cast<int *>(r3));
             }
             break;

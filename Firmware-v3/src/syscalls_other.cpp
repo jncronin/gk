@@ -12,6 +12,7 @@
 #include "SEGGER_RTT.h"
 #include "cleanup.h"
 #include "pipe.h"
+#include "util.h"
 
 extern Process kernel_proc, p_supervisor;
 
@@ -580,4 +581,31 @@ int syscall_dup2(int oldfd, int newfd, int *_errno)
     }
 
     return newfd;
+}
+
+int syscall_cmpxchg(void **ptr, void **oldval, void *newval, size_t len, int *_errno)
+{
+    ADDR_CHECK_BUFFER_W(ptr, len);
+    ADDR_CHECK_BUFFER_W(oldval, len);
+
+    if(len == 1)
+    {
+        cmpxchg((volatile uint8_t *)ptr, (uint8_t *)oldval, (uint8_t)(uint32_t)newval);
+        return 0;
+    }
+    else if(len == 2)
+    {
+        cmpxchg((volatile uint16_t *)ptr, (uint16_t *)oldval, (uint16_t)(uint32_t)newval);
+        return 0;
+    }
+    else if(len <= 4)
+    {
+        cmpxchg((volatile uint32_t *)ptr, (uint32_t *)oldval, (uint32_t)newval);
+        return 0;
+    }
+    else
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
 }
