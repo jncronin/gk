@@ -962,6 +962,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_yield:
             Yield();
+            *reinterpret_cast<int *>(r1) = 0;
             break;
 
         default:
