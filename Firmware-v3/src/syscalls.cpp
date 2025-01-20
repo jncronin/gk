@@ -960,6 +960,10 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_yield:
+            Yield();
+            break;
+
         default:
             {
                 klog("syscall: unhandled syscall %d\n", (int)sno);
