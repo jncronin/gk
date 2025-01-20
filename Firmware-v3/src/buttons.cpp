@@ -302,8 +302,8 @@ class JoystickAxis
         Process::GamepadKey _high_key, _low_key;
         bool high_signalled = false;
         bool low_signalled = false;
-        const unsigned int threshold = 1000;    // from extremes of range
-        const unsigned int hysteresis = 1000;   // from threshold
+        const unsigned int threshold = 15000;    // from extremes of range
+        const unsigned int hysteresis = 3000;   // from threshold
 
         // i.e.  0 ... threshold ... threshold+hysteresis ... 32768 ... 65535-threshold-hysteresis ... 65535-threshold ... 65535 
         //         low_key      in hysteresis             neutral  neutral                        in hysteresis       high key
