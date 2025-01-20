@@ -108,7 +108,7 @@ void *init_thread(void *p)
     //return nullptr;
 
     // gkmenu
-    const char *args[] = { "Descent" };        // run a test game
+    const char *args[] = { /* "Descent" */ };        // run a test game
     pt.argv = args;
     pt.argc = sizeof(args) / sizeof(char *);
     pt.cwd = "/gkmenu-0.1.1-gk";
