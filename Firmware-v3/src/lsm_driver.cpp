@@ -36,6 +36,7 @@ void *lsm_thread(void *param)
     bool last_running = false;
     float last_x = 0;
     float last_y = 0;
+    unsigned int retry_time = 1000;
 
     while(true)
     {
@@ -48,6 +49,8 @@ void *lsm_thread(void *param)
 
                 if(is_init)
                 {
+                    retry_time = 1000;
+
                     // check whoami
                     uint8_t who;
                     LSM6DSL_ACC_GYRO_R_WHO_AM_I(nullptr, &who);
@@ -65,7 +68,9 @@ void *lsm_thread(void *param)
                 }
                 else
                 {
-                    Block(clock_cur() + kernel_time::from_ms(1000));
+                    Block(clock_cur() + kernel_time::from_ms(retry_time));
+                    retry_time += 1000;
+                    if(retry_time > 10000) retry_time = 10000;
                 }
             }
 

@@ -216,14 +216,24 @@ void *ctp_thread(void *_p)
     pt cur_pt = { 0 };
     bool pressed = false;
 
+    unsigned int retry_time = 1000;
+
     while(true)
     {
         if(!is_init)
         {
             is_init = ctp_init();
+
+            if(!is_init)
+            {
+                Block(clock_cur() + kernel_time::from_ms(retry_time));
+                retry_time += 1000;
+                if(retry_time > 10000) retry_time = 10000;
+            }
         }
         else
         {
+            retry_time = 1000;
             ctp_sem.Wait();
 
             ctp_pts new_pts = { 0 };
@@ -235,6 +245,7 @@ void *ctp_thread(void *_p)
             }
             else
             {
+
                 // process points
 
                 // currently, only deal with single touch
