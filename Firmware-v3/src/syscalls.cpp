@@ -952,6 +952,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_get_pthread_dtors:
+            {
+                auto p = reinterpret_cast<__syscall_get_pthread_dtors_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_get_pthread_dtors(p->len, p->dtors, p->vals,
+                    reinterpret_cast<int *>(r2));
+            }
+            break;
+
         default:
             {
                 klog("syscall: unhandled syscall %d\n", (int)sno);

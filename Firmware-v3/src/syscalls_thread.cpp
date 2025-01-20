@@ -805,3 +805,46 @@ int syscall_sched_get_priority_max(int policy, int *_errno)
 {
     return GK_PRIORITY_VERYHIGH - 1;
 }
+
+int syscall_get_pthread_dtors(size_t *len, dtor_t *dtors, void **vals, int *_errno)
+{
+    ADDR_CHECK_STRUCT_W(len);
+    
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg_t(t->sl);
+    auto &p = t->p;
+    CriticalGuard cg_p(p.sl);
+
+    if(*len < p.next_key)
+    {
+        *_errno = ENOMEM;
+        *len = p.next_key;
+        return -1;
+    }
+
+    if(dtors && vals)
+    {
+        ADDR_CHECK_BUFFER_W(dtors, p.next_key * sizeof(dtor_t));
+        ADDR_CHECK_BUFFER_W(vals, p.next_key * sizeof(void *));
+
+        for(pthread_key_t i = 0; i < p.next_key; i++)
+        {
+            auto dtor_iter = p.tls_data.find(i);
+            auto vals_iter = t->tls_data.find(i);
+            if(dtor_iter == p.tls_data.end() || vals_iter == t->tls_data.end())
+            {
+                // no data here
+                dtors[i] = nullptr;
+                vals[i] = nullptr;
+            }
+            else
+            {
+                dtors[i] = dtor_iter->second;
+                vals[i] = vals_iter->second;
+            }
+        }
+    }
+
+    *len = p.next_key;
+    return 0;
+}

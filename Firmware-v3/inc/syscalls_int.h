@@ -51,6 +51,7 @@ int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), i
 int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno);
 int syscall_pthread_setspecific(pthread_key_t key, const void *val, int *_errno);
 int syscall_pthread_key_delete(pthread_key_t key, int *_errno);
+int syscall_get_pthread_dtors(size_t *len, dtor_t *dtors, void **vals, int *_errno);
 
 int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr, int *_errno);
 int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno);
