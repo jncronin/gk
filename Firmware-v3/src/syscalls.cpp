@@ -965,6 +965,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             *reinterpret_cast<int *>(r1) = 0;
             break;
 
+        case __syscall_getppid:
+            {
+                auto pid = reinterpret_cast<int>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_get_proc_ppid(pid,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         default:
             {
                 klog("syscall: unhandled syscall %d\n", (int)sno);
