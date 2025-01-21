@@ -126,7 +126,6 @@ void init_sound()
     // Input clock is 240 MHz, output max 10 MHz, no MISO, raise NSS between each 16-bit word
     SPI2->CR2 = 0;
     SPI2->CFG1 = (7U << SPI_CFG1_MBR_Pos) |     // baud /256
-        // TODO TXDMAEN
         (15U << SPI_CFG1_DSIZE_Pos) |           // 16-bit frame
         0;
     SPI2->CFG2 = SPI_CFG2_AFCNTR |              // always control the SPI data lines even with SPE=0
