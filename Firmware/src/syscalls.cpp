@@ -763,7 +763,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
         case __syscall_thread_cleanup:
             {
                 auto t = GetCurrentThreadForCore();
-                t->Cleanup(r1, false);
+                t->Cleanup(r1);
             }
             break;
 
