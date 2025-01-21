@@ -1,9 +1,6 @@
 [submodule "Firmware/cmsis_device_h7"]
 	path = Firmware/cmsis_device_h7
 	url = https://github.com/STMicroelectronics/cmsis_device_h7.git
-[submodule "Firmware/cmsis_core"]
-	path = Firmware/cmsis_core
-	url = https://github.com/STMicroelectronics/cmsis_core.git
 [submodule "Firmware/gk-userlandinterface"]
 	path = Firmware/gk-userlandinterface
 	url = https://github.com/jncronin/gk-userlandinterface
