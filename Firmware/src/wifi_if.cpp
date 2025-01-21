@@ -596,11 +596,9 @@ static void wifi_handler(uint8 eventCode, void *p_eventData)
             break;
 
         default:
-            // TODO
             printf("WIFI unhandled event %i\n", eventCode);
             break;
     }
-    // TODO
     (void)eventCode;
     (void)p_eventData;
 }
