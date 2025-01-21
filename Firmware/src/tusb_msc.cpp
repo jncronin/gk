@@ -63,7 +63,6 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
 //   - write < 0       : Indicate application error e.g invalid address. This request will be STALLed
 //                       and return failed status in command status wrapper phase.
 //
-// TODO change buffer to const uint8_t*
 int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* buffer, uint32_t bufsize)
 {
     if(!buffer || offset || bufsize % 512)
