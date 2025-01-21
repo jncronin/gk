@@ -219,10 +219,6 @@ void GridWidget::KeyPressDown(unsigned short  key)
             // ensure newly selected object is visible
             ScrollToSelected();
         }
-        else
-        {
-            // TODO - move out to higher level container
-        }
     }
 }
 
