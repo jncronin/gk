@@ -18,4 +18,4 @@
 	url = https://github.com/STMicroelectronics/cmsis_device_h7rs.git
 [submodule "Firmware-v3/inih"]
 	path = Firmware/inih
-	url = https://github.com/jtilly/inih.git
+	url = https://github.com/jncronin/inih.git
