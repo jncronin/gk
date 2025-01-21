@@ -221,9 +221,7 @@ void *proccreate_thread(void *ptr)
     {
         proc->p_mpu_tls_id = proc->AddMPURegion({ .mr = InvalidMemregion() });
     }
-    // TODO: testing here - remove and use gkmenu instead to populate
     auto gtext_size = pcinfo->graphics_texture_size;
-    gtext_size = 1*1024*1024;
     if(pcinfo->graphics_texture_size)
     {
         proc->mr_gtext = memblk_allocate(gtext_size, MemRegionType::AXISRAM, std::string(pname) + " gtext");
