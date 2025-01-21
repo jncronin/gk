@@ -273,7 +273,7 @@ void *proccreate_thread(void *ptr)
         {
             // acquire_fds numbered from 1 to allow 0 to be used as no inherit
             if(pcinfo->acquire_fds[i] > 0 && pcinfo->acquire_fds[i] <= GK_MAX_OPEN_FILES)
-                proc->open_files[i] = t->p.open_files[i-1];
+                proc->open_files[i] = t->p.open_files[pcinfo->acquire_fds[i]-1];
         }
     }
 
