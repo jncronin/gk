@@ -90,7 +90,6 @@ GridWidget *default_osd()
         lab_caption.text = "GKMenu";
         _def_osd.AddChild(lab_caption);
 
-        // TODO: game customisation
         bw_exit.w = 80;
         bw_exit.h = 80;
         bw_exit.x = 0 + (scr_overlay.w - bw_exit.w) / 2;
