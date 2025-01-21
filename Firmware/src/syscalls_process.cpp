@@ -261,9 +261,22 @@ void *proccreate_thread(void *ptr)
 
     // TODO: inherit fds
     memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
-    proc->open_files[STDIN_FILENO] = std::make_shared<SeggerRTTFile>(0, true, false);
-    proc->open_files[STDOUT_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
-    proc->open_files[STDERR_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
+    if(!t || &t->p == &kernel_proc)
+    {
+        // if started by kernel, just get stdin/out
+        proc->open_files[STDIN_FILENO] = std::make_shared<SeggerRTTFile>(0, true, false);
+        proc->open_files[STDOUT_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
+        proc->open_files[STDERR_FILENO] = std::make_shared<SeggerRTTFile>(0, false, true);
+    }
+    else
+    {
+        for(unsigned int i = 0; i < GK_MAX_OPEN_FILES; i++)
+        {
+            // acquire_fds numbered from 1 to allow 0 to be used as no inherit
+            if(pcinfo->acquire_fds[i] > 0 && pcinfo->acquire_fds[i] <= GK_MAX_OPEN_FILES)
+                proc->open_files[i] = t->p.open_files[i-1];
+        }
+    }
 
     // Set default pixel mode
     switch(pcinfo->pixel_format)
