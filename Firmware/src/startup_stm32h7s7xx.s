@@ -215,7 +215,6 @@ LoopCopyNetDataInit:
 
 
 
-  /* TODO: initialize XSPI data/bss / itcm from xspiflash etc */
 
 /* Call static constructors */
   ldr ip, =__libc_init_array
