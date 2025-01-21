@@ -60,9 +60,6 @@ void cleanup(Thread *t)
         to finish with the thread */
     while(t->tss.chosen_for_core || t->tss.running_on_core || t->tss.deschedule_from_core);
 
-    /* ensure tls destructors are run */
-    t->Cleanup(nullptr, true);
-
     /* release mutexes and rwlocks held by the thread */
     unlock_all_thread_sync_primitives(t->locked_mutexes, t);
     unlock_all_thread_sync_primitives(t->locked_rwlocks, t);
