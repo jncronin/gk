@@ -221,8 +221,8 @@ static constexpr pin lcd_pins[] = {
     { GPIOG, 0, 13 },       // R7
     { GPIOG, 1, 13 },       // R6
     { GPIOG, 2, 13 },       // HSYNC
-    { GPIOG, 13, 13 },      // CLK      // TODO : these are either AF13 or AF14 - no datasheet value
-    { GPIOG, 14, 13 },      // B1       // TODO : these are either AF13 or AF14 - no datasheet value
+    { GPIOG, 13, 13 },      // CLK
+    { GPIOG, 14, 13 },      // B1
 
     /* SPI5 to screen */
     { GPIOF, 12, 5 },
