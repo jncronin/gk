@@ -27,8 +27,8 @@ void OnProjectLoad (void) {
   Project.SetHostIF ("USB", "");
   Project.SetTargetIF ("SWD");
   Project.SetTIFSpeed ("4 MHz");
-  Project.AddPathSubstitute ("C:/Users/jncro/source/repos/gk/Firmware-v3", "$(ProjectDir)");
-  Project.AddPathSubstitute ("c:/users/jncro/source/repos/gk/firmware-v3", "$(ProjectDir)");
+  Project.AddPathSubstitute ("C:/Users/jncro/source/repos/gk/Firmware", "$(ProjectDir)");
+  Project.AddPathSubstitute ("c:/users/jncro/source/repos/gk/firmware", "$(ProjectDir)");
   //
   // User settings
   //
