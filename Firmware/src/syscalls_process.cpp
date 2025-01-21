@@ -259,7 +259,6 @@ void *proccreate_thread(void *ptr)
         return nullptr;
     }
 
-    // TODO: inherit fds
     memset(&proc->open_files[0], 0, sizeof(File *) * GK_MAX_OPEN_FILES);
     if(!t || &t->p == &kernel_proc)
     {
