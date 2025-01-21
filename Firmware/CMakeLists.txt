@@ -13,11 +13,11 @@ include(cmake/utils.cmake)
 
 add_definitions(-DCONFIG_BLOCK_DEV_CACHE_SIZE=32)
 add_definitions(-DCONFIG_HAVE_OWN_OFLAGS=0)
-add_subdirectory(../Firmware/lwext4 lwext4)
+add_subdirectory(lwext4 lwext4)
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
 
 set(ZLIB_BUILD_EXAMPLES OFF)
-add_subdirectory(../Firmware/zlib-1.3.1 zlib)
+add_subdirectory(zlib-1.3.1 zlib)
 
 project(gkv3 C CXX ASM)
 
@@ -25,14 +25,14 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source/ff.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source/ffsystem.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source/ffunicode.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ff.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffsystem.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source/ffunicode.c
 )
 
 file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src/*.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/lib/networking/rndis_reports.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking/rndis_reports.c
 )
 
 file(GLOB_RECURSE WINC_SOURCES CONFIGURE_DEPENDS
@@ -47,8 +47,8 @@ target_include_directories(tusb
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7rs/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/lib/networking"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/lib/networking"
 )
 target_compile_definitions(tusb
     PRIVATE
@@ -118,11 +118,11 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_device_h7rs/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmsis_core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/gk-userlandinterface"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/lwext4/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/lwext4/include"
         "${LWEXT4_GENERATED_DIR}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/winc1500"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../Firmware/fatfs/source"
+        "${CMAKE_CURRENT_SOURCE_DIR}/fatfs/source"
         "${CMAKE_CURRENT_SOURCE_DIR}/nemagfx/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/wilc"
         "${CMAKE_CURRENT_SOURCE_DIR}/inih"

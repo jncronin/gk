@@ -1,7 +1,7 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}/Firmware-v3",
+    "cmake.sourceDirectory": "${workspaceFolder}/Firmware",
     "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/Firmware-v3/cmake/toolchain.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/Firmware/cmake/toolchain.cmake"
     },
     "files.associations": {
         "atomic.h": "c",
