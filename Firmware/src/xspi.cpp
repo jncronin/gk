@@ -449,7 +449,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         (25UL << XSPI_DCR1_DEVSIZE_Pos);
     XSPI2->DCR3 = 0;    // ?max burst length
     XSPI2->DCR4 = 0;    // no refresh needed
-    XSPI2->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |           // TODO enable hybrid wrap on device               
+    XSPI2->DCR2 = (0UL << XSPI_DCR2_WRAPSIZE_Pos) |              // hybrid burst enabled later
         (1UL << XSPI_DCR2_PRESCALER_Pos); // use PLL2, 384MHz /3
     while(XSPI2->SR & XSPI_SR_BUSY);
     XSPI2->CCR = XSPI_CCR_DQSE |    // respect RWDS from device
