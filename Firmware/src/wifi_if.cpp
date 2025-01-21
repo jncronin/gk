@@ -485,15 +485,19 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
                 auto newbuf = net_allocate_pbuf(PBUF_SIZE);
                 if(!newbuf)
                 {
-                    /* Drop priority to let net thread run, then increase again
-                        TODO: have scheduler honour new priority */
-                    GetCurrentThreadForCore()->base_priority--;
+                    /* Drop priority to let net thread run, then increase again */
+                    auto t = GetCurrentThreadForCore();
+                    auto old_prio = t->base_priority;
+                    auto new_prio = old_prio ? (old_prio - 1U) : old_prio;
+                    if(new_prio)
+                        s().ChangePriority(t, old_prio, new_prio);
                     while(!newbuf)
                     {
                         Yield();
                         newbuf = net_allocate_pbuf(PBUF_SIZE);
                     }
-                    GetCurrentThreadForCore()->base_priority++;
+                    if(new_prio)
+                        s().ChangePriority(t, new_prio, old_prio);
                 }
                 m2m_wifi_set_receive_buffer(newbuf, PBUF_SIZE);
                 pkt_offset = 0;
