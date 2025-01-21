@@ -89,7 +89,7 @@ class Thread
 
         Thread(Process &owning_process);
 
-        void Cleanup(void *tretval, bool from_cleanup = false);
+        void Cleanup(void *tretval);
 
         typedef void *(*threadstart_t)(void *p);
         static Thread *Create(std::string name,

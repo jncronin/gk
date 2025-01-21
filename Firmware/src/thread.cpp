@@ -18,87 +18,46 @@ extern Thread dt;
 
 Thread::Thread(Process &owning_process) : p(owning_process) {}
 
-void Thread::Cleanup(void *tretval, bool from_cleanup)
+void Thread::Cleanup(void *tretval)
 {
-    if(from_cleanup)
+    CriticalGuard cg;
+    for_deletion = true;
+    retval = tretval;
+
+    // signal any thread waiting on a join
+    if(join_thread)
     {
-        // clean up any tls data
-        for(int i = 0; i < 4; i++)  // PTHREAD_DESTRUCTOR_ITERATIONS = 4 on glibc
+        if(join_thread_retval)
+            *join_thread_retval = tretval;
+        join_thread->ss_p.ival1 = 0;
+        join_thread->ss.Signal();
+        join_thread->blocking_on = nullptr;
+        join_thread->is_blocking = false;
+        join_thread->block_until = kernel_time();
+
+        join_thread = nullptr;
+    }
+
+    // remove us from the process' thread list
+    {
+        CriticalGuard cg2;
+        auto iter = p.threads.begin();
+        while(iter != p.threads.end())
         {
-            bool has_nonnull = false;
-
-            {
-                CriticalGuard cg_p;
-                for(auto iter = p.tls_data.begin(); iter != p.tls_data.end(); ++iter)
-                {
-                    auto k = iter->first;
-                    auto d = iter->second;
-
-                    auto t_iter = tls_data.find(k);
-                    if(t_iter != tls_data.end())
-                    {
-                        if(t_iter->second)
-                        {
-                            // non-null
-                            has_nonnull = true;
-
-                            // run destructor - TODO - needs to run in user space with a valid MPU mapping
-                            if(d)
-                            {
-                                klog("cleanup: TODO: not able to run destructors yet\n");
-                                //d(t_iter->second);
-
-                            }
-                        }
-                    }
-                }
-            }
-
-            if(!has_nonnull)
-                break;
+            if(*iter == this)
+                iter = p.threads.erase(iter);
+            else
+                iter++;
         }
     }
-    else
-    {
-        CriticalGuard cg;
-        for_deletion = true;
-        retval = tretval;
 
-        // signal any thread waiting on a join
-        if(join_thread)
-        {
-            if(join_thread_retval)
-                *join_thread_retval = tretval;
-            join_thread->ss_p.ival1 = 0;
-            join_thread->ss.Signal();
-            join_thread->blocking_on = nullptr;
-            join_thread->is_blocking = false;
-            join_thread->block_until = kernel_time();
-
-            join_thread = nullptr;
-        }
-
-        // remove us from the process' thread list
-        {
-            CriticalGuard cg2;
-            auto iter = p.threads.begin();
-            while(iter != p.threads.end())
-            {
-                if(*iter == this)
-                    iter = p.threads.erase(iter);
-                else
-                    iter++;
-            }
-        }
-
-        CleanupQueue.Push({ .is_thread = true, .t = this });
-    }
+    CleanupQueue.Push({ .is_thread = true, .t = this });
 }
 
 void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
 {
     auto t = GetCurrentThreadForCore();
-    t->Cleanup(tretval, false);
+    t->Cleanup(tretval);
     while(true)
     {
         Yield();
