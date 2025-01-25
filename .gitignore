@@ -191,3 +191,4 @@ trace.bin
 trace.txt
 \#auto_saved_files\#
 jlink-log.txt
+*.jdebug.user

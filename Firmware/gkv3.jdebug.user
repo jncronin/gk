@@ -1,19 +1,21 @@
 
 
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/syscalls_other.cpp:88, State=BP_STATE_ON
-Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/syscalls_other.cpp:102, State=BP_STATE_ON
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/syscalls_other.cpp:88, State=BP_STATE_DISABLED
+Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/syscalls_other.cpp:102, State=BP_STATE_DISABLED
 Breakpoint=C:/Users/jncro/source/repos/gk/Firmware/src/gpu.cpp:791, State=BP_STATE_DISABLED
 GraphedExpression="*(int *)0x5800451c", DisplayFormat=DISPLAY_FORMAT_DEC, Color=#e56a6f, Show=0
 GraphedExpression="*(int*)0x58004520", DisplayFormat=DISPLAY_FORMAT_DEC, Color=#35792b, Show=0
+OpenDocument="shared_ptr_base.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/shared_ptr_base.h", Line=1513
+OpenDocument="syscalls_process.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/syscalls_process.cpp", Line=252
 OpenDocument="gkv3.jdebug", FilePath="C:/Users/jncro/source/repos/gk/Firmware/gkv3.jdebug", Line=0
-OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp", Line=33
+OpenDocument="main.cpp", FilePath="C:/Users/jncro/source/repos/gk/Firmware/src/main.cpp", Line=108
 OpenDocument="new_allocator.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/new_allocator.h", Line=80
 OpenDocument="basic_string.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/basic_string.h", Line=792
 OpenDocument="hashtable_policy.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable_policy.h", Line=349
 OpenDocument="ext4_dir.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_dir.c", Line=657
 OpenDocument="ext4_journal.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_journal.c", Line=1175
 OpenDocument="ext4_debug.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_debug.c", Line=12
-OpenDocument="ext4_crc32.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_crc32.c", Line=151
+OpenDocument="ext4_crc32.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_crc32.c", Line=150
 OpenDocument="stl_iterator.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/stl_iterator.h", Line=1095
 OpenDocument="alloc_traits.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/alloc_traits.h", Line=59
 OpenDocument="ext4_bcache.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_bcache.c", Line=270
@@ -30,7 +32,7 @@ OpenDocument="ext4_mbr.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwe
 OpenDocument="ext4_inode.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_inode.c", Line=88
 OpenDocument="ext4_trans.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_trans.c", Line=68
 OpenDocument="stl_tree.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/stl_tree.h", Line=310
-OpenDocument="tusb_common.h", FilePath="c:/users/jncro/source/repos/gk/firmware/tinyusb/src/common/tusb_common.h", Line=256
+OpenDocument="tusb_common.h", FilePath="C:/Users/jncro/source/repos/gk/Firmware/tinyusb/src/common/tusb_common.h", Line=256
 OpenDocument="ext4_blockdev.c", FilePath="C:/Users/jncro/source/repos/gk/Firmware/lwext4/src/ext4_blockdev.c", Line=236
 OpenDocument="hashtable.h", FilePath="c:/progra~2/armgnu~1/125863~1.3re/arm-none-eabi/include/c++/12.3.1/bits/hashtable.h", Line=407
 OpenToolbar="Debug", Floating=0, x=0, y=0
@@ -41,23 +43,24 @@ OpenWindow="Memory 1", DockArea=BOTTOM, x=3, y=0, w=921, h=432, FilterBarShown=0
 OpenWindow="Global Data", DockArea=RIGHT, x=0, y=1, w=1475, h=325, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Local Data", DockArea=RIGHT, x=0, y=2, w=1475, h=329, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Watched Data 1", DockArea=RIGHT, x=0, y=0, w=1475, h=292, TabPos=0, TopOfStack=0, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=609, h=684, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=609, h=682, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 OpenWindow="Terminal", DockArea=BOTTOM, x=2, y=0, w=1365, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
-OpenWindow="Data Sampling", DockArea=LEFT, x=0, y=1, w=609, h=631, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Data Sampling", DockArea=LEFT, x=0, y=1, w=609, h=633, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
 OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=521, h=432, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
 SmartViewPlugin="", Page="", Toolbar="Hidden", Window="SmartView 1"
-TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh";"Access"], ColWidths=[396;266;131;682;79]
-TableHeader="Global Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[256;378;157;101;109;27;766]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh";"Access"], ColWidths=[396;266;131;682;108]
+TableHeader="Global Data", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[256;378;157;101;109;27;413]
 TableHeader="Vector Catches", SortCol="", SortOrder="DESCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;500]
 TableHeader="Break & Tracepoints", SortCol="", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;109;990;127]
-TableHeader="Local Data", SortCol="Scope", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;178]
+TableHeader="Local Data", SortCol="Scope", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Location";"Size";"Type";"Access";"Scope"], ColWidths=[218;311;218;101;422;27;638]
 TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Class";"Source"], ColWidths=[28127;131;100;110;773;542]
 TableHeader="Call Stack", SortCol="Function", SortOrder="ASCENDING", VisibleCols=["Function";"Stack Frame";"Source";"Return Address";"Stack Used";"PC"], ColWidths=[281;299;168;387;280;100]
 TableHeader="Data Sampling Table", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" *(int *)0x5800451c";" *(int*)0x58004520"], ColWidths=[100;100;100;100]
-TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="DESCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[398;109;118;100;101;151;188;208;214]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="DESCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[398;109;118;116;116;184;188;208;214]
 TableHeader="Power Sampling", SortCol="None", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
 TableHeader="Task List", SortCol="None", SortOrder="ASCENDING", VisibleCols=["ID";"Name";"Process";"Priority";"PC";"Status";"BlockingOn";"Stack";"Runtime (us) / %"], ColWidths=[196;406;356;110;136;110;110;227;363]
 TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[200;232;100;1406]
 WatchedExpression="((uint32_t *)adc_vals)0", Window=Watched Data 1
 WatchedExpression="std::__cxx11::collate<wchar_t>::_M_compare", DisplayFormat=DISPLAY_FORMAT_HEX, Window=Watched Data 1
 WatchedExpression="*(uint32_t *)0x941f8260", DisplayFormat=DISPLAY_FORMAT_HEX, Window=Watched Data 1
