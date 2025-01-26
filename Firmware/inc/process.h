@@ -89,7 +89,7 @@ class Process
         uint8_t screen_pf = 0;
         bool screen_ignore_vsync = false;
         bool screen_software_scale = false;
-        bool screen_overwritten_each_frame = true;
+        bool screen_overwritten_each_frame = false;
 
         /* current working directory */
         std::string cwd = "/";
