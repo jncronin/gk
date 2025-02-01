@@ -51,6 +51,8 @@ void *init_thread(void *p);
 
 int main()
 {
+    btnled_setcolor_init(0x00ff00);
+
     /* Check for debugger */
     if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
     {
@@ -118,15 +120,12 @@ int main()
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 #endif
 
-    // Pull GPIOC0 low to halt on startup
-    const constexpr pin PC0 { GPIOC, 0 };
-    PC0.set_as_input(pin::PullUp);
-    for(int i = 0; i < 10000; i++) __DMB();
-
-    if(PC0.value() == false || CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+    btnled_setcolor_init(0xffff00);
+    if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
     {
         BKPT();
     }
+    btnled_setcolor_init(0xff00ff);
 
     system_init_cm7();
     memcpy(kernel_proc.p_mpu, mpu_default, sizeof(mpu_default));
@@ -169,6 +168,8 @@ int main()
         idle_thread;
     Schedule(Thread::Create("idle_cm7", ithread, (void*)0, true, GK_PRIORITY_IDLE, kernel_proc, CPUAffinity::M7Only,
         memblk_allocate_for_stack(512, CPUAffinity::PreferM4, "idle_cm7 stack")));
+
+    btnled_setcolor_init(0xff);
 
     init_sd();
     init_ext4();
