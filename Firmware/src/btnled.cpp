@@ -2,6 +2,7 @@
 #include "btnled.h"
 #include "pins.h"
 #include <cmath>
+#include "gk_conf.h"
 
 static const constexpr unsigned int arr = 4096;
 double btnled_brightness = 0.5;
@@ -63,4 +64,28 @@ void btnled_setcolor(uint32_t rgb)
     TIM1->CCR1 = pwm_non_linear((rgb >> 16) & 0xffUL);
     TIM1->CCR2 = pwm_non_linear((rgb >> 8) & 0xffUL);
     TIM1->CCR3 = pwm_non_linear(rgb & 0xffUL);
+}
+
+INTFLASH_RDATA static const constexpr pin BTNLED_R { GPIOE, 9 };
+INTFLASH_RDATA static const constexpr pin BTNLED_G { GPIOC, 3 };
+INTFLASH_RDATA static const constexpr pin BTNLED_B { GPIOE, 13 };
+
+INTFLASH_FUNCTION void btnled_setcolor_init(uint32_t rgb)
+{
+    BTNLED_R.set_as_output();
+    BTNLED_G.set_as_output();
+    BTNLED_B.set_as_output();
+
+    if((rgb >> 16) & 0xffUL)
+        BTNLED_R.set();
+    else
+        BTNLED_R.clear();
+    if((rgb >> 8) & 0xffUL)
+        BTNLED_G.set();
+    else
+        BTNLED_G.clear();
+    if(rgb & 0xffUL)
+        BTNLED_B.set();
+    else
+        BTNLED_B.clear();
 }
