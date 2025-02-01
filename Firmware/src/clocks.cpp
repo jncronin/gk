@@ -304,10 +304,14 @@ INTFLASH_FUNCTION void enable_backup_sram()
     PWR->CSR1 |= PWR_CSR1_BREN;
     while(!(PWR->CSR1 & PWR_CSR1_BRRDY));
 
-    // Enable RTC to use HSE/32 (for now, pending actual set up with LSE in v2)
-    RCC->BDCR = RCC_BDCR_RTCEN |
-        (3UL << RCC_BDCR_RTCSEL_Pos);
+    // Enable LSE
+    RCC->BDCR |= RCC_BDCR_LSEON;
+    while(!(RCC->BDCR & RCC_BDCR_LSERDY));
 
+    // Enable RTC to use LSE
+    RCC->BDCR = (RCC->BDCR & ~RCC_BDCR_RTCSEL_Msk) |
+        RCC_BDCR_RTCEN |
+        (1UL << RCC_BDCR_RTCSEL_Pos);
 
     RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
     (void)RCC->AHB4ENR;
@@ -373,9 +377,14 @@ extern "C" void clock_configure_backup_domain()
     PWR->CSR1 |= PWR_CSR1_BREN;
     while(!(PWR->CSR1 & PWR_CSR1_BRRDY));
 
-    // Enable RTC to use HSE/32 (for now, pending actual set up with LSE in v2)
-    RCC->BDCR = RCC_BDCR_RTCEN |
-        (3UL << RCC_BDCR_RTCSEL_Pos);
+    // Enable LSE
+    RCC->BDCR |= RCC_BDCR_LSEON;
+    while(!(RCC->BDCR & RCC_BDCR_LSERDY));
+
+    // Enable RTC to use LSE
+    RCC->BDCR = (RCC->BDCR & ~RCC_BDCR_RTCSEL_Msk) |
+        RCC_BDCR_RTCEN |
+        (1UL << RCC_BDCR_RTCSEL_Pos);
 
     // Disallow write access to backup domain
     //PWR->CR1 &= ~PWR_CR1_DBP;
