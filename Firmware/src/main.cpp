@@ -27,8 +27,6 @@ uint32_t test_range[256];
 static const constexpr pin CTP_NRESET { GPIOF, 3 };
 void system_init_cm7();
 
-void init_max();
-
 Scheduler sched;
 Process kernel_proc;
 
@@ -203,8 +201,6 @@ int main()
 #if GK_ENABLE_TILT
     init_tilt();
 #endif
-
-    init_max();
 
     // Prepare systick
     SysTick->CTRL = 0;

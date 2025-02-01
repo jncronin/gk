@@ -10,10 +10,9 @@ static bool init_max();
 
 static constexpr const pin VBAT_STAT = { GPIOC, 5 };
 
-static void vbat_state_machine();
 static void read_max();
 
-enum VbatStatState { Unknown, NoBattery, Charging, ChargeComplete };
+enum VbatStatState { Unknown, NoBattery, Charging, ChargeComplete, Discharging };
 static VbatStatState vbat;
 
 static pwr_status stat = { 0 };
@@ -41,6 +40,9 @@ void *pwr_monitor_thread(void *p)
     // MCP73831
     VBAT_STAT.set_as_input();
 
+    // last dump to rtt time
+    kernel_time last_pwr_dump;
+
     while(true)
     {
         if(!is_init)
@@ -48,12 +50,28 @@ void *pwr_monitor_thread(void *p)
             is_init = init_max();
         }
 
-        vbat_state_machine();
+        stat.vdd = pwr_get_vdd();
 
         if(!last_max_read.is_valid() || clock_cur() > (last_max_read + kernel_time::from_ms(1000)))
         {
             read_max();
             last_max_read = clock_cur();
+
+            /* Determine whether we are charging or not */
+            auto vb_stat = VBAT_STAT.value();
+            if(vb_stat)
+            {
+                // not charging - either discharging or fully charged
+                //  decide based upon whether or not there is a usb cable connected
+                if(USB_OTG_HS->GCCFG & USB_OTG_GCCFG_SESSVLD)
+                    vbat = VbatStatState::ChargeComplete;
+                else
+                    vbat = VbatStatState::Discharging;
+            }
+            else
+            {
+                vbat = VbatStatState::Charging;
+            }
 
             // Check LT3380
             // poll status register
@@ -78,14 +96,29 @@ void *pwr_monitor_thread(void *p)
 
             if(ret2 >= 0)
             {
-                if((pgstat & 0xfU) == 0xfU)
+                if((pgstat & 0x8eU) == 0x8eU)
                     stat.vreg_pgood = true;
                 else
                     stat.vreg_pgood = false;
             }
-        }
 
-        stat.vdd = pwr_get_vdd();
+            if(!last_pwr_dump.is_valid() || clock_cur() > (last_pwr_dump + kernel_time::from_ms(10000)))
+            {
+                klog("pwr: vdd: %f, power good: %s, undervoltage: %s, overtemperature %s\n",
+                    stat.vdd,
+                    stat.vreg_pgood ? "true" : "false",
+                    stat.vreg_undervoltage ? "true" : "false",
+                    stat.vreg_overtemperature ? "true" : "false");
+                klog("pwr: battery: %s, vbat: %f, soc: %f%%, charge rate: %f%%/hr, remaining: %f mins\n",
+                    stat.is_charging ? "charging" : (stat.is_full ? "charged" : "discharging"),
+                    stat.vbat,
+                    stat.state_of_charge,
+                    stat.charge_rate,
+                    stat.time_until_full_empty);
+
+                last_pwr_dump = clock_cur();
+            }
+        }
 
         Block(clock_cur() + kernel_time::from_ms(50U));
     }
@@ -104,57 +137,6 @@ bool init_max()
     return true;
 }
 
-void vbat_state_machine()
-{
-    /* VBAT_STAT is tristate output, we therefore check its value
-        with both pullups and pulldowns active */
-    static int state_id = 0;
-    static bool pup_val = false;
-    static bool pdown_val = false;
-
-    /* Run a state machine that does:
-        0: set pullup
-        1: sample
-        2: set pulldown
-        3: sample, interpret */
-    switch(state_id)
-    {
-        case 0:
-            VBAT_STAT.set_as_input(pin::PullUp);
-            state_id = 1;
-            break;
-        case 1:
-            pup_val = VBAT_STAT.value();
-            state_id = 2;
-            break;
-        case 2:
-            VBAT_STAT.set_as_input(pin::PullDown);
-            state_id = 3;
-            break;
-        case 3:
-            pdown_val = VBAT_STAT.value();
-
-            if(pup_val && !pdown_val)
-            {
-                vbat = VbatStatState::NoBattery;
-            }
-            else if(pup_val && pdown_val)
-            {
-                vbat = VbatStatState::ChargeComplete;
-            }
-            else if(!pup_val && !pdown_val)
-            {
-                vbat = VbatStatState::Charging;
-            }
-            else
-            {
-                vbat = VbatStatState::Unknown;
-            }
-            state_id = 0;
-            break;
-    }
-}
-
 void read_max()
 {
     unsigned int vcell = 0, soc = 0, crate = 0;
@@ -171,8 +153,7 @@ void read_max()
     double f_soc = (double)soc / 256.0;
     double f_crate = (double)i_crate * 0.208;
 
-    bool is_charging = /* !VBAT_STAT.value(); */
-        i_crate > 0;
+    bool is_charging = !VBAT_STAT.value();
 
     auto pct_to_go = is_charging ? (100.0 - f_soc) : f_soc;
     auto mins_left = pct_to_go * 60.0 / std::abs(f_crate);
@@ -202,6 +183,11 @@ void read_max()
         case VbatStatState::NoBattery:
             stat.battery_present = false;
             stat.is_charging = true;
+            stat.is_full = false;
+            break;
+        case VbatStatState::Discharging:
+            stat.battery_present = true;
+            stat.is_charging = false;
             stat.is_full = false;
             break;
     }
