@@ -21,7 +21,7 @@
 #include "process.h"
 #include "cleanup.h"
 
-#define FAULT_BREAK     1
+#define FAULT_BREAK     0
 #ifdef FAULT_BREAK
 #define _FAULT_BREAK    "bkpt           \n"
 #else
