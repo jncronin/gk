@@ -7,6 +7,7 @@ INTFLASH_RDATA static const constexpr pin MCU_PWR_EN { GPIOC, 13 };
 
 extern "C" INTFLASH_FUNCTION int pwrbtn_setvregen(int val)
 {
+    MCU_PWR_EN.set_as_output();
     if(val)
     {
         MCU_PWR_EN.set();
@@ -15,9 +16,8 @@ extern "C" INTFLASH_FUNCTION int pwrbtn_setvregen(int val)
     {
         MCU_PWR_EN.clear();
     }
-    MCU_PWR_EN.set_as_output();
 
     btnled_setcolor_init(0xff0000);
-    
+
     return 0;
 }
