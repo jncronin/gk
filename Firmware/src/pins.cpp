@@ -73,6 +73,10 @@ INTFLASH_FUNCTION void pin_set(const struct pin &p, int mode, int ospeed, int af
     gpio->MODER &= ~(3UL << (pin * 2));
     gpio->MODER |= (mode << (pin * 2));
 
+    /* limit GPIOC13/14/15 speed */
+    if(gpio == GPIOC && ((pin == 13) || (pin == 14) || (pin == 15)))
+        ospeed = 0;
+
     gpio->OSPEEDR &= ~(3UL << (pin * 2));
     gpio->OSPEEDR |= (ospeed << (pin * 2));
     if(pin < 8)
