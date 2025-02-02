@@ -63,7 +63,7 @@ static constexpr pin sd_pins[] =
     { GPIOD, 6, 11 },
     { GPIOD, 7, 11 },
     { GPIOG, 11, 10 },
-    { GPIOG, 12, 10 }   // ?!!! PG12 not in datasheet AF table
+    { GPIOG, 12, 10 }
 };
 
 static const constexpr pin sd_pwr_pin { GPIOC, 8 };
