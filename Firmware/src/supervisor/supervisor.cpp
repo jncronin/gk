@@ -13,6 +13,7 @@
 #include "gk_conf.h"
 #include "syscalls_int.h"
 #include <array>
+#include "supervisor.h"
 
 SRAM4_DATA Process p_supervisor;
 static SRAM4_DATA bool overlay_visible = false;
@@ -315,6 +316,8 @@ void *supervisor_thread(void *p)
     scr_status.AddChild(rw_status);
     scr_status.AddChild(l_time);
 
+    auto supervisor_start_time = clock_cur();
+
     // process messages
     while(true)
     {
@@ -428,6 +431,17 @@ void *supervisor_thread(void *p)
                             scr_overlay.KeyPressUp(ck);
                             do_update = true;
                         }
+                        break;
+
+                        case GK_SCANCODE_POWER:
+                            // perform power off on button up - prevents resetting whilst still pressed
+                            //  and then power off during startup
+                            // ignore spurious button presses at startup
+                            if(clock_cur() >= supervisor_start_time + kernel_time::from_ms(500))
+                            {
+                                supervisor_shutdown_system();
+                            }
+                            break;
                     }
                     break;
 

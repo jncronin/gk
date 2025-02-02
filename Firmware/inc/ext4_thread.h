@@ -31,7 +31,8 @@ struct ext4_message
         Mkdir,
         ReadDir,
         Unlink,
-        Ftruncate
+        Ftruncate,
+        Unmount,
     };
 
     msg_type type;
@@ -297,6 +298,16 @@ static constexpr ext4_message ext4_unlink_message(const char *pathname,
     ext4_message ret {
         .type = ext4_message::msg_type::Unlink,
         .params = __p,
+        .ss = &ss,
+        .ss_p = &ss_p
+    };
+    return ret;
+}
+
+static constexpr ext4_message ext4_unmount_message(SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+{
+    ext4_message ret {
+        .type = ext4_message::msg_type::Unmount,
         .ss = &ss,
         .ss_p = &ss_p
     };

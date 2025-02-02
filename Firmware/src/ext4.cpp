@@ -37,6 +37,7 @@ extern char _sext4_data, _eext4_data;
 
 extern bool sd_ready;
 extern uint64_t sd_size;
+static bool unmounted = false;
 
 #define EXT4_DATA    __attribute__((section(".ext4_data")))
 
@@ -190,6 +191,8 @@ static int do_mount()
     ext4_dir_mk("/etc");
     ext4_dir_mk("/opt");
 #endif
+
+    unmounted = false;
 
     {
         klog("ext4: mounted /\n");
@@ -588,6 +591,24 @@ void handle_unlink_message(ext4_message &msg)
     }
 }
 
+void handle_unmount_message(ext4_message &msg)
+{
+    auto extret = ext4_umount("/");
+    unmounted = true;
+    if(extret == EOK)
+    {
+        fstat_cache.clear();
+        msg.ss_p->ival1 = 0;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+    else
+    {
+        msg.ss_p->ival1 = -1;
+        msg.ss_p->ival2 = extret;
+        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    }
+}
+
 void *ext4_thread(void *_p)
 {
     (void)_p;
@@ -599,6 +620,9 @@ void *ext4_thread(void *_p)
     {
         ext4_message msg;
         if(!ext4_queue.Pop(&msg))
+            continue;
+
+        if(unmounted)
             continue;
         
         switch(msg.type)
@@ -641,6 +665,10 @@ void *ext4_thread(void *_p)
 
             case ext4_message::msg_type::Unlink:
                 handle_unlink_message(msg);
+                break;
+
+            case ext4_message::msg_type::Unmount:
+                handle_unmount_message(msg);
                 break;
         }
     }

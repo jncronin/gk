@@ -305,7 +305,7 @@ static void handle_fault()
         {
             // trigger reset
             __BKPT();
-            //SCB->AIRCR = SCB_AIRCR_SYSRESETREQ_Msk;
+            //SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ_Msk ;
         }
     }
     else if(p)
@@ -336,7 +336,7 @@ static void handle_fault()
         {
             // trigger reset
             BKPT();
-            //SCB->AIRCR = SCB_AIRCR_SYSRESETREQ_Msk;
+            //SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ_Msk;
         }
     }
 }

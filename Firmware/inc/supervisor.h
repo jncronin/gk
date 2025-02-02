@@ -10,4 +10,7 @@ void init_supervisor();
     If it is, also optionally returns the screen coordinates the supervisor is active over */
 bool supervisor_is_active(unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h);
 
+/* Gracefully shuts down the system */
+void supervisor_shutdown_system();
+
 #endif

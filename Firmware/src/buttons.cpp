@@ -368,6 +368,7 @@ extern "C" void LPTIM2_IRQHandler()
     handle_debounce_event(db_MENU);
     handle_debounce_event(db_VOLUP);
     handle_debounce_event(db_VOLDOWN);
+    handle_debounce_event(db_ONOFF);
     handle_debounce_event(db_L);
     handle_debounce_event(db_R);
     handle_debounce_event(db_U);

@@ -798,13 +798,14 @@ static inline uint32_t do_mdma_transfer(uint32_t src, uint32_t dest)
 void *sd_thread(void *param)
 {
     (void)param;
+    bool sd_shutdown = false;
 
     //RCC->AHB3ENR |= RCC_AHB3ENR_MDMAEN;
     //(void)RCC->AHB3ENR;
 
     while(true)
     {
-        if(!sd_ready)
+        if(!sd_ready && !sd_shutdown)
         {
             sd_reset();
             if(!sd_ready)
@@ -815,7 +816,7 @@ void *sd_thread(void *param)
         sd_request sdr;
         if(sdt_queue.Pop(&sdr))
         {
-            if(sdr.block_count == 0 || !sdr.completion_event || !sdr.mem_address)
+            if(sd_shutdown || sdr.block_count == 0 || !sdr.completion_event || !sdr.mem_address)
             {
                 if(sdr.res_out)
                 {
@@ -825,6 +826,30 @@ void *sd_thread(void *param)
                 {
                     sdr.completion_event->Signal();
                 }
+                continue;
+            }
+
+            if(sdr.block_count == 0xffffffff && sdr.block_start == 0xffffffff &&
+                sdr.mem_address == (void *)0xffffffff)
+            {
+                // unmount
+                sd_issue_command(0, resp_type::None);
+                delay_ms(1);
+                SDMMC2->POWER = 0;
+                delay_ms(1);
+
+                sd_shutdown = true;
+                sd_pwr_pin.set();
+
+                if(sdr.res_out)
+                {
+                    *sdr.res_out = 0;
+                }
+                if(sdr.completion_event)
+                {
+                    sdr.completion_event->Signal();
+                }
+
                 continue;
             }
 
