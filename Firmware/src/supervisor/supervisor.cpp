@@ -317,6 +317,7 @@ void *supervisor_thread(void *p)
     scr_status.AddChild(l_time);
 
     auto supervisor_start_time = clock_cur();
+    kernel_time last_status_update;
 
     // process messages
     while(true)
@@ -330,19 +331,6 @@ void *supervisor_thread(void *p)
         {
             do_update = true;
             do_volume_update = true;
-        }
-
-        static kernel_time last_temp_report;
-        if(clock_cur() > (last_temp_report + kernel_time::from_ms(1000)))
-        {
-            // dump temp to klog, eventually to screen
-            /*auto temp = temp_get_core();
-            auto vdd = pwr_get_vdd();
-
-            klog("supervisor: temp: %fC, vdd: %fV, SBS->CCVALR: %x, SBS->CCSWVALR: %x\n",
-                temp, vdd, SBS->CCVALR, SBS->CCSWVALR);*/
-
-            last_temp_report = clock_cur();
         }
 
         if(has_event)
@@ -504,17 +492,22 @@ void *supervisor_thread(void *p)
 
             if(overlay_visible)
             {
-                // update time/date
-                timespec tp;
-                clock_get_now(&tp);
-                auto t = localtime(&tp.tv_sec);
-                char buf[64];
-                strftime(buf, 63, "%F %T", t);
-                buf[63] = 0;
-                char buf_line[128];
-                snprintf(buf_line, 127, "%s %.1f FPS %.1fC %.2fV", buf, screen_get_fps(), temp_get_core(), pwr_get_vdd());
-                buf_line[127] = 0;
-                l_time.text = std::string(buf_line);
+                if(!last_status_update.is_valid() || clock_cur() >= last_status_update + kernel_time::from_ms(1000))
+                {
+                    // update time/date
+                    timespec tp;
+                    clock_get_now(&tp);
+                    auto t = localtime(&tp.tv_sec);
+                    char buf[64];
+                    strftime(buf, 63, "%F %T", t);
+                    buf[63] = 0;
+                    char buf_line[128];
+                    snprintf(buf_line, 127, "%s %.1f FPS %.1fC %.2fV", buf, screen_get_fps(), temp_get_core(), pwr_get_vdd());
+                    buf_line[127] = 0;
+                    l_time.text = std::string(buf_line);
+
+                    last_status_update = clock_cur();
+                }
 
                 scr_overlay.Update(scr_alpha);
                 scr_status.Update(scr_alpha);
