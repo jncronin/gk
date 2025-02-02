@@ -127,7 +127,9 @@ class Process
             VolDown = GK_KEYVOLDOWN,
             Menu = GK_KEYMENU,
             Power = GK_KEYPOWER,
-            Joy = GK_KEYJOY
+            Joy = GK_KEYJOY,
+            LeftBumper = GK_KEYLB,
+            RightBumper = GK_KEYRB
         };
 
         unsigned int gamepad_buttons = 0;

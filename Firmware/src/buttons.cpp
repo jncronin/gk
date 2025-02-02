@@ -19,6 +19,8 @@ constexpr const pin BTN_B { GPIOD, 5 };
 constexpr const pin BTN_X { GPIOC, 2 };
 constexpr const pin BTN_Y { GPIOE, 10 };
 constexpr const pin BTN_JOY { GPIOD, 2 };
+constexpr const pin BTN_LB { GPIOB, 1 };
+constexpr const pin BTN_RB { GPIOB, 8 };
 
 constexpr const pin JOY_X { GPIOC, 4 };        // ADC12_INP4
 constexpr const pin JOY_Y { GPIOA, 6 };        // ADC12_INP3
@@ -38,7 +40,9 @@ static Debounce<5, 20, 20, 1000, Process::GamepadKey>
     db_B(BTN_B, Process::GamepadKey::B),
     db_X(BTN_X, Process::GamepadKey::X),
     db_Y(BTN_Y, Process::GamepadKey::Y),
-    db_JOY(BTN_JOY, Process::GamepadKey::Joy);
+    db_JOY(BTN_JOY, Process::GamepadKey::Joy),
+    db_LB(BTN_LB, Process::GamepadKey::LeftBumper),
+    db_RB(BTN_RB, Process::GamepadKey::RightBumper);
 
 static int longpress_count = 0;
 
@@ -66,6 +70,8 @@ void init_buttons()
     BTN_X.set_as_input();
     BTN_Y.set_as_input();
     BTN_JOY.set_as_input();
+    BTN_LB.set_as_input();
+    BTN_RB.set_as_input();
     pin_set(JOY_X, 3);
     pin_set(JOY_Y, 3);
 
@@ -252,6 +258,8 @@ static inline void handle_state_change(Process::GamepadKey exti, bool pressed)
         case Process::GamepadKey::VolUp:
         case Process::GamepadKey::VolDown:
         case Process::GamepadKey::Joy:
+        case Process::GamepadKey::LeftBumper:
+        case Process::GamepadKey::RightBumper:
             recv_proc().HandleGamepadEvent(exti, pressed);
             break;
         default:
@@ -286,6 +294,8 @@ template<int tick_period_ms,
             case Process::GamepadKey::VolUp:
             case Process::GamepadKey::VolDown:
             case Process::GamepadKey::Joy:
+            case Process::GamepadKey::LeftBumper:
+            case Process::GamepadKey::RightBumper:
                 recv_proc().HandleGamepadEvent(val, false, true);
                 break;
             default:
@@ -367,6 +377,8 @@ extern "C" void LPTIM2_IRQHandler()
     handle_debounce_event(db_X);
     handle_debounce_event(db_Y);
     handle_debounce_event(db_JOY);
+    handle_debounce_event(db_LB);
+    handle_debounce_event(db_RB);
 
     auto jx = ja_x.Tick();
     auto jy = ja_y.Tick();
