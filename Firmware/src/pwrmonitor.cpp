@@ -92,6 +92,13 @@ void *pwr_monitor_thread(void *p)
                     stat.vreg_overtemperature = true;
                 else
                     stat.vreg_overtemperature = false;
+
+                if(stat.vreg_overtemperature || stat.vreg_undervoltage)
+                {
+                    // clear irq
+                    uint8_t clirq = 0;
+                    i2c_register_write(dev_id, (uint8_t)0x1f, &clirq, 1);
+                }
             }
 
             if(ret2 >= 0)
