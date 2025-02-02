@@ -65,8 +65,11 @@ int main()
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 
     /* Memory test prior to enabling caches */
-#define GK_MEMTEST 0
+#define GK_MEMTEST 1
+#define GK_MEMTEST_DUMP_ALL 0
+#define GK_MEMTEST_REPEAT 1
 #if GK_MEMTEST
+    uint32_t error_bits = 0;
 #if GK_XSPI_DUAL_MEMORY
     const uint32_t test_max = 0x98000000U;
 #else
@@ -76,13 +79,18 @@ int main()
     {
         *(volatile uint32_t *)addr = addr;
     }
+#if GK_MEMTEST == 2
     uint64_t seed = 123456789U;
+#endif
     for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
     {
         auto v = *(volatile uint32_t *)addr;
         if(v != addr)
         {
-            SEGGER_RTT_printf(0, "memchk: fail at %x - got %x\n", addr, v);
+            error_bits |= (addr ^ v);
+#if GK_MEMTEST_DUMP_ALL
+            SEGGER_RTT_printf(0, "memchk: fail at %08x - got %08x (error bits: %08x)\n", addr, v, error_bits);
+#if GK_MEMTEST == 2
             // try again
             for(int i = 0; i < 10; i++)
             {
@@ -97,6 +105,8 @@ int main()
                 SEGGER_RTT_printf(0, "memchk:   retry %d, got %x (%s)\n", i, v2,
                     (v2 == addr) ? "SUCCESS" : "FAIL");
             }
+#endif
+#endif
         }
     }
 
@@ -116,6 +126,44 @@ int main()
         XSPI1->CALFCR, XSPI1->CALSOR, XSPI1->CALSIR);
     SEGGER_RTT_printf(0, "kernel: xspi2: calfcr: %x, calsor: %x, calsir: %x\n",
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
+
+    SEGGER_RTT_printf(0, "kernel: memtest: error_bits: %08x\n", error_bits);
+
+#if GK_MEMTEST_REPEAT
+    // repeat after recalibration.  Better?
+    error_bits = 0;
+    for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
+    {
+        *(volatile uint32_t *)addr = addr;
+    }
+    for(uint32_t addr = test_max - 4U; addr >= 0x90000000U; addr -= 4)
+    {
+        auto v = *(volatile uint32_t *)addr;
+        if(v != addr)
+        {
+            error_bits |= (addr ^ v);
+        }
+    }
+
+    // recheck calibration after test
+    (void)*(volatile uint32_t *)(test_max - 4U);
+    __DMB();
+    __DSB();
+    XSPI1->CR |= XSPI_CR_ABORT;
+    while((XSPI1->CR & XSPI_CR_ABORT) || (XSPI1->SR & XSPI_SR_BUSY));
+
+    // trigger calibration
+    XSPI1->DCR2 = XSPI1->DCR2;
+
+    // dummy read
+    (void)*(volatile uint32_t *)(test_max - 0x1000U);
+    SEGGER_RTT_printf(0, "kernel: xspi1: calfcr: %x, calsor: %x, calsir: %x\n",
+        XSPI1->CALFCR, XSPI1->CALSOR, XSPI1->CALSIR);
+    SEGGER_RTT_printf(0, "kernel: xspi2: calfcr: %x, calsor: %x, calsir: %x\n",
+        XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
+
+    SEGGER_RTT_printf(0, "kernel: memtest repeat: error_bits: %08x\n", error_bits);
+#endif
 #endif
 
     btnled_setcolor_init(0xffff00);
