@@ -14,6 +14,7 @@
 #include "syscalls_int.h"
 #include <array>
 #include "supervisor.h"
+#include "power_images.h"
 
 SRAM4_DATA Process p_supervisor;
 static SRAM4_DATA bool overlay_visible = false;
@@ -313,8 +314,38 @@ void *supervisor_thread(void *p)
     l_time.border_width = 0;
     l_time.bg_inactive_color = 0x87;
 
+    ImageWidget i_pwr;
+    i_pwr.x = scr_status.w - 40;
+    i_pwr.y = 0;
+    i_pwr.w = 40;
+    i_pwr.h = 32;
+    i_pwr.border_width = 0;
+    i_pwr.bg_inactive_color = 0x87;
+    i_pwr.img_h = 20;
+    i_pwr.img_w = 40;
+    i_pwr.img_hoffset = HOffset::Left;
+    i_pwr.img_voffset = VOffset::Middle;
+    i_pwr.image = battery_full;
+    i_pwr.img_bpp = 4;
+
+    ImageWidget i_charge;
+    i_charge.x = i_pwr.x - 22;
+    i_charge.y = 0;
+    i_charge.w = 22;
+    i_charge.h = 32;
+    i_charge.border_width = 0;
+    i_charge.bg_inactive_color = 0x87;
+    i_charge.img_w = 22;
+    i_charge.img_h = 32;
+    i_charge.img_hoffset = HOffset::Centre;
+    i_charge.img_voffset = VOffset::Middle;
+    i_charge.image = charge;
+    i_charge.img_bpp = 4;
+
     scr_status.AddChild(rw_status);
     scr_status.AddChild(l_time);
+    scr_status.AddChild(i_pwr);
+    scr_status.AddChild(i_charge);
 
     auto supervisor_start_time = clock_cur();
     kernel_time last_status_update;
@@ -505,6 +536,8 @@ void *supervisor_thread(void *p)
                     snprintf(buf_line, 127, "%s %.1f FPS %.1fC %.2fV", buf, screen_get_fps(), temp_get_core(), pwr_get_vdd());
                     buf_line[127] = 0;
                     l_time.text = std::string(buf_line);
+
+                    
 
                     last_status_update = clock_cur();
                 }
