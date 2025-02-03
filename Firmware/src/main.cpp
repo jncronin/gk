@@ -65,7 +65,7 @@ int main()
         XSPI2->CALFCR, XSPI2->CALSOR, XSPI2->CALSIR);
 
     /* Memory test prior to enabling caches */
-#define GK_MEMTEST 1
+#define GK_MEMTEST 0
 #define GK_MEMTEST_DUMP_ALL 0
 #define GK_MEMTEST_REPEAT 1
 #if GK_MEMTEST

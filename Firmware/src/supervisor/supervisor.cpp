@@ -15,6 +15,7 @@
 #include <array>
 #include "supervisor.h"
 #include "power_images.h"
+#include "wifi_if.h"
 
 SRAM4_DATA Process p_supervisor;
 static SRAM4_DATA bool overlay_visible = false;
@@ -342,10 +343,55 @@ void *supervisor_thread(void *p)
     i_charge.image = charge;
     i_charge.img_bpp = 4;
 
+    ImageWidget i_wifi;
+    i_wifi.x = i_charge.x - 40;
+    i_wifi.y = 0;
+    i_wifi.w = 40;
+    i_wifi.h = 32;
+    i_wifi.border_width = 0;
+    i_wifi.bg_inactive_color = 0x87;
+    i_wifi.img_w = 40;
+    i_wifi.img_h = 29;
+    i_wifi.img_hoffset = HOffset::Centre;
+    i_wifi.img_voffset = VOffset::Middle;
+    i_wifi.image = wifi;
+    i_wifi.img_bpp = 4;
+
+    ImageWidget i_usb;
+    i_usb.x = i_wifi.x - 41;
+    i_usb.y = 0;
+    i_usb.w = 41;
+    i_usb.h = 32;
+    i_usb.border_width = 0;
+    i_usb.bg_inactive_color = 0x87;
+    i_usb.img_w = 41;
+    i_usb.img_h = 26;
+    i_usb.img_hoffset = HOffset::Centre;
+    i_usb.img_voffset = VOffset::Middle;
+    i_usb.image = usb;
+    i_usb.img_bpp = 4;
+
+    ImageWidget i_bt;
+    i_bt.x = i_usb.x - 24;
+    i_bt.y = 0;
+    i_bt.w = 24;
+    i_bt.h = 32;
+    i_bt.border_width = 0;
+    i_bt.bg_inactive_color = 0x87;
+    i_bt.img_w = 24;
+    i_bt.img_h = 32;
+    i_bt.img_hoffset = HOffset::Centre;
+    i_bt.img_voffset = VOffset::Middle;
+    i_bt.image = bt;
+    i_bt.img_bpp = 4;
+
     scr_status.AddChild(rw_status);
     scr_status.AddChild(l_time);
     scr_status.AddChild(i_pwr);
     scr_status.AddChild(i_charge);
+    scr_status.AddChild(i_wifi);
+    scr_status.AddChild(i_usb);
+    scr_status.AddChild(i_bt);
 
     auto supervisor_start_time = clock_cur();
     kernel_time last_status_update;
@@ -537,7 +583,34 @@ void *supervisor_thread(void *p)
                     buf_line[127] = 0;
                     l_time.text = std::string(buf_line);
 
-                    
+                    // update status images
+                    pwr_status pstat;
+                    pwr_get_status(&pstat);
+                    if(pstat.battery_present)
+                    {
+                        if(pstat.is_full)
+                            i_pwr.image = battery_full;
+                        else if(pstat.state_of_charge >= 75.0)
+                            i_pwr.image = battery_3;
+                        else if(pstat.state_of_charge >= 50.0)
+                            i_pwr.image = battery_2;
+                        else if(pstat.state_of_charge >= 25.0)
+                            i_pwr.image = battery_1;
+                        else
+                            i_pwr.image = battery_empty;
+                        i_pwr.visible = true;
+                    }
+                    else
+                    {
+                        i_pwr.visible = false;
+                    }
+                    i_charge.visible = pstat.is_charging;
+
+                    extern WincNetInterface wifi_if;
+                    extern TUSBNetInterface rndis_if;
+                    i_wifi.visible = wifi_if.GetLinkActive();
+                    i_usb.visible = rndis_if.GetLinkActive();
+                    i_bt.visible = false;   // TODO
 
                     last_status_update = clock_cur();
                 }
