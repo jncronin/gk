@@ -216,6 +216,8 @@ class StaticImageProvider
         coord_t img_w, img_h;
         HOffset img_hoffset = HOffset::Centre;
         VOffset img_voffset = VOffset::Middle;
+        unsigned int img_bpp = 0;
+        color_t img_color = default_inactive_text_color;
 };
 
 class RectangleWidget : public NonactivatableWidget, public BorderRenderer, public BackgroundRenderer,
@@ -243,6 +245,14 @@ class ButtonWidget : public ClickableWidget, public BorderRenderer, public Backg
 
 class ImageButtonWidget : public ClickableWidget, public BorderRenderer, public BackgroundRenderer,
     public ImageRenderer,
+    public StaticBorderProvider, public StaticBackgroundProvider, public StaticImageProvider
+{
+    public:
+        void Update(alpha_t alpha = std::numeric_limits<alpha_t>::max());
+};
+
+class ImageWidget : public NonactivatableWidget,
+    public BorderRenderer, public BackgroundRenderer, public ImageRenderer,
     public StaticBorderProvider, public StaticBackgroundProvider, public StaticImageProvider
 {
     public:
