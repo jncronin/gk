@@ -10,6 +10,7 @@ struct scroll_params
 
 void ContainerWidget::Update(alpha_t alpha)
 {
+    if(!visible) return;
     for(auto &child : children)
     {
         child->Update(alpha);

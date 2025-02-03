@@ -2,6 +2,7 @@
 
 void ImageWidget::Update(alpha_t alpha)
 {
+    if(!visible) return;
     coord_t actx, acty;
     GetAbsolutePosition(&actx, &acty);
 

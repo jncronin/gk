@@ -142,6 +142,7 @@ bool KeyboardWidget::HandleMove(int _x, int _y)
 
 void KeyboardWidget::Update(alpha_t alpha)
 {
+    if(!visible) return;
     for(auto &key : btns)
     {
         if(is_shift || is_capslock)

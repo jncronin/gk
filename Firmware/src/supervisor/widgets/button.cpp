@@ -2,6 +2,7 @@
 
 void ButtonWidget::Update(alpha_t alpha)
 {
+    if(!visible) return;
     coord_t actx, acty;
     GetAbsolutePosition(&actx, &acty);
 
@@ -48,6 +49,7 @@ void ButtonWidget::Update(alpha_t alpha)
 
 void ImageButtonWidget::Update(alpha_t alpha)
 {
+    if(!visible) return;
     coord_t actx, acty;
     GetAbsolutePosition(&actx, &acty);
 

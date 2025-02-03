@@ -65,6 +65,7 @@ class Widget
         int x, y, w, h;
         int ch_x, ch_y;
         void *d;
+        bool visible = true;
 
         Widget *parent;
 
