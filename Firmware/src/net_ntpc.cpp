@@ -37,8 +37,8 @@ void *net_ntpc_thread(void *p)
 
     while(true)
     {
-        /* Send to chronos.csr.net = 194.35.252.7 */
-        IP4Addr ntp_server(194, 35, 252, 7);
+        /* Send to time.windows.com = 51.145.123.29 */
+        IP4Addr ntp_server(51, 145, 123, 29);
         struct sockaddr_in ntp_dest;
         ntp_dest.sin_addr.s_addr = ntp_server.get();
         ntp_dest.sin_family = AF_INET;
@@ -77,9 +77,28 @@ void *net_ntpc_thread(void *p)
         socklen_t dfrom_len = sizeof(sockaddr_in);
         auto received = recvfrom(lsck, req, sizeof(req), 0, (sockaddr *)&dfrom, &dfrom_len);
         klog("ntpc: received %d bytes\n", received);
+        for(int i = 0; i < 12; i++)
+        {
+            klog("ntpc: %02d: %08x\n", i, req[i]);
+        }
 
-        BKPT();
+        timespec ttstamp;
+        ttstamp.tv_sec = ntohl(req[10]) - UNIX_NTP_OFFSET;
+        ttstamp.tv_nsec = (uint32_t)(((uint64_t)ntohl(req[11]) * 1000000000ULL) /
+            (uint64_t)std::numeric_limits<uint32_t>::max());
+        char buf[64];
+        auto t = localtime(&ttstamp.tv_sec);
+        strftime(buf, 63, "%F %T", t);
+        klog("ntp: current time: %s\n", buf);
 
+        // set our time to this - TODO ideally use round trip time etc, but we only want a couple
+        //  of seconds accuracy for gk
+        auto tdiff = ttstamp - ctime;
+        timespec toffset;
+        clock_get_timebase(&toffset);
+        toffset = toffset + tdiff;
+        clock_set_timebase(&toffset);
+        clock_set_rtc_from_timespec(&ctime);
 
         Block(clock_cur() + kernel_time::from_ms(10000));
     }

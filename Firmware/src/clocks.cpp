@@ -535,3 +535,29 @@ int clock_set_rtc_from_timespec(const timespec *ts)
 
     return 0;
 }
+
+timespec operator+(const timespec &a, const timespec &b)
+{
+    timespec ret = a;
+    ret.tv_nsec += b.tv_nsec;
+    while(ret.tv_nsec >= 1000000000)
+    {
+        ret.tv_nsec -= 1000000000;
+        ret.tv_sec += 1;
+    }
+    ret.tv_sec += b.tv_sec;
+    return ret;
+}
+
+timespec operator-(const timespec &a, const timespec &b)
+{
+    timespec ret = a;
+    ret.tv_nsec -= b.tv_nsec;
+    while(ret.tv_nsec < 0)
+    {
+        ret.tv_nsec += 1000000000;
+        ret.tv_sec -= 1;
+    }
+    ret.tv_sec -= b.tv_sec;
+    return ret;
+}
