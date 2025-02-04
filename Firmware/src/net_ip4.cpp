@@ -286,10 +286,23 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
     // do we need to use a gateway?
     IP4Addr actdest = (route->addr.addr == route->addr.gw) ? dest : route->addr.gw;
 
+    if(actdest != dest)
+    {
+        klog("net: message through gateway (%s via %s):\n", dest.ToString().c_str(), actdest.ToString().c_str());
+        CriticalGuard cg;
+        for(unsigned int i = 0; i < datalen; i++)
+        {
+            SEGGER_RTT_printf(0, "%02x ", data[i]);
+        }
+    }
+
     HwAddr hwaddr;
     if(net_ip_get_hardware_address(actdest, &hwaddr) == NET_OK)
     {
         // decorate and send direct
+
+        klog("net: send direct size %u to %s as hwaddr is known (%s)\n", datalen,
+            actdest.ToString().c_str(), hwaddr.ToString().c_str());
         route->addr.iface->SendEthernetPacket(data, datalen, hwaddr, IPPROTO_IP, release_buffer);
         return NET_OK;
     }
@@ -303,6 +316,9 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
         msg.msg_data.arp_request.n = datalen;
         msg.msg_data.arp_request.iface = route->addr.iface;
         msg.msg_data.arp_request.release_buffer = release_buffer;
+
+        klog("net: arp request sent for %s, queueing message of length %u\n",
+            actdest.ToString().c_str(), datalen);
 
         net_queue_msg(msg);
 

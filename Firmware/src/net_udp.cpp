@@ -26,6 +26,10 @@ int net_handle_udp_packet(const IP4Packet &pkt)
             .ippacket = pkt };
         return net_handle_dhcpc_packet(upkt);
     }
+    else if(dest_port == htons(123) || src_port == htons(123))
+    {
+        BKPT();
+    }
 
     // do we match a bound socket?
     sockaddr_in saddr;

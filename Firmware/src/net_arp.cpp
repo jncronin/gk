@@ -90,6 +90,8 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             cg.~CriticalGuard();
             for(const auto &areq : local_cache)
             {
+                klog("net: arp: got hwaddr for %s (%s) - sending cached packet of length %d\n",
+                    IP4Addr(areq.ip).ToString().c_str(), hw_sender.ToString().c_str(), areq.n);
                 areq.iface->SendEthernetPacket(areq.buf, areq.n, hw_sender, IPPROTO_IP, areq.release_buffer);
             }
         }
@@ -171,8 +173,6 @@ void net_arp_handle_request_and_send(const net_msg &m)
     memset(&data[18], 0, 6);
     *reinterpret_cast<uint32_t *>(&data[24]) = m.msg_data.arp_request.addr;
 
-    m.msg_data.arp_request.iface->SendEthernetPacket(data, 28, HwAddr::multicast, 0x0806, true);
-
     // queue that we have made the request
     arp_request_and_send_data arpd;
     arpd.buf = m.msg_data.arp_request.buf;
@@ -182,6 +182,10 @@ void net_arp_handle_request_and_send(const net_msg &m)
     arpd.send_time = clock_cur_ms();
     arpd.release_buffer = m.msg_data.arp_request.release_buffer;
     arp_requests.push_back(arpd);
+
+    // reenable interrupts to allow Winc driver to run
+    cg.~CriticalGuard();
+    m.msg_data.arp_request.iface->SendEthernetPacket(data, 28, HwAddr::multicast, 0x0806, true);
 }
 
 int net_ip_get_hardware_address(const IP4Addr &addr, HwAddr *ret)

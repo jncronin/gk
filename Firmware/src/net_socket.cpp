@@ -176,6 +176,7 @@ int syscall_socket(int domain, int type, int protocol, int *_errno)
         int fildes = get_free_fildes(p);
         if(fildes == -1)
         {
+            delete sck;
             *_errno = EMFILE;
             return -1;
         }
