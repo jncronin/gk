@@ -586,6 +586,8 @@ void *wifi_task(void *p)
 
     uint64_t last_scan_time = 0ULL;
 
+    Thread *ntp_thread = nullptr;
+
     while(true)
     {
         auto irq_signalled = wifi_irq.Wait(clock_cur() + kernel_time::from_ms(200ULL));
@@ -604,6 +606,12 @@ void *wifi_task(void *p)
             if(ws == WincNetInterface::WIFI_DISCONNECTED && !wifi_if.scan_in_progress &&
                 (!last_scan_time || clock_cur_ms() >= last_scan_time + 5000ULL))
             {
+                if(ntp_thread)
+                {
+                    ntp_thread->Cleanup((void*)0);
+                    ntp_thread = nullptr;
+                }
+
                 m2m_wifi_request_scan(M2M_WIFI_CH_13);
                 wifi_if.scan_in_progress = true;
                 last_scan_time = clock_cur_ms();
@@ -655,14 +663,18 @@ void *wifi_task(void *p)
                 {
                     wifi_if.connected = WincNetInterface::WIFI_CONNECTED;
 
-                    // spawn a ntp thread - TODO: cancel others on wifi disconnect
+                    // spawn a ntp thread - cancel others on wifi disconnect
+                    if(ntp_thread)
+                    {
+                        ntp_thread->Cleanup((void*)0);
+                        ntp_thread = nullptr;
+                    }
                     void *net_ntpc_thread(void *);
                     IP4Addr waddr = net_ip_get_address(&wifi_if);
                     extern Process p_net;
-                    auto tntp = Thread::Create("ntp", net_ntpc_thread, (void *)waddr.get(), true,
+                    ntp_thread = Thread::Create("ntp", net_ntpc_thread, (void *)waddr.get(), true,
                         GK_PRIORITY_NORMAL, p_net);
-                    (void)tntp;
-                    s().Schedule(tntp);
+                    Schedule(ntp_thread);
                 }
             }
 
