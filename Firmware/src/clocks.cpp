@@ -8,6 +8,8 @@ extern volatile uint64_t _cur_ms;
 extern struct timespec toffset;
 uint32_t SystemCoreClock = 0;
 
+static bool has_lse = false;
+
 time_t timegm (struct tm* tim_p);
 
 static void enable_backup_sram();
@@ -306,12 +308,23 @@ INTFLASH_FUNCTION void enable_backup_sram()
 
     // Enable LSE
     RCC->BDCR |= RCC_BDCR_LSEON;
-    while(!(RCC->BDCR & RCC_BDCR_LSERDY));
+    unsigned int tout = 0;
+    has_lse = true;
+    while(!(RCC->BDCR & RCC_BDCR_LSERDY))
+    {
+        tout++;
+        if(tout >= 1000000)
+        {
+            has_lse = false;
+            break;
+        }
+    }
 
     // Enable RTC to use LSE
+    uint32_t rtc_src = has_lse ? 1UL : 3UL;
     RCC->BDCR = (RCC->BDCR & ~RCC_BDCR_RTCSEL_Msk) |
         RCC_BDCR_RTCEN |
-        (1UL << RCC_BDCR_RTCSEL_Pos);
+        (rtc_src << RCC_BDCR_RTCSEL_Pos);
 
     RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
     (void)RCC->AHB4ENR;
@@ -338,9 +351,12 @@ extern "C" void clock_configure_backup_domain()
     RCC->APB4ENR |= RCC_APB4ENR_RTCAPBEN;
     (void)RCC->APB4ENR;
 
-    // Enable RTC to use HSE/32 (for now, pending actual set up with LSE in v2)
-    RCC->CFGR &= ~RCC_CFGR_RTCPRE_Msk;
-    RCC->CFGR |= (32UL << RCC_CFGR_RTCPRE_Pos);
+    // Enable RTC to use HSE/32
+    if(!has_lse)
+    {
+        RCC->CFGR &= ~RCC_CFGR_RTCPRE_Msk;
+        RCC->CFGR |= (32UL << RCC_CFGR_RTCPRE_Pos);
+    }
 
     // First check not already enabled (with valid VBAT should remain enabled)
     bool is_enabled = true;
@@ -354,6 +370,17 @@ extern "C" void clock_configure_backup_domain()
         __DMB();
         RTC->WPR = 0xca;
         RTC->WPR = 0x53;
+
+        // still need to update prescalers (in case of LSE failure)
+        RTC->ICSR |= RTC_ICSR_INIT;
+        while(!(RTC->ICSR & RTC_ICSR_INITF));
+        unsigned int adiv = has_lse ? 128 : 125;
+        unsigned int sdiv = has_lse ? 256 : 4000;
+        RTC->PRER = (adiv - 1) << RTC_PRER_PREDIV_A_Pos;
+        RTC->PRER = ((adiv - 1) << RTC_PRER_PREDIV_A_Pos) |
+            ((sdiv - 1) << RTC_PRER_PREDIV_S_Pos);
+        RTC->ICSR &= ~RTC_ICSR_INIT;
+
         RTC->ICSR &= ~RTC_ICSR_RSF;
         RTC->WPR = 0xff;
         //PWR->CR1 &= ~PWR_CR1_DBP;
@@ -495,8 +522,8 @@ int clock_set_rtc_from_timespec(const timespec *ts)
     RTC->WPR = 0x53;
     RTC->ICSR |= RTC_ICSR_INIT;
     while(!(RTC->ICSR & RTC_ICSR_INITF));
-    unsigned int adiv = 125;
-    unsigned int sdiv = 4000;
+    unsigned int adiv = has_lse ? 128 : 125;
+    unsigned int sdiv = has_lse ? 256 : 4000;
     RTC->PRER = (adiv - 1) << RTC_PRER_PREDIV_A_Pos;
     RTC->PRER = ((adiv - 1) << RTC_PRER_PREDIV_A_Pos) |
         ((sdiv - 1) << RTC_PRER_PREDIV_S_Pos);
