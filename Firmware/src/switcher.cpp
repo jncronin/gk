@@ -158,7 +158,9 @@ extern "C" void PendSV_Handler()
         "push { r0 }                \n"     // save curt for later
         "mrs r12, psp               \n"     // get psp
         "stmia r0!, { r12 }         \n"     // save psp to tss
-        "add r0, r0, #4             \n"     // skip saving control
+        "add r0, r0, #4             \n"     // skip saving control - nPRIV and SPSEL loaded from TSS, FPCA is inverse of LR & 0x10 on exception exit
+        //"mrs r12, control           \n"
+        //"stmia r0!, { r12 }         \n"
         "stmia r0!, { r4-r11, lr }  \n"     // save other regs
         
         "tst lr, #0x10              \n"     // FPU lazy store?
@@ -195,10 +197,10 @@ extern "C" void PendSV_Handler()
         "msr control, r12           \n"
         "ldmia r1!, { r4-r11, lr }  \n"
 
-        //"tst lr, #0x10              \n"     // FPU load only if lazy store
-        //"it eq                      \n"
-        //"vldmiaeq r1!, {s16-s31}    \n"
-        "vldmia r1!, {s16-s31}    \n"
+        "tst lr, #0x10              \n"     // FPU load only if lazy store
+        "it eq                      \n"
+        "vldmiaeq r1!, {s16-s31}    \n"
+        //"vldmia r1!, {s16-s31}    \n"
 
 #if GK_USE_IRQ_PRIORITIES
         "msr basepri, r3            \n"     // restore interrupts
