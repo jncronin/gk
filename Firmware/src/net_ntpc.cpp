@@ -107,7 +107,7 @@ void *net_ntpc_thread(void *p)
                     clock_get_timebase(&toffset);
                     toffset = toffset + tdiff;
                     clock_set_timebase(&toffset);
-                    clock_set_rtc_from_timespec(&ctime);
+                    clock_set_rtc_from_timespec(&ttstamp);
 
                     last_ntp_update = clock_cur();
                 }
