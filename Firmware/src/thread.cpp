@@ -175,7 +175,7 @@ Thread *Thread::Create(std::string name,
     
     /* Create mpu regions */
     memcpy(t->tss.mpuss, owning_process.p_mpu, sizeof(mpu_default));
-    if(owning_process.has_tls)
+    if(owning_process.has_tls && owning_process.p_mpu_tls_id < 16)
     {
         Process::mmap_region mmr_tls { .mr = t->mr_tls, .fd = -1, .is_read = true, .is_write = true, .is_exec = false, .is_sync = false };
         t->tss.mpuss[owning_process.p_mpu_tls_id] = mmr_tls.to_mpu(owning_process.p_mpu_tls_id);
