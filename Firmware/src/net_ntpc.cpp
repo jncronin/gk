@@ -116,5 +116,24 @@ void *net_ntpc_thread(void *p)
 
         // try again in a bit
         Block(clock_cur() + kernel_time::from_ms(10000));
+
+        // report deviations between system clock and rtc
+        timespec sysclk, rtc;
+        clock_get_now(&sysclk);
+        clock_get_timespec_from_rtc(&rtc);
+
+        {
+            char buf1[64], buf2[64];
+            auto t1 = localtime(&sysclk.tv_sec);
+            strftime(buf1, 63, "%F %T", t1);
+            auto t2 = localtime(&rtc.tv_sec);
+            strftime(buf2, 63, "%F %T", t2);
+
+            auto diff = sysclk - rtc;
+            klog("ntpc: sysclk: %s.%09d, rtc: %s.%09d, diff: %d.%09d\n",
+                buf1, sysclk.tv_nsec,
+                buf2, rtc.tv_nsec,
+                (long)diff.tv_sec, diff.tv_nsec);
+        }
     }
 }
