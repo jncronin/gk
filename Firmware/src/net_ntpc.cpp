@@ -35,71 +35,86 @@ void *net_ntpc_thread(void *p)
         return nullptr;
     }
 
+    kernel_time last_ntp_update;
+
     while(true)
     {
-        /* Send to time.windows.com = 51.145.123.29 */
-        IP4Addr ntp_server(51, 145, 123, 29);
-        struct sockaddr_in ntp_dest;
-        ntp_dest.sin_addr.s_addr = ntp_server.get();
-        ntp_dest.sin_family = AF_INET;
-        ntp_dest.sin_port = htons(123);
-
-        /* Build request packet */
-        uint32_t req[12];
-        req[0] = (3UL << 0) | (3UL << 3) | (3UL << 6) |  // NTPv3, client, unknown leap indicator
-            (0x11UL << 16) | // peer polling interval 131072 seconds
-            (0xeeUL << 24);  // clock precision -18 (~1 us)
-        req[1] = 0;
-        req[2] = 0x100;     // root dispersion
-        req[3] = 0;
-
-        req[4] = 0;
-        req[5] = 0;
-
-        req[6] = 0;
-        req[7] = 0;
-
-        req[8] = 0;
-        req[9] = 0;
-
-        timespec ctime;
-        clock_get_now(&ctime);
-
-        req[10] = htonl(ctime.tv_sec + UNIX_NTP_OFFSET);
-        req[11] = htonl((uint32_t)((((uint64_t)ctime.tv_nsec) * (uint64_t)std::numeric_limits<uint32_t>::max()) /
-            1000000000ULL));
-
-        auto sent = sendto(lsck, req, sizeof(req), 0, (sockaddr *)&ntp_dest, sizeof(ntp_dest));
-        klog("ntpc: sent %d bytes\n", sent);
-
-        /* Await response */
-        sockaddr_in dfrom;
-        socklen_t dfrom_len = sizeof(sockaddr_in);
-        auto received = recvfrom(lsck, req, sizeof(req), 0, (sockaddr *)&dfrom, &dfrom_len);
-        klog("ntpc: received %d bytes\n", received);
-        for(int i = 0; i < 12; i++)
+        if(!last_ntp_update.is_valid() || clock_cur() >= last_ntp_update + kernel_time::from_ms(1000 * 60 * 60))
         {
-            klog("ntpc: %02d: %08x\n", i, req[i]);
+            // update time every hour
+            /* Send to time.windows.com = 51.145.123.29 */
+            IP4Addr ntp_server(51, 145, 123, 29);
+            struct sockaddr_in ntp_dest;
+            ntp_dest.sin_addr.s_addr = ntp_server.get();
+            ntp_dest.sin_family = AF_INET;
+            ntp_dest.sin_port = htons(123);
+
+            /* Build request packet */
+            uint32_t req[12];
+            req[0] = (3UL << 0) | (3UL << 3) | (3UL << 6) |  // NTPv3, client, unknown leap indicator
+                (0x11UL << 16) | // peer polling interval 131072 seconds
+                (0xeeUL << 24);  // clock precision -18 (~1 us)
+            req[1] = 0;
+            req[2] = 0x100;     // root dispersion
+            req[3] = 0;
+
+            req[4] = 0;
+            req[5] = 0;
+
+            req[6] = 0;
+            req[7] = 0;
+
+            req[8] = 0;
+            req[9] = 0;
+
+            timespec ctime;
+            clock_get_now(&ctime);
+
+            req[10] = htonl(ctime.tv_sec + UNIX_NTP_OFFSET);
+            req[11] = htonl((uint32_t)((((uint64_t)ctime.tv_nsec) * (uint64_t)std::numeric_limits<uint32_t>::max()) /
+                1000000000ULL));
+
+            auto sent = sendto(lsck, req, sizeof(req), 0, (sockaddr *)&ntp_dest, sizeof(ntp_dest));
+            klog("ntpc: sent %d bytes\n", sent);
+
+            if(sent >= (ssize_t)sizeof(req))
+            {
+                /* Await response */
+                sockaddr_in dfrom;
+                socklen_t dfrom_len = sizeof(sockaddr_in);
+                auto received = recvfrom(lsck, req, sizeof(req), 0, (sockaddr *)&dfrom, &dfrom_len);
+                klog("ntpc: received %d bytes\n", received);
+                for(int i = 0; i < 12; i++)
+                {
+                    klog("ntpc: %02d: %08x\n", i, req[i]);
+                }
+
+                if(received >= (ssize_t)sizeof(req))
+                {
+                    timespec ttstamp;
+                    ttstamp.tv_sec = ntohl(req[10]) - UNIX_NTP_OFFSET;
+                    ttstamp.tv_nsec = (uint32_t)(((uint64_t)ntohl(req[11]) * 1000000000ULL) /
+                        (uint64_t)std::numeric_limits<uint32_t>::max());
+                    char buf[64];
+                    auto t = localtime(&ttstamp.tv_sec);
+                    strftime(buf, 63, "%F %T", t);
+                    klog("ntp: current time: %s\n", buf);
+
+                    // set our time to this - TODO ideally use round trip time etc, but we only want a couple
+                    //  of seconds accuracy for gk
+                    auto tdiff = ttstamp - ctime;
+                    timespec toffset;
+                    clock_get_timebase(&toffset);
+                    toffset = toffset + tdiff;
+                    clock_set_timebase(&toffset);
+                    clock_set_rtc_from_timespec(&ctime);
+
+                    last_ntp_update = clock_cur();
+                }
+            }
         }
 
-        timespec ttstamp;
-        ttstamp.tv_sec = ntohl(req[10]) - UNIX_NTP_OFFSET;
-        ttstamp.tv_nsec = (uint32_t)(((uint64_t)ntohl(req[11]) * 1000000000ULL) /
-            (uint64_t)std::numeric_limits<uint32_t>::max());
-        char buf[64];
-        auto t = localtime(&ttstamp.tv_sec);
-        strftime(buf, 63, "%F %T", t);
-        klog("ntp: current time: %s\n", buf);
-
-        // set our time to this - TODO ideally use round trip time etc, but we only want a couple
-        //  of seconds accuracy for gk
-        auto tdiff = ttstamp - ctime;
-        timespec toffset;
-        clock_get_timebase(&toffset);
-        toffset = toffset + tdiff;
-        clock_set_timebase(&toffset);
-        clock_set_rtc_from_timespec(&ctime);
-
+        // try again in a bit
         Block(clock_cur() + kernel_time::from_ms(10000));
     }
 }
