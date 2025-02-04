@@ -59,7 +59,7 @@ void system_init_cm7()
     {
         cm7_vtor[i] = orig_vtors[i];
     }
-    SCB->VTOR = (uint32_t)(uintptr_t)&cm7_vtor[0];
+    //SCB->VTOR = (uint32_t)(uintptr_t)&cm7_vtor[0];
 
     init_nvic();
 
