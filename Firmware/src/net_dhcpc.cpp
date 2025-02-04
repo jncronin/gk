@@ -401,7 +401,7 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
                         IP4Address gw_addr;
                         gw_addr.iface = dr.iface;
                         gw_addr.addr = 0UL;
-                        gw_addr.nm = 0xffffffffUL;
+                        gw_addr.nm = 0UL;
                         gw_addr.gw = gw;
 
                         IP4Route def_route;
