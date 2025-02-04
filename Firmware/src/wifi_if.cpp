@@ -654,6 +654,15 @@ void *wifi_task(void *p)
                 else
                 {
                     wifi_if.connected = WincNetInterface::WIFI_CONNECTED;
+
+                    // spawn a ntp thread - TODO: cancel others on wifi disconnect
+                    void *net_ntpc_thread(void *);
+                    IP4Addr waddr = net_ip_get_address(&wifi_if);
+                    extern Process p_net;
+                    auto tntp = Thread::Create("ntp", net_ntpc_thread, (void *)waddr.get(), true,
+                        GK_PRIORITY_NORMAL, p_net);
+                    (void)tntp;
+                    s().Schedule(tntp);
                 }
             }
 

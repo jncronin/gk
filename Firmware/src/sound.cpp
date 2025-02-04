@@ -93,6 +93,7 @@ static void pcm_mute_set(bool val)
 
 void init_sound()
 {
+    klog("sound: init\n");
     // pins
     SAI1_SCK_A.set_as_af();
     SAI1_SD_A.set_as_af();

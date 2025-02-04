@@ -75,6 +75,8 @@ void *usb_task(void *pvParams)
 {
     (void)pvParams;
 
+    klog("usb: thread starting\n");
+
 #if DEBUG_USB
     {
         CriticalGuard cg(s_rtt);

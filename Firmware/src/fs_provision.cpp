@@ -373,6 +373,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
 
 int fs_provision()
 {
+    klog("fs_provision: starting\n");
     // mount a read-only FatFS system from partition 0
     if(!prep_fake_mbr())
         return -1;

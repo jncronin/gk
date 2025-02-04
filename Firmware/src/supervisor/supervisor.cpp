@@ -73,6 +73,8 @@ void init_supervisor()
     p_supervisor.gamepad_to_scancode[GK_KEYVOLDOWN] = GK_SCANCODE_VOLUMEDOWN;
 
     memcpy(p_supervisor.p_mpu, mpu_default, sizeof(mpu_default));
+
+    klog("kernel: starting supervisor\n");
     
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
         p_supervisor, PreferM7);
