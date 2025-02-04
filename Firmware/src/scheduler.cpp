@@ -74,6 +74,15 @@ void Scheduler::Schedule(Thread *t)
     {
         CriticalGuard cg;
         tlist[prio].v.push_back(t);
+
+        klog("scheduler: thread added (%s), current threads:\n", t->name.c_str());
+        for(int i = 0; i < npriorities; i++)
+        {
+            for(const auto &ct : tlist[i].v)
+            {
+                klog("scheduler: prio %d: %s\n", i, ct->name.c_str());
+            }
+        }
     }
 }
 
