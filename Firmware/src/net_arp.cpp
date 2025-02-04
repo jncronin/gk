@@ -67,18 +67,30 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
         // if this is a reply, and we have the request, deal with any pending send packets
         if(oper == 2 && hw_target == pkt.iface->GetHwAddr())
         {
+            // build a local copy of the requests we need to process, so we can then unlock and
+            //  send them
+            std::vector<arp_request_and_send_data> local_cache;
+
             auto iter = arp_requests.begin();
             while(iter != arp_requests.end())
             {
                 if(iter->ip == ip_sender)
                 {
-                    iter->iface->SendEthernetPacket(iter->buf, iter->n, hw_sender, IPPROTO_IP, iter->release_buffer);
+                    local_cache.push_back(*iter);
+                    //iter->iface->SendEthernetPacket(iter->buf, iter->n, hw_sender, IPPROTO_IP, iter->release_buffer);
                     iter = arp_requests.erase(iter);
                 }
                 else
                 {
                     iter++;
                 }
+            }
+
+            // unlock here (e.g. winc driver may need to switch) then send
+            cg.~CriticalGuard();
+            for(const auto &areq : local_cache)
+            {
+                areq.iface->SendEthernetPacket(areq.buf, areq.n, hw_sender, IPPROTO_IP, areq.release_buffer);
             }
         }
         else if(oper == 1 && ip_target == net_ip_get_address(pkt.iface))
