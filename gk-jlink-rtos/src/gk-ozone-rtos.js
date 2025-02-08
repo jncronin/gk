@@ -2,6 +2,7 @@ var saddr;
 var ncores;
 var nscheds;
 var is_smp;
+var last_tottime;
 
 function init()
 {
@@ -14,6 +15,7 @@ function init()
     is_smp = Debug.evaluate("gk_is_smp");
     nscheds = is_smp ? 1 : ncores;
     saddr = new Array(nscheds);
+    last_tottime = 0;
     if(is_smp)
     {
         saddr[0] = Debug.evaluate("&sched");
@@ -273,7 +275,16 @@ function add_threads_for_scheduler(csaddr, tottime, coreid, curt, ncores)
 
                 if(tottime != undefined)
                 {
-                    time_str += " / " + (ttime * 100.0 / tottime).toFixed(2) + "%";
+                    time_str += " / " + (ttime * 100.0 / (tottime - last_tottime)).toFixed(2) + "%";
+                    var tustime_addr = Debug.evaluate("&((Thread *)" + t + ")->total_us_time");
+                    if(tustime_addr != undefined)
+                    {
+                        TargetInterface.pokeWord(tustime_addr, 0);
+                    }
+                    else
+                    {
+                        TargetInterface.message("cant get address");
+                    }
                 }
             }
 
@@ -361,6 +372,11 @@ function update()
             }
             add_threads_for_scheduler(saddr[i], tottime, core_name, curt, ncores);
         }
+    }
+
+    if(tottime != undefined)
+    {
+        last_tottime = tottime;
     }
 
     Threads.setColor("Status", "waiting", "exec core 0", "blocking");
