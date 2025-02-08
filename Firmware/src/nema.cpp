@@ -40,6 +40,23 @@ static nema_ringbuffer_t ring_buffer_str = {
 
 static Mutex m_nema[MUTEX_MAX + 1] = { 0 };
 
+bool nema_is_mutex(const Mutex *m)
+{
+    for(int i = 0; i < MUTEX_MAX + 1; i++)
+    {
+        if(m == &m_nema[i])
+            return true;
+    }
+    return false;
+}
+
+bool nema_is_sem(const UserspaceSemaphore *sem)
+{
+    if(sem == &sem_nema_irq)
+        return true;
+    return false;
+}
+
 void init_nema()
 {
     RCC->AHB5ENR |= RCC_AHB5ENR_GPU2DEN;
@@ -118,10 +135,10 @@ extern "C" void GPU2D_IRQHandler()
 
     if(isr_flags & GPU2D_FLAG_CLC)
     {
+        sem_nema_irq.post();
         /* Clear completion flag */
         nema_reg_write(GPU2D_ITCTRL, isr_flags & ~GPU2D_FLAG_CLC);
 
-        sem_nema_irq.post();
     }
     else
     {
