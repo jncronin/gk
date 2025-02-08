@@ -123,12 +123,20 @@ static bool check_mutex(pthread_mutex_t *mutex)
     auto ret = sync_primitive_exists(*(Mutex**)mutex, t->p.owned_mutexes, &t->p);
     if(!ret)
     {
-        klog("pthread: mutex %08x invalid (Mutex = %08x)\n",
-            (uint32_t)(uintptr_t)mutex,
-            (uint32_t)(uintptr_t)*(Mutex **)mutex);
+        bool nema_is_mutex(const Mutex *m);
+
+        if(!nema_is_mutex(*(Mutex **)mutex))
+        {
+            klog("pthread: mutex %08x invalid (Mutex = %08x)\n",
+                (uint32_t)(uintptr_t)mutex,
+                (uint32_t)(uintptr_t)*(Mutex **)mutex);
+        }
     }
     return ret;
 }
+
+bool nema_is_mutex(const Mutex *m);
+bool nema_is_sem(const UserspaceSemaphore *sem);
 
 static bool check_cond(pthread_cond_t *mutex)
 {
@@ -199,12 +207,12 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
 
 int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno)
 {
-    if(!check_mutex(mutex))
+    ADDR_CHECK_STRUCT_W(mutex);
+    if(!check_mutex(mutex) && !nema_is_mutex(*(Mutex **)mutex))
     {   
         *_errno = EINVAL;
         return -1;
     }
-    ADDR_CHECK_STRUCT_W(mutex);
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
 
@@ -230,12 +238,12 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
 
 int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)
 {
-    if(!check_mutex(mutex))
+    ADDR_CHECK_STRUCT_W(mutex);
+    if(!check_mutex(mutex) && !nema_is_mutex(*(Mutex **)mutex))
     {   
         *_errno = EINVAL;
         return -1;
     }
-    ADDR_CHECK_STRUCT_W(mutex);
 
     auto m = *reinterpret_cast<Mutex **>(mutex);
     if(m->unlock())
@@ -405,6 +413,9 @@ int syscall_sem_destroy(sem_t *sem, int *_errno)
         return -1;
     }
     ADDR_CHECK_STRUCT_W(sem);
+
+    if(nema_is_sem(sem->s))
+        return 0;
 
     int reason;
     if(!sem->s->try_delete(&reason))
