@@ -321,10 +321,12 @@ INTFLASH_FUNCTION void enable_backup_sram()
     }
 
     // Enable RTC to use LSE
-    uint32_t rtc_src = has_lse ? 1UL : 3UL;
-    RCC->BDCR = (RCC->BDCR & ~RCC_BDCR_RTCSEL_Msk) |
-        RCC_BDCR_RTCEN |
-        (rtc_src << RCC_BDCR_RTCSEL_Pos);
+    if(has_lse)
+    {
+        RCC->BDCR = (RCC->BDCR & ~RCC_BDCR_RTCSEL_Msk) |
+            RCC_BDCR_RTCEN |
+            (1UL << RCC_BDCR_RTCSEL_Pos);
+    }
 
     RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
     (void)RCC->AHB4ENR;
@@ -351,39 +353,39 @@ extern "C" void clock_configure_backup_domain()
     RCC->APB4ENR |= RCC_APB4ENR_RTCAPBEN;
     (void)RCC->APB4ENR;
 
-    // Enable RTC to use HSE/32
-    if(!has_lse)
-    {
-        RCC->CFGR &= ~RCC_CFGR_RTCPRE_Msk;
-        RCC->CFGR |= (32UL << RCC_CFGR_RTCPRE_Pos);
-    }
-
     // First check not already enabled (with valid VBAT should remain enabled)
     bool is_enabled = true;
     if(!(PWR->CSR1 & PWR_CSR1_BREN)) is_enabled = false;
     if(!(RCC->BDCR & RCC_BDCR_RTCEN)) is_enabled = false;
     if(!(RTC->ICSR & RTC_ICSR_INITS)) is_enabled = false;
+    unsigned int adiv = has_lse ? 128 : 125;
+    unsigned int sdiv = has_lse ? 256 : 4000;
+    if(RTC->PRER != (((adiv - 1) << RTC_PRER_PREDIV_A_Pos) |
+        ((sdiv - 1) << RTC_PRER_PREDIV_S_Pos)))
+        is_enabled = false;
+
     if(is_enabled)
     {
         // clear RSF flag
         PWR->CR1 |= PWR_CR1_DBP;
         __DMB();
-        RTC->WPR = 0xca;
-        RTC->WPR = 0x53;
 
-        // still need to update prescalers (in case of LSE failure)
-        RTC->ICSR |= RTC_ICSR_INIT;
-        while(!(RTC->ICSR & RTC_ICSR_INITF));
-        unsigned int adiv = has_lse ? 128 : 125;
-        unsigned int sdiv = has_lse ? 256 : 4000;
-        RTC->PRER = (adiv - 1) << RTC_PRER_PREDIV_A_Pos;
-        RTC->PRER = ((adiv - 1) << RTC_PRER_PREDIV_A_Pos) |
-            ((sdiv - 1) << RTC_PRER_PREDIV_S_Pos);
-        RTC->ICSR &= ~RTC_ICSR_INIT;
+        if(has_lse)
+        {
+            RTC->WPR = 0xca;
+            RTC->WPR = 0x53;
 
-        RTC->ICSR &= ~RTC_ICSR_RSF;
-        RTC->WPR = 0xff;
-        //PWR->CR1 &= ~PWR_CR1_DBP;
+            RTC->ICSR |= RTC_ICSR_INIT;
+            while(!(RTC->ICSR & RTC_ICSR_INITF));
+            RTC->PRER = (adiv - 1) << RTC_PRER_PREDIV_A_Pos;
+            RTC->PRER = ((adiv - 1) << RTC_PRER_PREDIV_A_Pos) |
+                ((sdiv - 1) << RTC_PRER_PREDIV_S_Pos);
+            RTC->ICSR &= ~RTC_ICSR_INIT;
+
+            RTC->ICSR &= ~RTC_ICSR_RSF;
+            RTC->WPR = 0xff;
+            //PWR->CR1 &= ~PWR_CR1_DBP;
+        }
 
         RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
         (void)RCC->AHB4ENR;
@@ -396,34 +398,12 @@ extern "C" void clock_configure_backup_domain()
         return;
     }
 
-    // Permit write access to backup domain - needed for write access to RTC, backup SRAM etc
-    PWR->CR1 |= PWR_CR1_DBP;
-    __DMB();
-
-    // Enable backup regulator
-    PWR->CSR1 |= PWR_CSR1_BREN;
-    while(!(PWR->CSR1 & PWR_CSR1_BRRDY));
-
-    // Enable LSE
-    RCC->BDCR |= RCC_BDCR_LSEON;
-    while(!(RCC->BDCR & RCC_BDCR_LSERDY));
-
-    // Enable RTC to use LSE
-    RCC->BDCR = (RCC->BDCR & ~RCC_BDCR_RTCSEL_Msk) |
-        RCC_BDCR_RTCEN |
-        (1UL << RCC_BDCR_RTCSEL_Pos);
-
-    // Disallow write access to backup domain
-    //PWR->CR1 &= ~PWR_CR1_DBP;
-
-    RCC->AHB4ENR |= RCC_AHB4ENR_BKPRAMEN;
-    (void)RCC->AHB4ENR;
-
     // Set up basic RTC time - changed later by network time or user
 
     // For now, default to the time of writing this file
     timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
     clock_set_rtc_from_timespec(&ct);
+    clock_set_timebase(&ct);
 }
 
 static constexpr unsigned int to_bcd(unsigned int val)
@@ -456,43 +436,52 @@ static constexpr unsigned int from_bcd(unsigned int val)
 
 int clock_get_timespec_from_rtc(timespec *ts)
 {
-    while(!(RTC->ICSR & RTC_ICSR_RSF));
-    unsigned int tr = 0, dr = 0;
-    while(true)
+    if(has_lse)
     {
-        tr = RTC->TR;
-        dr = RTC->DR;
+        while(!(RTC->ICSR & RTC_ICSR_RSF));
+        unsigned int tr = 0, dr = 0;
+        while(true)
+        {
+            tr = RTC->TR;
+            dr = RTC->DR;
 
-        auto tr2 = RTC->TR;
-        auto dr2 = RTC->DR;
+            auto tr2 = RTC->TR;
+            auto dr2 = RTC->DR;
 
-        if(tr2 == tr && dr2 == dr) break;
+            if(tr2 == tr && dr2 == dr) break;
+        }
+
+        tm ct;
+        ct.tm_hour = from_bcd((tr & (RTC_TR_HT_Msk | RTC_TR_HU_Msk)) >> RTC_TR_HU_Pos);
+        ct.tm_min = from_bcd((tr & (RTC_TR_MNT_Msk | RTC_TR_MNU_Msk)) >> RTC_TR_MNU_Pos);
+        ct.tm_sec = from_bcd((tr & (RTC_TR_ST_Msk | RTC_TR_SU_Msk)) >> RTC_TR_SU_Pos);
+        ct.tm_year = from_bcd((dr & (RTC_DR_YT_Msk | RTC_DR_YU_Msk)) >> RTC_DR_YU_Pos) + 100;
+        ct.tm_mon = from_bcd((dr & (RTC_DR_MT_Msk | RTC_DR_MU_Msk)) >> RTC_DR_MU_Pos) - 1;
+        ct.tm_wday = from_bcd((dr & (RTC_DR_WDU_Msk)) >> RTC_DR_WDU_Pos);
+        if(ct.tm_wday == 7) ct.tm_wday = 0;
+        ct.tm_mday = from_bcd((dr & (RTC_DR_DT_Msk | RTC_DR_DU_Msk)) >> RTC_DR_DU_Pos);
+        ct.tm_isdst = (RTC->CR & RTC_CR_BKP) ? 1 : 0;
+
+        static const unsigned int yday_upto[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+        ct.tm_yday = yday_upto[ct.tm_mon] + ct.tm_mday - 1;
+        if(ct.tm_mon > 1 &&
+            (ct.tm_year % 4 == 0 && (ct.tm_year % 100 != 0 || ct.tm_year % 400 == 0)))
+        {
+            ct.tm_yday++;
+        }
+
+        // convert to timespec
+        ts->tv_nsec = 0;
+        ts->tv_sec = timegm(&ct);
+        
+        return 0;
     }
-
-    tm ct;
-    ct.tm_hour = from_bcd((tr & (RTC_TR_HT_Msk | RTC_TR_HU_Msk)) >> RTC_TR_HU_Pos);
-    ct.tm_min = from_bcd((tr & (RTC_TR_MNT_Msk | RTC_TR_MNU_Msk)) >> RTC_TR_MNU_Pos);
-    ct.tm_sec = from_bcd((tr & (RTC_TR_ST_Msk | RTC_TR_SU_Msk)) >> RTC_TR_SU_Pos);
-    ct.tm_year = from_bcd((dr & (RTC_DR_YT_Msk | RTC_DR_YU_Msk)) >> RTC_DR_YU_Pos) + 100;
-    ct.tm_mon = from_bcd((dr & (RTC_DR_MT_Msk | RTC_DR_MU_Msk)) >> RTC_DR_MU_Pos) - 1;
-    ct.tm_wday = from_bcd((dr & (RTC_DR_WDU_Msk)) >> RTC_DR_WDU_Pos);
-    if(ct.tm_wday == 7) ct.tm_wday = 0;
-    ct.tm_mday = from_bcd((dr & (RTC_DR_DT_Msk | RTC_DR_DU_Msk)) >> RTC_DR_DU_Pos);
-    ct.tm_isdst = (RTC->CR & RTC_CR_BKP) ? 1 : 0;
-
-    static const unsigned int yday_upto[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
-    ct.tm_yday = yday_upto[ct.tm_mon] + ct.tm_mday - 1;
-    if(ct.tm_mon > 1 &&
-        (ct.tm_year % 4 == 0 && (ct.tm_year % 100 != 0 || ct.tm_year % 400 == 0)))
+    else
     {
-        ct.tm_yday++;
+        timespec ct { .tv_sec = 1720873685, .tv_nsec = 0 };
+        *ts = ct;
+        return 0;
     }
-
-    // convert to timespec
-    ts->tv_nsec = 0;
-    ts->tv_sec = timegm(&ct);
-    
-    return 0;
 }
 
 void clock_get_timebase(struct timespec *tp)
