@@ -250,8 +250,6 @@ SECTIONS
   .itcm 0x0 (NOLOAD) :
   {
     . = ALIGN(4);
-      *(.vtors)
-    *(.vtors*)
 
     _sitcm = .;       /* create a global symbol at ccmram start */
     *(.itcm)

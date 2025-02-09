@@ -5,7 +5,6 @@
 
 // there are up to 155 maskable interrupts on the NVIC, plus 16 interrupt lines, plus 1 word for stack pointer */
 const int nvtors = 155 + 16 + 1;
-__attribute__((aligned(1024))) __attribute__((section(".vtors"))) static uint32_t cm7_vtor[nvtors] = { 0 };
 
 extern int _ecm7_stack;
 
@@ -52,15 +51,6 @@ void system_init_cm7()
         RCC_AHB4ENR_GPIOOEN | RCC_AHB4ENR_GPIOPEN;
     (void)RCC->AHB4ENR;
    
-    // copy VTORs to ram
-    uint32_t *orig_vtors = (uint32_t *)0x08000000;
-    cm7_vtor[0] = (uint32_t)(uintptr_t)&_ecm7_stack;
-    for(int i = 1; i < nvtors; i++)
-    {
-        cm7_vtor[i] = orig_vtors[i];
-    }
-    //SCB->VTOR = (uint32_t)(uintptr_t)&cm7_vtor[0];
-
     init_nvic();
 
     // enable detection of CPU interrupt whilst in WFI state
