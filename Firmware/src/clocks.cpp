@@ -499,6 +499,9 @@ void clock_set_timebase(const struct timespec *tp)
 
 int clock_set_rtc_from_timespec(const timespec *ts)
 {
+    if(!has_lse)
+        return 0;
+    
     // Permit write access to backup domain - needed for write access to RTC, backup SRAM etc
     PWR->CR1 |= PWR_CR1_DBP;
     __DMB();
