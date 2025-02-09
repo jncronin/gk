@@ -178,6 +178,7 @@ void *proccreate_thread(void *ptr)
         ss->Signal();
         return nullptr;
     }
+    proc->need_to_free = true;
     proc->name = cpname;
     proc->heap = heap;
     proc->default_affinity = (CPUAffinity)core_affinity;

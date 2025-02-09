@@ -3,5 +3,6 @@
 
 void *usb_task(void *);
 void usb_init_chip_id();
+void usb_process_start();
 
 #endif

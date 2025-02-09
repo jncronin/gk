@@ -120,7 +120,8 @@ void cleanup(Process *p)
     delete_all_process_sync_primitives(p->owned_rwlocks, p);
     delete_all_process_sync_primitives(p->owned_semaphores, p);
 
-    delete p;
+    if(p->need_to_free)
+        delete p;
 
     RestoreInterrupts(cpsr);
 }

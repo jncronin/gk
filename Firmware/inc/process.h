@@ -185,6 +185,9 @@ class Process
         MemRegion mr_gtext = InvalidMemregion();
         size_t gtext_ptr = 0;
 
+        /* do we need to free() this? or is it statically allocated? */
+        bool need_to_free = false;
+
     protected:
         /* specific supervisor buttons */
         bool has_osd = false;
