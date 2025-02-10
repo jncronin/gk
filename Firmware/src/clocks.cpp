@@ -307,6 +307,7 @@ INTFLASH_FUNCTION void enable_backup_sram()
     while(!(PWR->CSR1 & PWR_CSR1_BRRDY));
 
     // Enable LSE
+#if GK_USE_LSE_RTC
     RCC->BDCR |= RCC_BDCR_LSEON;
     unsigned int tout = 0;
     has_lse = true;
@@ -319,6 +320,9 @@ INTFLASH_FUNCTION void enable_backup_sram()
             break;
         }
     }
+#else
+    has_lse = false;
+#endif
 
     // Enable RTC to use LSE
     if(has_lse)

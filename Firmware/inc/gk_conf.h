@@ -16,6 +16,7 @@
 #define GK_DUAL_CORE                0
 #define GK_USE_CACHE                1
 #define GK_USE_MPU                  1
+#define GK_USE_LSE_RTC              0
 #define GK_EXT_READONLY             0
 #define GK_EXT_USE_JOURNAL          0
 #define GK_SD_USE_HS_MODE           1
