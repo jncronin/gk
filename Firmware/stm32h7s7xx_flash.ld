@@ -385,6 +385,13 @@ SECTIONS
     tilt_pos = .;
     LONG(0);
     LONG(0);
+    tilt_raw = .;
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    LONG(0);
+    LONG(0);
 
     *(.rtcregs)
     *(.rtcregs*)
