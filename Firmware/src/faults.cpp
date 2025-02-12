@@ -251,7 +251,56 @@ INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
     if(r_addr >= 0x24020000U && r_addr < 0x24072000U) r_valid = true;
     if(r_addr >= 0x30000000U && r_addr < 0x30008000U) r_valid = true;
     if(r_addr >= 0x90000000U && r_addr < 0x98000000U) r_valid = true;
-    if(!r_valid) BKPT();
+
+    if(!r_valid)
+    {
+        klog("%s at %x called from %x\n"
+            "\n"
+            "Process: %s (0x%08x - 0x%08x)\n"
+            "Thread: %s (0x%08x - 0x%08x)\n"
+            "cfsr:  0x%08x        hfsr:  0x%08x\n"
+            "mmfar: 0x%08x\n"
+            "\n"
+            "saved reg addr is invalid: %08x\n",
+            fault_type, r->r->ret_addr, r->r->lr,
+            pname, p->code_data.address, p->code_data.address + p->code_data.length,
+            tname, t->stack.address, t->stack.address + t->stack.length,
+            *(volatile uint32_t *)0xe000ed28, *(volatile uint32_t *)0xe000ed2c,
+            *(volatile uint32_t *)0xe000ed34,
+            r_addr);
+        if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+            __BKPT();
+        return;
+    }
+
+    auto r_r_addr = (uint32_t)(uintptr_t)r->r;
+    bool r_r_valid = false;
+    if(r_r_addr > 0 && r_r_addr < 0x30000U) r_valid = true;
+    if(r_r_addr >= 0x20000000U && r_r_addr < 0x20030000U) r_r_valid = true;
+    if(r_r_addr >= 0x24020000U && r_r_addr < 0x24072000U) r_r_valid = true;
+    if(r_r_addr >= 0x30000000U && r_r_addr < 0x30008000U) r_r_valid = true;
+    if(r_r_addr >= 0x90000000U && r_r_addr < 0x98000000U) r_r_valid = true;
+
+    if(!r_r_valid)
+    {
+        klog("%s at %x called from %x\n"
+            "\n"
+            "Process: %s (0x%08x - 0x%08x)\n"
+            "Thread: %s (0x%08x - 0x%08x)\n"
+            "cfsr:  0x%08x        hfsr:  0x%08x\n"
+            "mmfar: 0x%08x\n"
+            "\n"
+            "saved reg addr->aapcs_regs is invalid: %08x->%08x\n",
+            fault_type, r->r->ret_addr, r->r->lr,
+            pname, p->code_data.address, p->code_data.address + p->code_data.length,
+            tname, t->stack.address, t->stack.address + t->stack.length,
+            *(volatile uint32_t *)0xe000ed28, *(volatile uint32_t *)0xe000ed2c,
+            *(volatile uint32_t *)0xe000ed34,
+            r_addr, r_r_addr);
+        if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+            __BKPT();
+        return;
+    }
 
     klog("%s at %x called from %x\n"
         "\n"
