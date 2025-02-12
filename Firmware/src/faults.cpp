@@ -21,11 +21,30 @@
 #include "process.h"
 #include "cleanup.h"
 
+#define xstr(s) str(s)
+#define str(s) #s
+
 #define FAULT_BREAK     1
 #ifdef FAULT_BREAK
-#define _FAULT_BREAK    "bkpt           \n"
+#if FAULT_BREAK == 2
+#define _FAULT_BREAK    __asm__ volatile ( "bkpt           \n" ::: "memory" );
 #else
-#define _FAULT_BREAK    ""
+/* Determine if we are attached to a debugger */
+#define _FAULT_BREAK    __asm__ volatile ( \
+    "push   { r0, r1 }          \n"     \
+    "ldr    r0, [pc, #12]       \n"     \
+    "movs   r1, #1              \n"     \
+    "ands   r0, r1              \n"     \
+    "pop    { r0, r1 }          \n"     \
+    "beq.n  .L0%=               \n"     \
+    "bkpt   0x0000              \n"     \
+    "b.n    .L0%=               \n"     \
+    ".word  0xe000edf0          \n"     \
+    ".L0%=:                     \n"     \
+    ::: "memory");
+#endif
+#else
+#define _FAULT_BREAK    
 #endif
 
 struct gk_aapcs_regs
@@ -71,8 +90,8 @@ extern "C" void NMI_Handler() __attribute__((naked));
 
 extern "C" INTFLASH_FUNCTION void HardFault_Handler()
 {
+    _FAULT_BREAK
     __asm__ volatile(
-        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -94,8 +113,8 @@ extern "C" INTFLASH_FUNCTION void HardFault_Handler()
 
 extern "C" INTFLASH_FUNCTION void MemManage_Handler()
 {
+    _FAULT_BREAK
     __asm__ volatile(
-        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -117,8 +136,8 @@ extern "C" INTFLASH_FUNCTION void MemManage_Handler()
 
 extern "C" INTFLASH_FUNCTION void BusFault_Handler()
 {
+    _FAULT_BREAK
     __asm__ volatile(
-        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -140,8 +159,8 @@ extern "C" INTFLASH_FUNCTION void BusFault_Handler()
 
 extern "C" INTFLASH_FUNCTION void UsageFault_Handler()
 {
+    _FAULT_BREAK
     __asm__ volatile(
-        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
@@ -163,8 +182,8 @@ extern "C" INTFLASH_FUNCTION void UsageFault_Handler()
 
 extern "C" INTFLASH_FUNCTION void NMI_Handler()
 {
+    _FAULT_BREAK
     __asm__ volatile(
-        _FAULT_BREAK
         "push { lr }        \n"
         "push { r4-r11 }    \n"
         "mov r0, lr         \n"
