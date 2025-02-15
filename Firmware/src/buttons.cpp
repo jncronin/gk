@@ -426,7 +426,7 @@ double temp_get_core()
     calib_130C *= 16;
 
     /* Interpolate between 30C and 100C */
-    double temp = ((double)adc_vals[2] - (double)calib_30C) / ((double)(calib_130C - calib_30C));
+    double temp = ((double)adc_vals[2] - (double)calib_30C) / ((double)calib_130C - (double)calib_30C);
     temp = temp * 100.0 + 30.0;
 
     return temp;
