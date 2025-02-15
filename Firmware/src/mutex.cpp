@@ -141,6 +141,11 @@ void BinarySemaphore::Signal()
     ss.Signal();
 }
 
+void BinarySemaphore::Clear()
+{
+    ss.Signal(SimpleSignal::Set, 0);
+}
+
 bool BinarySemaphore::Wait(kernel_time tout)
 {
     return ss.Wait(SimpleSignal::Set, 0, tout) != 0;

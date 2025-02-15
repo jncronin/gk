@@ -518,6 +518,7 @@ void wifi_handler(uint8 eventCode, void *p_eventData)
                     switch(state->u8CurrState)
                     {
                         case M2M_WIFI_CONNECTED:
+                            m2m_wifi_set_sleep_mode(M2M_PS_DEEP_AUTOMATIC, 1);
                             wifi_if.connected = WincNetInterface::WIFI_AWAIT_IP;
                             klog("WIFI Connected\n");
 
@@ -628,9 +629,10 @@ void *wifi_task(void *p)
                 klog("WIFI state: %d\n", wifi_if.connected);
                 old_state = ws;
             }
-            if(ws != WincNetInterface::WIFI_UNINIT && wifi_if.request_deactivate)
+            if(ws != WincNetInterface::WIFI_UNINIT && (wifi_if.request_activate || wifi_if.request_deactivate))
             {
-                // deactivate the interface
+                // for either activate or deactivate, if already activated deactivate first
+                //  activate is picked up later
                 wifi_if.request_deactivate = false;
 
                 if(ws == WincNetInterface::WIFI_CONNECTED)
@@ -680,7 +682,11 @@ void *wifi_task(void *p)
         
                 if(m2m_wifi_init(&wip) == M2M_SUCCESS)
                 {
+                    wifi_irq.Clear();
                     NVIC_EnableIRQ(EXTI4_IRQn);
+                    if(WIFI_IRQ.value() == false)
+                        wifi_irq.Signal();
+                    
                     wifi_if.connected = WincNetInterface::WIFI_DISCONNECTED;
 
                     uint8 hwaddr_ap[6], hwaddr_sta[6];

@@ -118,6 +118,7 @@ class BinarySemaphore
         bool Wait(kernel_time tout = kernel_time());
         bool WaitOnce(kernel_time tout = kernel_time());
         void Signal();
+        void Clear();
         bool Value();
 };
 
