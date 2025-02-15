@@ -174,6 +174,11 @@ sint8 nm_bus_init(void *)
 
 sint8 nm_bus_deinit()
 {
+    WIFI_NRST.clear();
+    WIFI_CHIP_EN.clear();
+
+    klog("net: wifi bus deinit\n");
+
     return 0;
 }
 
@@ -641,6 +646,7 @@ void *wifi_task(void *p)
                 }
 
                 wifi_if.connected = WincNetInterface::WIFI_UNINIT;
+                wifi_if.scan_in_progress = false;
             }
             if(ws == WincNetInterface::WIFI_UNINIT && wifi_if.request_activate)
             {
@@ -671,9 +677,17 @@ void *wifi_task(void *p)
                     }
                 }
             }
-            if(ws == WincNetInterface::WIFI_DISCONNECTED && !wifi_if.scan_in_progress)
+            if(ws == WincNetInterface::WIFI_DISCONNECTED)
             {
-                wifi_connect();
+                if(wifi_if.scan_in_progress && clock_cur_ms() >= last_scan_time + 1000ULL)
+                {
+                    wifi_if.scan_in_progress = false;
+                }
+
+                if(!wifi_if.scan_in_progress)
+                {
+                    wifi_connect();
+                }
             }
             if(ws == WincNetInterface::WIFI_AWAIT_IP)
             {
