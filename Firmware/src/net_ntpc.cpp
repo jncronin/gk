@@ -7,21 +7,25 @@
 
 const unsigned long UNIX_NTP_OFFSET = 3124137599 - 915148799;
 
-void *net_ntpc_thread(void *p)
+void *net_ntpc_thread(void *_p)
 {
+    auto p = reinterpret_cast<struct net_ntpc_thread_params *>(_p);
+
     in_addr_t my_addr = 0;
-    if(p)
+    if(p && p->myaddr.get())
     {
         my_addr = reinterpret_cast<in_addr_t>(p);
     }
 
-    int lsck = socket(AF_INET, SOCK_DGRAM, 0);
+    int lsck = (p && p->sockfd && *p->sockfd >= 0) ? *p->sockfd : socket(AF_INET, SOCK_DGRAM, 0);
     if(lsck < 0)
     {
         CriticalGuard cg;
         klog("ntpc: socket failed %d\n", errno);
         return nullptr;
     }
+    if(p && p->sockfd) *p->sockfd = lsck;
+    if(p) delete p;
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;

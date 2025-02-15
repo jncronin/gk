@@ -42,6 +42,10 @@ static void *net_thread(void *_params)
                     net_ip_handle_set_ip_address(m);
                     break;
 
+                case net_msg::net_msg_type::DeleteIPAddressForIface:
+                    net_ip_handle_delete_ip_address_for_iface(m);
+                    break;
+
                 case net_msg::net_msg_type::SendSocketData:
                     m.msg_data.socketdata.sck->SendPendingData();
                     break;

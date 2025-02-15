@@ -145,6 +145,7 @@ struct net_msg
         SetIPAddress,
         ArpRequestAndSend,
         HandleWaitingReads,
+        DeleteIPAddressForIface,
     };
 
     net_msg_type msg_type;
@@ -478,6 +479,7 @@ int net_bind_udpsocket(UDPSocket *sck);
 int net_bind_tcpsocket(TCPSocket *sck);
 
 int net_set_ip_address(const IP4Address &ip);
+int net_delete_ip_address_for_iface(const NetInterface *iface);
 
 /* comparison/hash functions for sockaddr_in */
 struct sockaddr_pair
@@ -571,6 +573,7 @@ int net_ret_to_errno(int ret);
 void net_udp_handle_recvfrom(const net_msg &m);
 void net_udp_handle_sendto(const net_msg &m);
 void net_ip_handle_set_ip_address(const net_msg &m);
+void net_ip_handle_delete_ip_address_for_iface(const net_msg &m);
 
 size_t net_ip_get_addresses(IP4Address *out, size_t naddrs, const NetInterface *iface = nullptr);
 IP4Addr net_ip_get_address(const NetInterface *iface);
@@ -616,5 +619,13 @@ void net_tcp_handle_sendto(const net_msg &m);
 int net_dhcpc_begin_for_iface(NetInterface *iface);
 
 std::vector<std::pair<std::string, std::string>> net_get_known_networks();
+
+struct net_ntpc_thread_params
+{
+    IP4Addr myaddr;
+    int *sockfd;
+};
+
+void *net_ntpc_thread(void *p);
 
 #endif

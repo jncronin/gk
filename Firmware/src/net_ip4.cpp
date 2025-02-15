@@ -206,6 +206,26 @@ void net_ip_handle_set_ip_address(const net_msg &m)
     ourips.push_back(m.msg_data.ipaddr);
 }
 
+int net_delete_ip_address_for_iface(const NetInterface *iface)
+{
+    net_msg m;
+    m.msg_type = net_msg::net_msg_type::DeleteIPAddressForIface;
+    m.msg_data.ipaddr.iface = (NetInterface *)iface;
+    return net_queue_msg(m);
+}
+
+void net_ip_handle_delete_ip_address_for_iface(const net_msg &m)
+{
+    CriticalGuard cg(s_ips);
+    for(auto iter = ourips.begin(); iter != ourips.end();)
+    {
+        if(iter->iface == m.msg_data.ipaddr.iface)
+            iter = ourips.erase(iter);
+        else
+            iter++;
+    }
+}
+
 size_t net_ip_get_addresses(IP4Address *out, size_t nout, const NetInterface *iface)
 {
     CriticalGuard cg(s_ips);

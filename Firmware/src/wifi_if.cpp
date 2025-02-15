@@ -2,6 +2,7 @@
 #include <bsp/include/nm_bsp.h>
 #include <bus_wrapper/include/nm_bus_wrapper.h>
 #include <driver/include/m2m_wifi.h>
+#include <unistd.h>
 
 #include "thread.h"
 #include "scheduler.h"
@@ -594,6 +595,7 @@ void *wifi_task(void *p)
     uint64_t last_scan_time = 0ULL;
 
     Thread *ntp_thread = nullptr;
+    int ntp_socket = -1;
 
     while(true)
     {
@@ -618,6 +620,11 @@ void *wifi_task(void *p)
                     ntp_thread->Cleanup((void*)0);
                     ntp_thread = nullptr;
                 }
+                if(ntp_socket != -1)
+                {
+                    close(ntp_socket);
+                    ntp_socket = -1;
+                }
 
                 m2m_wifi_request_scan(M2M_WIFI_CH_13);
                 wifi_if.scan_in_progress = true;
@@ -638,6 +645,7 @@ void *wifi_task(void *p)
                 if(ws == WincNetInterface::WIFI_CONNECTED)
                 {
                     net_ip_delete_routes_for_iface(&wifi_if);
+                    net_delete_ip_address_for_iface(&wifi_if);
                     m2m_wifi_disconnect();
                 }
                 m2m_wifi_deinit(nullptr);
@@ -646,6 +654,11 @@ void *wifi_task(void *p)
                 {
                     ntp_thread->Cleanup((void*)0);
                     ntp_thread = nullptr;
+                }
+                if(ntp_socket != -1)
+                {
+                    close(ntp_socket);
+                    ntp_socket = -1;
                 }
 
                 if(wifi_if.last_receive_buf)
@@ -656,10 +669,13 @@ void *wifi_task(void *p)
 
                 wifi_if.connected = WincNetInterface::WIFI_UNINIT;
                 wifi_if.scan_in_progress = false;
+                nm_bsp_interrupt_ctrl(0);
             }
             if(ws == WincNetInterface::WIFI_UNINIT && wifi_if.request_activate)
             {
                 wifi_if.request_activate = false;
+
+                nm_bsp_interrupt_ctrl(0);
 
                 if(wifi_if.last_receive_buf)
                 {
@@ -725,10 +741,20 @@ void *wifi_task(void *p)
                         ntp_thread->Cleanup((void*)0);
                         ntp_thread = nullptr;
                     }
+                    if(ntp_socket != -1)
+                    {
+                        close(ntp_socket);
+                        ntp_socket = -1;
+                    }
+
                     void *net_ntpc_thread(void *);
                     IP4Addr waddr = net_ip_get_address(&wifi_if);
+
+                    auto ntp_params = new net_ntpc_thread_params();
+                    ntp_params->myaddr = waddr;
+                    ntp_params->sockfd = &ntp_socket;
                     extern Process p_net;
-                    ntp_thread = Thread::Create("ntp", net_ntpc_thread, (void *)waddr.get(), true,
+                    ntp_thread = Thread::Create("ntp", net_ntpc_thread, (void *)ntp_params, true,
                         GK_PRIORITY_NORMAL, p_net);
                     Schedule(ntp_thread);
                 }
