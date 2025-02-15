@@ -15,11 +15,15 @@ class WincNetInterface : public NetInterface
         friend void *wifi_task(void *);
         friend void wifi_handler(uint8 eventCode, void *p_eventData);
 
+        bool request_activate = false;
+        bool request_deactivate = false;
+
     public:
         const HwAddr &GetHwAddr() const;
         bool GetLinkActive() const;
         int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
             bool release_buffer);
+        int SetLinkActive(bool active);
 
         enum state { WIFI_UNINIT = 0, WIFI_DISCONNECTED, WIFI_CONNECTING, WIFI_AWAIT_IP, WIFI_CONNECTED };
         state         connected = WIFI_UNINIT;

@@ -576,6 +576,7 @@ size_t net_ip_get_addresses(IP4Address *out, size_t naddrs, const NetInterface *
 IP4Addr net_ip_get_address(const NetInterface *iface);
 int net_ip_get_route_for_address(const IP4Addr &addr, IP4Route *route);
 int net_ip_add_route(const IP4Route &route);
+int net_ip_delete_routes_for_iface(const NetInterface *iface);
 
 bool net_udp_decorate_packet(char *data, size_t datalen,
     const IP4Addr &dest, uint16_t dest_port,

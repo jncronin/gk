@@ -333,6 +333,23 @@ int net_ip_add_route(const IP4Route &route)
     return NET_OK;
 }
 
+int net_ip_delete_routes_for_iface(const NetInterface *iface)
+{
+    CriticalGuard cg(s_routes);
+    for(auto iter = routes.begin(); iter != routes.end();)
+    {
+        if(iter->addr.iface == iface)
+        {
+            iter = routes.erase(iter);
+        }
+        else
+        {
+            iter++;
+        }
+    }
+    return 0;
+}
+
 static int net_ip_get_route_for_address_int(const IP4Addr &addr, IP4Route *route)
 {
     const IP4Route *best_route = nullptr;

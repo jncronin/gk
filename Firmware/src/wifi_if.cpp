@@ -622,8 +622,30 @@ void *wifi_task(void *p)
                 klog("WIFI state: %d\n", wifi_if.connected);
                 old_state = ws;
             }
-            if(ws == WincNetInterface::WIFI_UNINIT)
+            if(ws != WincNetInterface::WIFI_UNINIT && wifi_if.request_deactivate)
             {
+                // deactivate the interface
+                wifi_if.request_deactivate = false;
+
+                if(ws == WincNetInterface::WIFI_CONNECTED)
+                {
+                    net_ip_delete_routes_for_iface(&wifi_if);
+                    m2m_wifi_disconnect();
+                }
+                m2m_wifi_deinit(nullptr);
+
+                if(ntp_thread)
+                {
+                    ntp_thread->Cleanup((void*)0);
+                    ntp_thread = nullptr;
+                }
+
+                wifi_if.connected = WincNetInterface::WIFI_UNINIT;
+            }
+            if(ws == WincNetInterface::WIFI_UNINIT && wifi_if.request_activate)
+            {
+                wifi_if.request_activate = false;
+
                 tstrWifiInitParam wip;
                 memset(&wip, 0, sizeof(wip));
                 wip.pfAppWifiCb = wifi_handler;
@@ -683,6 +705,19 @@ void *wifi_task(void *p)
             winc_mutex.unlock();
         }
     }
+}
+
+int WincNetInterface::SetLinkActive(bool active)
+{
+    if(active)
+    {
+        wifi_if.request_activate = true;
+    }
+    else
+    {
+        wifi_if.request_deactivate = true;
+    }
+    return 0;
 }
 
 const HwAddr &WincNetInterface::GetHwAddr() const
