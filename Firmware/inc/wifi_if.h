@@ -14,9 +14,12 @@ class WincNetInterface : public NetInterface
         bool scan_in_progress = false;
         friend void *wifi_task(void *);
         friend void wifi_handler(uint8 eventCode, void *p_eventData);
+        friend void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf); 
 
         bool request_activate = false;
         bool request_deactivate = false;
+
+        char *last_receive_buf = nullptr;
 
     public:
         const HwAddr &GetHwAddr() const;

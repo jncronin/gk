@@ -434,7 +434,7 @@ sint8 nm_spi_rw(uint8* p_txBuf, uint8* p_rxBuf, uint16 txrxLen)
     return 0;
 }
 
-static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
+void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
 {
     switch(msgType)
     {
@@ -481,6 +481,7 @@ static void eth_handler(uint8 msgType, void *pvMsg, void *pvCtrlBuf)
                     if(new_prio)
                         s().ChangePriority(t, new_prio, old_prio);
                 }
+                wifi_if.last_receive_buf = newbuf;
                 m2m_wifi_set_receive_buffer(newbuf, PBUF_SIZE);
                 pkt_offset = 0;
             }
@@ -645,6 +646,12 @@ void *wifi_task(void *p)
                     ntp_thread = nullptr;
                 }
 
+                if(wifi_if.last_receive_buf)
+                {
+                    net_deallocate_pbuf(wifi_if.last_receive_buf);
+                    wifi_if.last_receive_buf = nullptr;
+                }
+
                 wifi_if.connected = WincNetInterface::WIFI_UNINIT;
                 wifi_if.scan_in_progress = false;
             }
@@ -652,11 +659,18 @@ void *wifi_task(void *p)
             {
                 wifi_if.request_activate = false;
 
+                if(wifi_if.last_receive_buf)
+                {
+                    net_deallocate_pbuf(wifi_if.last_receive_buf);
+                    wifi_if.last_receive_buf = nullptr;
+                }
+
                 tstrWifiInitParam wip;
                 memset(&wip, 0, sizeof(wip));
                 wip.pfAppWifiCb = wifi_handler;
                 wip.strEthInitParam.pfAppEthCb = eth_handler;
                 wip.strEthInitParam.au8ethRcvBuf = reinterpret_cast<uint8 *>(net_allocate_pbuf(PBUF_SIZE));
+                wifi_if.last_receive_buf = (char *)wip.strEthInitParam.au8ethRcvBuf;
                 if(!wip.strEthInitParam.au8ethRcvBuf)
                 {
                     Yield();
