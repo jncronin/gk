@@ -246,9 +246,9 @@ INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
 
     auto r_addr = (uint32_t)(uintptr_t)r;
     bool r_valid = false;
-    if(r_addr > 0 && r_addr < 0x30000U) r_valid = true;
+    if(r_addr > 0 && r_addr < 0x10000U) r_valid = true;
     if(r_addr >= 0x20000000U && r_addr < 0x20030000U) r_valid = true;
-    if(r_addr >= 0x24020000U && r_addr < 0x24072000U) r_valid = true;
+    if(r_addr >= 0x24000000U && r_addr < 0x24072000U) r_valid = true;
     if(r_addr >= 0x30000000U && r_addr < 0x30008000U) r_valid = true;
     if(r_addr >= 0x90000000U && r_addr < 0x98000000U) r_valid = true;
 
@@ -275,9 +275,9 @@ INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
 
     auto r_r_addr = (uint32_t)(uintptr_t)r->r;
     bool r_r_valid = false;
-    if(r_r_addr > 0 && r_r_addr < 0x30000U) r_valid = true;
+    if(r_r_addr > 0 && r_r_addr < 0x10000U) r_valid = true;
     if(r_r_addr >= 0x20000000U && r_r_addr < 0x20030000U) r_r_valid = true;
-    if(r_r_addr >= 0x24020000U && r_r_addr < 0x24072000U) r_r_valid = true;
+    if(r_r_addr >= 0x24000000U && r_r_addr < 0x24072000U) r_r_valid = true;
     if(r_r_addr >= 0x30000000U && r_r_addr < 0x30008000U) r_r_valid = true;
     if(r_r_addr >= 0x90000000U && r_r_addr < 0x98000000U) r_r_valid = true;
 
