@@ -40,8 +40,8 @@ static const constexpr coord_t btn_overlay_h = 208;
 static const constexpr coord_t btn_overlay_y = 480 - btn_overlay_h;
 static const constexpr coord_t status_h = 32;
 
-ButtonWidget rw_test, rw_test2;
 ImageButtonWidget imb_bright_up, imb_bright_down;
+ButtonWidget btn_wifi;
 GridWidget scr_overlay, scr_status, scr1, scr2;
 LabelWidget lab_caption;
 KeyboardWidget kw;
@@ -178,6 +178,12 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
     }
 }
 
+static void btn_wifi_click(Widget *w, coord_t x, coord_t y)
+{
+    extern WincNetInterface wifi_if;
+    wifi_if.SetLinkActive(!wifi_if.GetLinkActive());
+}
+
 void kbd_click_up(Widget *w, coord_t x, coord_t y, int key, bool is_shift, bool is_ctrl, bool is_alt)
 {
     if(is_shift)
@@ -258,6 +264,14 @@ void *supervisor_thread(void *p)
     imb_bright_up.img_h = 64;
     imb_bright_up.OnClick = imb_brightness_click;
     scr1.AddChildOnGrid(imb_bright_up);
+
+    btn_wifi.x = imb_bright_up.x + imb_bright_up.w + 32;
+    btn_wifi.w = 80;
+    btn_wifi.y = 64;
+    btn_wifi.h = 80;
+    btn_wifi.text = "Wifi";
+    btn_wifi.OnClick = btn_wifi_click;
+    scr1.AddChildOnGrid(btn_wifi);
 
     // Screen 2 is an on-screen keyboard
     cur_scr += 640;
