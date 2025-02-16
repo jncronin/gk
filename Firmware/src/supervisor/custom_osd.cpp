@@ -485,9 +485,14 @@ static unsigned short _str_to_key(const std::string &s)
     SK(GK_SCANCODE_APP2);
     SK(GK_SCANCODE_APPLICATION);
     SK(GK_SCANCODE_PAUSE);
+    SK(GK_SCANCODE_ESCAPE);
     SK(GK_MODIFIER_SHIFT);
     SK(GK_MODIFIER_CTRL);
     SK(GK_MODIFIER_ALT);
+
+    /* Interpret as integer */
+    return atoi(s.c_str());
+    
     return 0;
 }
 
