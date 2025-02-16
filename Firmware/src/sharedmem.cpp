@@ -75,7 +75,7 @@ SharedMemoryGuard::SharedMemoryGuard(const void *_start, size_t _len, bool will_
             end = (end + 0x1fU) & ~0x1fU;
             len = end - start;
         }
-        __BKPT();
+        BKPT_IF_DEBUGGER();
         if(will_write)
         {
 

@@ -167,10 +167,7 @@ int main()
 #endif
 
     btnled_setcolor_init(0xffff00);
-    if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
-    {
-        BKPT();
-    }
+    BKPT_IF_DEBUGGER();
     btnled_setcolor_init(0xff00ff);
 
     system_init_cm7();
@@ -194,19 +191,19 @@ int main()
     if((uint32_t)(uintptr_t)_tls_pointers != GK_TLS_POINTER_ADDRESS)
     {
         klog("kernel: _tls_pointers[] is invalid\n");
-        __BKPT();
+        BKPT_OR_RESET();
         while(true);
     }
     if((uint32_t)(uintptr_t)&_cur_ms != GK_CUR_MS_ADDRESS)
     {
         klog("kernel: _cur_ms is invalid\n");
-        BKPT();
+        BKPT_OR_RESET();
         while(true);
     }
     if((uint32_t)(uintptr_t)&toffset != GK_TOFFSET_ADDRESS)
     {
         klog("kernel: toffset is invalid\n");
-        BKPT();
+        BKPT_OR_RESET();
         while(true);
     }
 
@@ -254,8 +251,6 @@ int main()
     SysTick->CTRL = 0;
     SysTick->VAL = 0;
     SysTick->LOAD = 7680000UL - 1UL;    // 20 ms tick at 384 MHz
-
-    //BKPT();
 
     // Recheck IO compensation cell calibration
     SBS->CCSWVALR = SBS->CCVALR;

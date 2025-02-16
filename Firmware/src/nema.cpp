@@ -142,7 +142,7 @@ extern "C" void GPU2D_IRQHandler()
     }
     else
     {
-        BKPT();
+        BKPT_IF_DEBUGGER();
     }
     __DMB();
 }

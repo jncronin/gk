@@ -288,7 +288,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         xspi_ind_read(XSPI1, 4, 0, &id0);
         if(id0 != (uint_xspi)0x0f860f86U)
         {
-            __asm__ volatile("bkpt \n" ::: "memory");
+            BKPT_OR_RESET();
         }
     }
 
@@ -344,11 +344,11 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
 
     if(cr0 != new_cr0)
     {
-        __asm__ volatile ("bkpt \n" ::: "memory");
+        BKPT_OR_RESET();
     }
     if(cr1 != new_cr1)
     {
-        __asm__ volatile ("bkpt \n" ::: "memory");
+        BKPT_OR_RESET();
     }
 
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -359,72 +359,10 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->WCCR |= XSPI_WCCR_DQSE;
 
-    // Perform a indirect mode memory test
-    /*while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->DCR1 = (XSPI1->DCR1 & ~XSPI_DCR1_MTYP_Msk) | (4U << XSPI_DCR1_MTYP_Pos);
-    const uint32_t test_max = 0x10000U;
-    static uint32_t i = 0;
-    for(i = 0; i < test_max; i += 4)
-    {
-        uint_xspi val = i;
-        xspi_ind_write(XSPI1, xspi_mult, i, &val);
-    }*/
-    /*for(i = 0; i < test_max; i += 4)
-    {
-        static uint32_t j = 0;
-        xspi_ind_read(XSPI1, 4, i, &j);
-        if(i != j) __BKPT();
-    }*/
-
     // set higher interface speed with wrap enabled
     while(XSPI1->SR & XSPI_SR_BUSY);
     XSPI1->DCR2 = (3UL << XSPI_DCR2_WRAPSIZE_Pos) |     // 16 byte hybrid read per chip = 32 bytes at XSPI interface
         (1UL << XSPI_DCR2_PRESCALER_Pos);               
-
-
-    // XSPI timing calibration in memory mode
-    /*while(XSPI1->SR & XSPI_SR_BUSY);
-    XSPI1->DCR1 = (XSPI1->DCR1 & ~XSPI_DCR1_MTYP_Msk) | (4U << XSPI_DCR1_MTYP_Pos);
-    uint32_t tst_data[2];
-    tst_data[0] = 0x11223344;
-    tst_data[1] = 0x55667788;
-    xspi_ind_write(XSPI1, sizeof(tst_data), 0, tst_data);
-    static int errs[0x20] = { 0 };
-
-    for(unsigned int coarse = 0; coarse < 0x1fU; coarse++)
-    {
-        while(XSPI1->SR & XSPI_SR_BUSY);
-        XSPI1->CALSIR = (coarse << XSPI_CALSIR_COARSE_Pos);
-
-        errs[coarse] = 0;
-        for(int i = 0; i < 1024*32; i++)
-        {
-            uint32_t recv_data[sizeof(tst_data)/sizeof(uint32_t)];
-            xspi_ind_read(XSPI1, sizeof(recv_data), 0, recv_data);
-            for(unsigned int j = 0; j < sizeof(tst_data)/sizeof(uint32_t); j++)
-            {
-                if(recv_data[j] != tst_data[j])
-                {
-                    errs[coarse]++;
-                    break;
-                }
-            }
-        }
-    }
-
-    while(XSPI1->SR & XSPI_SR_BUSY);
-    auto coarse = (XSPI1->CALFCR & XSPI_CALFCR_COARSE_Msk) >> XSPI_CALFCR_COARSE_Pos;
-    auto fine = (XSPI1->CALFCR & XSPI_CALFCR_FINE_Msk) >> XSPI_CALFCR_FINE_Pos;
-    XSPI1->CALMR = (coarse/4) << XSPI_CALMR_COARSE_Pos |
-        (fine/4) << XSPI_CALMR_FINE_Pos;
-    */
-
-    // Fixed CALSOR - standard for 150 MHz clock seems to be 0x80003
-    //  increase a bit to deal with second chip write errors
-    //while(XSPI1->SR & XSPI_SR_BUSY);
-    //XSPI1->CALSOR = 0x8000f;
-    //while(XSPI1->SR & XSPI_SR_BUSY);
-    //XSPI1->CALSIR = 0x8000f;
 
     // set XSPI1 to memory mapped mode
     while(XSPI1->SR & XSPI_SR_BUSY);
@@ -488,7 +426,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
     auto aspr = xspi_ind_read16(XSPI2, 0);
     if(aspr & (1U << 11))
     {    
-        if(aspr != 0xfeffU) __BKPT();
+        if(aspr != 0xfeffU) BKPT_IF_DEBUGGER();
 
         // Enable hybrid burst
         xspi_ind_write16(XSPI2, 0, 0xa0);
@@ -497,7 +435,7 @@ extern "C" INTFLASH_FUNCTION int init_xspi()
         delay_ms(5);
 
         // Check
-        if(xspi_ind_read16(XSPI2, 0) != (aspr & 0xf7ffU)) __BKPT();
+        if(xspi_ind_read16(XSPI2, 0) != (aspr & 0xf7ffU)) BKPT_OR_RESET();
     }
 
     // Exit

@@ -394,7 +394,7 @@ int syscall_cacheflush(void *addr, size_t len, int is_exec, int *_errno)
         {
             if(srd != 0x81U)
             {
-                BKPT();     // not supported
+                BKPT_IF_DEBUGGER();     // not supported
                 c_len = 0;
             }
 

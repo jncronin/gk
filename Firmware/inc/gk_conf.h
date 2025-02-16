@@ -83,6 +83,18 @@
 #define BKPT() \
     __asm__ volatile("bkpt \n" ::: "memory")
 
+#define DEBUGGER_ATTACHED() (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
+
+#define BKPT_IF_DEBUGGER() \
+    do { \
+        if(DEBUGGER_ATTACHED()) BKPT(); \
+    } while(0)
+
+#define BKPT_OR_RESET() \
+    do { \
+        if(DEBUGGER_ATTACHED()) BKPT(); else SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ_Msk; \
+    } while(0)
+
 #define DEBUG_FULLQUEUE     0
 
 #endif

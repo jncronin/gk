@@ -336,7 +336,7 @@ bool Thread::addr_is_valid(const void *addr, size_t len, bool for_write) const
             {
                 if(srd != 0x81U)
                 {
-                    BKPT();     // not supported
+                    BKPT_IF_DEBUGGER();     // not supported
                     c_len = 0;
                 }
 

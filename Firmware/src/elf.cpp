@@ -563,7 +563,7 @@ int elf_load_fildes(int fd,
                     // for now...
                     klog("elf: cannot deal with target from %d yet\n", r_type);
                     target = orig_reloc_val;
-                    BKPT();
+                    BKPT_IF_DEBUGGER();
                     break;
             }
 
@@ -618,7 +618,7 @@ int elf_load_fildes(int fd,
 
                 case R_ARM_TLS_LE12:
                     // unsupported
-                    BKPT();
+                    BKPT_IF_DEBUGGER();
                     break;
 
                 case R_ARM_PREL31:
@@ -627,7 +627,7 @@ int elf_load_fildes(int fd,
                         auto new_val = old_val & 0x80000000U;
                         new_val |= ((target - src) & 0x7fffffffU);
                         *(volatile uint32_t *)src = new_val;
-                        //if(new_val != old_val) BKPT();
+                        //if(new_val != old_val) BKPT_IF_DEBUGGER();
                     }
                     break;
 
@@ -637,7 +637,7 @@ int elf_load_fildes(int fd,
                         [[maybe_unused]] auto old_val = *(volatile uint32_t *)src;
                         auto new_val = target - src;
                         *(volatile uint32_t *)src = new_val;
-                        //if(new_val != old_val) BKPT();
+                        //if(new_val != old_val) BKPT_IF_DEBUGGER();
                     }
                     break;
 
@@ -664,7 +664,7 @@ int elf_load_fildes(int fd,
                         {
                             klog("elf: hot reloc: can fit in current reloc\n");
                             // TODO
-                            BKPT();
+                            BKPT_IF_DEBUGGER();
                         }
                         else
                         {
@@ -710,7 +710,7 @@ int elf_load_fildes(int fd,
                             if(new_adjust > 16777214U)
                             {
                                 klog("elf: new trampoline too far from BL instruction!\n");
-                                BKPT();
+                                BKPT_IF_DEBUGGER();
                                 // TODO cleanup
                                 return -1;
                             }
@@ -747,7 +747,7 @@ int elf_load_fildes(int fd,
                                     // unsupported for now
                                     klog("elf: unsupported trampoline reloc type\n");
                                     // TODO cleanup
-                                    BKPT();
+                                    BKPT_IF_DEBUGGER();
                                     return -1;
                             }
                         }

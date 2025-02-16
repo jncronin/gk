@@ -111,7 +111,7 @@ int klog(const char *format, ...)
     CriticalGuard cg(s_log);
     auto cur_us = clock_cur_us();
     if(cur_us < _last_us)
-        BKPT();
+        BKPT_IF_DEBUGGER();
     auto ret = fprintf(stderr, "[%llu]: ", cur_us);
     va_list args;
     va_start(args, format);

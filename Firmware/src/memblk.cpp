@@ -356,7 +356,7 @@ void memblk_deallocate(MemRegion &r)
     if(!r.valid)
         return;
 
-    if(r.address == 0x60000000) BKPT();
+    if(r.address == 0x60000000) BKPT_IF_DEBUGGER();
     
     BuddyEntry be;
     be.base = r.address;

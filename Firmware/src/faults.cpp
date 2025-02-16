@@ -205,7 +205,7 @@ extern "C" INTFLASH_FUNCTION void NMI_Handler()
 
 extern "C" INTFLASH_FUNCTION void FPU_IRQHandler()
 {
-    BKPT();
+    BKPT_OR_RESET();
     while(true);
 }
 
@@ -237,7 +237,7 @@ INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
         ((XSPI1->CR & XSPI_CR_FMODE_Msk) != (3U << XSPI_CR_FMODE_Pos)))
     {
         // hard fault prior to XSPI init
-        BKPT();
+        BKPT_OR_RESET();
     }
     auto t = GetCurrentThreadForCore();
     auto p = t ? &t->p : nullptr;
@@ -268,8 +268,7 @@ INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
             *(volatile uint32_t *)0xe000ed28, *(volatile uint32_t *)0xe000ed2c,
             *(volatile uint32_t *)0xe000ed34,
             r_addr);
-        if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
-            __BKPT();
+        BKPT_IF_DEBUGGER();
         return;
     }
 
@@ -297,8 +296,7 @@ INTFLASH_FUNCTION static void log_regs(gk_regs *r, const char *fault_type)
             *(volatile uint32_t *)0xe000ed28, *(volatile uint32_t *)0xe000ed2c,
             *(volatile uint32_t *)0xe000ed34,
             r_addr, r_r_addr);
-        if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
-            __BKPT();
+        BKPT_IF_DEBUGGER();
         return;
     }
 
@@ -361,20 +359,8 @@ static void handle_fault()
     {
         klog("Kernel process faulted.  System cannot be recovered.  Logs may be available in /kernel_fault.txt\n");
         log_freeze_persistent_log();
-
-        /*if(CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk)
-        {
-            while(true)
-            {
-                __asm__ volatile ( "bkpt \n" ::: "memory");
-            }
-        }
-        else*/
-        {
-            // trigger reset
-            __BKPT();
-            //SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ_Msk ;
-        }
+        // trigger reset
+        BKPT_OR_RESET();
     }
     else if(p)
     {
@@ -403,7 +389,7 @@ static void handle_fault()
         else
         {
             // trigger reset
-            BKPT();
+            BKPT_OR_RESET();
             //SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) | SCB_AIRCR_SYSRESETREQ_Msk;
         }
     }

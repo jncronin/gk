@@ -247,7 +247,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
     if(act_name == "/dev/ttyUSB0")
     {
-        BKPT();
+        BKPT_IF_DEBUGGER();
 #if 0
         if(is_opendir)
         {
