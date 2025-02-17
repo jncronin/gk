@@ -351,10 +351,12 @@ int syscall_setwindowtitle(const char *title, int *_errno)
     }
     ADDR_CHECK_BUFFER_R(title, 1);
 
+    auto len = std::min(std::strlen(title), (size_t)GK_MAX_WINDOW_TITLE);
+
     auto &p = GetCurrentThreadForCore()->p;
     {
         CriticalGuard c_p(p.sl);
-        p.window_title = std::string(title, GK_MAX_WINDOW_TITLE);
+        p.window_title = std::string(title, len);
         p.events.Push({ .type = Event::CaptionChange });
     }
     extern Process p_supervisor;
