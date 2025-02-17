@@ -64,7 +64,7 @@ void *lsm_thread(void *param)
                     {
                         // enable
                         //LSM6DSL_ACC_GYRO_W_ODR_G(nullptr, LSM6DSL_ACC_GYRO_ODR_G_104Hz);
-                        LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_104Hz);
+                        LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_26Hz);
                     }
                 }
                 else
@@ -150,7 +150,7 @@ void *lsm_thread(void *param)
                     focus_process->HandleTiltEvent(joy_x, joy_y);
 
                     {
-                        klog("lsm6dsl: %d,%d\n", (int)joy_x, (int)joy_y);
+                        klog("lsm6dsl: %d,%d raw y: %f\n", (int)joy_x, (int)joy_y, roll);
                     }
                 }
             }
