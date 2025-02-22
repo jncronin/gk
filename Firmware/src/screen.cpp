@@ -19,7 +19,7 @@ SRAM4_DATA static Spinlock s_scrbuf_overlay;
 SRAM4_DATA static void *scr_bufs_overlay[2] = { 0, 0 };
 SRAM4_DATA static int scr_cbuf_overlay = 0;
 
-SRAM4_DATA static int scr_brightness = 0;
+RTCREG_DATA static int scr_brightness;
 
 SRAM4_DATA Condition scr_vsync;
 
@@ -662,7 +662,8 @@ void init_screen()
     TIM2->BDTR = TIM_BDTR_MOE;
     TIM2->CR1 = TIM_CR1_CEN;
 
-    screen_set_brightness(100);
+    klog("screen: scr_brightness: %d\n", scr_brightness);
+    screen_set_brightness(screen_get_brightness());
 }
 
 //__attribute__((section(".sram4"))) static bool led_set = false;
@@ -693,19 +694,23 @@ static unsigned int pct_to_arr(int pct, unsigned int arr)
     return pct * (arr - 1) / 100;
 }
 
-void screen_set_brightness(int pct)
+void screen_set_brightness(int pct, bool save)
 {
     if(pct < 0) pct = 0;
     if(pct > 100) pct = 100;
     
     auto arr = pct_to_arr(pct, TIM2->ARR);
     TIM2->CCR1 = arr;
-    scr_brightness = pct;
+
+    if(save)
+        scr_brightness = pct + 1;
 }
 
 int screen_get_brightness()
 {
-    return scr_brightness;
+    if(scr_brightness >= 1 && scr_brightness <= 101)
+        return scr_brightness - 1;
+    else return 100;
 }
 
 screen_hardware_scale screen_get_hardware_scale_horiz()
