@@ -103,8 +103,11 @@ static void pcm1753_write(const uint16_t *d, size_t n)
 
 static void pcm_mute_set(bool val)
 {
-    uint16_t pcmreg = val ? 0x1203U : 0x1200U;
-    pcm1753_write(&pcmreg, 1);
+    uint16_t pcmregs[] = {
+        pcm1753_volume_left(val ? 0U : sound_get_volume()),
+        pcm1753_volume_right(val ? 0U : sound_get_volume())
+    };
+    pcm1753_write(pcmregs, sizeof(pcmregs) / sizeof(uint16_t));
     klog("sound: pcm_mute(%s)\n", val ? "true" : "false");
 }
 
@@ -159,9 +162,8 @@ void init_sound()
         0x1300,         // enable both DACs
         0x1404,         // I2S format
         0x1606,         // single ZEROA pin
-        pcm1753_volume_left(sound_get_volume()),
-        pcm1753_volume_right(sound_get_volume()),
-        0x1203,         // mute both
+        pcm1753_volume_left(0),     // mute both
+        pcm1753_volume_right(0),
     };
     pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
 
