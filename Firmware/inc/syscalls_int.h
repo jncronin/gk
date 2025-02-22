@@ -126,6 +126,40 @@ int syscall_get_ienv(char *bufout, size_t buflen, unsigned int idx, int *_errno)
 int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
     void *nema_rb, sem_t *nema_irq_sem, pthread_mutex_t *eof_mutex, int *_errno);
 
+static inline int deferred_return(int ret, int _errno, kernel_time until)
+{
+    if(ret == -1)
+    {
+        //errno = _errno;
+        return ret;
+    }
+    if(ret == -2)
+    {
+        // deferred return
+        auto t = GetCurrentThreadForCore();
+        if(t->ss.Wait(SimpleSignal::Set, 0, until))
+        {
+            if(t->ss_p.ival1 == -1)
+            {
+                //errno = t->ss_p.ival2;
+                return -1;
+            }
+            else
+            {
+                return t->ss_p.ival1;
+            }
+        }
+        else
+        {
+            if(clock_cur() >= until)
+            {
+                return -4;
+            }
+        }
+    }
+    return ret;
+}
+
 static inline int deferred_return(int ret, int _errno)
 {
     if(ret == -1)
