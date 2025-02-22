@@ -110,11 +110,12 @@ int syscall_ftruncate(int file, off_t length, int *_errno)
     return p.open_files[file]->Ftruncate(length, _errno);
 }
 
-int get_free_fildes(Process &p)
+int get_free_fildes(Process &p, int start_fd)
 {
     // try and get free process file handle
     int fd = -1;
-    for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
+    if(start_fd < 0) start_fd = 0;
+    for(int i = start_fd; i < GK_MAX_OPEN_FILES; i++)
     {
         if(p.open_files[i] == nullptr)
         {

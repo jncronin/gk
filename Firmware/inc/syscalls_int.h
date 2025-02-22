@@ -15,7 +15,7 @@ struct sem_t
     UserspaceSemaphore *s;
 };
 
-int get_free_fildes(Process &p);
+int get_free_fildes(Process &p, int start_fd = 0);
 
 int syscall_fstat(int file, struct stat *st, int *_errno);
 int syscall_write(int file, char *buf, int nbytes, int *_errno);

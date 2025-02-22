@@ -38,6 +38,7 @@ static uint16_t get_wnd_size();
 
 int net_handle_tcp_packet(const IP4Packet &pkt)
 {
+#if 0
     {
         CriticalGuard cg;
         klog("net: tcp: received packet:\n");
@@ -47,6 +48,7 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
         }
         klog("\n");
     }
+#endif
 
     auto src_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[0]);
     auto dest_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[2]);
@@ -192,6 +194,9 @@ int TCPSocket::handle_closed(bool orderly)
             }
         }
     }
+
+    klog("tcp: socket closed %s:%u orderly = %s\n",
+        bound_addr.ToString().c_str(), ntohs(port), orderly ? "true" : "false");
 
     return NET_OK;
 }
@@ -432,7 +437,7 @@ int TCPSocket::CloseAsync(int *_errno)
         // need to send fin, and await fin/ack
         net_tcp_send_empty_msg(peer_addr, peer_port,
             my_seq_start + n_data_sent,
-            peer_seq_start + n_data_received,
+            0,
             bound_addr, port, FLAG_FIN, 0);
         state = tcp_socket_state_t::FinWait1;
         ms_fin_sent = clock_cur_ms();
@@ -507,6 +512,7 @@ int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
             if(bound_tcp_sockets.find(any_addr) != bound_tcp_sockets.end())
             {
                 *_errno = EADDRINUSE;
+                klog("tcp: cannot bind: IPADDR_ANY bound for %u\n", ntohs(saddr.sin_port));
                 return -1;
             }
         }
@@ -514,9 +520,14 @@ int TCPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
         {
             // already bound
             // TODO: handle REUSEADDR/REUSEPORT
+            klog("tcp: cannot bind: already bound %s:%u\n", IP4Addr(saddr.sin_addr.s_addr).ToString().c_str(),
+                ntohs(saddr.sin_port));
             *_errno = EADDRINUSE;
             return -1;
         }
+
+        klog("tcp: bound %s:%u, process %s\n", IP4Addr(saddr.sin_addr.s_addr).ToString().c_str(),
+            ntohs(saddr.sin_port), GetCurrentThreadForCore()->p.name.c_str());
 
         state = Closed;
         bound_tcp_sockets[saddr] = this;
@@ -589,7 +600,7 @@ int TCPSocket::PairConnectAccept(const pending_accept_req &req,
     {
         CriticalGuard cg(p.sl);
 
-        fildes = get_free_fildes(p);
+        fildes = get_free_fildes(p, 3);     // don't get STDIN/OUT/ERR_FILENO
         if(fildes == -1)
         {
             __errno = EMFILE;
@@ -741,8 +752,17 @@ bool TCPSocket::SendToInt(const net_msg &m)
     
     CriticalGuard cg(sl);
 
-    // split into packets
     const auto &msg = m.msg_data.tcpsend;
+
+    if(state != Established)
+    {
+        msg.t->ss_p.ival1 = -1;
+        msg.t->ss_p.ival2 = ENOTCONN;
+        msg.t->ss.Signal();
+        return false;
+    }
+
+    // split into packets
     unsigned int n_sent = 0;
     while(n_sent < msg.n)
     {
@@ -940,6 +960,9 @@ void net_tcp_handle_timeouts()
 
     for(auto &cs : connected_sockets)
     {
+        if(cs.second->state != TCPSocket::Established)
+            continue;
+        
         auto sck = cs.second;
 
         CriticalGuard cg2(sck->sl);

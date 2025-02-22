@@ -220,9 +220,8 @@ static void end_process(Process &p)
     }
 
     p.rc = 0;
-    p.for_deletion = true;
 
-    proc_list.DeleteProcess(p.pid, 0);
+    //proc_list.DeleteProcess(p.pid, 0);
 
     CleanupQueue.Push({ .is_thread = false, .p = &p });
 

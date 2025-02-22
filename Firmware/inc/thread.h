@@ -48,6 +48,7 @@ class Thread
         int base_priority;
 
         bool for_deletion = 0;          /* do we need to delete the thread at next task switch? */
+        bool cleanup_done = false;
         void *retval;
 
         MemRegion stack;

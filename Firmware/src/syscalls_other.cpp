@@ -326,9 +326,9 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
             pt->set_is_blocking(true);
         }
 
-        p->for_deletion = true;
+        p->rc = 0;
 
-        proc_list.DeleteProcess(pid, 0);
+        //proc_list.DeleteProcess(pid, 0);
 
         extern CleanupQueue_t CleanupQueue;
         CleanupQueue.Push({ .is_thread = false, .p = p });
