@@ -282,8 +282,43 @@ static void *file_logger_task(void *param)
 {
     int fno = -1;
     const char log_fname[] = "/syslog";
+    const char log_fname_old[] = "/syslog.prev";
 
     while(!fs_provision_complete.Wait());
+
+    // first try and copy any existing syslog to the previous file
+    auto fno_syslog_cur = deferred_call(syscall_open, log_fname, O_RDONLY, 0);
+    if(fno_syslog_cur >= 0)
+    {
+        auto fno_syslog_prev = deferred_call(syscall_open, log_fname_old, O_WRONLY | O_CREAT | O_TRUNC, 0);
+        if(fno_syslog_prev)
+        {
+            static char flog_buf[512];
+
+            while(true)
+            {
+                auto br = deferred_call(syscall_read, fno_syslog_cur, flog_buf, sizeof(flog_buf));
+                if(br > 0)
+                {
+                    auto bw = deferred_call(syscall_write, fno_syslog_prev, flog_buf, br);
+                    if(bw != br)
+                    {
+                        klog("log: error writing syslog to syslog.prev\n");
+                        break;
+                    }
+                }
+                else if(br == 0)
+                    break;
+                else
+                {
+                    klog("log: error reading from syslog\n");
+                }
+            }
+
+            close(fno_syslog_prev);
+        }
+        close(fno_syslog_cur);
+    }
 
     while(fno < 0)
     {
