@@ -620,11 +620,6 @@ void *wifi_task(void *p)
                     ntp_thread->Cleanup((void*)0);
                     ntp_thread = nullptr;
                 }
-                if(ntp_socket != -1)
-                {
-                    close(ntp_socket);
-                    ntp_socket = -1;
-                }
 
                 m2m_wifi_request_scan(M2M_WIFI_CH_13);
                 wifi_if.scan_in_progress = true;
@@ -654,11 +649,6 @@ void *wifi_task(void *p)
                 {
                     ntp_thread->Cleanup((void*)0);
                     ntp_thread = nullptr;
-                }
-                if(ntp_socket != -1)
-                {
-                    close(ntp_socket);
-                    ntp_socket = -1;
                 }
 
                 if(wifi_if.last_receive_buf)
@@ -740,11 +730,6 @@ void *wifi_task(void *p)
                     {
                         ntp_thread->Cleanup((void*)0);
                         ntp_thread = nullptr;
-                    }
-                    if(ntp_socket != -1)
-                    {
-                        close(ntp_socket);
-                        ntp_socket = -1;
                     }
 
                     void *net_ntpc_thread(void *);

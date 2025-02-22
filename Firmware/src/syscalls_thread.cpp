@@ -860,4 +860,38 @@ int syscall_get_pthread_dtors(size_t *len, dtor_t *dtors, void **vals, int *_err
     return 0;
 }
 
+int syscall_pthread_cleanup_push(void (*routine)(void *), void *arg, int *_errno)
+{
+    ADDR_CHECK_BUFFER_R((void *)routine, 4);
 
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg(t->sl);
+    
+    t->cleanup_list.push_back({ .routine = routine, .arg = arg });
+
+    return 0;
+}
+
+int syscall_pthread_cleanup_pop(int execute, int *_errno)
+{
+    auto t = GetCurrentThreadForCore();
+    Thread::cleanup_handler ch { 0 };
+    {
+        CriticalGuard cg(t->sl);
+        if(t->cleanup_list.size() > 0)
+        {
+            ch = t->cleanup_list.back();
+            t->cleanup_list.pop_back();
+        }
+    }
+    if(execute && ch.routine)
+    {
+        // TODO: pass the function to execute back to the calling thread, if not privileged
+        if(t->is_privileged)
+        {
+            ch.routine(ch.arg);
+        }
+    }
+
+    return 0;
+}

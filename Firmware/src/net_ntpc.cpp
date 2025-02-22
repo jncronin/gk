@@ -7,6 +7,15 @@
 
 const unsigned long UNIX_NTP_OFFSET = 3124137599 - 915148799;
 
+static void ntpc_thread_cleanup(void *p)
+{
+    klog("ntpc: cleanup\n");
+    if(p)
+    {
+        close((int)p);
+    }
+}
+
 void *net_ntpc_thread(void *_p)
 {
     auto p = reinterpret_cast<struct net_ntpc_thread_params *>(_p);
@@ -26,6 +35,9 @@ void *net_ntpc_thread(void *_p)
     }
     if(p && p->sockfd) *p->sockfd = lsck;
     if(p) delete p;
+    int syscall_pthread_cleanup_push(void (*)(void *), void *, int *);
+    int _errno;
+    syscall_pthread_cleanup_push(ntpc_thread_cleanup, (void *)lsck, &_errno);
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
@@ -36,6 +48,7 @@ void *net_ntpc_thread(void *_p)
     if(ret < 0)
     {
         klog("ntpc: bind failed %d\n", errno);
+        close(lsck);
         return nullptr;
     }
 

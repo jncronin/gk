@@ -542,6 +542,9 @@ namespace std
 }
 
 /* socket interface for kernel threads */
+#ifdef __cplusplus
+extern "C" {
+#endif
 int     accept(int, struct sockaddr *, socklen_t *);
 int     bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int     connect(int, const struct sockaddr *, socklen_t);
@@ -562,6 +565,10 @@ int     shutdown(int, int);
 int     sockatmark(int);
 int     socket(int domain, int type, int protocol);
 int     socketpair(int, int, int, int [2]);
+int     close(int);
+#ifdef __cplusplus
+}
+#endif
 
 
 /* kernel threads which handle some services */

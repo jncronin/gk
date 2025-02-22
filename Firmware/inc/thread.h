@@ -78,6 +78,14 @@ class Thread
         Thread *join_thread = nullptr;
         void **join_thread_retval;
 
+        /* pthread cleanup handlers - not fully implemented - need to run in process userspace context */
+        struct cleanup_handler
+        {
+            void (*routine)(void *);
+            void *arg;
+        };
+        std::vector<cleanup_handler> cleanup_list;
+
         /* thread times */
         uint64_t cur_timeslice_start = 0ULL;
         uint64_t total_s_time = 0ULL;

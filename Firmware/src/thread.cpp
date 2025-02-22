@@ -20,38 +20,58 @@ Thread::Thread(Process &owning_process) : p(owning_process) {}
 
 void Thread::Cleanup(void *tretval)
 {
-    CriticalGuard cg;
-    for_deletion = true;
-    retval = tretval;
-
-    // signal any thread waiting on a join
-    if(join_thread)
     {
-        if(join_thread_retval)
-            *join_thread_retval = tretval;
-        join_thread->ss_p.ival1 = 0;
-        join_thread->ss.Signal();
-        join_thread->blocking_on = nullptr;
-        join_thread->is_blocking = false;
-        join_thread->block_until = kernel_time();
-
-        join_thread = nullptr;
+        CriticalGuard cg(sl);
+        for_deletion = true;
     }
 
-    // remove us from the process' thread list
+    if(is_privileged)
     {
-        CriticalGuard cg2;
-        auto iter = p.threads.begin();
-        while(iter != p.threads.end())
+        // execute any cleanup handlers - may task switch here
+        for(auto iter = cleanup_list.rbegin(); iter != cleanup_list.rend(); iter++)
         {
-            if(*iter == this)
-                iter = p.threads.erase(iter);
-            else
-                iter++;
+            if(iter->routine)
+            {
+                iter->routine(iter->arg);
+            }
         }
+        cleanup_list.clear();
     }
 
-    CleanupQueue.Push({ .is_thread = true, .t = this });
+    {
+        CriticalGuard cg(sl);
+            
+        retval = tretval;
+
+        // signal any thread waiting on a join
+        if(join_thread)
+        {
+            if(join_thread_retval)
+                *join_thread_retval = tretval;
+            join_thread->ss_p.ival1 = 0;
+            join_thread->ss.Signal();
+            join_thread->blocking_on = nullptr;
+            join_thread->is_blocking = false;
+            join_thread->block_until = kernel_time();
+
+            join_thread = nullptr;
+        }
+
+        // remove us from the process' thread list
+        {
+            CriticalGuard cg2;
+            auto iter = p.threads.begin();
+            while(iter != p.threads.end())
+            {
+                if(*iter == this)
+                    iter = p.threads.erase(iter);
+                else
+                    iter++;
+            }
+        }
+
+        CleanupQueue.Push({ .is_thread = true, .t = this });
+    }
 }
 
 void thread_cleanup(void *tretval)   // both return value and first param are in R0, so valid
