@@ -131,6 +131,23 @@ LoopCopyData4Init:
   cmp r4, r1
   bcc CopyData4Init
 
+/* Copy the sram segment initializers from flash to SRAM */
+  ldr r0, =_ssramahb
+  ldr r1, =_esramahb
+  ldr r2, =_ssramahb_flash
+  movs r3, #0
+  b LoopCopySramInit
+
+CopySramInit:
+  ldr r4, [r2, r3]
+  str r4, [r0, r3]
+  adds r3, r3, #4
+
+LoopCopySramInit:
+  adds r4, r0, r3
+  cmp r4, r1
+  bcc CopySramInit
+
 /* Zero fill the bss segment. */
   ldr r2, =_sbss
   ldr r4, =_ebss

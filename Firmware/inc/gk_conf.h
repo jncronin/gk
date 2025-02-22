@@ -39,9 +39,9 @@
 #define GK_LOG_PERSISTENT           0
 #define GK_LOG_RTT                  1
 #define GK_LOG_USB                  0
-#define GK_LOG_FILE                 0
+#define GK_LOG_FILE                 1
 
-#define GK_LOG_SIZE                 (24*1024)
+#define GK_LOG_SIZE                 (16*1024)
 
 #define GK_ENABLE_CTP340            0
 

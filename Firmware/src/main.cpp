@@ -216,6 +216,7 @@ int main()
 
     init_sd();
     init_ext4();
+    init_log();
     init_screen();
     init_buttons();
     init_btnled();
