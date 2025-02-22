@@ -66,6 +66,23 @@ static void _queue_if_possible(audio_conf &ac);
     return i;
 }
 
+/* Return volume as expected to be written to one DAC channel */
+static inline uint16_t pcm1753_volume(int volume)
+{
+    // Linear scale in top of range for now
+    return volume ? (155U + volume) : 0U;
+}
+
+/* Return volume per channel */
+static inline uint16_t pcm1753_volume_left(int volume)
+{
+    return 0x1000U | pcm1753_volume(volume);
+}
+static inline uint16_t pcm1753_volume_right(int volume)
+{
+    return 0x1100U | pcm1753_volume(volume);
+}
+
 static void pcm1753_write(const uint16_t *d, size_t n)
 {
     SPI2->CR2 = n;
@@ -142,6 +159,8 @@ void init_sound()
         0x1300,         // enable both DACs
         0x1404,         // I2S format
         0x1606,         // single ZEROA pin
+        pcm1753_volume_left(sound_get_volume()),
+        pcm1753_volume_right(sound_get_volume()),
         0x1203,         // mute both
     };
     pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
@@ -274,13 +293,9 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
         (2UL << SAI_xSLOTR_SLOTSZ_Pos);
 
     // configure PCM1753
-    // set volume on PCM, scaled from 128 (muted) to 255 (full)
-    //  for now just linear in top part of range
-    auto sound_vol = sound_get_volume();
-    uint16_t val = sound_vol ? (155U + sound_vol) : 0U;
     uint16_t pcm1753_conf[] = {
-        (uint16_t)(0x1000U | val),
-        (uint16_t)(0x1100U | val),
+        pcm1753_volume_left(sound_get_volume()),
+        pcm1753_volume_right(sound_get_volume()),
         0x1300,         // enable both DACs
         0x1404,         // I2S format
         0x1604,         // single ZEROA pin
@@ -588,12 +603,10 @@ int sound_set_volume(int new_vol_pct)
         PCM_MUTE.set();
     }
 
-    // set volume on PCM, scaled from 128 (muted) to 255 (full)
-    //  for now just linear in top part of range
-    uint16_t val = new_vol_pct ? (155U + new_vol_pct) : 0U;
+    // set volume on PCM
     uint16_t pcmregs[] = {
-        (uint16_t)(0x1000U | val),
-        (uint16_t)(0x1100U | val)
+        pcm1753_volume_left(new_vol_pct),
+        pcm1753_volume_right(new_vol_pct),
     };
     klog("sound: set volume val: %d, regs %x, %x, zero=%d\n",
         new_vol_pct,
