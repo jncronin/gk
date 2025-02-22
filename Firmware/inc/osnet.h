@@ -570,6 +570,8 @@ int     close(int);
 }
 #endif
 
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+        struct sockaddr *src_addr, socklen_t *addrlen, kernel_time until);
 
 /* kernel threads which handle some services */
 void *net_dhcpd_thread(void *p);

@@ -23,7 +23,7 @@ void *net_ntpc_thread(void *_p)
     in_addr_t my_addr = 0;
     if(p && p->myaddr.get())
     {
-        my_addr = reinterpret_cast<in_addr_t>(p);
+        my_addr = reinterpret_cast<in_addr_t>(p->myaddr.get());
     }
 
     int lsck = (p && p->sockfd && *p->sockfd >= 0) ? *p->sockfd : socket(AF_INET, SOCK_DGRAM, 0);
@@ -99,40 +99,44 @@ void *net_ntpc_thread(void *_p)
                 /* Await response */
                 sockaddr_in dfrom;
                 socklen_t dfrom_len = sizeof(sockaddr_in);
-                auto received = recvfrom(lsck, req, sizeof(req), 0, (sockaddr *)&dfrom, &dfrom_len);
-                klog("ntpc: received %d bytes\n", received);
-                for(int i = 0; i < 12; i++)
+                auto received = recvfrom(lsck, req, sizeof(req), 0, (sockaddr *)&dfrom, &dfrom_len,
+                    clock_cur() + kernel_time::from_ms(2000));
+                if(received > 0)
                 {
-                    klog("ntpc: %02d: %08x\n", i, req[i]);
-                }
+                    klog("ntpc: received %d bytes\n", received);
+                    for(int i = 0; i < 12; i++)
+                    {
+                        klog("ntpc: %02d: %08x\n", i, req[i]);
+                    }
 
-                if(received >= (ssize_t)sizeof(req))
-                {
-                    timespec ttstamp;
-                    ttstamp.tv_sec = ntohl(req[10]) - UNIX_NTP_OFFSET;
-                    ttstamp.tv_nsec = (uint32_t)(((uint64_t)ntohl(req[11]) * 1000000000ULL) /
-                        (uint64_t)std::numeric_limits<uint32_t>::max());
-                    char buf[64];
-                    auto t = localtime(&ttstamp.tv_sec);
-                    strftime(buf, 63, "%F %T", t);
-                    klog("ntp: current time: %s\n", buf);
+                    if(received >= (ssize_t)sizeof(req))
+                    {
+                        timespec ttstamp;
+                        ttstamp.tv_sec = ntohl(req[10]) - UNIX_NTP_OFFSET;
+                        ttstamp.tv_nsec = (uint32_t)(((uint64_t)ntohl(req[11]) * 1000000000ULL) /
+                            (uint64_t)std::numeric_limits<uint32_t>::max());
+                        char buf[64];
+                        auto t = localtime(&ttstamp.tv_sec);
+                        strftime(buf, 63, "%F %T", t);
+                        klog("ntp: current time: %s\n", buf);
 
-                    // set our time to this - TODO ideally use round trip time etc, but we only want a couple
-                    //  of seconds accuracy for gk
-                    auto tdiff = ttstamp - ctime;
-                    timespec toffset;
-                    clock_get_timebase(&toffset);
-                    toffset = toffset + tdiff;
-                    clock_set_timebase(&toffset);
-                    clock_set_rtc_from_timespec(&ttstamp);
+                        // set our time to this - TODO ideally use round trip time etc, but we only want a couple
+                        //  of seconds accuracy for gk
+                        auto tdiff = ttstamp - ctime;
+                        timespec toffset;
+                        clock_get_timebase(&toffset);
+                        toffset = toffset + tdiff;
+                        clock_set_timebase(&toffset);
+                        clock_set_rtc_from_timespec(&ttstamp);
 
-                    last_ntp_update = clock_cur();
+                        last_ntp_update = clock_cur();
+                    }
                 }
             }
         }
 
         // try again in a bit
-        Block(clock_cur() + kernel_time::from_ms(10000));
+        Block(clock_cur() + kernel_time::from_ms(1000));
 
         // report deviations between system clock and rtc
         timespec sysclk, rtc;

@@ -192,6 +192,13 @@ template<typename Func, class... Args> int deferred_call(Func f, Args... a)
     return deferred_return(ret, _errno);
 }
 
+template<typename Func, class... Args> int deferred_call(Func f, kernel_time until, Args... a)
+{
+    int _errno = 0;
+    int ret = f(a..., &_errno);
+    return deferred_return(ret, _errno, until);
+}
+
 /* inline functions to support quick checking of usermode pointers for syscalls */
 #if GK_CHECK_USER_ADDRESSES
 template<typename T> static inline bool addr_is_valid(const T *buf, bool is_write = false)
