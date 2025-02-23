@@ -28,23 +28,6 @@ Process p_usb;
 
 void init_usb()
 {
-    p_usb.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
-    p_usb.argc = 0;
-    p_usb.argv = nullptr;
-    p_usb.brk = 0;
-    p_usb.code_data = InvalidMemregion();
-    p_usb.cwd = "/";
-    p_usb.default_affinity = PreferM4;
-    p_usb.for_deletion = false;
-    p_usb.heap = InvalidMemregion();
-    p_usb.name = "usb";
-    p_usb.next_key = 0;
-    for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
-        p_usb.open_files[i] = nullptr;
-    p_usb.screen_h = 480;
-    p_usb.screen_w = 640;
-    memcpy(p_usb.p_mpu, mpu_default, sizeof(mpu_default));
-
     usb_init_chip_id();
     
     RCC->AHB1RSTR = RCC_AHB1RSTR_OTGHSRST | RCC_AHB1RSTR_USBPHYCRST;
@@ -61,7 +44,7 @@ void init_usb()
     }
     usb_vbus.set_as_input(pin::pup::PullDown);
 
-    // Disable voltage detect
+    // Enable voltage detect
     USB_OTG_HS->GCCFG |= USB_OTG_GCCFG_VBDEN;
 
     // B-peripheral session valid override enable
@@ -81,19 +64,34 @@ void init_usb()
 
 extern "C" void OTG_HS_IRQHandler()
 {
-    // tud_int_handler edits stuff in out private data space, so get access to it
-    //uint32_t data_start = (uint32_t)&_stusb_data;
-    //uint32_t data_end = (uint32_t)&_etusb_data;
-
-    //auto old_mpu6 = GetCurrentThreadForCore()->tss.mpuss[5];
-    //SetMPUForCurrentThread(MPUGenerate(data_start, data_end - data_start, 6, false, RW, NoAccess, WBWA_NS));
     tud_int_handler(1);
-    //SetMPUForCurrentThread(old_mpu6);
 }
 
-void usb_process_start()
+bool usb_process_start()
 {
+    p_usb.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
+    p_usb.argc = 0;
+    p_usb.argv = nullptr;
+    p_usb.brk = 0;
+    p_usb.code_data = InvalidMemregion();
+    p_usb.cwd = "/";
+    p_usb.default_affinity = PreferM4;
+    p_usb.for_deletion = false;
+    p_usb.heap = InvalidMemregion();
+    p_usb.name = "usb";
+    p_usb.next_key = 0;
+    for(int i = 0; i < GK_MAX_OPEN_FILES; i++)
+        p_usb.open_files[i] = nullptr;
+    p_usb.screen_h = 480;
+    p_usb.screen_w = 640;
+    p_usb.restart_func = usb_process_start;
+    memcpy(p_usb.p_mpu, mpu_default, sizeof(mpu_default));
+
+    proc_list.RegisterProcess(&p_usb);
+
     Schedule(Thread::Create("tusb", usb_task, nullptr, true, GK_PRIORITY_VHIGH, p_usb, CPUAffinity::PreferM4));
+
+    return true;
 }
 
 void *usb_task(void *pvParams)
