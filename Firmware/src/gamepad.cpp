@@ -93,7 +93,7 @@ void Process::HandleTiltEvent(int x, int y)
 void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ongoing_press)
 {
     CriticalGuard cg(sl);
-    if(gamepad_is_mouse)
+    if(gamepad_is_mouse && gamepad_to_scancode[(int)key] == 0)
     {
         if(ongoing_press || pressed)
         {
@@ -156,7 +156,7 @@ void Process::HandleGamepadEvent(Process::GamepadKey key, bool pressed, bool ong
             }
         }
     }
-    if(gamepad_is_joystick)
+    if(gamepad_is_joystick && gamepad_to_scancode[(int)key] == 0)
     {
         if(pressed)
         {
