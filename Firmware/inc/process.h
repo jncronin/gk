@@ -188,6 +188,12 @@ class Process
         /* do we need to free() this? or is it statically allocated? */
         bool need_to_free = false;
 
+        /* some processes automatically restart on exit - handle this here.
+            This function runs in the cleanup thread.
+            Return true on success.  If false is returned the system will reset. */
+        typedef bool (*restart_func_t)();
+        restart_func_t restart_func = nullptr;
+
     protected:
         /* specific supervisor buttons */
         bool has_osd = false;

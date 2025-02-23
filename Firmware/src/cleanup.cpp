@@ -171,8 +171,14 @@ void cleanup(Process *p)
 
     proc_list.DeleteProcess(p->pid, p->rc);
 
+    auto restart_func = p->restart_func;
+
     if(p->need_to_free)
         delete p;
 
     RestoreInterrupts(cpsr);
+
+    // run any restart function
+    if(restart_func)
+        restart_func();
 }
