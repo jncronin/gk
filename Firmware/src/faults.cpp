@@ -20,6 +20,7 @@
 #include "scheduler.h"
 #include "process.h"
 #include "cleanup.h"
+#include "reset.h"
 
 #define xstr(s) str(s)
 #define str(s) #s
@@ -420,6 +421,14 @@ INTFLASH_FUNCTION void GKUsageFault(gk_regs *r)
 
 INTFLASH_FUNCTION void GKNMI(gk_regs *r)
 {
+    // NMI is only from HSE CSS
+    RCC->CICR = RCC_CICR_HSECSSC;
+    __DMB();
+
+    // ideally try and rescue here, however so much (e.g. XSPI etc) depend on HSE that
+    //  resetting is probably more appropriate
+    gk_reset();
+
     log_regs(r, "NMI");
-    handle_fault();
+    
 }
