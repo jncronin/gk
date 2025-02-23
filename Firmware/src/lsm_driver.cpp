@@ -319,7 +319,7 @@ extern "C" uint8_t LSM6DSL_IO_Read(void *handle, uint8_t ReadAddr, uint8_t *pBuf
     return i2c_register_read(addr, ReadAddr, pBuffer, nBytesToRead) > 0 ? 0 : 1;
 }
 
-void init_tilt()
+bool init_tilt()
 {
     p_tilt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
     p_tilt.argc = 0;
@@ -336,8 +336,13 @@ void init_tilt()
         p_tilt.open_files[i] = nullptr;
     p_tilt.screen_h = 480;
     p_tilt.screen_w = 640;
+    p_tilt.restart_func = init_tilt;
     memcpy(p_tilt.p_mpu, mpu_default, sizeof(mpu_default));
+
+    proc_list.RegisterProcess(&p_tilt);
 
     Schedule(Thread::Create("tilt", lsm_thread, nullptr, true, GK_PRIORITY_HIGH, p_tilt,
         CPUAffinity::PreferM4));
+
+    return true;
 }

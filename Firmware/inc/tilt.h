@@ -2,6 +2,6 @@
 #define TILT_H
 
 void tilt_enable(bool en);
-void init_tilt();
+bool init_tilt();
 
 #endif
