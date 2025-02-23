@@ -275,6 +275,15 @@ bool ProcessList::IsChildOf(pid_t child, pid_t parent)
 
 bool SetFocusProcess(Process *proc)
 {
+    if(focus_process != proc)
+    {
+        /* Clear screen to black - some games simply don't change the pixels in a border at all */
+        void *back_buf, *front_buf;
+        screen_get_frame_buffers(&back_buf, &front_buf);
+        memset(back_buf, 0, 640*480);
+        memset(front_buf, 0, 640*480);
+    }
+    
     focus_process = proc;
 
     if(proc->tilt_is_keyboard || proc->tilt_is_joystick || proc->tilt_raw)

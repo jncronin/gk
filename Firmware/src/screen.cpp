@@ -72,6 +72,19 @@ void *screen_get_frame_buffer(bool back_buf)
     }
 }
 
+void screen_get_frame_buffers(void **back_buf, void **front_buf)
+{
+    CriticalGuard cg(s_scrbuf);
+    if(back_buf)
+    {
+        *back_buf = scr_bufs[scr_cbuf & 0x1];
+    }
+    if(front_buf)
+    {
+        *front_buf = scr_bufs[(scr_cbuf + 1) & 0x1];
+    }
+}
+
 void *screen_get_overlay_frame_buffer(bool back_buf)
 {
     CriticalGuard cg(s_scrbuf_overlay);
