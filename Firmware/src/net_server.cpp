@@ -89,7 +89,7 @@ int net_ret_to_errno(int ret)
     }
 }
 
-void init_net()
+bool init_net()
 {
     p_net.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
     p_net.argc = 0;
@@ -106,7 +106,10 @@ void init_net()
         p_net.open_files[i] = nullptr;
     p_net.screen_h = 480;
     p_net.screen_w = 640;
+    p_net.restart_func = init_net;
     memcpy(p_net.p_mpu, mpu_default, sizeof(mpu_default));
+
+    proc_list.RegisterProcess(&p_net);
 
     Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net,
         CPUAffinity::PreferM4));
@@ -114,6 +117,8 @@ void init_net()
     uint32_t myip = IP4Addr(192, 168, 7, 1).get();
     Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
     //Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net, CPUAffinity::PreferM4));
+
+    return true;
 }
 
 static void handle_inject_packet(const net_msg &m)

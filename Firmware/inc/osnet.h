@@ -238,7 +238,7 @@ struct net_msg
 #define NET_SIZE_TCP_OFFSET             (NET_SIZE_TCP_HEADER + NET_SIZE_IP_OFFSET)
 #define NET_SIZE_UDP_OFFSET             (NET_SIZE_UDP_HEADER + NET_SIZE_IP_OFFSET)
 
-void init_net();
+bool init_net();
 void *net_telnet_thread(void *p);
 void *net_dhcpd_thread(void *p);
 
