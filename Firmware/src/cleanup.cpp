@@ -3,6 +3,7 @@
 #include "scheduler.h"
 #include "sync_primitive_locks.h"
 #include "syscalls_int.h"
+#include "reset.h"
 
 SRAM4_DATA CleanupQueue_t CleanupQueue;
 
@@ -180,5 +181,11 @@ void cleanup(Process *p)
 
     // run any restart function
     if(restart_func)
-        restart_func();
+    {
+        if(!restart_func())
+        {
+            // reset machine
+            gk_reset();
+        }
+    }
 }

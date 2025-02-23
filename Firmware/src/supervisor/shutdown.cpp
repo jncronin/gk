@@ -3,6 +3,7 @@
 #include "screen.h"
 #include "sd.h"
 #include "pwr.h"
+#include "reset.h"
 
 void supervisor_shutdown_system()
 {
@@ -37,21 +38,5 @@ void supervisor_shutdown_system()
 
     /* Shouldn't get this far */
     klog("shutdown: power did not switch off.  Resetting...\n");
-
-    // trigger reset
-    SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) |
-        SCB_AIRCR_SYSRESETREQ_Msk;
-    Block(clock_cur() + kernel_time::from_ms(50));
-    klog("shutdown: sysresetreq failed, trying local reset\n");
-
-    SCB->AIRCR = (0x05faU << SCB_AIRCR_VECTKEY_Pos) |
-        SCB_AIRCR_VECTRESET_Msk;
-    Block(clock_cur() + kernel_time::from_ms(50));
-    klog("shutdown: vectreset failed, looping forever\n");
-
-    DisableInterrupts();
-    while(true)
-    {
-        __asm__ volatile("yield \n");
-    }
+    gk_reset();
 }
