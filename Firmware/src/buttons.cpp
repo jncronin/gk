@@ -381,9 +381,17 @@ extern "C" void LPTIM2_IRQHandler()
     handle_debounce_event(db_LB);
     handle_debounce_event(db_RB);
 
-    auto jx = ja_x.Tick();
-    auto jy = ja_y.Tick();
-    focus_process->HandleJoystickEvent(jx, jy);
+    const int ticks_per_jupdate = 4;    // 20 ms -> 50 Hz
+    static int jtick = 0;
+
+    if(jtick == 0)
+    {
+        auto jx = ja_x.Tick();
+        auto jy = ja_y.Tick();
+        focus_process->HandleJoystickEvent(jx, jy);
+    }
+    jtick++;
+    if(jtick == ticks_per_jupdate) jtick = 0;
 
     longpress_count++;
 
