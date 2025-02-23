@@ -51,7 +51,7 @@ static unsigned int scr_alpha = 0;
 static alpha_t volume_alpha = 0;
 static kernel_time last_volume_change = kernel_time();
 
-void init_supervisor()
+bool init_supervisor()
 {
     p_supervisor.argc = 0;
     p_supervisor.argv = nullptr;
@@ -71,6 +71,9 @@ void init_supervisor()
     p_supervisor.gamepad_is_keyboard = true;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLUP] = GK_SCANCODE_VOLUMEUP;
     p_supervisor.gamepad_to_scancode[GK_KEYVOLDOWN] = GK_SCANCODE_VOLUMEDOWN;
+    p_supervisor.restart_func = init_supervisor;
+
+    proc_list.RegisterProcess(&p_supervisor);
 
     memcpy(p_supervisor.p_mpu, mpu_default, sizeof(mpu_default));
 
@@ -79,6 +82,8 @@ void init_supervisor()
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
         p_supervisor, PreferM7);
     Schedule(t);
+
+    return true;
 }
 
 WidgetAnimationList *GetAnimationList()

@@ -4,7 +4,7 @@
 #include "process.h"
 extern Process p_supervisor;
 
-void init_supervisor();
+bool init_supervisor();
 
 /* Returns whether or not the supervisor is active (and therefore intercepting events)
     If it is, also optionally returns the screen coordinates the supervisor is active over */
