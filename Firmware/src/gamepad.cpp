@@ -29,6 +29,41 @@ void Process::HandleJoystickEvent(unsigned int x, unsigned int y)
             events.Push({ Event::event_type_t::AxisMotion, .axis_data = { 3, (short int)y }});
         }
     }
+    if(gamepad_is_mouse &&
+        gamepad_to_scancode[GK_KEYJOYDIGILEFT] == 0 &&
+        gamepad_to_scancode[GK_KEYJOYDIGIRIGHT] == 0 &&
+        gamepad_to_scancode[GK_KEYJOYDIGIUP] == 0 &&
+        gamepad_to_scancode[GK_KEYJOYDIGIDOWN] == 0)
+    {
+        int sx = (int)x - 33364;        // TODO: calibrate for these values
+        int sy = (int)y - 33145;
+        int jx = 0, jy = 0;
+
+#define DEADZONE 500
+#define JOYSCALE 12000
+
+        if(sx > DEADZONE)
+        {
+            jx = (sx - DEADZONE) / JOYSCALE + 1;
+        }
+        else if(sx < -DEADZONE)
+        {
+            jx = (sx + DEADZONE) / JOYSCALE - 1;
+        }
+        if(sy > DEADZONE)
+        {
+            jy = (sy - DEADZONE) / JOYSCALE + 1;
+        }
+        else if(sy < -DEADZONE)
+        {
+            jy = (sy + DEADZONE) / JOYSCALE - 1;
+        }
+        if(jx || jy)
+        {
+            events.Push({ Event::event_type_t::MouseMove,
+                .mouse_data = { .x = (int16_t)jx, .y = (int16_t)-jy, .is_rel = 1, .buttons = mouse_buttons } });
+        }
+    }
     joy_last_x = x;
     joy_last_y = y;
 }
