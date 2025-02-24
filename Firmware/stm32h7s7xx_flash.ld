@@ -392,6 +392,10 @@ SECTIONS
     LONG(0);
     LONG(0);
     LONG(0);
+    scr_brightness = .;
+    LONG(0);
+    reboot_flags = .;
+    LONG(0);
 
     *(.rtcregs)
     *(.rtcregs*)

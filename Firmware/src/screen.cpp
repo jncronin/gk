@@ -19,7 +19,7 @@ SRAM4_DATA static Spinlock s_scrbuf_overlay;
 SRAM4_DATA static void *scr_bufs_overlay[2] = { 0, 0 };
 SRAM4_DATA static int scr_cbuf_overlay = 0;
 
-RTCREG_DATA static int scr_brightness;
+extern int scr_brightness;
 
 SRAM4_DATA Condition scr_vsync;
 
