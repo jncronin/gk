@@ -78,6 +78,18 @@ bool init_supervisor()
     memcpy(p_supervisor.p_mpu, mpu_default, sizeof(mpu_default));
 
     klog("kernel: starting supervisor\n");
+
+    /* Reset all static variables in case of restart */
+    overlay_visible = false;
+    volume_visible = false;
+    wl.clear();
+    for(int i = 0; i < n_screens; i++)
+    {
+        scrs[i] = nullptr;
+    }
+    scr_alpha = 0;
+    volume_alpha = 0;
+    last_volume_change = kernel_time();
     
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
         p_supervisor, PreferM7);
