@@ -13,12 +13,16 @@ void supervisor_shutdown_system()
     klog("shutdown: screen off\n");
 
     /* To shut down, we need to make sure there are no SD card transactions ongoing */
-    SimpleSignal ss_ext4;
-    WaitSimpleSignal_params wss_ext4;
-    auto emsg = ext4_unmount_message(ss_ext4, wss_ext4);
-    ext4_send_message(emsg);
-    ss_ext4.Wait(SimpleSignal::SignalOperation::Noop, 0, clock_cur() + kernel_time::from_ms(500));
-    klog("shutdown: ext4 unmounted: %d\n", ss_ext4.Value());
+    extern bool usb_israwsd;
+    if(!usb_israwsd)
+    {
+        SimpleSignal ss_ext4;
+        WaitSimpleSignal_params wss_ext4;
+        auto emsg = ext4_unmount_message(ss_ext4, wss_ext4);
+        ext4_send_message(emsg);
+        ss_ext4.Wait(SimpleSignal::SignalOperation::Noop, 0, clock_cur() + kernel_time::from_ms(500));
+        klog("shutdown: ext4 unmounted: %d\n", ss_ext4.Value());
+    }
 
     sd_request sdr;
     SimpleSignal ss_sd;

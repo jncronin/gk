@@ -22,60 +22,68 @@ void *init_thread(void *p)
     
     init_supervisor();
 
-#if 0
-    // audio test
-    deferred_call(syscall_audiosetmode, 2, 16, 22050, 4096);
-    int csamp = 0;
-    void *buf = nullptr;
-    deferred_call(syscall_audioqueuebuffer, nullptr, &buf);
-    deferred_call(syscall_audioenable, 1);
-    while(true)
+    if(reboot_flags & GK_REBOOTFLAG_AUDIOTEST)
     {
-        // 1 second on, 2 seconds off
-        auto cbuf = reinterpret_cast<int16_t *>(buf);
-        for(int i = 0; i < 1024; i++)
-        {
-            if(csamp < 22050)
-            {
-                auto omega = (double)csamp * 440.0 /  22050.0;
-                while(omega >= 1.0) omega -= 1.0;
-                auto val = (int16_t)(std::sin(omega * 2.0 * M_PI) * 32000.0);
-                cbuf[i * 2] = val;
-                cbuf[i * 2 + 1] = val;
-            }
-            else
-            {
-                cbuf[i * 2] = 0;
-                cbuf[i * 2 + 1] = 0;
-            }
+        reboot_flags &= ~GK_REBOOTFLAG_AUDIOTEST;
 
-            csamp++;
-            if(csamp >= 22050*3) csamp = 0;
-        }
-        deferred_call(syscall_audioqueuebuffer, buf, &buf);
-        deferred_call(syscall_audiowaitfree);
-    }
-#endif
-
-#if 0
-    // Video test pattern
-    auto vptr = reinterpret_cast<uint32_t *>(screen_flip());
-    for(int y = 0; y < 480; y++)
-    {
-        auto shift_y = (y / 160) * 8;
-        for(int x = 0; x < 640; x++)
+        // audio test
+        deferred_call(syscall_audiosetmode, 2, 16, 22050, 4096);
+        int csamp = 0;
+        void *buf = nullptr;
+        deferred_call(syscall_audioqueuebuffer, nullptr, &buf);
+        deferred_call(syscall_audioenable, 1);
+        while(true)
         {
-            auto shift = shift_y + x / 80;
-            *vptr++ = 1UL << shift;
+            // 1 second on, 2 seconds off
+            auto cbuf = reinterpret_cast<int16_t *>(buf);
+            for(int i = 0; i < 1024; i++)
+            {
+                if(csamp < 22050)
+                {
+                    auto omega = (double)csamp * 440.0 /  22050.0;
+                    while(omega >= 1.0) omega -= 1.0;
+                    auto val = (int16_t)(std::sin(omega * 2.0 * M_PI) * 32000.0);
+                    cbuf[i * 2] = val;
+                    cbuf[i * 2 + 1] = val;
+                }
+                else
+                {
+                    cbuf[i * 2] = 0;
+                    cbuf[i * 2 + 1] = 0;
+                }
+
+                csamp++;
+                if(csamp >= 22050*3) csamp = 0;
+            }
+            deferred_call(syscall_audioqueuebuffer, buf, &buf);
+            deferred_call(syscall_audiowaitfree);
         }
     }
-    screen_flip();
-    while(true);
 
-#endif
+    if(reboot_flags & GK_REBOOTFLAG_VIDEOTEST)
+    {
+        reboot_flags &= ~GK_REBOOTFLAG_VIDEOTEST;
 
-    // Provision root file system, then allow USB write access to MSC
-    fs_provision();
+        // Video test pattern
+        auto vptr = reinterpret_cast<uint32_t *>(screen_flip());
+        for(int y = 0; y < 480; y++)
+        {
+            auto shift_y = (y / 160) * 8;
+            for(int x = 0; x < 640; x++)
+            {
+                auto shift = shift_y + x / 80;
+                *vptr++ = 1UL << shift;
+            }
+        }
+        screen_flip();
+        while(true);
+    }
+
+    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
+    {
+        // Provision root file system, then allow USB write access to MSC
+        fs_provision();
+    }
 #if GK_ENABLE_USB
     usb_process_start();
 #endif
@@ -89,12 +97,15 @@ void *init_thread(void *p)
     //deferred_call(syscall_proccreate, "/bin/echo", &pt);
 
 #if GK_ENABLE_WIFI
-    extern void *wifi_task(void *);
-    extern void init_wifi();
-    extern Process p_net;
-    init_wifi();
-    Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, p_net,
-        CPUAffinity::PreferM4));
+    if(reboot_flags == 0)
+    {
+        extern void *wifi_task(void *);
+        extern void init_wifi();
+        extern Process p_net;
+        init_wifi();
+        Schedule(Thread::Create("wifi", wifi_task, nullptr, true, GK_PRIORITY_NORMAL, p_net,
+            CPUAffinity::PreferM4));
+    }
 #endif
 #endif
 
@@ -135,10 +146,15 @@ void *init_thread(void *p)
     pt.keymap.gamepad_to_scancode[GK_KEYJOY] = pt.keymap.gamepad_to_scancode[GK_KEYA];
     pt.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM; // try to leave TCM for games
 
-    deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
+    if(reboot_flags == 0)
+    {
+        deferred_call(syscall_proccreate, "/gkmenu-0.1.1-gk/bin/gkmenu", &pt, &pid_gkmenu);
 
-    extern Process p_supervisor;
-    p_supervisor.events.Push({ .type = Event::CaptionChange });
+        extern Process p_supervisor;
+        p_supervisor.events.Push({ .type = Event::CaptionChange });
+    }
+
+    reboot_flags = 0;
 
     return nullptr;
 }

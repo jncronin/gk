@@ -357,8 +357,11 @@ int init_log()
         CPUAffinity::PreferM4));
 #endif
 #if GK_LOG_FILE
-    Schedule(Thread::Create("log_file", file_logger_task, (void *)&klog_def_file, true, GK_PRIORITY_VHIGH, kernel_proc,
-        CPUAffinity::PreferM4));
+    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
+    {
+        Schedule(Thread::Create("log_file", file_logger_task, (void *)&klog_def_file, true, GK_PRIORITY_VHIGH, kernel_proc,
+            CPUAffinity::PreferM4));
+    }
 #endif
     return 0;
 }

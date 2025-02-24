@@ -41,7 +41,7 @@ static const constexpr coord_t btn_overlay_y = 480 - btn_overlay_h;
 static const constexpr coord_t status_h = 32;
 
 ImageButtonWidget imb_bright_up, imb_bright_down;
-ButtonWidget btn_wifi;
+ButtonWidget btn_wifi, btn_rawsd;
 GridWidget scr_overlay, scr_status, scr1, scr2;
 LabelWidget lab_caption;
 KeyboardWidget kw;
@@ -201,6 +201,20 @@ static void btn_wifi_click(Widget *w, coord_t x, coord_t y)
     wifi_if.SetLinkActive(!wifi_if.GetLinkActive());
 }
 
+static void btn_rawsd_click(Widget *w, coord_t x, coord_t y)
+{
+    if(reboot_flags & GK_REBOOTFLAG_RAWSD)
+    {
+        reboot_flags &= ~GK_REBOOTFLAG_RAWSD;
+        w->SetClickedAppearance(false);
+    }
+    else
+    {
+        reboot_flags |= GK_REBOOTFLAG_RAWSD;
+        w->SetClickedAppearance(true);
+    }
+}
+
 void kbd_click_up(Widget *w, coord_t x, coord_t y, int key, bool is_shift, bool is_ctrl, bool is_alt)
 {
     if(is_shift)
@@ -289,6 +303,14 @@ void *supervisor_thread(void *p)
     btn_wifi.text = "Wifi";
     btn_wifi.OnClick = btn_wifi_click;
     scr1.AddChildOnGrid(btn_wifi);
+
+    btn_rawsd.x = btn_wifi.x + btn_wifi.w + 32;
+    btn_rawsd.w = 96;
+    btn_rawsd.y = 64;
+    btn_rawsd.h = 80;
+    btn_rawsd.text = "Raw SD";
+    btn_rawsd.OnClick = btn_rawsd_click;
+    scr1.AddChildOnGrid(btn_rawsd);
 
     // Screen 2 is an on-screen keyboard
     cur_scr += 640;

@@ -68,6 +68,11 @@
 
 #define GK_MAX_WINDOW_TITLE 32
 
+extern unsigned int reboot_flags;
+#define GK_REBOOTFLAG_RAWSD         1
+#define GK_REBOOTFLAG_AUDIOTEST     2
+#define GK_REBOOTFLAG_VIDEOTEST     4
+
 #define RTCREG_DATA __attribute__((section(".rtcregs")))
 #define SRAM4_DATA
 #define ITCM_FUNCTION __attribute__((section(".itcm")))

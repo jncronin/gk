@@ -24,6 +24,8 @@ constexpr pin usb_vbus = { GPIOM, 8 };
 
 char _stusb_data, _etusb_data, _slwip_data, _elwip_data;
 
+bool usb_israwsd = false;
+
 Process p_usb;
 
 void init_usb()
@@ -69,6 +71,12 @@ extern "C" void OTG_HS_IRQHandler()
 
 bool usb_process_start()
 {
+    if(reboot_flags & GK_REBOOTFLAG_RAWSD)
+    {
+        // cache this value because reboot_flags is reset at end of init_thread
+        usb_israwsd = true;
+    }
+    
     p_usb.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
     p_usb.argc = 0;
     p_usb.argv = nullptr;

@@ -215,12 +215,17 @@ int main()
     btnled_setcolor_init(0xff);
 
     init_sd();
-    init_ext4();
+    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
+    {
+        init_ext4();
+    }
     init_log();
     init_screen();
-    init_buttons();
+    if(reboot_flags == 0)
+        init_buttons();
     init_btnled();
-    init_ctp();
+    if(reboot_flags == 0)
+        init_ctp();
 
 #if GK_ENABLE_PROFILE
     init_profile();
@@ -241,11 +246,13 @@ int main()
         CPUAffinity::PreferM4));
 
 #if GK_ENABLE_NETWORK
-    init_net();
+    if(reboot_flags == 0)
+        init_net();
 #endif
 
 #if GK_ENABLE_TILT
-    init_tilt();
+    if(reboot_flags == 0)
+        init_tilt();
 #endif
 
     // Prepare systick

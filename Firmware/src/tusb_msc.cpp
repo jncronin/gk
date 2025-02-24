@@ -5,6 +5,8 @@
 #include "SEGGER_RTT.h"
 #include "fs_provision.h"
 
+extern bool usb_israwsd;
+
 #if GK_ENABLE_USB_MASS_STORAGE
 // Invoked when received SCSI READ10 command
 // - Address = lba * BLOCK_SIZE + offset
@@ -28,21 +30,26 @@ int32_t tud_msc_read10_cb (uint8_t lun, uint32_t lba, uint32_t offset, void* buf
     {
         return -1;
     }
-    /* Return fake mbr if requesting sector 0, otherwise check the read is valid for partition 0 */
-    if(lba == 0)
+
+    if(!usb_israwsd)
     {
-        auto fm = fake_mbr_get_mbr();
-        if(!fm)
-            return -1;
-        memcpy(buffer, fm, 512);
-        return 512;
+        /* Return fake mbr if requesting sector 0, otherwise check the read is valid for partition 0 */
+        if(lba == 0)
+        {
+            auto fm = fake_mbr_get_mbr();
+            if(!fm)
+                return -1;
+            memcpy(buffer, fm, 512);
+            return 512;
+        }
+        if(!fake_mbr_check_extents(lba, bufsize / 512))
+        {
+            // just return zeros - windows tries to load the second sector here
+            memset(buffer, 0, bufsize);
+            return bufsize;
+        }
     }
-    if(!fake_mbr_check_extents(lba, bufsize / 512))
-    {
-        // just return zeros - windows tries to load the second sector here
-        memset(buffer, 0, bufsize);
-        return bufsize;
-    }
+
     int ret = sd_perform_transfer(lba, bufsize / 512, buffer, true);
     if(ret == 0)
         return bufsize;
@@ -73,7 +80,7 @@ int32_t tud_msc_write10_cb (uint8_t lun, uint32_t lba, uint32_t offset, uint8_t*
     {
         return -1;
     }
-    if(!fake_mbr_check_extents(lba, bufsize / 512))
+    if(!usb_israwsd && !fake_mbr_check_extents(lba, bufsize / 512))
     {
         return -1;
     }
@@ -127,7 +134,7 @@ void tud_msc_capacity_cb(uint8_t lun, uint32_t* block_count, uint16_t* block_siz
         }
         else
         {
-            auto size = fake_mbr_get_sector_count();
+            auto size = usb_israwsd ? (unsigned int)(sd_get_size() / 512ULL) : fake_mbr_get_sector_count();
             *block_count = static_cast<uint32_t>(size);
         }
     }
