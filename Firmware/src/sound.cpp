@@ -311,14 +311,22 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
         ac.nbuffers = max_buffer_size / buf_size_bytes - 1;
 
     /* Limit latency */
+    int max_buffer_size_for_latency = GetCurrentThreadForCore()->p.audio_max_buffer_size;
 #if GK_AUDIO_LATENCY_LIMIT_MS > 0
-    auto buf_length_ms = (buf_size_bytes / (nbits/8) / 2 * 1000) / freq;
-    auto buf_nlimit = (GK_AUDIO_LATENCY_LIMIT_MS + buf_length_ms - 1) / buf_length_ms;
-    if(buf_nlimit < 2) buf_nlimit = 2;
-    if(buf_nlimit > ac.nbuffers) buf_nlimit = ac.nbuffers;
-
-    ac.nbuffers = buf_nlimit;
+    if(max_buffer_size_for_latency == 0 || max_buffer_size_for_latency > GK_AUDIO_LATENCY_LIMIT_MS)
+    max_buffer_size_for_latency = GK_AUDIO_LATENCY_LIMIT_MS;
 #endif
+
+    if(max_buffer_size)
+    {
+        auto buf_length_ms = (buf_size_bytes / (nbits/8) / 2 * 1000) / freq;
+        auto buf_nlimit = (max_buffer_size_for_latency + buf_length_ms - 1) / buf_length_ms;
+        if(buf_nlimit < 2) buf_nlimit = 2;
+        if(buf_nlimit > ac.nbuffers) buf_nlimit = ac.nbuffers;
+
+        ac.nbuffers = buf_nlimit;
+    }
+
     ac.buf_size_bytes = buf_size_bytes;
     ac.buf_ndtr = buf_size_bytes * 8 / nbits;
     _clear_buffers(ac);

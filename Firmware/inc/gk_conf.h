@@ -28,7 +28,7 @@
 #define GK_ENABLE_PROFILE           0
 #define GK_DYNAMIC_SYSTICK          1
 #define GK_XSPI_DUAL_MEMORY         1
-#define GK_AUDIO_LATENCY_LIMIT_MS   150
+#define GK_AUDIO_LATENCY_LIMIT_MS   50
 #define GK_PIPESIZE                 1024
 
 /* STM32H7RS memory config */
