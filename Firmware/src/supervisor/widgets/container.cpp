@@ -34,6 +34,12 @@ void ContainerWidget::RemoveChild(Widget &child)
     }
 }
 
+void ContainerWidget::Clear()
+{
+    children.clear();
+    Widget::Clear();
+}
+
 void GridWidget::RemoveChild(Widget &child)
 {
     for(auto row : rows)
@@ -221,6 +227,14 @@ void GridWidget::KeyPressDown(unsigned short  key)
             ScrollToSelected();
         }
     }
+}
+
+void GridWidget::Clear()
+{
+    rows.clear();
+    curx = 0;
+    cury = 0;
+    ContainerWidget::Clear();
 }
 
 bool ContainerWidget::CanHighlight()

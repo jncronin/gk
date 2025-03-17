@@ -85,6 +85,8 @@ bool init_supervisor()
     wl.clear();
     for(int i = 0; i < n_screens; i++)
     {
+        if(scrs[i])
+            scrs[i]->Clear();
         scrs[i] = nullptr;
     }
     scr_alpha = 0;
@@ -247,6 +249,7 @@ void *supervisor_thread(void *p)
     std::vector<Widget *> custom_osd;
 
     // Main overlay screen:
+    scr_overlay.Clear();
     scr_overlay.x = 0;
     scr_overlay.y = btn_overlay_y;
     scr_overlay.w = 640;
@@ -255,12 +258,12 @@ void *supervisor_thread(void *p)
     // Screen 0 is specific to the game.  Without any extra customisation, it simply shows
     //  the game name and an exit button.
     coord_t cur_scr = 0;
-    auto scr0 = default_osd();
+    auto scr0 = focus_process ? focus_process->get_osd() : (Widget *)default_osd();
     scr0->x = cur_scr;
-    scr_overlay.AddChild(*scr0);
 
     // Screen 1 is options
     cur_scr += 640;
+    scr1.Clear();
     scr1.x = cur_scr;
     scr1.y = 0;
     scr1.w = scr_overlay.w;
@@ -314,6 +317,7 @@ void *supervisor_thread(void *p)
 
     // Screen 2 is an on-screen keyboard
     cur_scr += 640;
+    scr2.Clear();
     scr2.x = cur_scr;
     scr2.y = 0;
     scr2.w = scr_overlay.w;
@@ -347,6 +351,7 @@ void *supervisor_thread(void *p)
     pb_volume.pad = 12;
 
     // Status bar
+    scr_status.Clear();
     scr_status.x = 0;
     scr_status.y = -status_h;
     scr_status.w = 640;
@@ -608,7 +613,6 @@ void *supervisor_thread(void *p)
                     break;
             }
         }
-
 
         if(overlay_visible || (volume_visible && do_volume_update))
         {

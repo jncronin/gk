@@ -130,3 +130,7 @@ void Widget::SetClickedAppearance(bool v)
 {
     is_pretend_clicked = v;
 }
+
+void Widget::Clear()
+{
+}

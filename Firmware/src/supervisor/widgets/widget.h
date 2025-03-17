@@ -82,6 +82,8 @@ class Widget
 
         virtual void SetClickedAppearance(bool v);
 
+        virtual void Clear();
+
     protected:
         bool is_clicked = false;
         bool is_pretend_clicked = false;
@@ -112,7 +114,7 @@ template<typename T> T Anim_Interp_Linear(T from, T to, time_ms_t t_into, time_m
         return to;
     
     // integer maths for now, need to get t_into/t_tot as signed otherwise will not support negative movements
-    auto t_x_256 = (int)((t_into * 256) / t_tot);
+    auto t_x_256 = static_cast<std::make_signed_t<time_ms_t>>((t_into * 256) / t_tot);
     return from + (to - from) * t_x_256 / 256;
 }
 
@@ -270,6 +272,7 @@ class ContainerWidget : public NonactivatableWidget
         void AddChild(Widget &child);
         virtual void RemoveChild(Widget &child);
         void ScrollTo(coord_t x_scroll, coord_t y_scroll);
+        virtual void Clear();
     
     protected:
         std::vector<Widget *> children;
@@ -290,6 +293,7 @@ class GridWidget : public ContainerWidget
         virtual void KeyPressUp(unsigned short  scancode);
         virtual bool HandleMove(int x, int y);
         virtual Widget *GetEdgeChild(int xedge, int yedge);
+        virtual void Clear();
 
     protected:
         using row_t = std::vector<Widget *>;
