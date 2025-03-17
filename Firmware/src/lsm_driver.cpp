@@ -75,84 +75,99 @@ void *lsm_thread(void *param)
                 }
             }
 
-            int acc[3] = { 0 };
-            if(LSM6DSL_ACC_Get_Acceleration(nullptr, acc, 0) == MEMS_SUCCESS)
+            LSM6DSL_ACC_GYRO_XLDA_t da;
+            if(LSM6DSL_ACC_GYRO_R_XLDA(nullptr, &da) == MEMS_SUCCESS)
             {
-                // calc pitch and roll
-                auto fx = (float)acc[0];
-                auto fy = (float)acc[1];
-                auto fz = (float)acc[2];
-                auto g = sqrtf(fx * fx + fy * fy + fz * fz);
-                auto pitch = 180.0f * asinf(fx / g) / (float)M_PI;
-                auto roll = 180.0f * atan2f(-fz, fy) / (float)M_PI;
-                auto x = -pitch;
-                auto y = roll;
-
-                tilt_raw[0] = acc[0];
-                tilt_raw[1] = acc[1];
-                tilt_raw[2] = acc[2];               
-
-                /* Quadrants for fy, fz
-                    Forward, screen down        + +
-                    Normal, screen up           + -
-                    Overtilt forward            - -
-                    Really overtilt forward     - + */
-
-                if(needs_calib)
+                if(da == LSM6DSL_ACC_GYRO_XLDA_DATA_AVAIL)
                 {
-                    calib_y = y;
-                }
-
-                y -= calib_y;
-                while(y < -180.0f) y += 360.0f;
-                while(y >= 180.0f) y -= 360.0f;
-
-                if(y > fsr_deg) y = fsr_deg;
-                if(y < -fsr_deg) y = -fsr_deg;
-
-                // raw values are absolute i.e. without deadzone
-                auto raw_joy_x = x * 32767.0f / (float)fsr_deg;
-                auto raw_joy_y = y * 32767.0f / (float)fsr_deg;
-                tilt_pos[0] = (int)rint(raw_joy_x);
-                tilt_pos[1] = (int)rint(raw_joy_y);
-
-                // filtered messages e.g. use as digital joystick do use deadzone
-                if(std::abs(x) < (float)deadzone_deg) x = 0;
-                if(std::abs(y) < (float)deadzone_deg) y = 0;
-
-                auto joy_x = x * 32767.0f / (float)fsr_deg;
-                auto joy_y = y * 32767.0f / (float)fsr_deg;
-
-                bool to_report = false;
-                if(needs_calib)
-                {
-                    to_report = true;
-                    needs_calib = false;
-                    last_x = x;
-                    last_y = y;
-                }
-                else
-                {
-                    if(std::abs(x - last_x) >= (float)move_deg)
+                    int acc[3] = { 0 };
+                    if(LSM6DSL_ACC_Get_Acceleration(nullptr, acc, 0) == MEMS_SUCCESS)
                     {
-                        last_x = x;
-                        to_report = true;
+                        // calc pitch and roll
+                        auto fx = (float)acc[0];
+                        auto fy = (float)acc[1];
+                        auto fz = (float)acc[2];
+                        auto g = sqrtf(fx * fx + fy * fy + fz * fz);
+                        auto pitch = 180.0f * asinf(fx / g) / (float)M_PI;
+                        auto roll = 180.0f * atan2f(-fz, fy) / (float)M_PI;
+                        auto x = -pitch;
+                        auto y = roll;
+
+                        tilt_raw[0] = acc[0];
+                        tilt_raw[1] = acc[1];
+                        tilt_raw[2] = acc[2];               
+
+                        /* Quadrants for fy, fz
+                            Forward, screen down        + +
+                            Normal, screen up           + -
+                            Overtilt forward            - -
+                            Really overtilt forward     - + */
+
+                        if(needs_calib)
+                        {
+                            calib_y = y;
+                        }
+
+                        y -= calib_y;
+                        while(y < -180.0f) y += 360.0f;
+                        while(y >= 180.0f) y -= 360.0f;
+
+                        if(y > fsr_deg) y = fsr_deg;
+                        if(y < -fsr_deg) y = -fsr_deg;
+
+                        // raw values are absolute i.e. without deadzone
+                        auto raw_joy_x = x * 32767.0f / (float)fsr_deg;
+                        auto raw_joy_y = y * 32767.0f / (float)fsr_deg;
+                        tilt_pos[0] = (int)rint(raw_joy_x);
+                        tilt_pos[1] = (int)rint(raw_joy_y);
+
+                        // filtered messages e.g. use as digital joystick do use deadzone
+                        if(std::abs(x) < (float)deadzone_deg) x = 0;
+                        if(std::abs(y) < (float)deadzone_deg) y = 0;
+
+                        auto joy_x = x * 32767.0f / (float)fsr_deg;
+                        auto joy_y = y * 32767.0f / (float)fsr_deg;
+
+                        bool to_report = false;
+                        if(needs_calib)
+                        {
+                            to_report = true;
+                            needs_calib = false;
+                            last_x = x;
+                            last_y = y;
+                        }
+                        else
+                        {
+                            if(std::abs(x - last_x) >= (float)move_deg)
+                            {
+                                last_x = x;
+                                to_report = true;
+                            }
+                            if(std::abs(y - last_y) >= (float)move_deg)
+                            {
+                                last_y = y;
+                                to_report = true;
+                            }
+                        }
+
+                        if(to_report)
+                        {
+                            focus_process->HandleTiltEvent(joy_x, joy_y);
+
+                            {
+                                klog("lsm6dsl: %d,%d raw y: %f\n", (int)joy_x, (int)joy_y, roll);
+                            }
+                        }
                     }
-                    if(std::abs(y - last_y) >= (float)move_deg)
+                    else
                     {
-                        last_y = y;
-                        to_report = true;
+                        is_init = false;
                     }
                 }
-
-                if(to_report)
-                {
-                    focus_process->HandleTiltEvent(joy_x, joy_y);
-
-                    {
-                        klog("lsm6dsl: %d,%d raw y: %f\n", (int)joy_x, (int)joy_y, roll);
-                    }
-                }
+            }
+            else
+            {
+                is_init = false;
             }
 
             Block(clock_cur() + kernel_time::from_ms(1000 / f_samp));
