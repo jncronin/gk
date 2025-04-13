@@ -847,7 +847,8 @@ void *gpu_thread(void *p)
 
                         // does it blend?
                         uint32_t mode = 0;
-                        if(src_pf_for_blend == GK_PIXELFORMAT_ARGB8888 && g.g.type == BlitImage)
+                        if((src_pf_for_blend == GK_PIXELFORMAT_ARGB8888 ||
+                            src_pf_for_blend == GK_PIXELFORMAT_L8) && g.g.type == BlitImage)
                         {
                             mode = 2U;
                             
