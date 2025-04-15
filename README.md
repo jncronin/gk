@@ -4,7 +4,7 @@ This respository provides PCB schematics, firmware and debugging support for the
 
 ## Overview ##
 
-gk is a small, battery powered handheld gaming console running on an MCU (STM32H7S7) running at 600 MHz coupled to 128 MiB of XPSI SDRAM.  It has a 640x480 pixel 24-bit colour touchscreen, audio output (headphones/builtin speaker), accelerometer/gyrometer for tilt detection, USB interface for provisioning and WiFi network support.
+gk is a small, battery powered handheld gaming console running on an MCU (STM32H7S7) running at 600 MHz coupled to 128 MiB of XSPI SDRAM.  It has a 640x480 pixel 24-bit colour touchscreen, audio output (headphones/builtin speaker), accelerometer/gyrometer for tilt detection, USB interface for provisioning and WiFi network support.
 
 The KiCAD schematics and case STL files are available in the gk-pcbv3 directory.
 
