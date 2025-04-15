@@ -16,5 +16,7 @@ Other relevant repositories include the gkos userspace toolchain and libraries (
 
 ## Examples ##
 
+An example [video](https://youtu.be/_2ip4UrAZJk) of the gk in action.
+
 ![An example of the gk](img/20250415_173934.jpg)
 ![Another example of the gk](img/20250415_173942.jpg)
