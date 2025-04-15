@@ -6,4 +6,4 @@ The 'open' syscall (src/syscalls_filesys.cpp) interprets the path, checks for a 
 
 Any subsequent file operation syscall uses the inherited members of the File object previously created.  In the case of LwextFiles, these generate a request pushed to a queue which are implemented by the ext thread.  The ext thread simply calls the relevant lwext4 function and returns its result.  Various compilation-time checks are performes to ensure that the types/defines used by lwext4 are the same as those used by newlib in the gk userland.
 
-As a final optimisation a LRU cache of fstat values is maintained reducing the need to load these from disk.  These are currently wiped on _any_ write access to the SD card.
+As a final optimisation a LRU cache of fstat values is maintained reducing the need to load these from disk.  This cache is currently wiped on _any_ write access to the SD card.
