@@ -69,6 +69,11 @@ void *lsm_thread(void *param)
                 }
                 else
                 {
+                    for(unsigned int i = 0; i < sizeof(tilt_pos) / sizeof(tilt_pos[0]); i++)
+                        tilt_pos[i] = 0;
+                    for(unsigned int i = 0; i < sizeof(tilt_raw) / sizeof(tilt_raw[0]); i++)
+                        tilt_raw[i] = 0;
+                    
                     Block(clock_cur() + kernel_time::from_ms(retry_time));
                     retry_time += 1000;
                     if(retry_time > 10000) retry_time = 10000;
