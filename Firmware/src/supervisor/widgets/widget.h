@@ -83,6 +83,9 @@ class Widget
         virtual void SetClickedAppearance(bool v);
 
         virtual void Clear();
+        virtual std::vector<Widget *> GetChildren();
+
+        virtual ~Widget() = default;
 
     protected:
         bool is_clicked = false;
@@ -273,6 +276,7 @@ class ContainerWidget : public NonactivatableWidget
         virtual void RemoveChild(Widget &child);
         void ScrollTo(coord_t x_scroll, coord_t y_scroll);
         virtual void Clear();
+        virtual std::vector<Widget *> GetChildren();
     
     protected:
         std::vector<Widget *> children;

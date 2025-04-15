@@ -23,6 +23,11 @@ void ContainerWidget::AddChild(Widget &child)
     child.parent = this;
 }
 
+std::vector<Widget *> ContainerWidget::GetChildren()
+{
+    return children;
+}
+
 void ContainerWidget::RemoveChild(Widget &child)
 {
     for(auto iter = children.begin(); iter < children.end();)

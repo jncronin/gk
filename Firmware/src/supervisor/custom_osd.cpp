@@ -245,6 +245,23 @@ static void add_property(Widget *w, const std::string &tname,
     }
 }
 
+static void delete_children_and_self(Widget *w)
+{
+    for(auto cw : w->GetChildren())
+    {
+        delete_children_and_self(cw);
+    }
+    delete w;
+}
+
+void Process::delete_osd()
+{
+    if(!has_osd || !osd_prepped || !osd)
+        return;
+    
+    delete_children_and_self(osd);
+}
+
 Widget *Process::get_osd()
 {
     if(!has_osd)

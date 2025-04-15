@@ -134,3 +134,8 @@ void Widget::SetClickedAppearance(bool v)
 void Widget::Clear()
 {
 }
+
+std::vector<Widget *> Widget::GetChildren()
+{
+    return std::vector<Widget *>();
+}

@@ -205,6 +205,7 @@ class Process
     public:
         Widget *get_osd();
         void set_osd(const std::string &osd_text);
+        void delete_osd();
 };
 
 extern Process *focus_process;

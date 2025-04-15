@@ -152,6 +152,9 @@ void cleanup(Process *p)
     delete_all_process_sync_primitives(p->owned_rwlocks, p);
     delete_all_process_sync_primitives(p->owned_semaphores, p);
 
+    /* cleanup custom osd, if any */
+    p->delete_osd();
+
     /* cleanup file descriptors */
     RestoreInterrupts(cpsr);
 
