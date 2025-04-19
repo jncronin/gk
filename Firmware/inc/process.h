@@ -180,7 +180,7 @@ class Process
 
         /* audio buffers */
         audio_conf audio;
-        int audio_max_buffer_size;
+        int audio_max_buffer_size = 0;
 
         /* graphics textures - mapped as WT */
         MemRegion mr_gtext = InvalidMemregion();

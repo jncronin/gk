@@ -317,9 +317,9 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     max_buffer_size_for_latency = GK_AUDIO_LATENCY_LIMIT_MS;
 #endif
 
-    if(max_buffer_size)
+    if(max_buffer_size_for_latency)
     {
-        auto buf_length_ms = (buf_size_bytes / (nbits/8) / 2 * 1000) / freq;
+        auto buf_length_ms = (buf_size_bytes / (nbits/8) / nchan * 1000) / freq;
         auto buf_nlimit = (max_buffer_size_for_latency + buf_length_ms - 1) / buf_length_ms;
         if(buf_nlimit < 2) buf_nlimit = 2;
         if(buf_nlimit > ac.nbuffers) buf_nlimit = ac.nbuffers;

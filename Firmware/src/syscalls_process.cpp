@@ -318,6 +318,8 @@ void *proccreate_thread(void *ptr)
     proc->screen_ignore_vsync = pcinfo->screen_ignore_vsync != 0;
     proc->screen_overwritten_each_frame = pcinfo->screen_overwritten_each_frame != 0;
     proc->audio_max_buffer_size = pcinfo->audio_max_buffer_size;
+    if(proc->audio_max_buffer_size < 0 || proc->audio_max_buffer_size > 500)
+        proc->audio_max_buffer_size = 0;
 
     // Set cwd
     if(pcinfo->cwd)
