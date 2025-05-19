@@ -584,3 +584,10 @@ timespec operator-(const timespec &a, const timespec &b)
     ret.tv_sec -= b.tv_sec;
     return ret;
 }
+
+int clock_set_tzone(const std::string &tzone)
+{
+    setenv("TZ", tzone.c_str(), 1);
+    tzset();
+    return 0;
+}

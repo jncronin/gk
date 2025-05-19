@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ctime>
 #include <time.h>
+#include <string>
 
 extern "C" void init_clocks();
 
@@ -63,6 +64,7 @@ uint64_t clock_timespec_to_ms(const struct timespec &tp);
 
 int clock_set_rtc_from_timespec(const struct timespec *tp);
 int clock_get_timespec_from_rtc(struct timespec *tp);
+int clock_set_tzone(const std::string &tzstr);
 
 timespec operator+(const timespec &a, const timespec &b);
 timespec operator-(const timespec &a, const timespec &b);

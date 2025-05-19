@@ -83,6 +83,27 @@ void *init_thread(void *p)
     {
         // Provision root file system, then allow USB write access to MSC
         fs_provision();
+
+        // get timezone
+        auto fd = deferred_call(syscall_open, "/etc/gktz", O_RDONLY, 0);
+        if(fd < 0)
+        {
+            clock_set_tzone("GMT0BST,M3.5.0/1,M10.5.0");
+        }
+        else
+        {
+            char tzone_buf[128];
+            auto bread = deferred_call(syscall_read, fd, tzone_buf, sizeof(tzone_buf));
+            if(bread > 0)
+            {
+                tzone_buf[sizeof(tzone_buf) - 1] = 0;
+                auto eol_ptr = strchr(tzone_buf, '\n');
+                if(eol_ptr) *eol_ptr = 0;
+                std::string tzone_str(tzone_buf);
+                clock_set_tzone(tzone_buf);
+            }
+            close(fd);
+        }
     }
 #if GK_ENABLE_USB
     usb_process_start();
