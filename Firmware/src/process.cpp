@@ -312,7 +312,7 @@ bool SetFocusProcess(Process *proc)
         scl_y = x1;
 
     /* set screen mode */
-    screen_set_hardware_scale(scl_x, scl_y);
+    screen_set_hardware_scale(scl_x, scl_y, proc->screen_refresh);
 
     p_supervisor.events.Push( { .type = Event::CaptionChange });
     proc->events.Push( { .type = Event::RefreshScreen });

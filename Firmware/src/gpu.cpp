@@ -714,7 +714,7 @@ void *gpu_thread(void *p)
                             cur_process->screen_h = 120;
                             cur_process->screen_pf = g.g.dest_pf;
                             cur_process->screen_software_scale = true;
-                            screen_set_hardware_scale(x1, x1);                            
+                            screen_set_hardware_scale(x1, x1, cur_process->screen_refresh);                            
                         }
                         else if(g.g.w <= 320 && g.g.h <= 240)
                         {
@@ -722,14 +722,14 @@ void *gpu_thread(void *p)
                             cur_process->screen_h = 240;
                             cur_process->screen_pf = g.g.dest_pf;
                             cur_process->screen_software_scale = false;
-                            screen_set_hardware_scale(x2, x2);
+                            screen_set_hardware_scale(x2, x2, cur_process->screen_refresh);
                         }
                         else if(g.g.w <= 640 && g.g.h <= 480)
                         {
                             cur_process->screen_w = 640;
                             cur_process->screen_h = 480;
                             cur_process->screen_pf = g.g.dest_pf;
-                            screen_set_hardware_scale(x1, x1);
+                            screen_set_hardware_scale(x1, x1, cur_process->screen_refresh);
                         }
 
                         extern Process p_supervisor;

@@ -12,6 +12,7 @@
 SRAM4_DATA static Spinlock s_scrbuf;
 SRAM4_DATA static void *scr_bufs[2] = { 0, 0 };
 SRAM4_DATA static int scr_cbuf = 0;
+SRAM4_DATA static unsigned int scr_refresh = 60;
 
 [[maybe_unused]] static screen_hardware_scale _sc_h = x1, _sc_v = x1;
 
@@ -732,8 +733,35 @@ screen_hardware_scale screen_get_hardware_scale_horiz()
 }
 
 int screen_set_hardware_scale(screen_hardware_scale scale_horiz,
-    screen_hardware_scale scale_vert)
+    screen_hardware_scale scale_vert,
+    unsigned int refresh)
 {
+    /* Calculate a valid refresh divider.
+        Target is 800x500 resolution, from a 480 MHz PLL.
+        PLL fixed output is 3.75 to 480 MHz based on VCO and max divider 128.
+
+        Divider = 480000000 / (800 * 500 * refresh)
+        Refresh = 480000000 / (800 * 500 * divider)
+    */
+    auto pll_divider = 480000000U / (800U * 500U * refresh);
+    if(pll_divider < 1) pll_divider = 1;
+    if(pll_divider > 128) pll_divider = 128;
+    auto new_refresh = 480000000U / (800U * 500U * pll_divider);
+    if(new_refresh != scr_refresh)
+    {
+        // disable PLL3R, set new divider, re-enable
+        RCC->PLLCFGR = RCC->PLLCFGR & ~RCC_PLLCFGR_PLL3REN;
+        while(RCC->PLLCFGR & RCC_PLLCFGR_PLL3REN);
+
+        RCC->PLL3DIVR1 = (RCC->PLL3DIVR1 & ~RCC_PLL3DIVR1_DIVR_Msk) |
+            ((pll_divider - 1) << RCC_PLL3DIVR1_DIVR_Pos);
+        
+        RCC->PLLCFGR |= RCC_PLLCFGR_PLL3REN;
+
+        klog("screen: refresh changed from %u to %u Hz\n", scr_refresh, new_refresh);
+        scr_refresh = new_refresh;
+    }
+
     _sc_h = scale_horiz;
     _sc_v = scale_vert;
 

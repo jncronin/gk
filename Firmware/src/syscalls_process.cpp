@@ -314,6 +314,14 @@ void *proccreate_thread(void *ptr)
         proc->screen_w = 640;
         proc->screen_h = 480;
     }
+    if(pcinfo->screen_refresh >= 24 && pcinfo->screen_refresh <= 60)
+    {
+        proc->screen_refresh = pcinfo->screen_refresh;
+    }
+    else
+    {
+        proc->screen_refresh = 60;
+    }
     
     proc->screen_ignore_vsync = pcinfo->screen_ignore_vsync != 0;
     proc->screen_overwritten_each_frame = pcinfo->screen_overwritten_each_frame != 0;
