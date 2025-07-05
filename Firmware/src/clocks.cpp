@@ -91,9 +91,10 @@ extern "C" INTFLASH_FUNCTION void init_clocks()
         (1U << RCC_PLL2DIVR2_DIVS_Pos);
 
     /* PLL3:
+        xN = 60 -> 480 MHz
         P -> SPI2,3 @240 MHz
         Q -> SPI4,5,6 @240 MHz
-        R -> LTDC @24 MHz (60 Hz * 800 * 500) */
+        /R = 20 -> LTDC @24 MHz (60 Hz * 800 * 500) */
     RCC->PLL3DIVR1 = (19U << RCC_PLL3DIVR1_DIVR_Pos) |
         (1U << RCC_PLL3DIVR1_DIVQ_Pos) |
         (1U << RCC_PLL3DIVR1_DIVP_Pos) |
