@@ -578,9 +578,29 @@ void *supervisor_thread(void *p)
                                 focus_process->window_title) :
                             "GK";
 
+                        int bpp = 0;
+                        switch(focus_process->screen_pf)
+                        {
+                            case GK_PIXELFORMAT_ARGB8888:
+                                bpp = 32;
+                                break;
+                            case GK_PIXELFORMAT_RGB888:
+                                bpp = 24;
+                                break;
+                            case GK_PIXELFORMAT_RGB565:
+                                bpp = 16;
+                                break;
+                            case GK_PIXELFORMAT_L8:
+                                bpp = 8;
+                                break;
+                        }
+
                         const auto &scr_capt = focus_process ?
                             (" (" + std::to_string(focus_process->screen_w) + "x" +
-                            std::to_string(focus_process->screen_h) + ")") : "";
+                            std::to_string(focus_process->screen_h) + "x" +
+                            std::to_string(bpp) + "@" +
+                            std::to_string(focus_process->screen_refresh) +                          
+                            ")") : "";
 
                         lab_caption.text = capt + scr_capt;
 
