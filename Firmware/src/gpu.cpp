@@ -704,6 +704,19 @@ void *gpu_thread(void *p)
                         {
                             break;
                         }
+                        auto targ_refresh = g.g.sx;
+                        if(targ_refresh == 0)
+                        {
+                            targ_refresh = cur_process->screen_refresh;
+                        }
+                        else if(targ_refresh < 24)
+                        {
+                            targ_refresh = 24;
+                        }
+                        else if(targ_refresh > 60)
+                        {
+                            targ_refresh = 60;
+                        }
                         if(g.g.w == 0 || g.g.h == 0)
                         {
                             cur_process->screen_pf = g.g.dest_pf;
@@ -714,6 +727,7 @@ void *gpu_thread(void *p)
                             cur_process->screen_h = 120;
                             cur_process->screen_pf = g.g.dest_pf;
                             cur_process->screen_software_scale = true;
+                            cur_process->screen_refresh = targ_refresh;
                             screen_set_hardware_scale(x1, x1, cur_process->screen_refresh);                            
                         }
                         else if(g.g.w <= 320 && g.g.h <= 240)
@@ -722,6 +736,7 @@ void *gpu_thread(void *p)
                             cur_process->screen_h = 240;
                             cur_process->screen_pf = g.g.dest_pf;
                             cur_process->screen_software_scale = false;
+                            cur_process->screen_refresh = targ_refresh;
                             screen_set_hardware_scale(x2, x2, cur_process->screen_refresh);
                         }
                         else if(g.g.w <= 640 && g.g.h <= 480)
@@ -729,6 +744,7 @@ void *gpu_thread(void *p)
                             cur_process->screen_w = 640;
                             cur_process->screen_h = 480;
                             cur_process->screen_pf = g.g.dest_pf;
+                            cur_process->screen_refresh = targ_refresh;
                             screen_set_hardware_scale(x1, x1, cur_process->screen_refresh);
                         }
 
