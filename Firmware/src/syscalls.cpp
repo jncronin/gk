@@ -625,6 +625,18 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_getscreenmodeex:
+            {
+                auto p = reinterpret_cast<__syscall_getscreenmodeex_params *>(r2);
+                auto &proc = GetCurrentThreadForCore()->p;
+                if(p->x) *p->x = proc.screen_w;
+                if(p->y) *p->y = proc.screen_h;
+                if(p->pf) *p->pf = proc.screen_pf;
+                if(p->refresh) *p->pf = proc.screen_refresh;
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            break;
+
         case __syscall_opendir:
             {
                 auto path = reinterpret_cast<const char *>(r2);
