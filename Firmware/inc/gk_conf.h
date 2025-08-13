@@ -25,7 +25,7 @@
 #define GK_OVERCLOCK                1
 #define GK_TICKLESS                 0
 #define GK_DYNAMIC_SYSTICK          1
-#define GK_MAXTIMESLICE_US          50000
+#define GK_MAXTIMESLICE_US          200000
 #define GK_MEMBLK_STATS             1
 #define GK_ENABLE_PROFILE           0
 #define GK_XSPI_DUAL_MEMORY         1
