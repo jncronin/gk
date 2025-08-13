@@ -51,7 +51,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             // enable systick and trigger a PendSV IRQ
 #if GK_TICKLESS
 #else
-            SysTick->CTRL = 7UL;
+            SysTick->CTRL = 3UL;
 #endif
             scheduler_running() = true;
             Yield();

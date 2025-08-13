@@ -106,7 +106,11 @@ inline void Scheduler::set_timeout(const Thread *new_t)
         }
     }
 
-    unsigned int sysclk = 600;
+#if GK_OVERCLOCK
+    unsigned const int sysclk = 656 / 8;
+#else
+    unsigned const int sysclk = 600 / 8;
+#endif
     unsigned int reload = 0;
 
     if(earliest_blocker.is_valid())
@@ -123,7 +127,7 @@ inline void Scheduler::set_timeout(const Thread *new_t)
         {
             auto tdiff = earliest_blocker - now;
             
-            if(tdiff < kernel_time::from_ms(20))
+            if(tdiff < kernel_time::from_us(GK_MAXTIMESLICE_US))
             {
                 // core_clk/reload = 1/tdiff
                 // reload = core * tdiff(s)
@@ -133,12 +137,18 @@ inline void Scheduler::set_timeout(const Thread *new_t)
     }
     if(reload == 0)
     {
-        reload = sysclk * 20000;    // 20 ms
+        reload = sysclk * GK_MAXTIMESLICE_US;
     }
     reload--;
 
+    // Max 24 bit systick timer
+    if(reload > 0xffffffUL)
+        reload = 0xffffffUL;
+
+    SysTick->CTRL = 0UL;
     SysTick->LOAD = reload;
-    SysTick->VAL = reload;
+    SysTick->VAL = 0UL;
+    SysTick->CTRL = 3UL;
 }
 
 Thread *Scheduler::GetNextThread(uint32_t ncore)
