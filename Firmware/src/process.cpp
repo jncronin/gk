@@ -39,7 +39,7 @@ int Process::AddMPURegion(const mpu_saved_state &r)
     if(mpu_slot == -1)
     {
         klog("proc: request for mpu slot - none available\n");
-        BKPT_IF_DEBUGGER();
+        //BKPT_IF_DEBUGGER();
     }
     else
     {

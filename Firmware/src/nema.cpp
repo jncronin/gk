@@ -70,6 +70,8 @@ void init_nema()
 
     NVIC_EnableIRQ(GPU2D_IRQn);
     NVIC_EnableIRQ(GPU2D_ER_IRQn);
+
+    ICACHE->CR |= ICACHE_CR_EN;
 }
 
 int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
@@ -127,6 +129,12 @@ void nema_reg_write(uint32_t reg, uint32_t value)
 {
     __asm__ volatile("dmb \n" ::: "memory");
     *(volatile uint32_t *)(GPU2D_BASE + reg) = value;
+}
+
+int syscall_icacheinvalidate(int *_errno)
+{
+    ICACHE->CR |= ICACHE_CR_CACHEINV;
+    return 0;
 }
 
 extern "C" void GPU2D_IRQHandler()
