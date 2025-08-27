@@ -312,6 +312,7 @@ static void *file_logger_task(void *param)
                 else
                 {
                     klog("log: error reading from syslog\n");
+                    break;
                 }
             }
 
@@ -320,9 +321,19 @@ static void *file_logger_task(void *param)
         close(fno_syslog_cur);
     }
 
+    int attempts = 0;
     while(fno < 0)
     {
         fno = deferred_call(syscall_open, log_fname, O_WRONLY | O_CREAT | O_TRUNC, 0);
+
+        if(fno < 0)
+        {
+            attempts++;
+            if(attempts >= 100)
+            {
+                return nullptr;
+            }
+        }
     }
 
     auto clog = reinterpret_cast<klog_def *>(param);
