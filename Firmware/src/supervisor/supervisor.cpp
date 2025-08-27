@@ -53,6 +53,7 @@ static kernel_time last_volume_change = kernel_time();
 
 bool init_supervisor()
 {
+    p_supervisor.stack_preference = STACK_PREFERENCE_SDRAM_RAM_TCM;
     p_supervisor.argc = 0;
     p_supervisor.argv = nullptr;
     p_supervisor.brk = 0;
@@ -94,7 +95,7 @@ bool init_supervisor()
     last_volume_change = kernel_time();
     
     auto t = Thread::Create("supervisor_main", supervisor_thread, nullptr, true, 2,
-        p_supervisor, PreferM7);
+        p_supervisor, PreferM4);
     Schedule(t);
 
     return true;

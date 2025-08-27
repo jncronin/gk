@@ -26,6 +26,10 @@
 Mutex m_ehold(false, true);
 static UserspaceSemaphore sem_nema_irq;
 
+const uint32_t nema_mr_size = 0x8000;
+const uint32_t nema_mr_align = 1024;
+static MemRegion mr_nema;
+
 static nema_ringbuffer_t ring_buffer_str = {
     .bo = 
     {
@@ -37,6 +41,8 @@ static nema_ringbuffer_t ring_buffer_str = {
     .offset = 0,
     .last_submission_id = 0
 };
+
+static nema_buffer_t cl_a, cl_b;
 
 static Mutex m_nema[MUTEX_MAX + 1] = { 0 };
 
@@ -72,10 +78,44 @@ void init_nema()
     NVIC_EnableIRQ(GPU2D_ER_IRQn);
 
     ICACHE->CR |= ICACHE_CR_EN;
+
+    mr_nema = memblk_allocate(nema_mr_size, MemRegionType::AXISRAM, "nema buffers");
+    if(!mr_nema.valid)
+        mr_nema = memblk_allocate(nema_mr_size, MemRegionType::SRAM, "nema buffers");
+    if(!mr_nema.valid)
+        mr_nema = memblk_allocate(nema_mr_size, MemRegionType::SDRAM, "nema buffers");
+    
+    if(mr_nema.valid)
+    {
+        klog("nema: buffers 0x%x - 0x%x\n", mr_nema.address, mr_nema.address + mr_nema.length);
+
+        ring_buffer_str.bo.base_phys = mr_nema.address;
+        ring_buffer_str.bo.base_virt = (void*)(uintptr_t)mr_nema.address;
+        ring_buffer_str.bo.size = nema_mr_align;
+        ring_buffer_str.bo.fd = 2;      // don't deallocate
+
+        cl_a.base_phys = ring_buffer_str.bo.base_phys + ring_buffer_str.bo.size;
+        cl_a.base_phys = (cl_a.base_phys + nema_mr_align - 1) & ~(nema_mr_align - 1);
+        cl_a.base_virt = (void *)cl_a.base_phys;
+        cl_a.size = ((mr_nema.length - (cl_a.base_phys - mr_nema.address)) / 2) & ~(nema_mr_align - 1);
+        cl_a.fd = 2;
+
+        cl_b.base_phys = cl_a.base_phys + cl_a.size;
+        cl_b.base_phys = (cl_b.base_phys + nema_mr_align - 1) & ~(nema_mr_align - 1);
+        cl_b.base_virt = (void *)cl_b.base_phys;
+        cl_b.size = (mr_nema.length - (cl_b.base_phys - mr_nema.address)) & ~(nema_mr_align - 1);
+        cl_b.fd = 2;
+
+        klog("nema: rb: %08x - %08x, cl_a: %08x - %08x, cl_b: %08x - %08x\n",
+            ring_buffer_str.bo.base_phys, ring_buffer_str.bo.base_phys + ring_buffer_str.bo.size,
+            cl_a.base_phys, cl_a.base_phys + cl_a.size,
+            cl_b.base_phys, cl_b.base_phys + cl_b.size);
+    }
 }
 
 int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
-    void *nema_rb, sem_t *nema_irq_sem, pthread_mutex_t *eof_mutex, int *_errno)
+    void *nema_rb, sem_t *nema_irq_sem, pthread_mutex_t *eof_mutex, 
+    void *_cl_a, void *_cl_b, int *_errno)
 {
     if(nmutexes != MUTEX_MAX + 1)
     {
@@ -104,6 +144,16 @@ int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
         return -1;
     }
 
+    // make ring/circ buffers WT
+    auto mpu_nema_rb = MPUGenerate(mr_nema.address, mr_nema.length, 0, false,
+        RW, RW, WT_NS);
+    int rb_reg_id = p.AddMPURegion(mpu_nema_rb);
+    if(rb_reg_id == -1)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
     p.UpdateMPURegionsForThreads();
 
     /* Return mutex/sem ids etc */
@@ -114,6 +164,10 @@ int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
     }
     nema_irq_sem->s = &sem_nema_irq;
     memcpy(nema_rb, &ring_buffer_str, sizeof(nema_ringbuffer_t));
+    if(addr_is_valid(reinterpret_cast<nema_buffer_t *>(_cl_a), true))
+        memcpy(_cl_a, &cl_a, sizeof(cl_a));
+    if(addr_is_valid(reinterpret_cast<nema_buffer_t *>(_cl_b), true))
+        memcpy(_cl_b, &cl_b, sizeof(cl_b));
 
     return 0;
 }

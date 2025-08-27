@@ -919,6 +919,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = syscall_nemaenable(p->mutexes,
                     p->nmutexes, p->rb, (sem_t *)p->irq_sem,
                     p->eof_mutex,
+                    p->cl_a,
+                    p->cl_b,
                     reinterpret_cast<int *>(r3));
             }
             break;
