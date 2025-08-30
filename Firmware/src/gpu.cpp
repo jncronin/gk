@@ -7,7 +7,7 @@
 #include "process.h"
 #include "gk_conf.h"
 
-#define GPU_DEBUG 0
+#define GPU_DEBUG 1
 
 SRAM4_DATA static BinarySemaphore gpu_ready;
 SRAM4_DATA static BinarySemaphore mdma_ready;
@@ -700,7 +700,9 @@ void *gpu_thread(void *p)
                         // sanity check
                         if((g.g.dest_pf != GK_PIXELFORMAT_ARGB8888) &&
                             (g.g.dest_pf != GK_PIXELFORMAT_RGB888) &&
-                            (g.g.dest_pf != GK_PIXELFORMAT_RGB565))
+                            (g.g.dest_pf != GK_PIXELFORMAT_RGB565) &&
+                            (g.g.dest_pf != GK_PIXELFORMAT_ARGB4444) &&
+                            (g.g.dest_pf != GK_PIXELFORMAT_ARGB1555))
                         {
                             break;
                         }

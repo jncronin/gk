@@ -284,6 +284,8 @@ void *proccreate_thread(void *ptr)
         case GK_PIXELFORMAT_ARGB8888:
         case GK_PIXELFORMAT_RGB888:
         case GK_PIXELFORMAT_RGB565:
+        case GK_PIXELFORMAT_ARGB4444:
+        case GK_PIXELFORMAT_ARGB1555:
             proc->screen_pf = pcinfo->pixel_format;
             break;
         case GK_PIXELFORMAT_L8:

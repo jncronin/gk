@@ -125,7 +125,7 @@ int syscall_get_ienv(char *bufout, size_t buflen, unsigned int idx, int *_errno)
 // nema gpu
 int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
     void *nema_rb, sem_t *nema_irq_sem, pthread_mutex_t *eof_mutex, 
-    void *cl_a, void *cl_b, int *_errno);
+    void *cl_a, void *cl_b, void *ones, void *zeros, int *_errno);
 int syscall_icacheinvalidate(int *_errno);
 
 static inline int deferred_return(int ret, int _errno, kernel_time until)

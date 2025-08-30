@@ -921,6 +921,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                     p->eof_mutex,
                     p->cl_a,
                     p->cl_b,
+                    p->ones,
+                    p->zeros,
                     reinterpret_cast<int *>(r3));
             }
             break;

@@ -33,16 +33,17 @@ static MemRegion mr_nema;
 static nema_ringbuffer_t ring_buffer_str = {
     .bo = 
     {
-        .size = 0x20000,
+        .size = 0,
         .fd = 0,
-        .base_virt = (void *)0x901d0000,
-        .base_phys = 0x901d0000
+        .base_virt = (void *)0,
+        .base_phys = 0
     },
     .offset = 0,
     .last_submission_id = 0
 };
 
 static nema_buffer_t cl_a, cl_b;
+void *ones, *zeros;
 
 static Mutex m_nema[MUTEX_MAX + 1] = { 0 };
 
@@ -94,7 +95,15 @@ void init_nema()
         ring_buffer_str.bo.size = nema_mr_align;
         ring_buffer_str.bo.fd = 2;      // don't deallocate
 
-        cl_a.base_phys = ring_buffer_str.bo.base_phys + ring_buffer_str.bo.size;
+        auto ones_addr = ring_buffer_str.bo.base_phys + ring_buffer_str.bo.size;
+        ones_addr = (ones_addr + nema_mr_align - 1) & ~(nema_mr_align - 1);
+        ones = (void *)ones_addr;
+        memset(ones, 0xff, 64);
+        auto zeros_addr = ones_addr + 64;
+        zeros = (void *)zeros_addr;
+        memset(zeros, 0, 64);
+
+        cl_a.base_phys = zeros_addr + 64;
         cl_a.base_phys = (cl_a.base_phys + nema_mr_align - 1) & ~(nema_mr_align - 1);
         cl_a.base_virt = (void *)cl_a.base_phys;
         cl_a.size = ((mr_nema.length - (cl_a.base_phys - mr_nema.address)) / 2) & ~(nema_mr_align - 1);
@@ -115,7 +124,7 @@ void init_nema()
 
 int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
     void *nema_rb, sem_t *nema_irq_sem, pthread_mutex_t *eof_mutex, 
-    void *_cl_a, void *_cl_b, int *_errno)
+    void *_cl_a, void *_cl_b, void *_ones, void *_zeros, int *_errno)
 {
     if(nmutexes != MUTEX_MAX + 1)
     {
@@ -168,6 +177,10 @@ int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
         memcpy(_cl_a, &cl_a, sizeof(cl_a));
     if(addr_is_valid(reinterpret_cast<nema_buffer_t *>(_cl_b), true))
         memcpy(_cl_b, &cl_b, sizeof(cl_b));
+    if(addr_is_valid(reinterpret_cast<void **>(_ones), true))
+        *reinterpret_cast<void **>(_ones) = ones;
+    if(addr_is_valid(reinterpret_cast<void **>(_zeros), true))
+        *reinterpret_cast<void **>(_zeros) = zeros;
 
     return 0;
 }
