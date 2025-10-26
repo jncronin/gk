@@ -7,7 +7,7 @@
 #include "process.h"
 #include "gk_conf.h"
 
-#define GPU_DEBUG 1
+#define GPU_DEBUG 0
 
 SRAM4_DATA static BinarySemaphore gpu_ready;
 SRAM4_DATA static BinarySemaphore mdma_ready;
