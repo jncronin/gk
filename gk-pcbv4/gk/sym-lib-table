@@ -1,0 +1,8 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "jc_pmic")(type "KiCad")(uri "${KIPRJMOD}/../pmic/jc_pmic.kicad_sym")(options "")(descr ""))
+  (lib (name "STM32MP235DAK")(type "KiCad")(uri "${KIPRJMOD}/2025-10-18_14-20-47.kicad_sym")(options "")(descr ""))
+  (lib (name "STM32MP255DAI")(type "KiCad")(uri "${KIPRJMOD}/2025-10-19_12-32-58.kicad_sym")(options "")(descr ""))
+  (lib (name "SN74AVC32")(type "KiCad")(uri "${KIPRJMOD}/2025-10-19_20-34-54.kicad_sym")(options "")(descr ""))
+  (lib (name "gk-syms")(type "KiCad")(uri "${KIPRJMOD}/../../gk-pcbv3/gk-pcbv3/gk-syms.kicad_sym")(options "")(descr ""))
+)

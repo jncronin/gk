@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "stpmic25")(type "KiCad")(uri "${KIPRJMOD}/2025-10-16_14-00-14.kicad_sym")(options "")(descr ""))
+  (lib (name "jc_pmic")(type "KiCad")(uri "${KIPRJMOD}/jc_pmic.kicad_sym")(options "")(descr ""))
+)

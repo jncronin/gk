@@ -1,0 +1,57 @@
+(version 1)
+(rule "ddr_dqs2_length"
+	(condition "A.NetClass == 'DDR_DQS2'")
+	(constraint length (opt 14.7mm) (min 14.65mm) (max 14.75mm))
+	(constraint skew (max 1mil))
+)
+(rule "ddr_data2_length"
+	(condition "A.NetClass == 'DDR_DATA2'")
+	(constraint length (min 14.0mm) (opt 14.7mm) (max 15.4mm))
+)
+(rule "ddr_dqs1_length"
+	(condition "A.NetClass == 'DDR_DQS1'")
+	(constraint length (opt 16.1mm) (min 16.05mm) (max 16.15mm))
+	(constraint skew (max 1mil))
+)
+(rule "ddr_data1_length"
+	(condition "A.NetClass == 'DDR_DATA1'")
+	(constraint length (min 15.6mm) (opt 16.1mm) (max 16.8mm))
+)
+(rule "ddr_ck_length"
+	(condition "A.NetClass == 'DDR_CLK'")
+	(constraint length (opt 24.0mm) (min 23.95mm) (max 24.05mm))
+	(constraint skew (max 1mil))
+)
+(rule "ddr_ca_length"
+	(condition "A.NetClass == 'DDR_CA'")
+	(constraint length (min 22.0mm) (opt 24.0mm) (max 26.0mm))
+)
+(rule "trace_length"
+	(condition "A.NetClass == 'TRACE'")
+	(constraint length (min 38.15mm) (opt 38.3mm) (max 38.45mm))
+)
+(rule "ltdc_length"
+	(condition "A.NetClass == 'LTDC'")
+	(constraint length (min 65mm) (opt 78mm) (max 80mm))
+)
+
+(rule "octospi_length"
+	(condition "A.NetClass == 'OCTOSPI1'")
+	(constraint length (min 33mm) (opt 36mm) (max 39mm))
+)
+
+(rule "STM_BGA"
+	(condition "A.intersectsArea('STM_BGA')")
+	(constraint track_width (min 3mil))
+	(constraint clearance (min 3mil))
+)
+(rule "DDR_BGA"
+	(condition "A.intersectsArea('DDR_BGA')")
+	(constraint track_width (min 3mil))
+	(constraint clearance (min 3mil))
+)
+
+(rule "spi3_length"
+	(condition "A.NetClass == 'SPI3'")
+	(constraint length (min 117.2mm) (opt 117.7mm) (max 118.2mm))
+)

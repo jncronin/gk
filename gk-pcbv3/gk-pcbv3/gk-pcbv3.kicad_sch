@@ -4536,7 +4536,7 @@
 		)
 		(uuid "3a23b292-171c-42e6-bf62-70e854cb4d46")
 	)
-	(text "Next version:\n\nFix audio output amp polarity - usually signal on -ve input\nFix power button issue necessitating wire on board currently\nUse IO expander for buttons (e.g. PI4IOE5V6416ZDEX)\nAdd extra analogue joystick (use freed up IOs)\nAdd trace pins output\nAdd hardware power cycle (e.g. another TPS2041BDBV) to tilt sensor\nUse J-Link power output as another possible option to keep the main power going\n (would need 19-pin header on board instead of 9 pin)"
+	(text "Next version:\n\nFix audio output amp polarity - usually signal on -ve input\nFix power button issue necessitating wire on board currently\nUse IO expander for buttons (e.g. PI4IOE5V6416ZDEX)\nPlace joystick(s) and ?buttons on separate board to raise them up closer to front panel\nAdd extra analogue joystick (use freed up IOs)\nAdd trace pins output\nAdd hardware power cycle (e.g. another TPS2041BDBV) to tilt sensor\nUse J-Link power output as another possible option to keep the main power going\n (would need 19-pin header on board instead of 9 pin)"
 		(exclude_from_sim no)
 		(at 100.584 111.252 0)
 		(effects

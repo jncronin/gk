@@ -1,0 +1,6 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "jc_pmic")(type "KiCad")(uri "${KIPRJMOD}/../pmic/jc_pmic.pretty")(options "")(descr ""))
+  (lib (name "footprints")(type "KiCad")(uri "${KIPRJMOD}/footprints.pretty")(options "")(descr ""))
+  (lib (name "gk-pcbv3")(type "KiCad")(uri "${KIPRJMOD}/../../gk-pcbv3/gk-pcbv3/gk-pcbv3.pretty")(options "")(descr ""))
+)
