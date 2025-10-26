@@ -14691,7 +14691,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 279.4 121.92 0)
+		(at 267.97 121.92 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -14700,7 +14700,7 @@
 		(fields_autoplaced yes)
 		(uuid "42e5ff04-dc2e-4ad4-906d-fa828db1d116")
 		(property "Reference" "#PWR098"
-			(at 279.4 125.73 0)
+			(at 267.97 125.73 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14709,7 +14709,7 @@
 			)
 		)
 		(property "Value" "VDDCORE"
-			(at 279.4 116.84 0)
+			(at 267.97 116.84 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14717,7 +14717,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 279.4 121.92 0)
+			(at 267.97 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14726,7 +14726,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 279.4 121.92 0)
+			(at 267.97 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -14735,7 +14735,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 279.4 121.92 0)
+			(at 267.97 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16568,7 +16568,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 279.4 125.73 0)
+		(at 267.97 125.73 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -16577,7 +16577,7 @@
 		(fields_autoplaced yes)
 		(uuid "6dd0bad1-dfcb-4828-8c9d-0f02a74ca1cb")
 		(property "Reference" "C23"
-			(at 283.21 124.4599 0)
+			(at 271.78 124.4599 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16586,7 +16586,7 @@
 			)
 		)
 		(property "Value" "100n"
-			(at 283.21 126.9999 0)
+			(at 271.78 126.9999 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16595,7 +16595,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
-			(at 280.3652 129.54 0)
+			(at 268.9352 129.54 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16604,7 +16604,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 279.4 125.73 0)
+			(at 267.97 125.73 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16613,7 +16613,7 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 279.4 125.73 0)
+			(at 267.97 125.73 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16638,7 +16638,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 279.4 129.54 0)
+		(at 267.97 129.54 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -16647,7 +16647,7 @@
 		(fields_autoplaced yes)
 		(uuid "7465130b-075c-45c8-8908-4220a1e6f633")
 		(property "Reference" "#PWR0110"
-			(at 279.4 135.89 0)
+			(at 267.97 135.89 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16656,7 +16656,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 279.4 134.62 0)
+			(at 267.97 134.62 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16664,7 +16664,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 279.4 129.54 0)
+			(at 267.97 129.54 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16673,7 +16673,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 279.4 129.54 0)
+			(at 267.97 129.54 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -16682,7 +16682,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 279.4 129.54 0)
+			(at 267.97 129.54 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19471,7 +19471,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 279.4 151.13 0)
+		(at 267.97 151.13 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -19480,7 +19480,7 @@
 		(fields_autoplaced yes)
 		(uuid "c6249d79-4ee2-4b7e-833b-3cb58bae436b")
 		(property "Reference" "#PWR0156"
-			(at 279.4 157.48 0)
+			(at 267.97 157.48 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19489,7 +19489,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 279.4 156.21 0)
+			(at 267.97 156.21 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19497,7 +19497,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 279.4 151.13 0)
+			(at 267.97 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19506,7 +19506,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 279.4 151.13 0)
+			(at 267.97 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -19515,7 +19515,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 279.4 151.13 0)
+			(at 267.97 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20002,7 +20002,7 @@
 	)
 	(symbol
 		(lib_id "Device:C")
-		(at 279.4 147.32 0)
+		(at 267.97 147.32 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -20011,7 +20011,7 @@
 		(fields_autoplaced yes)
 		(uuid "d769d4a8-f946-43c6-9b29-4ee068a5da43")
 		(property "Reference" "C46"
-			(at 283.21 146.0499 0)
+			(at 271.78 146.0499 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20020,7 +20020,7 @@
 			)
 		)
 		(property "Value" "1u"
-			(at 283.21 148.5899 0)
+			(at 271.78 148.5899 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20029,7 +20029,7 @@
 			)
 		)
 		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
-			(at 280.3652 151.13 0)
+			(at 268.9352 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20038,7 +20038,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 279.4 147.32 0)
+			(at 267.97 147.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -20047,7 +20047,7 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
-			(at 279.4 147.32 0)
+			(at 267.97 147.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21684,7 +21684,7 @@
 	)
 	(symbol
 		(lib_id "power:VDD")
-		(at 279.4 143.51 0)
+		(at 267.97 143.51 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -21693,7 +21693,7 @@
 		(fields_autoplaced yes)
 		(uuid "f71b438a-b4ce-49fb-aae7-6938df99c3e8")
 		(property "Reference" "#PWR0133"
-			(at 279.4 147.32 0)
+			(at 267.97 147.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21702,7 +21702,7 @@
 			)
 		)
 		(property "Value" "VDDCPU"
-			(at 279.4 138.43 0)
+			(at 267.97 138.43 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21710,7 +21710,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 279.4 143.51 0)
+			(at 267.97 143.51 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21719,7 +21719,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 279.4 143.51 0)
+			(at 267.97 143.51 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -21728,7 +21728,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDD\""
-			(at 279.4 143.51 0)
+			(at 267.97 143.51 0)
 			(effects
 				(font
 					(size 1.27 1.27)

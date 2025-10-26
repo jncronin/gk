@@ -8157,6 +8157,76 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:C")
+		(at 138.43 25.4 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "31faa533-3a3d-4597-ac0a-52c7d754be54")
+		(property "Reference" "C15"
+			(at 142.24 24.1299 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100n"
+			(at 142.24 26.6699 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 139.3952 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 138.43 25.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 138.43 25.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "3a2afe3a-3e04-48a0-bd1b-1645f4008502")
+		)
+		(pin "1"
+			(uuid "6aa080b0-9020-4819-9e54-388b92e8df06")
+		)
+		(instances
+			(project "gk"
+				(path "/a049c72e-5361-408c-ab21-661d491fee9d/75c00117-6269-4910-8733-11a5b282a070"
+					(reference "C15")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 247.65 129.54 270)
 		(mirror x)
@@ -9046,6 +9116,73 @@
 			(project "gk"
 				(path "/a049c72e-5361-408c-ab21-661d491fee9d/75c00117-6269-4910-8733-11a5b282a070"
 					(reference "#PWR0318")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 138.43 29.21 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "798e4af3-1088-42cb-8016-0cfb488c4bd9")
+		(property "Reference" "#PWR093"
+			(at 138.43 35.56 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 138.43 34.29 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 138.43 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 138.43 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 138.43 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "d90bd747-7642-4cca-956c-1880f6551adc")
+		)
+		(instances
+			(project "gk"
+				(path "/a049c72e-5361-408c-ab21-661d491fee9d/75c00117-6269-4910-8733-11a5b282a070"
+					(reference "#PWR093")
 					(unit 1)
 				)
 			)
@@ -10157,6 +10294,72 @@
 			(project "gk"
 				(path "/a049c72e-5361-408c-ab21-661d491fee9d/75c00117-6269-4910-8733-11a5b282a070"
 					(reference "R53")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 138.43 21.59 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f0f4840c-bc0d-4b94-8e10-bf51ed893663")
+		(property "Reference" "#PWR090"
+			(at 138.43 25.4 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V3"
+			(at 138.43 16.51 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 138.43 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 138.43 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+3V3\""
+			(at 138.43 21.59 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5920ad32-ef4f-41ae-b2df-26d0dc231bb5")
+		)
+		(instances
+			(project "gk"
+				(path "/a049c72e-5361-408c-ab21-661d491fee9d/75c00117-6269-4910-8733-11a5b282a070"
+					(reference "#PWR090")
 					(unit 1)
 				)
 			)
