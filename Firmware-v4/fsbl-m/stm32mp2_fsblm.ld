@@ -1,6 +1,7 @@
 /*
 
-Executes from RETRAM @ 0x30080000 (secure alias)
+Executes from 128 kiB RETRAM @ 0x30080000 (secure alias)
+Save 4 kiB at end for stack
 
 */
 
@@ -8,7 +9,7 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    RETRAM          (xrw) : ORIGIN = 0x30080000, LENGTH = 0x20000
+    RETRAM          (xrw) : ORIGIN = 0x30080000, LENGTH = 0x1f000
 }
 
 SECTIONS
