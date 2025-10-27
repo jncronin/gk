@@ -19,3 +19,6 @@
 [submodule "Firmware-v3/inih"]
 	path = Firmware/inih
 	url = https://github.com/jncronin/inih.git
+[submodule "Firmware-v4/STM32CubeMP2"]
+	path = Firmware-v4/STM32CubeMP2
+	url = https://github.com/STMicroelectronics/STM32CubeMP2.git
