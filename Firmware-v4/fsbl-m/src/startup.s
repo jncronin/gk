@@ -3,6 +3,7 @@
 .thumb
 
 .section .text.Reset_Handler
+.global Reset_Handler
 .type Reset_Handler, %function
 
 Reset_Handler:
