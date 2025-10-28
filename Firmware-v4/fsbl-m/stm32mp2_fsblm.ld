@@ -3,6 +3,8 @@
 Executes from 128 kiB RETRAM @ 0x30080000 (secure alias)
 Save 4 kiB at end for stack
 
+Add flash load address so J-Link can program properly
+
 */
 
 ENTRY(Reset_Handler)
@@ -10,6 +12,7 @@ ENTRY(Reset_Handler)
 MEMORY
 {
     RETRAM          (xrw) : ORIGIN = 0x30080000, LENGTH = 0x1f000
+    FLASH                 : ORIGIN = 0x60040000, LENGTH = 0x20000
 }
 
 SECTIONS
@@ -29,7 +32,7 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .rodata :
   {
@@ -37,14 +40,14 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .ARM.extab (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
     . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
     . = ALIGN(4);
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .ARM (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
    {
@@ -53,7 +56,7 @@ SECTIONS
     *(.ARM.exidx*)
     __exidx_end = .;
     . = ALIGN(4);
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .preinit_array  (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -62,7 +65,7 @@ SECTIONS
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
     . = ALIGN(4);
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .init_array (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -72,7 +75,7 @@ SECTIONS
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
     . = ALIGN(4);
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .fini_array (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
@@ -82,7 +85,7 @@ SECTIONS
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
     . = ALIGN(4);
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   .data :
   {
@@ -95,7 +98,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   . = ALIGN(4);
   .bss :
@@ -110,7 +113,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >RETRAM
+  } >RETRAM AT> FLASH
 
   _estack = 0x300a0000;
 }
