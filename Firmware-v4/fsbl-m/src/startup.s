@@ -23,10 +23,14 @@ Reset_Handler:
     cmp r2, r4
     bcc 1b
 
+    // Save r0 (may be passed by bootrom)
+    mov r4, r0
+
     // Init libc
     bl __libc_init_array
 
     // Main
+    mov r0, r4
     bl main
 
 3:
