@@ -1,5 +1,6 @@
 {
     "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35.cmake",
+        "STM32_SigningTool_CLI": "/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_SigningTool_CLI.exe"
     },
 }

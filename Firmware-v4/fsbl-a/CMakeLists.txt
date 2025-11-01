@@ -88,3 +88,16 @@ utils_target_set_linker_script(${PROJECT_NAME}
 utils_target_print_size(${PROJECT_NAME})
 utils_target_generate_bin(${PROJECT_NAME})
 
+find_program(STM32_SigningTool_CLI STM32_SigningTool_CLI REQUIRED)
+add_custom_target(${PROJECT_NAME}-stm32
+    ALL
+    COMMAND
+        ${STM32_SigningTool_CLI}
+            -in ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin
+            -nk -of 0x0 -iv 1 -hv 2.2
+            -ep 0x0e002600 -s -t fsbl -la 0x0e002600
+            -o ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.stm32.bin
+)
+add_dependencies(${PROJECT_NAME}-stm32
+    ${PROJECT_NAME}
+)
