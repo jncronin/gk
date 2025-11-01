@@ -7,6 +7,8 @@ static const constexpr pin EV_RED       { GPIOH, 4 };
 static const constexpr pin EV_GREEN     { GPIOD, 8 };
 static const constexpr pin EV_ORANGE    { GPIOJ, 6 };
 
+void init_clocks();
+
 // This points to the boot_api_context_t structure which we do not use.
 //  Pass it on to the ssbl-a
 uint32_t _bootrom_val;
@@ -26,7 +28,7 @@ int main(uint32_t bootrom_val)
     _bootrom_val = bootrom_val;
 
     // Set up clocks so that we can get a nice fast clock for QSPI
-
+    init_clocks();
 
     // Enable QSPI XIP
     for(const auto &p : QSPI_PINS)
@@ -40,10 +42,10 @@ int main(uint32_t bootrom_val)
     OCTOSPIM->CR = 0;
     OCTOSPI1->CR = 0;
     OCTOSPI1->DCR1 = (2U << OCTOSPI_DCR1_MTYP_Pos) |
-        (21U << OCTOSPI_DCR1_DEVSIZE_Pos) |
+        (21U << OCTOSPI_DCR1_DEVSIZE_Pos) |     // 4 MBytes/32 Mb - we use W25Q32JV in production
         (0x3fU << OCTOSPI_DCR1_CSHT_Pos) |
         OCTOSPI_DCR1_DLYBYP;
-    OCTOSPI1->DCR2 = (4U << OCTOSPI_DCR2_PRESCALER_Pos);
+    OCTOSPI1->DCR2 = (1U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz/2 => 50 MHz
     OCTOSPI1->DCR3 = 0;
     OCTOSPI1->DCR4 = 0;
     OCTOSPI1->FCR = 0xdU;
@@ -63,7 +65,8 @@ int main(uint32_t bootrom_val)
     
     EV_ORANGE.set_as_output();
 
-    while(1)
+    // say hi
+    for(int n = 0; n < 10; n++)
     {
         EV_ORANGE.set();
         for(int i = 0; i < 2500000; i++);
@@ -71,19 +74,8 @@ int main(uint32_t bootrom_val)
         for(int i = 0; i < 2500000; i++);
     }
 
-    // TODO:
-
-
-    // Set clocks
-
-
-    // Init DDR - can happen concurrently with image loading
-
-
-    // Set OCTOSPI to XIP
-
-
-    // Jump to MCU program
+    void (*ssbl)(uint32_t bootrom_val) = (void (*)(uint32_t))0x60100000;
+    ssbl(bootrom_val);
 
     return 0;
 }
