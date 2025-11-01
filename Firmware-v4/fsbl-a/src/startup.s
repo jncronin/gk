@@ -1,6 +1,4 @@
-.syntax unified
-.cpu cortex-m33
-.thumb
+.cpu cortex-a35
 
 .section .vtors
 .word _estack
@@ -21,31 +19,31 @@
 .word  SysTick_Handler
 
 .weak      NMI_Handler
-.thumb_set NMI_Handler,Default_Handler
+.set NMI_Handler,Default_Handler
 
 .weak      HardFault_Handler
-.thumb_set HardFault_Handler,Default_Handler
+.set HardFault_Handler,Default_Handler
 
 .weak      MemManage_Handler
-.thumb_set MemManage_Handler,Default_Handler
+.set MemManage_Handler,Default_Handler
 
 .weak      BusFault_Handler
-.thumb_set BusFault_Handler,Default_Handler
+.set BusFault_Handler,Default_Handler
 
 .weak      UsageFault_Handler
-.thumb_set UsageFault_Handler,Default_Handler
+.set UsageFault_Handler,Default_Handler
 
 .weak      SVC_Handler
-.thumb_set SVC_Handler,Default_Handler
+.set SVC_Handler,Default_Handler
 
 .weak      DebugMon_Handler
-.thumb_set DebugMon_Handler,Default_Handler
+.set DebugMon_Handler,Default_Handler
 
 .weak      PendSV_Handler
-.thumb_set PendSV_Handler,Default_Handler
+.set PendSV_Handler,Default_Handler
 
 .weak      SysTick_Handler
-.thumb_set SysTick_Handler,Default_Handler
+.set SysTick_Handler,Default_Handler
 
 
 .section  .text.Default_Handler,"ax",%progbits
@@ -60,41 +58,69 @@ Infinite_Loop:
 .type Reset_Handler, %function
 
 Reset_Handler:
-    ldr     sp, =_estack
+    // keep APs in WFI
+    mrs x2, mpidr_el1
+    and x2, x2, #0xff
+    cmp x2, #0
+    b.eq 2f
+    b AP_Reset_Handler
+
+2:
+    // enable debug
+    ldr x2, =0x44200584
+    ldr w3, [x2]
+    orr w3, w3, #(0x1 << 1)
+    str w3, [x2]
+
+    ldr x2, =0x44000e20
+    ldr w3, =0xdeb60fff
+    str w3, [x2]
+
+    // system setup
+    ldr x2, =_estack
+    mov sp, x2
 
     // enable fpu (may be called from __libc_init_array)
-    ldr r2,  =0xe000ed88      // CPACR
+/*    ldr r2,  =0xe000ed88      // CPACR
     ldr r3, [r2]             
     orr r3, r3, #(0xf << 20)
     str r3, [r2]
     dsb
-    isb
+    isb */
 
     // Init .bss
-    ldr r2, =_sbss
-    movs r3, #0
-    ldr r4, =_ebss
+    ldr x2, =_sbss
+    mov x3, #0
+    ldr x4, =_ebss
 
-    b 2f
+    b 4f
 
-1:
-    str r3, [r2], #4
+3:
+    str x3, [x2], #8
 
-2:
-    cmp r2, r4
-    bcc 1b
+4:
+    cmp x2, x4
+    bcc 3b
 
     // Save r0 (may be passed by bootrom)
-    mov r4, r0
+    mov x4, x0
 
     // Init libc
     bl __libc_init_array
 
     // Main
-    mov r0, r4
+    mov x0, x4
     bl main
 
 3:
     b 3b
 
 .size   Reset_Handler, .-Reset_Handler
+
+.section .text.AP_Reset_Handler
+.global AP_Reset_Handler
+.type AP_Reset_Handler, %function
+
+AP_Reset_Handler:
+    wfi
+    b AP_Reset_Handler

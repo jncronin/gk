@@ -19,5 +19,19 @@ int main()
         for(int i = 0; i < 2500000; i++);
     }
 
+    // TODO:
+
+
+    // Set clocks
+
+
+    // Init DDR - can happen concurrently with image loading
+
+
+    // Set OCTOSPI to XIP
+
+
+    // Jump to MCU program
+
     return 0;
 }
