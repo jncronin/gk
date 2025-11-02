@@ -22,3 +22,6 @@
 [submodule "Firmware-v4/STM32CubeMP2"]
 	path = Firmware-v4/STM32CubeMP2
 	url = https://github.com/STMicroelectronics/STM32CubeMP2.git
+[submodule "Firmware-v4/stm32-ddr-phy-binary"]
+	path = Firmware-v4/stm32-ddr-phy-binary
+	url = https://github.com/STMicroelectronics/stm32-ddr-phy-binary.git
