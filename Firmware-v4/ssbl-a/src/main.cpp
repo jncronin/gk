@@ -11,8 +11,8 @@ void init_clocks();
 
 int main(uint32_t bootrom_val)
 {
-    // Set up clocks so that we can get a nice fast clock for QSPI
-    //init_clocks();
+    // Set up clocks for CPU1
+    init_clocks();
     
     EV_BLUE.set_as_output();
 

@@ -7,7 +7,7 @@ void init_clocks()
     (void)RCC->OCENSETR;
     while((RCC->OCRDYR & RCC_OCRDYR_HSERDY) == 0);
 
-    // OSPI on XBAR 48
+    // OSPI on XBAR 48 (see RM 21.4.9)
     // 0x44200000 (RCC) + 0x1018 + 4 * x
 
     // Initial XBAR setting is 0x40 (PLL4) for 0 (MCU) and 1 (SDMMC1) and 0x45 (HSI) for the rest
