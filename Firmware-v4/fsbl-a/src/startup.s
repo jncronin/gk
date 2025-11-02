@@ -131,7 +131,7 @@ AP_Reset_Handler:
     str x3, [x2]
 
 1:
-    wfi
+    isb // (similar to x86 pause here)
     ldr x2, =AP_Target
     ldr x2, [x2]
     cmp x2, #0
