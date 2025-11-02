@@ -72,7 +72,7 @@ Reset_Handler:
     orr w3, w3, #0x2
     str w3, [x2]
 
-    // RISAB3 - enable secure data access
+    // RISAB3 - enable secure data access to SRAM1
     ldr x2, =0x42110000
     ldr w3, [x2]
     orr w3, w3, 0x80000000
