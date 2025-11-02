@@ -12,18 +12,20 @@ void init_clocks();
 int main(uint32_t bootrom_val)
 {
     // Set up clocks so that we can get a nice fast clock for QSPI
-    init_clocks();
+    //init_clocks();
     
     EV_BLUE.set_as_output();
 
     // say hi
-    while(true)
+    for(int n = 0; n < 10; n++)
     {
         EV_BLUE.set();
         for(int i = 0; i < 2500000; i++);
         EV_BLUE.clear();
         for(int i = 0; i < 2500000; i++);
     }
+
+    while(true);
 
     return 0;
 }

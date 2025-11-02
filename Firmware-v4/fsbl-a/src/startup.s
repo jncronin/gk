@@ -118,9 +118,24 @@ Reset_Handler:
 .size   Reset_Handler, .-Reset_Handler
 
 .section .text.AP_Reset_Handler
+
+.global AP_Target
+AP_Target: .quad 0 
+
 .global AP_Reset_Handler
 .type AP_Reset_Handler, %function
 
 AP_Reset_Handler:
+    ldr x2, =AP_Target
+    mov x3, #0
+    str x3, [x2]
+
+1:
     wfi
-    b AP_Reset_Handler
+    ldr x2, =AP_Target
+    ldr x2, [x2]
+    cmp x2, #0
+    beq 1b
+    br x2
+
+.size AP_Reset_Handler, .-AP_Reset_Handler

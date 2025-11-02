@@ -5,8 +5,11 @@ The ssbl runs from QSPI NOR flash at 60100000
 Sysram is still in use for the stack, the bootrom_api structure and
  the AP executing code in an infinite loop.
 
-Therefore, use RETRAM for our RAM needs (all other RAMs are disabled at present)
+Therefore, use RETRAM for our RAM needs
+The AP does a WFI loop in SRAM2 (where it also has its stack)
+ - need to set the first page of SRAM2 for secure access therefore
 
+We use the 2nd 1 MiB of flash for our needs.  Leave the last 2 MiB for CM33 code.
 */
 
 ENTRY(Reset_Handler)
@@ -14,7 +17,8 @@ ENTRY(Reset_Handler)
 MEMORY
 {
     RETRAM          (xrw) : ORIGIN = 0x0e080000, LENGTH = 128*1024
-    FLASH                 : ORIGIN = 0x60100000, LENGTH = 3*1024*1024
+    FLASH           (xrw) : ORIGIN = 0x60100000, LENGTH = 1*1024*1024
+    SRAM2           (xrw) : ORIGIN = 0x0e060000, LENGTH = 128*1024
 }
 
 SECTIONS
@@ -88,6 +92,19 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
     . = ALIGN(8);
   } >FLASH
+
+  /* AP runs from RAM to allow easier flash updating whilst it is running.
+      Store the function here. */
+  . = ALIGN(8);
+  .ap_text :
+  {
+    _sap_text = .;
+    *(.ap_text)
+
+    . = ALIGN(8);
+    _eap_text = .;
+  } >SRAM2 AT> FLASH
+  _sap_text_flash = LOADADDR(.ap_text);
 
   .data :
   {

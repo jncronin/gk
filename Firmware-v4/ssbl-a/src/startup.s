@@ -58,6 +58,29 @@ Infinite_Loop:
 .type Reset_Handler, %function
 
 Reset_Handler:
+    // keep APs in WFI
+    mrs x2, mpidr_el1
+    and x2, x2, #0xff
+    cmp x2, #0
+    b.eq 1f
+    b AP_Reset_Handler
+
+1:
+    // Enable SRAM1 for our stack
+    ldr x2, =0x442004f8
+    ldr w3, [x2]
+    orr w3, w3, #0x2
+    str w3, [x2]
+
+    // RISAB3 - enable secure data access
+    ldr x2, =0x42110000
+    ldr w3, [x2]
+    orr w3, w3, 0x80000000
+    str w3, [x2]
+
+    ldr x2, =0x0e060000
+    mov sp, x2
+
     // Init .bss
     ldr x2, =_sbss
     mov x3, #0
@@ -100,3 +123,65 @@ Reset_Handler:
     b 5b
 
 .size   Reset_Handler, .-Reset_Handler
+
+.section .text.AP_Reset_Handler
+.global AP_Reset_Handler
+.type AP_Reset_Handler, %function
+
+AP_Reset_Handler:
+    // Enable SRAM2 for our stack
+    ldr x2, =0x442004fc
+    ldr w3, [x2]
+    orr w3, w3, #0x2
+    str w3, [x2]
+
+    // RISAB4 - enable secure data access for the whole thing
+    ldr x2, =0x42120000
+    ldr w3, [x2]
+    orr w3, w3, 0x80000000
+    str w3, [x2]
+
+    // and secure instruction access for the first page
+    ldr x2, =0x42120100
+    mov w3, 0xff
+    str w3, [x2]
+
+    // stack setup
+    ldr x2, =0x0e080000
+    mov sp, x2
+
+    // Init .ap_text
+    ldr x2, =_sap_text
+    ldr x3, =_sap_text_flash
+    ldr x4, =_eap_text
+
+    b 4f
+3:
+    ldr x5, [x3], #8
+    str x5, [x2], #8
+
+4:
+    cmp x2, x4
+    bcc 3b
+
+    dsb ish
+    isb
+
+    b AP_Hold
+
+.size AP_Reset_Handler, .-AP_Reset_Handler
+
+.section .ap_text, "ax", %progbits
+.global AP_Hold
+.type AP_Hold, %function
+
+AP_Hold:
+    //wfi
+    ldr x2, =0x442d0018
+    mov w3, #(1U << 6)
+    str w3, [x2]
+    mov w3, #(1U << (6 + 16))
+    str w3, [x2]
+    b AP_Hold
+
+.size AP_Hold, .-AP_Hold
