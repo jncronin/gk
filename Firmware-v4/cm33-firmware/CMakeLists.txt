@@ -11,7 +11,7 @@ message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 
 include(../cmake/utils.cmake)
 
-project(gkv4_fsbl_m C CXX ASM)
+project(gkv4_cm33 C CXX ASM)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
@@ -81,7 +81,7 @@ target_compile_options(${PROJECT_NAME}
         >)
 
 utils_target_set_linker_script(${PROJECT_NAME}
-    ${CMAKE_CURRENT_SOURCE_DIR}/stm32mp2_fsblm.ld
+    ${CMAKE_CURRENT_SOURCE_DIR}/stm32mp2_cm33.ld
 )
 
 utils_target_print_size(${PROJECT_NAME})

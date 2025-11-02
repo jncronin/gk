@@ -16,7 +16,7 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    RETRAM          (xrw) : ORIGIN = 0x0e080000, LENGTH = 128*1024
+    RETRAM          (xrw) : ORIGIN = 0x0e080000, LENGTH = 64*1024
     FLASH           (xrw) : ORIGIN = 0x60100000, LENGTH = 1*1024*1024
     SRAM2           (xrw) : ORIGIN = 0x0e060000, LENGTH = 128*1024
 }

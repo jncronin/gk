@@ -84,17 +84,27 @@ Reset_Handler:
     cmp r2, r4
     bcc 1b
 
-    // Save r0 (may be passed by bootrom)
-    mov r4, r0
+    // Init .data
+    ldr r2, =_sdata
+    ldr r5, =_sdata_flash
+    ldr r4, =_edata
+
+    b 4f
+
+3:
+    ldr r3, [r5], #4
+    str r3, [r2], #4
+
+4:
+    cmp r2, r4
+    bcc 3b
 
     // Init libc
     bl __libc_init_array
 
-    // Main
-    mov r0, r4
     bl main
 
-3:
-    b 3b
+5:
+    b 5b
 
 .size   Reset_Handler, .-Reset_Handler
