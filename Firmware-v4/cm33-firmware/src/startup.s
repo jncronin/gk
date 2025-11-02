@@ -62,6 +62,14 @@ Infinite_Loop:
 Reset_Handler:
     ldr     sp, =_estack
 
+    // enable ICACHE and DCACHE
+    ldr r2, =0x40470000
+    mov r3, 5
+    str r3, [r2]
+    ldr r2, =0x40480000
+    mov r3, 1
+    str r3, [r2]
+
     // enable fpu (may be called from __libc_init_array)
     ldr r2,  =0xe000ed88      // CPACR
     ldr r3, [r2]             

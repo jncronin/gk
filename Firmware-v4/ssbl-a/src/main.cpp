@@ -48,6 +48,8 @@ int main(uint32_t bootrom_val)
     (void)RCC->CPUBOOTCR;
     RCC->C2RSTCSETR = RCC_C2RSTCSETR_C2RST;
     while(RCC->C2RSTCSETR & RCC_C2RSTCSETR_C2RST);
+
+    /* Start CPU2 */
     RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
 
     while(true);
