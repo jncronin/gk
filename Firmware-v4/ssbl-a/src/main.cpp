@@ -2,6 +2,7 @@
 
 #include "pins.h"
 #include "log.h"
+#include <cstdio>
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -55,8 +56,10 @@ int main(uint32_t bootrom_val)
     RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
 
     log("SSBL: CPU2 started\n");
+    printf("SSBL: from printf: %d\n", 1234);
 
     while(true);
 
     return 0;
 }
+

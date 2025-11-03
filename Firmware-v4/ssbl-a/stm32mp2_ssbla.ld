@@ -131,6 +131,11 @@ SECTIONS
     *(COMMON)
 
     . = ALIGN(8);
+    _heap_start = .;
+    . = . + 16*1024;
+    _heap_end = .;
+
+    . = ALIGN(8);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } >RETRAM

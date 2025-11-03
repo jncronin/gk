@@ -81,6 +81,12 @@ target_compile_options(${PROJECT_NAME}
             -Wno-register
         >)
 
+target_link_options(${PROJECT_NAME}
+    PRIVATE
+        -Wl,--wrap=memmove
+        -Wl,--wrap=memcpy
+)
+
 utils_target_set_linker_script(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/stm32mp2_ssbla.ld
 )
