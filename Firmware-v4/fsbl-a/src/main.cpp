@@ -103,7 +103,7 @@ int main(uint32_t bootrom_val)
 
 void log(char c)
 {
-    while(USART6->ISR & USART_ISR_TXFNF);
+    while((USART6->ISR & USART_ISR_TXFNF_Msk) == 0);
     USART6->TDR = c;
 }
 
