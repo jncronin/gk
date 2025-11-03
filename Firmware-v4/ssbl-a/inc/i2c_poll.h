@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <cstddef>
 
 int i2c_poll_read(unsigned int addr, const void *buf, size_t nbytes);
 int i2c_poll_send(unsigned int addr, void *buf, size_t nbytes);

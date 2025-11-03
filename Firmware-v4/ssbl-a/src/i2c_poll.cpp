@@ -216,17 +216,17 @@ static volatile char *cur_buf_p(const i2c_msg *msg, unsigned int n)
         return (char *)&msg->regaddr_buf[n];
 }
 
-static char msg_i2c_init_starting[] = "i2c: init starting\n";
-static char msg_i2c_reset_complete[] = "i2c: init complete\n";
-static char msg_i2c_berr[] = "i2c: BERR\n";
-static char msg_i2c_arlo[] = "i2c: ARLO\n";
-static char msg_i2c_nackf[] = "i2c: NACKF\n";
-static char msg_i2c_ack_for_read[] = "i2c: ACK for read\n";
-static char msg_i2c_read_success[] = "i2c: read success\n";
-static char msg_i2c_read_early_finish[] = "i2c: early finish during read\n";
-static char msg_i2c_ack_for_write[] = "i2c: ACK for write\n";
-static char msg_i2c_write_success[] = "i2c: write success\n";
-static char msg_i2c_write_early_finish[] = "i2c: early finish during write\n";
+[[maybe_unused]] static char msg_i2c_init_starting[] = "i2c: init starting\n";
+[[maybe_unused]] static char msg_i2c_reset_complete[] = "i2c: init complete\n";
+[[maybe_unused]] static char msg_i2c_berr[] = "i2c: BERR\n";
+[[maybe_unused]] static char msg_i2c_arlo[] = "i2c: ARLO\n";
+[[maybe_unused]] static char msg_i2c_nackf[] = "i2c: NACKF\n";
+[[maybe_unused]] static char msg_i2c_ack_for_read[] = "i2c: ACK for read\n";
+[[maybe_unused]] static char msg_i2c_read_success[] = "i2c: read success\n";
+[[maybe_unused]] static char msg_i2c_read_early_finish[] = "i2c: early finish during read\n";
+[[maybe_unused]] static char msg_i2c_ack_for_write[] = "i2c: ACK for write\n";
+[[maybe_unused]] static char msg_i2c_write_success[] = "i2c: write success\n";
+[[maybe_unused]] static char msg_i2c_write_early_finish[] = "i2c: early finish during write\n";
 
 static int i2c_dotfer()
 {
@@ -275,7 +275,9 @@ static int i2c_dotfer()
     }
     else if(cur_i2c_msg.is_read)
     {
+#if DEBUG_I2C
         log(msg_i2c_ack_for_read);
+#endif
 
         bool cont = true;
         while(cont)
@@ -296,7 +298,9 @@ static int i2c_dotfer()
                     //{
                     //    cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                     //}
+#if DEBUG_I2C
                     log(msg_i2c_read_success);
+#endif
                     return n_xmit;
                 }
                 else if(i2c->ISR & I2C_ISR_TCR)
@@ -320,7 +324,9 @@ static int i2c_dotfer()
     }
     else
     {
+#if DEBUG_I2C
         log(msg_i2c_ack_for_write);
+#endif
         bool cont = true;
         while(cont)
         {
@@ -346,7 +352,9 @@ static int i2c_dotfer()
                     //{
                     //    cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                     //}
+#if DEBUG_I2C
                     log(msg_i2c_write_success);
+#endif
                     return n_xmit;
                 }
                 else if(i2c->ISR & I2C_ISR_TCR)
