@@ -3,6 +3,7 @@
 #include "pins.h"
 #include "log.h"
 #include <cstdio>
+#include "i2c_poll.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -57,6 +58,11 @@ int main(uint32_t bootrom_val)
 
     log("SSBL: CPU2 started\n");
     printf("SSBL: from printf: %d\n", 1234);
+
+    // get some details from STPMIC25
+    char pmic_id[2];
+    auto pmic_ret = i2c_poll_register_read(0x33, (uint8_t)0, pmic_id, 2);
+    printf("SSBL: PMIC ret: %d, PRODUCT_ID: %08x, VERSION_SR: %08x\n", pmic_ret, pmic_id[0], pmic_id[1]);
 
     while(true);
 
