@@ -23,6 +23,11 @@ static const constexpr pin QSPI_PINS[]
     { GPIOD, 7, 10 }
 };
 
+static const constexpr pin USART6_TX { GPIOJ, 5, 6 };
+
+void log(const char *s);
+void log(char c);
+
 int main(uint32_t bootrom_val)
 {
     _bootrom_val = bootrom_val;
@@ -62,6 +67,20 @@ int main(uint32_t bootrom_val)
     OCTOSPI1->CR = (3U << OCTOSPI_CR_FMODE_Pos) |
         OCTOSPI_CR_EN;
 
+    // Set up USART6 as TX only
+    USART6_TX.set_as_af();
+    RCC->USART6CFGR |= RCC_USART6CFGR_USART6EN;
+    (void)RCC->USART6CFGR;
+
+    // USART6 is clocked with HSI64 direct by default
+    USART6->CR1 = 0;
+    USART6->PRESC = 0;
+    USART6->BRR = 64000000UL / 115200UL;
+    USART6->CR2 = 0;
+    USART6->CR3 = 0;
+    USART6->CR1 = USART_CR1_FIFOEN | USART_CR1_TE | USART_CR1_UE;
+
+    log("FSBL: starting SSBL\n");
     
     EV_ORANGE.set_as_output();
 
@@ -80,4 +99,27 @@ int main(uint32_t bootrom_val)
     ssbl(bootrom_val);
 
     return 0;
+}
+
+void log(char c)
+{
+    while(USART6->ISR & USART_ISR_TXFNF);
+    USART6->TDR = c;
+}
+
+void log(const char *s)
+{
+    while(*s)
+    {
+        if(*s == '\n')
+        {
+            log('\r');
+            log('\n');
+        }
+        else
+        {
+            log(*s);
+        }
+        s++;
+    }
 }

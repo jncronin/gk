@@ -1,6 +1,7 @@
 #include <stm32mp2xx.h>
 
 #include "pins.h"
+#include "log.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -12,6 +13,7 @@ void init_clocks();
 int main(uint32_t bootrom_val)
 {
     // Set up clocks for CPU1
+    log("SSBL: start\n");
     init_clocks();
     
     EV_BLUE.set_as_output();
@@ -51,6 +53,8 @@ int main(uint32_t bootrom_val)
 
     /* Start CPU2 */
     RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
+
+    log("SSBL: CPU2 started\n");
 
     while(true);
 
