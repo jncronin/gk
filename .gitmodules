@@ -25,3 +25,6 @@
 [submodule "Firmware-v4/stm32-ddr-phy-binary"]
 	path = Firmware-v4/stm32-ddr-phy-binary
 	url = https://github.com/STMicroelectronics/stm32-ddr-phy-binary.git
+[submodule "Firmware-v4/ST_DDR/STM32DDRFW-UTIL"]
+	path = Firmware-v4/ST_DDR/STM32DDRFW-UTIL
+	url = https://github.com/STMicroelectronics/STM32DDRFW-UTIL.git
