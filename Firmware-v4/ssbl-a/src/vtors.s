@@ -95,8 +95,15 @@ _vtor_tbl_entry _curel_serror
     mrs x1, far_el3
     mov x2, \code
     mov x3, sp
+    mrs x4, elr_el3
 
     bl Exception_Handler
+
+    # update return address if return value is not zero
+    cmp x0, #0
+    beq 1f
+    msr elr_el3, x0
+1:
 
     restore_regs
 
