@@ -28,3 +28,6 @@
 [submodule "Firmware-v4/ST_DDR/STM32DDRFW-UTIL"]
 	path = Firmware-v4/ST_DDR/STM32DDRFW-UTIL
 	url = https://github.com/STMicroelectronics/STM32DDRFW-UTIL.git
+[submodule "Firmware-v4/arm-trusted-firmware"]
+	path = Firmware-v4/arm-trusted-firmware
+	url = https://github.com/ARM-software/arm-trusted-firmware.git
