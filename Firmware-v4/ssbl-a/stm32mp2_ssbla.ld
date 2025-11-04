@@ -48,6 +48,14 @@ SECTIONS
     . = ALIGN(8);
   } >FLASH
 
+  /* Store a fixed vtor table in QSPI for SSBL */
+  .vtors :
+  {
+    . = ALIGN(4096);
+    KEEP(*(.vtors))
+    . = ALIGN(4096);
+  } >FLASH
+
   .ARM.extab (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
     . = ALIGN(8);

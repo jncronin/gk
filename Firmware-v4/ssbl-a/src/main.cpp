@@ -65,7 +65,6 @@ int main(uint32_t bootrom_val)
     printf("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",
         pmic_read_register(0), pmic_read_register(1));
 
-
     init_ddr();
 
     while(true);

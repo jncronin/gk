@@ -1,63 +1,14 @@
 .cpu cortex-a35
 
-.section .vtors
-.word _estack
-.word Reset_Handler
-.word  NMI_Handler
-.word  HardFault_Handler
-.word  MemManage_Handler
-.word  BusFault_Handler
-.word  UsageFault_Handler
-.word  0
-.word  0
-.word  0
-.word  0
-.word  SVC_Handler
-.word  DebugMon_Handler
-.word  0
-.word  PendSV_Handler
-.word  SysTick_Handler
-
-.weak      NMI_Handler
-.set NMI_Handler,Default_Handler
-
-.weak      HardFault_Handler
-.set HardFault_Handler,Default_Handler
-
-.weak      MemManage_Handler
-.set MemManage_Handler,Default_Handler
-
-.weak      BusFault_Handler
-.set BusFault_Handler,Default_Handler
-
-.weak      UsageFault_Handler
-.set UsageFault_Handler,Default_Handler
-
-.weak      SVC_Handler
-.set SVC_Handler,Default_Handler
-
-.weak      DebugMon_Handler
-.set DebugMon_Handler,Default_Handler
-
-.weak      PendSV_Handler
-.set PendSV_Handler,Default_Handler
-
-.weak      SysTick_Handler
-.set SysTick_Handler,Default_Handler
-
-
-.section  .text.Default_Handler,"ax",%progbits
-Default_Handler:
-Infinite_Loop:
-    b  Infinite_Loop
-.size  Default_Handler, .-Default_Handler
-
-
 .section .text.Reset_Handler
 .global Reset_Handler
 .type Reset_Handler, %function
 
 Reset_Handler:
+    // exception handling
+    adr x2, _vtors
+    msr vbar_el3, x2
+    
     // keep APs in WFI
     mrs x2, mpidr_el1
     and x2, x2, #0xff
