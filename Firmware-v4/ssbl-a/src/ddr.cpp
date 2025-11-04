@@ -53,6 +53,10 @@ void ddr_set_clocks()
 
     RCC->DDRCFGR |= RCC_DDRCFGR_DDRCFGEN;                       // ck_icn_p_ddrcfg
 
+    // release blocks from reset
+    RCC->DDRCFGR &= ~RCC_DDRCFGR_DDRCFGRST;
+    RCC->DDRITFCFGR &= ~RCC_DDRITFCFGR_DDRRST;
+
     // Provide ck_pll2_ref from HSI64
     RCC->MUXSELCFGR = RCC->MUXSELCFGR &~ RCC_MUXSELCFGR_MUXSEL6_Msk;    // MUXSEL6 = PLL2 confusingly
     (void)RCC->MUXSELCFGR;
@@ -77,6 +81,15 @@ void ddr_set_mt(uint32_t mt)
         pll2_freq = mt * 125000;    // ddr freq / 4 in MHz (multiplied by 4 again in PHY block)
     }
 
+    // Dump all RCC registers
+    printf("DDRCPCFGR:        %08x\n", RCC->DDRCPCFGR);
+    printf("DDRITFCFGR:       %08x\n", RCC->DDRITFCFGR);
+    printf("DDRPHYCAPBCFGR:   %08x\n", RCC->DDRPHYCAPBCFGR);
+    printf("DDRCAPBCFGR:      %08x\n", RCC->DDRCAPBCFGR);
+    printf("DDRITFCFGR:       %08x\n", RCC->DDRITFCFGR);
+    printf("DDRPHYCCFGR:      %08x\n", RCC->DDRPHYCCFGR);
+    printf("DDRCFGR:          %08x\n", RCC->DDRCFGR);
+    printf("DBGCFGR:          %08x\n", RCC->DBGCFGR);
 
     if(bypass)
     {

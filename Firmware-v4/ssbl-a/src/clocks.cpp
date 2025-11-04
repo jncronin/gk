@@ -21,6 +21,16 @@ void init_clocks()
 
         */
     
+    // Set up CPU2 clock, ck_icn_hs_mcu, to be PLL4 / 3 = 400 MHz
+    RCC->FINDIVxCFGR[0] = 0x42U;
+    while(RCC->FINDIVSR1 & (1U << 0));              // wait for finish changing
+    RCC->XBARxCFGR[0] = 0x40U;
+    while(RCC->XBARxCFGR[0] & RCC_XBARxCFGR_XBARxSTS);     // wait for finish changing  
+
+    // And ck_icn_ls_mcu to be half this
+    RCC->LSMCUDIVR |= RCC_LSMCUDIVR_LSMCUDIV;
+    while(!(RCC->LSMCUDIVR & RCC_LSMCUDIVR_LSMCUDIVRDY));
+    
     // Provide ck_pll1_ref from HSI64
     RCC->MUXSELCFGR = RCC->MUXSELCFGR &~ RCC_MUXSELCFGR_MUXSEL5_Msk;    // MUXSEL5 = PLL1 confusingly
     (void)RCC->MUXSELCFGR;

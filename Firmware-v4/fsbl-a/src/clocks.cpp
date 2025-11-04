@@ -28,7 +28,7 @@ void init_clocks()
     */
     
     // This all seems reasonable.  Clock OSPI1 off PLL4 / 12 -> 100 MHz
-    RCC->FINDIVxCFGR[48] = 0x40U | 12U;
+    RCC->FINDIVxCFGR[48] = 0x40U | 11U;
     while(RCC->FINDIVSR2 & (1U << (48 - 32)));              // wait for finish changing
     RCC->XBARxCFGR[48] = 0x40U;
     while(RCC->XBARxCFGR[48] & RCC_XBARxCFGR_XBARxSTS);     // wait for finish changing  
