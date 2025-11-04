@@ -5,6 +5,7 @@
 #include <cstdio>
 #include "i2c_poll.h"
 #include "pmic.h"
+#include "ddr.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -63,19 +64,9 @@ int main(uint32_t bootrom_val)
     // get some details from STPMIC25
     printf("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",
         pmic_read_register(0), pmic_read_register(1));
-    pmic_dump();
 
-    // Now set stuff up for DDR on EV1 TODO: change for LPDDR on gk
-    pmic_vreg vr_buck6 { pmic_vreg::Buck, 6, true, 1200, pmic_vreg::HP };
-    pmic_vreg vr_refddr { pmic_vreg::RefDDR, 0, true };
-    pmic_vreg vr_ldo3 { pmic_vreg::LDO, 3, true, 600, pmic_vreg::SinkSource };
-    pmic_vreg vr_ldo5 { pmic_vreg::LDO, 5, true, 2500 };
-    pmic_set(vr_buck6);
-    pmic_set(vr_refddr);
-    pmic_set(vr_ldo3);
-    pmic_set(vr_ldo5);
-    
-    pmic_dump();
+
+    init_ddr();
 
     while(true);
 
