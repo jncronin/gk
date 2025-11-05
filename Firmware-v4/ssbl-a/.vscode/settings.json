@@ -4,6 +4,10 @@
     },
     "files.associations": {
         "compare": "cpp",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "ddrphy_phyinit_sequence.c": "cpp",
+        "ddrphy_phyinit_calcmb.c": "cpp",
+        "assert.h": "c",
+        "ddrphy_phyinit.h": "c"
     },
 }

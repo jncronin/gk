@@ -217,3 +217,9 @@ uint64_t clock_cur_ms()
 {
     return clock_cur_ns() / 1000000ULL;
 }
+
+void udelay(unsigned int d)
+{
+    auto until = clock_cur_us() + (uint64_t)d;
+    while(clock_cur_us() < until);
+}

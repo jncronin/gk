@@ -1,10 +1,78 @@
 #include <stm32mp2xx.h>
 #include "ddr.h"
 #include "pmic.h"
+#include "log.h"
+#include "clocks.h"
 #include <cstdio>
+
+#ifndef BIT
+#define BIT(x)  (1ULL << x)
+#endif
+
+#ifndef MAX
+#define MAX(a, b) (((a) < (b)) ? (b) : (a))
+#endif
+
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
+#define GENMASK_32(high, low) \
+	((~0UL >> (32U - 1U - (high))) ^ (((1UL << (low)) - 1U)))
+
+#define U uintptr_t
+
+#define STM32MP_DDR_FW_DMEM_OFFSET		U(0x400)
+#define STM32MP_DDR_FW_IMEM_OFFSET		U(0x800)
+
+static uint64_t timeout_init_us(uint64_t us);
+static bool timeout_elapsed(uint64_t tout);
+static void mmio_write_16(uintptr_t reg, uint16_t val);
+static uint16_t mmio_read_16(uintptr_t reg);
+static void mmio_write_32(uintptr_t reg, uint32_t val);
+
+// TODO: select appropriate DDR driver here.  These come from CubeMX projects renamed from stm32mp25-mx.dtsi
+#define STM32MP_DDR4_TYPE 1
+#include "ddr_configs/stm32mp255f-ev1-ddr.h"
+
+#if STM32MP_DDR3_TYPE
+extern int _binary_ddr3_pmu_train_bin;
+#define STM32MP_DDR_FW_BASE ((uintptr_t)&_binary_ddr3_pmu_train_bin)
+#endif
+#if STM32MP_DDR4_TYPE
+extern int _binary_ddr4_pmu_train_bin;
+#define STM32MP_DDR_FW_BASE ((uintptr_t)&_binary_ddr4_pmu_train_bin)
+#endif
+#if STM32MP_LPDDR4_TYPE
+extern int _binary_lpddr4_pmu_train_bin;
+#define STM32MP_DDR_FW_BASE ((uintptr_t)&_binary_lpddr4_pmu_train_bin)
+#endif
+
+
+// Pull in tf-a phyinit driver
+#include "ddrphy_phyinit_sequence.c"
+#include "ddrphy_phyinit_calcmb.c"
+#include "ddrphy_phyinit_initstruct.c"
+#include "ddrphy_phyinit_c_initphyconfig.c"
+#include "ddrphy_phyinit_softsetmb.c"
+#include "ddrphy_phyinit_progcsrskiptrain.c"
+#include "ddrphy_phyinit_reginterface.c"
+#include "ddrphy_phyinit_mapdrvstren.c"
+#include "ddrphy_phyinit_isdbytedisabled.c"
+#include "ddrphy_phyinit_loadpieprodcode.c"
+#include "ddrphy_phyinit_d_loadimem.c"
+#include "ddrphy_phyinit_f_loaddmem.c"
+#include "ddrphy_phyinit_g_execfw.c"
+#include "ddrphy_phyinit_i_loadpieimage.c"
+#include "ddrphy_phyinit_usercustom_custompretrain.c"
+#include "ddrphy_phyinit_usercustom_g_waitfwdone.c"
+#include "ddrphy_phyinit_usercustom_saveretregs.c"
+#include "ddrphy_phyinit_writeoutmem.c"
 
 static void ddr_set_pmic();
 static void ddr_set_clocks();
+static void ddr_static_config();
+static void ddr_populate_stm_conf(stm32mp_ddr_config *conf);
 
 void init_ddr()
 {
@@ -12,6 +80,11 @@ void init_ddr()
 
     ddr_set_pmic();
     ddr_set_clocks();
+    ddr_static_config();
+
+    stm32mp_ddr_config conf;
+    ddr_populate_stm_conf(&conf);
+    ddrphy_phyinit_sequence(nullptr, false, false);
 }
 
 void ddr_set_pmic()
@@ -43,7 +116,7 @@ void ddr_set_clocks()
 
     for(int i = 0; i < 1200; i++) __DSB();
 
-    PWR->CR11 &= ~PWR_CR11_DDRRETDIS;
+    PWR->CR11 |= PWR_CR11_DDRRETDIS;
 
     for(int i = 0; i < 1200; i++) __DSB();
 
@@ -121,4 +194,260 @@ void ddr_set_mt(uint32_t mt)
     printf("DDR: PLL2 frequency set to %u MHz, %s=%u MT/s\n",
         vco_val / 8 / 1000000, bypass ? "bypass mode" : "",
         vco_val / 4 * (bypass ? 1 : 4) / 1000000);
+}
+
+#define DDR(x) DDRC->x = DDR_ ## x
+void ddr_static_config()
+{
+    DDR(MSTR);
+    DDR(MRCTRL0);
+    DDR(MRCTRL1);
+    DDR(MRCTRL2);
+    DDR(DERATEEN);
+    DDR(DERATEINT);
+    DDR(DERATECTL);
+    DDR(PWRCTL);
+    DDR(PWRTMG);
+    DDR(HWLPCTL);
+    DDR(RFSHCTL0);
+    DDR(RFSHCTL1);
+    DDR(RFSHCTL3);
+    DDR(RFSHTMG);
+    DDR(RFSHTMG1);
+    DDR(CRCPARCTL0);
+    DDR(CRCPARCTL1);
+    DDR(INIT0);
+    DDR(INIT1);
+    DDR(INIT2);
+    DDR(INIT3);
+    DDR(INIT4);
+    DDR(INIT5);
+    DDR(INIT6);
+    DDR(INIT7);
+    DDR(DIMMCTL);
+    DDR(RANKCTL);
+    DDR(RANKCTL1);
+    DDR(DRAMTMG0);
+    DDR(DRAMTMG1);
+    DDR(DRAMTMG2);
+    DDR(DRAMTMG3);
+    DDR(DRAMTMG4);
+    DDR(DRAMTMG5);
+    DDR(DRAMTMG6);
+    DDR(DRAMTMG7);
+    DDR(DRAMTMG8);
+    DDR(DRAMTMG9);
+    DDR(DRAMTMG10);
+    DDR(DRAMTMG11);
+    DDR(DRAMTMG12);
+    DDR(DRAMTMG13);
+    DDR(DRAMTMG14);
+    DDR(DRAMTMG15);
+    DDR(ZQCTL0);
+    DDR(ZQCTL1);
+    DDR(ZQCTL2);
+    DDR(DFITMG0);
+    DDR(DFITMG1);
+    DDR(DFILPCFG0);
+    DDR(DFILPCFG1);
+    DDR(DFIUPD0);
+    DDR(DFIUPD1);
+    DDR(DFIUPD2);
+    DDR(DFIMISC);
+    DDR(DFITMG2);
+    DDR(DFITMG3);
+    DDR(DBICTL);
+    DDR(DFIPHYMSTR);
+    DDR(ADDRMAP0);
+    DDR(ADDRMAP1);
+    DDR(ADDRMAP2);
+    DDR(ADDRMAP3);
+    DDR(ADDRMAP4);
+    DDR(ADDRMAP5);
+    DDR(ADDRMAP6);
+    DDR(ADDRMAP7);
+    DDR(ADDRMAP8);
+    DDR(ADDRMAP9);
+    DDR(ADDRMAP10);
+    DDR(ADDRMAP11);
+    DDR(ODTCFG);
+    DDR(ODTMAP);
+    DDR(SCHED);
+    DDR(SCHED1);
+    DDR(PERFHPR1);
+    DDR(PERFLPR1);
+    DDR(PERFWR1);
+    DDR(SCHED3);
+    DDR(SCHED4);
+    DDR(DBG0);
+    DDR(DBG1);
+    DDR(DBGCMD);
+    DDR(SWCTL);
+    DDR(SWCTLSTATIC);
+    DDR(POISONCFG);
+    DDR(PCCFG);
+    DDR(PCFGR_0);
+    DDR(PCFGW_0);
+    DDR(PCTRL_0);
+    DDR(PCFGQOS0_0);
+    DDR(PCFGQOS1_0);
+    DDR(PCFGWQOS0_0);
+    DDR(PCFGWQOS1_0);
+    DDR(PCFGR_1);
+    DDR(PCFGW_1);
+    DDR(PCTRL_1);
+    DDR(PCFGQOS0_1);
+    DDR(PCFGQOS1_1);
+    DDR(PCFGWQOS0_1);
+    DDR(PCFGWQOS1_1);
+}
+
+void ddr_populate_stm_conf(stm32mp_ddr_config *conf)
+{
+    conf->uib.dramtype = DDR_UIB_DRAMTYPE;
+    conf->uib.dimmtype = DDR_UIB_DIMMTYPE;
+    conf->uib.lp4xmode = DDR_UIB_LP4XMODE;
+    conf->uib.numdbyte = DDR_UIB_NUMDBYTE;
+    conf->uib.numactivedbytedfi0 = DDR_UIB_NUMACTIVEDBYTEDFI0;
+    conf->uib.numactivedbytedfi1 = DDR_UIB_NUMACTIVEDBYTEDFI1;
+    conf->uib.numanib = DDR_UIB_NUMANIB;
+    conf->uib.numrank_dfi0 = DDR_UIB_NUMRANK_DFI0;
+    conf->uib.numrank_dfi1 = DDR_UIB_NUMRANK_DFI1;
+    conf->uib.dramdatawidth = DDR_UIB_DRAMDATAWIDTH;
+    conf->uib.numpstates = DDR_UIB_NUMPSTATES;
+    conf->uib.frequency = DDR_UIB_FREQUENCY_0;
+    conf->uib.pllbypass = DDR_UIB_PLLBYPASS_0;
+    conf->uib.dfifreqratio = DDR_UIB_DFIFREQRATIO_0;
+    conf->uib.dfi1exists = DDR_UIB_DFI1EXISTS;
+    conf->uib.train2d = DDR_UIB_TRAIN2D;
+    conf->uib.hardmacrover = DDR_UIB_HARDMACROVER;
+    conf->uib.readdbienable = DDR_UIB_READDBIENABLE_0;
+    conf->uib.dfimode = DDR_UIB_DFIMODE;
+    conf->uia.lp4rxpreamblemode = DDR_UIA_LP4RXPREAMBLEMODE_0;
+    conf->uia.lp4postambleext = DDR_UIA_LP4POSTAMBLEEXT_0;
+    conf->uia.d4rxpreamblelength = DDR_UIA_D4RXPREAMBLELENGTH_0;
+    conf->uia.d4txpreamblelength = DDR_UIA_D4TXPREAMBLELENGTH_0;
+    conf->uia.extcalresval = DDR_UIA_EXTCALRESVAL;
+    conf->uia.is2ttiming = DDR_UIA_IS2TTIMING_0;
+    conf->uia.odtimpedance = DDR_UIA_ODTIMPEDANCE_0;
+    conf->uia.tximpedance = DDR_UIA_TXIMPEDANCE_0;
+    conf->uia.atximpedance = DDR_UIA_ATXIMPEDANCE;
+    conf->uia.memalerten = DDR_UIA_MEMALERTEN;
+    conf->uia.memalertpuimp = DDR_UIA_MEMALERTPUIMP;
+    conf->uia.memalertvreflevel = DDR_UIA_MEMALERTVREFLEVEL;
+    conf->uia.memalertsyncbypass = DDR_UIA_MEMALERTSYNCBYPASS;
+    conf->uia.disdynadrtri = DDR_UIA_DISDYNADRTRI_0;
+    conf->uia.phymstrtraininterval = DDR_UIA_PHYMSTRTRAININTERVAL_0;
+    conf->uia.phymstrmaxreqtoack = DDR_UIA_PHYMSTRMAXREQTOACK_0;
+    conf->uia.wdqsext = DDR_UIA_WDQSEXT;
+    conf->uia.calinterval = DDR_UIA_CALINTERVAL;
+    conf->uia.calonce = DDR_UIA_CALONCE;
+    conf->uia.lp4rl = DDR_UIA_LP4RL_0;
+    conf->uia.lp4wl = DDR_UIA_LP4WL_0;
+    conf->uia.lp4wls = DDR_UIA_LP4WLS_0;
+    conf->uia.lp4dbird = DDR_UIA_LP4DBIRD_0;
+    conf->uia.lp4dbiwr = DDR_UIA_LP4DBIWR_0;
+    conf->uia.lp4nwr = DDR_UIA_LP4NWR_0;
+    conf->uia.lp4lowpowerdrv = DDR_UIA_LP4LOWPOWERDRV;
+    conf->uia.drambyteswap = DDR_UIA_DRAMBYTESWAP;
+    conf->uia.rxenbackoff = DDR_UIA_RXENBACKOFF;
+    conf->uia.trainsequencectrl = DDR_UIA_TRAINSEQUENCECTRL;
+    conf->uia.snpsumctlopt = DDR_UIA_SNPSUMCTLOPT;
+    conf->uia.snpsumctlf0rc5x = DDR_UIA_SNPSUMCTLF0RC5X_0;
+    conf->uia.txslewrisedq = DDR_UIA_TXSLEWRISEDQ_0;
+    conf->uia.txslewfalldq = DDR_UIA_TXSLEWFALLDQ_0;
+    conf->uia.txslewriseac = DDR_UIA_TXSLEWRISEAC;
+    conf->uia.txslewfallac = DDR_UIA_TXSLEWFALLAC;
+    conf->uia.disableretraining = DDR_UIA_DISABLERETRAINING;
+    conf->uia.disablephyupdate = DDR_UIA_DISABLEPHYUPDATE;
+    conf->uia.enablehighclkskewfix = DDR_UIA_ENABLEHIGHCLKSKEWFIX;
+    conf->uia.disableunusedaddrlns = DDR_UIA_DISABLEUNUSEDADDRLNS;
+    conf->uia.phyinitsequencenum = DDR_UIA_PHYINITSEQUENCENUM;
+    conf->uia.enabledficspolarityfix = DDR_UIA_ENABLEDFICSPOLARITYFIX;
+    conf->uia.phyvref = DDR_UIA_PHYVREF;
+    conf->uia.sequencectrl = DDR_UIA_SEQUENCECTRL_0;
+    conf->uim.mr0 = DDR_UIM_MR0_0;
+    conf->uim.mr1 = DDR_UIM_MR1_0;
+    conf->uim.mr2 = DDR_UIM_MR2_0;
+    conf->uim.mr3 = DDR_UIM_MR3_0;
+    conf->uim.mr4 = DDR_UIM_MR4_0;
+    conf->uim.mr5 = DDR_UIM_MR5_0;
+    conf->uim.mr6 = DDR_UIM_MR6_0;
+    conf->uim.mr11 = DDR_UIM_MR11_0;
+    conf->uim.mr12 = DDR_UIM_MR12_0;
+    conf->uim.mr13 = DDR_UIM_MR13_0;
+    conf->uim.mr14 = DDR_UIM_MR14_0;
+    conf->uim.mr22 = DDR_UIM_MR22_0;
+    conf->uis.swizzle[0] = DDR_UIS_SWIZZLE_0;
+    conf->uis.swizzle[1] = DDR_UIS_SWIZZLE_1;
+    conf->uis.swizzle[2] = DDR_UIS_SWIZZLE_2;
+    conf->uis.swizzle[3] = DDR_UIS_SWIZZLE_3;
+    conf->uis.swizzle[4] = DDR_UIS_SWIZZLE_4;
+    conf->uis.swizzle[5] = DDR_UIS_SWIZZLE_5;
+    conf->uis.swizzle[6] = DDR_UIS_SWIZZLE_6;
+    conf->uis.swizzle[7] = DDR_UIS_SWIZZLE_7;
+    conf->uis.swizzle[8] = DDR_UIS_SWIZZLE_8;
+    conf->uis.swizzle[9] = DDR_UIS_SWIZZLE_9;
+    conf->uis.swizzle[10] = DDR_UIS_SWIZZLE_10;
+    conf->uis.swizzle[11] = DDR_UIS_SWIZZLE_11;
+    conf->uis.swizzle[12] = DDR_UIS_SWIZZLE_12;
+    conf->uis.swizzle[13] = DDR_UIS_SWIZZLE_13;
+    conf->uis.swizzle[14] = DDR_UIS_SWIZZLE_14;
+    conf->uis.swizzle[15] = DDR_UIS_SWIZZLE_15;
+    conf->uis.swizzle[16] = DDR_UIS_SWIZZLE_16;
+    conf->uis.swizzle[17] = DDR_UIS_SWIZZLE_17;
+    conf->uis.swizzle[18] = DDR_UIS_SWIZZLE_18;
+    conf->uis.swizzle[19] = DDR_UIS_SWIZZLE_19;
+    conf->uis.swizzle[20] = DDR_UIS_SWIZZLE_20;
+    conf->uis.swizzle[21] = DDR_UIS_SWIZZLE_21;
+    conf->uis.swizzle[22] = DDR_UIS_SWIZZLE_22;
+    conf->uis.swizzle[23] = DDR_UIS_SWIZZLE_23;
+    conf->uis.swizzle[24] = DDR_UIS_SWIZZLE_24;
+    conf->uis.swizzle[25] = DDR_UIS_SWIZZLE_25;
+    conf->uis.swizzle[26] = DDR_UIS_SWIZZLE_26;
+    conf->uis.swizzle[27] = DDR_UIS_SWIZZLE_27;
+    conf->uis.swizzle[28] = DDR_UIS_SWIZZLE_28;
+    conf->uis.swizzle[29] = DDR_UIS_SWIZZLE_29;
+    conf->uis.swizzle[30] = DDR_UIS_SWIZZLE_30;
+    conf->uis.swizzle[31] = DDR_UIS_SWIZZLE_31;
+    conf->uis.swizzle[32] = DDR_UIS_SWIZZLE_32;
+    conf->uis.swizzle[33] = DDR_UIS_SWIZZLE_33;
+    conf->uis.swizzle[34] = DDR_UIS_SWIZZLE_34;
+    conf->uis.swizzle[35] = DDR_UIS_SWIZZLE_35;
+    conf->uis.swizzle[36] = DDR_UIS_SWIZZLE_36;
+    conf->uis.swizzle[37] = DDR_UIS_SWIZZLE_37;
+    conf->uis.swizzle[38] = DDR_UIS_SWIZZLE_38;
+    conf->uis.swizzle[39] = DDR_UIS_SWIZZLE_39;
+    conf->uis.swizzle[40] = DDR_UIS_SWIZZLE_40;
+    conf->uis.swizzle[41] = DDR_UIS_SWIZZLE_41;
+    conf->uis.swizzle[42] = DDR_UIS_SWIZZLE_42;
+    conf->uis.swizzle[43] = DDR_UIS_SWIZZLE_43;
+}
+
+void mmio_write_16(uintptr_t addr, uint16_t val)
+{
+    *(volatile uint16_t *)addr = val;
+    __asm__ volatile("dmb st\n" ::: "memory");
+}
+
+uint16_t mmio_read_16(uintptr_t addr)
+{
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    return *(volatile uint16_t *)addr;
+}
+
+void mmio_write_32(uintptr_t addr, uint32_t val)
+{
+    *(volatile uint32_t *)addr = val;
+    __asm__ volatile("dmb st\n" ::: "memory");
+}
+
+uint64_t timeout_init_us(uint64_t us)
+{
+    return clock_cur_us() + us;
+}
+
+bool timeout_elapsed(uint64_t tout)
+{
+    return clock_cur_us() > tout;
 }
