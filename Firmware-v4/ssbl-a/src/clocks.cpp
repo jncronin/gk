@@ -181,7 +181,6 @@ void clock_irq_handler()
 {
     TIM3->SR = 0;
     _cur_s = _cur_s + 1;
-    printf("TICK %lu\n", _cur_s);
 }
 
 timespec clock_cur()

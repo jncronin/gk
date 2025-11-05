@@ -8,6 +8,8 @@
         "ddrphy_phyinit_sequence.c": "cpp",
         "ddrphy_phyinit_calcmb.c": "cpp",
         "assert.h": "c",
-        "ddrphy_phyinit.h": "c"
+        "ddrphy_phyinit.h": "c",
+        "stm32mp_ddrctrl_regs.h": "c",
+        "errno.h": "c"
     },
 }

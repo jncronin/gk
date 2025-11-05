@@ -89,6 +89,7 @@ target_link_options(${PROJECT_NAME}
     PRIVATE
         -Wl,--wrap=memmove
         -Wl,--wrap=memcpy
+        -Wl,--wrap=memset
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}

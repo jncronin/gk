@@ -9,14 +9,6 @@
 
 #include <stdbool.h>
 
-#include <ddrphy_phyinit_struct.h>
-struct stm32mp_ddr_config {
-	struct user_input_basic uib;
-	struct user_input_advanced uia;
-	struct user_input_mode_register uim;
-	struct user_input_swizzle uis;
-};
-
 #include <ddrphy_phyinit_usercustom.h>
 
 enum message_block_field {

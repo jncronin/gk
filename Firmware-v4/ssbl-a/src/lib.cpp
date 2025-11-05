@@ -137,3 +137,11 @@ extern "C" void *__wrap_memmove(void *dest, const void *src, size_t n)
 
     return dest;
 }
+
+extern "C" void *__wrap_memset(void *dest, int c, size_t n)
+{
+    char *d = (char *)dest;
+    while(n--)
+        *d++ = (char)c;
+    return dest;
+}

@@ -5,6 +5,6 @@
 #define __maybe_unused [[maybe_unused]]
 
 #define ERROR   klog
-#define VERBOSE klog
+#define VERBOSE(...)
 
 #endif

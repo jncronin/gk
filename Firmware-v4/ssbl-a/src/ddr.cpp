@@ -18,18 +18,35 @@
 #endif
 
 #define GENMASK_32(high, low) \
-	((~0UL >> (32U - 1U - (high))) ^ (((1UL << (low)) - 1U)))
+	((~0UL >> (32U - 1U - (high))) ^ (((1UL << (low)) - 1UL)))
+#define GENMASK_64(high, low) \
+	((~0ULL >> (64U - 1U - (high))) ^ (((1ULL << (low)) - 1ULL)))
+#define GENMASK GENMASK_64
 
 #define U uintptr_t
 
 #define STM32MP_DDR_FW_DMEM_OFFSET		U(0x400)
 #define STM32MP_DDR_FW_IMEM_OFFSET		U(0x800)
 
+#define STM32MP2X 1
+#define STM32MP_DDR_DUAL_AXI_PORT 1
+
 static uint64_t timeout_init_us(uint64_t us);
 static bool timeout_elapsed(uint64_t tout);
 static void mmio_write_16(uintptr_t reg, uint16_t val);
 static uint16_t mmio_read_16(uintptr_t reg);
 static void mmio_write_32(uintptr_t reg, uint32_t val);
+static uint32_t mmio_read_32(uintptr_t reg);
+static void mmio_clrbits_32(uintptr_t reg, uint32_t val);
+static void mmio_setbits_32(uintptr_t reg, uint32_t val);
+static void mmio_clrsetbits_32(uintptr_t reg, uint32_t mask, uint32_t val);
+static void panic();
+
+enum ddr_type {
+	STM32MP_DDR3,
+	STM32MP_DDR4,
+	STM32MP_LPDDR4
+};
 
 // TODO: select appropriate DDR driver here.  These come from CubeMX projects renamed from stm32mp25-mx.dtsi
 #define STM32MP_DDR4_TYPE 1
@@ -50,6 +67,10 @@ extern int _binary_lpddr4_pmu_train_bin;
 
 
 // Pull in tf-a phyinit driver
+#include "stm32mp2_ddr.h"
+#include "stm32mp2_pwr.h"
+#include "stm32mp25_rcc.h"
+static int stm32mp_board_ddr_power_init(ddr_type ddrtype);
 #include "ddrphy_phyinit_sequence.c"
 #include "ddrphy_phyinit_calcmb.c"
 #include "ddrphy_phyinit_initstruct.c"
@@ -68,25 +89,58 @@ extern int _binary_lpddr4_pmu_train_bin;
 #include "ddrphy_phyinit_usercustom_g_waitfwdone.c"
 #include "ddrphy_phyinit_usercustom_saveretregs.c"
 #include "ddrphy_phyinit_writeoutmem.c"
+#include "ddrphy_phyinit_restore_sequence.c"
+#include "stm32mp_ddr.c"
+#include "stm32mp2_ddr.c"
+#include "stm32mp2_ddr_helpers.c"
 
-static void ddr_set_pmic();
-static void ddr_set_clocks();
-static void ddr_static_config();
+#if 0
+[[maybe_unused]] static void ddr_set_pmic();
+#endif
+[[maybe_unused]] static void ddr_set_clocks();
+#if 0
+[[maybe_unused]] static void ddr_static_config();
+#endif
 static void ddr_populate_stm_conf(stm32mp_ddr_config *conf);
+
+static stm32mp_ddr_priv ddr_priv_data { 0 };
 
 void init_ddr()
 {
     // see AN5723 and RM 15.4.6 p576
 
-    ddr_set_pmic();
+    //ddr_set_pmic();
     ddr_set_clocks();
-    ddr_static_config();
+    //ddr_static_config();
+
+    //RCC->DDRPHYCAPBCFGR &= ~RCC_DDRPHYCAPBCFGR_DDRPHYCAPBRST;
+    //RCC->DDRCPCFGR &= ~RCC_DDRCPCFGR_DDRCPRST;
+
+	struct stm32mp_ddr_priv *priv = &ddr_priv_data;
+
+	VERBOSE("STM32MP DDR probe\n");
+
+	priv->ctl = (struct stm32mp_ddrctl *)DDRC;
+	priv->phy = (struct stm32mp_ddrphy *)DDRPHYC_BASE;
+	priv->pwr = PWR_BASE;
+	priv->rcc = RCC_BASE;
+
+	priv->info.base = 0x80000000;
+	priv->info.size = 0;
 
     stm32mp_ddr_config conf;
     ddr_populate_stm_conf(&conf);
-    ddrphy_phyinit_sequence(nullptr, false, false);
+    
+	stm32mp2_ddr_init(priv, &conf);
+	ddr_set_sr_mode(ddr_read_sr_mode());
+
+    // Enable AXI clocks
+    RCC->DDRCPCFGR &= ~RCC_DDRCPCFGR_DDRCPRST;
+
+    klog("DDR: init complete\n");
 }
 
+#if 0
 void ddr_set_pmic()
 {
     // Now set stuff up for DDR on EV1 TODO: change for LPDDR on gk
@@ -101,6 +155,7 @@ void ddr_set_pmic()
     
     pmic_dump();
 }
+#endif
 
 void ddr_set_clocks()
 {
@@ -196,6 +251,7 @@ void ddr_set_mt(uint32_t mt)
         vco_val / 4 * (bypass ? 1 : 4) / 1000000);
 }
 
+#if 0
 #define DDR(x) DDRC->x = DDR_ ## x
 void ddr_static_config()
 {
@@ -301,9 +357,118 @@ void ddr_static_config()
     DDR(PCFGWQOS0_1);
     DDR(PCFGWQOS1_1);
 }
+#endif
 
 void ddr_populate_stm_conf(stm32mp_ddr_config *conf)
 {
+    conf->info.name = DDR_MEM_NAME;
+    conf->info.size = DDR_MEM_SIZE;
+    conf->info.speed = DDR_MEM_SPEED;
+
+    conf->self_refresh = false;
+
+    conf->c_reg.mstr = DDR_MSTR;
+    conf->c_reg.mrctrl0 = DDR_MRCTRL0;
+    conf->c_reg.mrctrl1 = DDR_MRCTRL1;
+    conf->c_reg.mrctrl2 = DDR_MRCTRL2;
+    conf->c_reg.derateen = DDR_DERATEEN;
+    conf->c_reg.derateint = DDR_DERATEINT;
+    conf->c_reg.deratectl = DDR_DERATECTL;
+    conf->c_reg.pwrctl = DDR_PWRCTL;
+    conf->c_reg.pwrtmg = DDR_PWRTMG;
+    conf->c_reg.hwlpctl = DDR_HWLPCTL;
+    conf->c_reg.rfshctl0 = DDR_RFSHCTL0;
+    conf->c_reg.rfshctl1 = DDR_RFSHCTL1;
+    conf->c_reg.rfshctl3 = DDR_RFSHCTL3;
+    conf->c_timing.rfshtmg = DDR_RFSHTMG;
+    conf->c_timing.rfshtmg1 = DDR_RFSHTMG1;
+    conf->c_reg.crcparctl0 = DDR_CRCPARCTL0;
+    conf->c_reg.crcparctl1 = DDR_CRCPARCTL1;
+    conf->c_reg.init0 = DDR_INIT0;
+    conf->c_reg.init1 = DDR_INIT1;
+    conf->c_reg.init2 = DDR_INIT2;
+    conf->c_reg.init3 = DDR_INIT3;
+    conf->c_reg.init4 = DDR_INIT4;
+    conf->c_reg.init5 = DDR_INIT5;
+    conf->c_reg.init6 = DDR_INIT6;
+    conf->c_reg.init7 = DDR_INIT7;
+    conf->c_reg.dimmctl = DDR_DIMMCTL;
+    conf->c_reg.rankctl = DDR_RANKCTL;
+    conf->c_reg.rankctl1 = DDR_RANKCTL1;
+    conf->c_timing.dramtmg0 = DDR_DRAMTMG0;
+    conf->c_timing.dramtmg1 = DDR_DRAMTMG1;
+    conf->c_timing.dramtmg2 = DDR_DRAMTMG2;
+    conf->c_timing.dramtmg3 = DDR_DRAMTMG3;
+    conf->c_timing.dramtmg4 = DDR_DRAMTMG4;
+    conf->c_timing.dramtmg5 = DDR_DRAMTMG5;
+    conf->c_timing.dramtmg6 = DDR_DRAMTMG6;
+    conf->c_timing.dramtmg7 = DDR_DRAMTMG7;
+    conf->c_timing.dramtmg8 = DDR_DRAMTMG8;
+    conf->c_timing.dramtmg9 = DDR_DRAMTMG9;
+    conf->c_timing.dramtmg10 = DDR_DRAMTMG10;
+    conf->c_timing.dramtmg11 = DDR_DRAMTMG11;
+    conf->c_timing.dramtmg12 = DDR_DRAMTMG12;
+    conf->c_timing.dramtmg13 = DDR_DRAMTMG13;
+    conf->c_timing.dramtmg14 = DDR_DRAMTMG14;
+    conf->c_timing.dramtmg15 = DDR_DRAMTMG15;
+    conf->c_reg.zqctl0 = DDR_ZQCTL0;
+    conf->c_reg.zqctl1 = DDR_ZQCTL1;
+    conf->c_reg.zqctl2 = DDR_ZQCTL2;
+    conf->c_reg.dfitmg0 = DDR_DFITMG0;
+    conf->c_reg.dfitmg1 = DDR_DFITMG1;
+    conf->c_reg.dfilpcfg0 = DDR_DFILPCFG0;
+    conf->c_reg.dfilpcfg1= DDR_DFILPCFG1;
+    conf->c_reg.dfiupd0 = DDR_DFIUPD0;
+    conf->c_reg.dfiupd1= DDR_DFIUPD1;
+    conf->c_reg.dfiupd2 = DDR_DFIUPD2;
+    conf->c_reg.dfimisc = DDR_DFIMISC;
+    conf->c_reg.dfitmg2 = DDR_DFITMG2;
+    conf->c_reg.dfitmg3= DDR_DFITMG3;
+    conf->c_reg.dbictl = DDR_DBICTL;
+    conf->c_reg.dfiphymstr = DDR_DFIPHYMSTR;
+    conf->c_map.addrmap0 = DDR_ADDRMAP0;
+    conf->c_map.addrmap1 = DDR_ADDRMAP1;
+    conf->c_map.addrmap2 = DDR_ADDRMAP2;
+    conf->c_map.addrmap3 = DDR_ADDRMAP3;
+    conf->c_map.addrmap4 = DDR_ADDRMAP4;
+    conf->c_map.addrmap5 = DDR_ADDRMAP5;
+    conf->c_map.addrmap6 = DDR_ADDRMAP6;
+    conf->c_map.addrmap7 = DDR_ADDRMAP7;
+    conf->c_map.addrmap8 = DDR_ADDRMAP8;
+    conf->c_map.addrmap9 = DDR_ADDRMAP9;
+    conf->c_map.addrmap10 = DDR_ADDRMAP10;
+    conf->c_map.addrmap11 = DDR_ADDRMAP11;
+    conf->c_timing.odtcfg = DDR_ODTCFG;
+    conf->c_timing.odtmap= DDR_ODTMAP;
+    conf->c_perf.sched = DDR_SCHED;
+    conf->c_perf.sched1 = DDR_SCHED1;
+    conf->c_perf.perfhpr1 = DDR_PERFHPR1;
+    conf->c_perf.perflpr1 = DDR_PERFLPR1;
+    conf->c_perf.perfwr1 = DDR_PERFWR1;
+    conf->c_perf.sched3 = DDR_SCHED3;
+    conf->c_perf.sched4 = DDR_SCHED4;
+    conf->c_reg.dbg0 = DDR_DBG0;
+    conf->c_reg.dbg1 = DDR_DBG1;
+    conf->c_reg.dbgcmd = DDR_DBGCMD;
+    conf->c_reg.swctl = DDR_SWCTL;
+    conf->c_reg.swctlstatic = DDR_SWCTLSTATIC;
+    conf->c_reg.poisoncfg = DDR_POISONCFG;
+    conf->c_reg.pccfg = DDR_PCCFG;
+    conf->c_perf.pcfgr_0 = DDR_PCFGR_0;
+    conf->c_perf.pcfgw_0 = DDR_PCFGW_0;
+    conf->c_perf.pctrl_0 = DDR_PCTRL_0;
+    conf->c_perf.pcfgqos0_0 = DDR_PCFGQOS0_0;
+    conf->c_perf.pcfgqos1_0 = DDR_PCFGQOS1_0;
+    conf->c_perf.pcfgwqos0_0 = DDR_PCFGWQOS0_0;
+    conf->c_perf.pcfgwqos1_0 = DDR_PCFGWQOS1_0;
+    conf->c_perf.pcfgr_1 = DDR_PCFGR_1;
+    conf->c_perf.pcfgw_1 = DDR_PCFGW_1;
+    conf->c_perf.pctrl_1 = DDR_PCTRL_1;
+    conf->c_perf.pcfgqos0_1 = DDR_PCFGQOS0_1;
+    conf->c_perf.pcfgqos1_1 = DDR_PCFGQOS1_1;
+    conf->c_perf.pcfgwqos0_1 = DDR_PCFGWQOS0_1;
+    conf->c_perf.pcfgwqos1_1 = DDR_PCFGWQOS1_1;
+
     conf->uib.dramtype = DDR_UIB_DRAMTYPE;
     conf->uib.dimmtype = DDR_UIB_DIMMTYPE;
     conf->uib.lp4xmode = DDR_UIB_LP4XMODE;
@@ -442,6 +607,12 @@ void mmio_write_32(uintptr_t addr, uint32_t val)
     __asm__ volatile("dmb st\n" ::: "memory");
 }
 
+uint32_t mmio_read_32(uintptr_t addr)
+{
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    return *(volatile uint32_t *)addr;
+}
+
 uint64_t timeout_init_us(uint64_t us)
 {
     return clock_cur_us() + us;
@@ -450,4 +621,50 @@ uint64_t timeout_init_us(uint64_t us)
 bool timeout_elapsed(uint64_t tout)
 {
     return clock_cur_us() > tout;
+}
+
+void mmio_setbits_32(uintptr_t reg, uint32_t val)
+{
+    auto r = mmio_read_32(reg);
+    r |= val;
+    mmio_write_32(reg, r);
+}
+
+void mmio_clrbits_32(uintptr_t reg, uint32_t val)
+{
+    auto r = mmio_read_32(reg);
+    r &= ~val;
+    mmio_write_32(reg, r);
+}
+
+void mmio_clrsetbits_32(uintptr_t reg, uint32_t mask, uint32_t val)
+{
+    auto r = mmio_read_32(reg);
+    r &= ~mask;
+    r |= val;
+    mmio_write_32(reg, r);
+}
+
+void panic()
+{
+    klog("DDR: panic\n");
+    while(true);
+}
+
+int stm32mp_board_ddr_power_init(ddr_type type)
+{
+    if(type == STM32MP_DDR4)
+    {
+        pmic_vreg vr_buck6 { pmic_vreg::Buck, 6, true, 1200, pmic_vreg::HP };
+        pmic_vreg vr_refddr { pmic_vreg::RefDDR, 0, true };
+        pmic_vreg vr_ldo3 { pmic_vreg::LDO, 3, true, 600, pmic_vreg::SinkSource };
+        pmic_vreg vr_ldo5 { pmic_vreg::LDO, 5, true, 2500 };
+        pmic_set(vr_buck6);
+        pmic_set(vr_refddr);
+        pmic_set(vr_ldo3);
+        pmic_set(vr_ldo5);
+    
+        return 0;
+    }
+    return -1;
 }
