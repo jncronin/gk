@@ -3,5 +3,6 @@
 
 void init_clocks();
 void clock_set_cpu(unsigned int freq);
+void clock_irq_handler();
 
 #endif

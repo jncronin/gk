@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdint>
+#include "gic.h"
 
 struct exception_regs
 {
@@ -12,6 +13,13 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 {
     printf("EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
         etype, esr, far, lr);
+
+    if(etype == 0x280)
+    {
+        // handle interrupt
+        gic_irq_handler();
+        return 0;
+    }
 
     while(true);
 

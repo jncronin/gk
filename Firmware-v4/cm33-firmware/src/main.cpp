@@ -19,5 +19,8 @@ int main()
         for(int i = 0; i < 2500000; i++);
     }
 
-    while(true);
+    while(true)
+    {
+        __SEV();
+    }
 }

@@ -6,6 +6,7 @@
 #include "i2c_poll.h"
 #include "pmic.h"
 #include "ddr.h"
+#include "gic.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -18,6 +19,7 @@ int main(uint32_t bootrom_val)
 {
     // Set up clocks for CPU1
     log("SSBL: start\n");
+    init_gic();
     init_clocks();
     
     EV_BLUE.set_as_output();

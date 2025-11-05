@@ -30,7 +30,7 @@
 .macro _vtor_tbl_entry handler
 \handler\()_tbl:
     b \handler
-.zero 32 - (. - \handler\()_tbl)
+.zero 128 - (. - \handler\()_tbl)
 .endm
 
 _vtors:
@@ -43,11 +43,17 @@ _vtor_tbl_entry _curel_irq
 _vtor_tbl_entry _curel_fiq
 _vtor_tbl_entry _curel_serror
 
-// skip lower EL AArch64 -> EL3 (TODO: implement service calls)
-.zero 0x200
+// lower EL AArch64 -> EL3
+_vtor_tbl_entry _lower64_sync
+_vtor_tbl_entry _lower64_irq
+_vtor_tbl_entry _lower64_fiq
+_vtor_tbl_entry _lower64_serror
 
-// skip lower EL AArch32 -> EL3 (TODO: implement service calls)
-.zero 0x200
+// lower EL AArch32 -> EL3 (TODO: implement service calls)
+_vtor_tbl_entry _lower32_sync
+_vtor_tbl_entry _lower32_irq
+_vtor_tbl_entry _lower32_fiq
+_vtor_tbl_entry _lower32_serror
 
 .size _vtors, .-_vtors
 
@@ -129,3 +135,57 @@ _curel_fiq:
 _curel_serror:
     exception_stub 0x380
 .size _curel_serror, .-_curel_serror
+
+.type _lower64_sync,%function
+_lower64_sync:
+    exception_stub 0x400
+.size _lower64_sync, .-_lower64_sync
+
+.type _lower64_irq,%function
+_lower64_irq:
+    exception_stub 0x480
+.size _lower64_irq, .-_lower64_irq
+
+.type _lower64_fiq,%function
+_lower64_fiq:
+    exception_stub 0x500
+.size _lower64_fiq, .-_lower64_fiq
+
+.type _lower64_serror,%function
+_lower64_serror:
+    exception_stub 0x580
+.size _lower64_serror, .-_lower64_serror
+
+.type _lower32_sync,%function
+_lower32_sync:
+    exception_stub 0x600
+.size _lower32_sync, .-_lower32_sync
+
+.type _lower32_irq,%function
+_lower32_irq:
+    exception_stub 0x680
+.size _lower32_irq, .-_lower32_irq
+
+.type _lower32_fiq,%function
+_lower32_fiq:
+    exception_stub 0x700
+.size _lower32_fiq, .-_lower32_fiq
+
+.type _lower32_serror,%function
+_lower32_serror:
+    exception_stub 0x780
+.size _lower32_serror, .-_lower32_serror
+
+.type Read_SCR_EL3,%function
+.global Read_SCR_EL3
+Read_SCR_EL3:
+    mrs x0, scr_el3
+    ret
+.size Read_SCR_EL3, .-Read_SCR_EL3
+
+.type Write_SCR_EL3,%function
+.global Write_SCR_EL3
+Write_SCR_EL3:
+    msr scr_el3, x0
+    ret
+.size Write_SCR_EL3, .-Write_SCR_EL3

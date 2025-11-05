@@ -1,7 +1,12 @@
 #include <stm32mp2xx.h>
 #include "clocks.h"
+#include <cstdio>
 
 static uint32_t cpu_freq = 0;
+
+static void clock_start_sys();
+
+uint64_t _cur_ms;
 
 void init_clocks()
 {
@@ -59,6 +64,9 @@ void init_clocks()
 
     // Now, set up the internal CA35SS PLL1
     clock_set_cpu(1200000000);
+
+    // start the system timer
+    clock_start_sys();
 }
 
 
@@ -136,4 +144,41 @@ void clock_set_cpu(unsigned int freq)
     while(CA35SS_SSC_CHGCLKREQx->value & 0x2);
 
     cpu_freq = 2400000000UL / postdiv1 / postdiv2;
+}
+
+void clock_start_sys()
+{
+    /* We aim for a 10 ns timer here using TIM3 in 32-bit mode
+        In theory the maximum timer input frequency is 200 MHz = 5 ns resolution but
+        we scale back a bit for power consumption improvements.
+
+       The majority of the timer clocks come from ck_icn_ls_mcu = 200 MHz
+    */
+
+    #define TIM_FREQ            100000000
+    #define TIM_PRESCALE        (200000000 / TIM_FREQ)
+    #define TIM_PRECISION_NS    (1000000000 / TIM_FREQ)
+    
+    RCC->TIM3CFGR |= RCC_TIM3CFGR_TIM3EN;
+    RCC->TIM3CFGR &= ~RCC_TIM3CFGR_TIM3RST;
+    (void)RCC->TIM3CFGR;
+
+    TIM3->CR1 = 0;
+    TIM3->CR2 = 0;
+    TIM3->SMCR = 0;
+    TIM3->DIER = TIM_DIER_UIE;
+    TIM3->CCMR1 = 0;
+    TIM3->CCMR2 = 0;
+    TIM3->CCMR3 = 0;
+    TIM3->PSC = TIM_PRESCALE - 1;
+    TIM3->ARR = TIM_FREQ - 1;
+    TIM3->CNT = 0;
+    TIM3->CR1 = TIM_CR1_CEN;
+}
+
+void clock_irq_handler()
+{
+    TIM3->SR = 0;
+    _cur_ms++;
+    printf("TICK %lu\n", _cur_ms);
 }
