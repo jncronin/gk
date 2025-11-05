@@ -233,9 +233,9 @@ static int i2c_dotfer()
     // just do basic polling transfer
     if(!i2c_init)
     {
-        log(msg_i2c_init_starting);
+        klog(msg_i2c_init_starting);
         i2c_reset(false);
-        log(msg_i2c_reset_complete);
+        klog(msg_i2c_reset_complete);
         i2c_init = true;
     }
 
@@ -256,19 +256,19 @@ static int i2c_dotfer()
         // fail
         if(i2c->ISR & I2C_ISR_BERR)
         {
-            log(msg_i2c_berr);
+            klog(msg_i2c_berr);
             i2c_init = false;
             return -1;
         }
         else if(i2c->ISR & I2C_ISR_ARLO)
         {
-            log(msg_i2c_arlo);
+            klog(msg_i2c_arlo);
             i2c_init = false;
             return -1;
         }
         else
         {
-            log(msg_i2c_nackf);
+            klog(msg_i2c_nackf);
             i2c->ICR = I2C_ICR_NACKCF;
             return -1;
         }
@@ -276,7 +276,7 @@ static int i2c_dotfer()
     else if(cur_i2c_msg.is_read)
     {
 #if DEBUG_I2C
-        log(msg_i2c_ack_for_read);
+        klog(msg_i2c_ack_for_read);
 #endif
 
         bool cont = true;
@@ -299,7 +299,7 @@ static int i2c_dotfer()
                     //    cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                     //}
 #if DEBUG_I2C
-                    log(msg_i2c_read_success);
+                    klog(msg_i2c_read_success);
 #endif
                     return n_xmit;
                 }
@@ -313,7 +313,7 @@ static int i2c_dotfer()
                 else
                 {
                     {
-                        log(msg_i2c_read_early_finish);
+                        klog(msg_i2c_read_early_finish);
                     }
                     // early finish
                     cont = false;
@@ -325,7 +325,7 @@ static int i2c_dotfer()
     else
     {
 #if DEBUG_I2C
-        log(msg_i2c_ack_for_write);
+        klog(msg_i2c_ack_for_write);
 #endif
         bool cont = true;
         while(cont)
@@ -340,8 +340,8 @@ static int i2c_dotfer()
                 if(i2c->ISR & I2C_ISR_NACKF)
                 {
                     //CriticalGuard cg(s_rtt);
-                    //klog("i2c: NACKF during write phase\n");
-                    log(msg_i2c_nackf);
+                    //kklog("i2c: NACKF during write phase\n");
+                    klog(msg_i2c_nackf);
                 }
                 if((cur_i2c_msg.restart_after_write && (i2c->ISR & I2C_ISR_TC)) ||
                     (i2c->ISR & I2C_ISR_STOPF))
@@ -353,7 +353,7 @@ static int i2c_dotfer()
                     //    cur_i2c_msg.ss->Signal(SimpleSignal::Set, n_xmit);
                     //}
 #if DEBUG_I2C
-                    log(msg_i2c_write_success);
+                    klog(msg_i2c_write_success);
 #endif
                     return n_xmit;
                 }
@@ -368,8 +368,8 @@ static int i2c_dotfer()
                 {
                     {
                         //CriticalGuard cg(s_rtt);
-                        //klog("i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
-                        log(msg_i2c_write_early_finish);
+                        //kklog("i2c: early write finish %u, %x\n", n_xmit, i2c->ISR);
+                        klog(msg_i2c_write_early_finish);
                     }
                     // early finish
                     cont = false;

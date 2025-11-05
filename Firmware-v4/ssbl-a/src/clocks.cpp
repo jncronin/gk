@@ -1,12 +1,13 @@
 #include <stm32mp2xx.h>
 #include "clocks.h"
 #include <cstdio>
+#include "time.h"
 
 static uint32_t cpu_freq = 0;
 
 static void clock_start_sys();
 
-uint64_t _cur_ms;
+volatile uint64_t _cur_s = 0;
 
 void init_clocks()
 {
@@ -179,6 +180,40 @@ void clock_start_sys()
 void clock_irq_handler()
 {
     TIM3->SR = 0;
-    _cur_ms++;
-    printf("TICK %lu\n", _cur_ms);
+    _cur_s = _cur_s + 1;
+    printf("TICK %lu\n", _cur_s);
+}
+
+timespec clock_cur()
+{
+    while(true)
+    {
+        uint64_t _s_a = _cur_s;
+        uint64_t _cur_sc_ns = TIM3->CNT;
+        uint64_t _s_b = _cur_s;
+
+        if(_s_a == _s_b)
+        {
+            timespec ret;
+            ret.tv_nsec = _cur_sc_ns * TIM_PRECISION_NS;
+            ret.tv_sec = _s_a;
+            return ret;
+        }
+    }
+}
+
+uint64_t clock_cur_ns()
+{
+    auto ts = clock_cur();
+    return ts.tv_nsec + (uint64_t)ts.tv_sec * 1000000000;
+}
+
+uint64_t clock_cur_us()
+{
+    return clock_cur_ns() / 1000ULL;
+}
+
+uint64_t clock_cur_ms()
+{
+    return clock_cur_ns() / 1000000ULL;
 }

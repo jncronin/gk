@@ -18,7 +18,7 @@ void init_clocks();
 int main(uint32_t bootrom_val)
 {
     // Set up clocks for CPU1
-    log("SSBL: start\n");
+    klog("SSBL: start\n");
     init_gic();
     init_clocks();
     
@@ -60,11 +60,11 @@ int main(uint32_t bootrom_val)
     /* Start CPU2 */
     RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
 
-    log("SSBL: CPU2 started\n");
+    klog("SSBL: CPU2 started\n");
     printf("SSBL: from printf: %d\n", 1234);
 
     // get some details from STPMIC25
-    printf("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",
+    klog("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",
         pmic_read_register(0), pmic_read_register(1));
 
     init_ddr();

@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdint>
 #include "gic.h"
+#include "log.h"
 
 struct exception_regs
 {
@@ -11,7 +12,7 @@ struct exception_regs
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
 {
-    printf("EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
+    klog("EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
         etype, esr, far, lr);
 
     if(etype == 0x280)
