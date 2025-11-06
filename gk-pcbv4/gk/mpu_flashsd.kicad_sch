@@ -15355,7 +15355,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "W25Q32JVSN"
+		(property "Value" "W25Q32JVSN or MX25L6433F"
 			(at 248.92 148.5899 0)
 			(effects
 				(font
