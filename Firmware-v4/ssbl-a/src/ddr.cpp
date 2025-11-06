@@ -655,6 +655,11 @@ int stm32mp_board_ddr_power_init(ddr_type type)
 {
     if(type == STM32MP_DDR4)
     {
+        if(pmic_read_register(0) == 0x22)
+        {
+            klog("DDR: DDR4 memory requested but device is STPMIC25B for LPDDR on GK.  Halting");
+            while(true);
+        }
         pmic_vreg vr_buck6 { pmic_vreg::Buck, 6, true, 1200, pmic_vreg::HP };
         pmic_vreg vr_refddr { pmic_vreg::RefDDR, 0, true };
         pmic_vreg vr_ldo3 { pmic_vreg::LDO, 3, true, 600, pmic_vreg::SinkSource };
