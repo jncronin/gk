@@ -12,7 +12,7 @@ struct exception_regs
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
 {
-    if(etype == 0x280)
+    if(etype == 0x280 || etype == 0x480)
     {
         // handle interrupt
         gic_irq_handler();
@@ -21,6 +21,15 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
     klog("EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
         etype, esr, far, lr);
+
+
+    if(etype == 0x380)
+    {
+        // for some reason an SError is fired upon entry to EL1.  Ignore the first few.
+        static int n_serror = 0;
+        if(n_serror++ < 5)
+            return 0;
+    }
 
     while(true);
 

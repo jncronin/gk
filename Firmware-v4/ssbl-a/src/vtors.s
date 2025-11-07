@@ -97,12 +97,28 @@ _vtor_tbl_entry _lower32_serror
 .macro exception_stub code 
     save_regs
 
+# get appropriate registers
+    mrs x0, CurrentEL
+    cmp x0, #(1 << 2)
+    beq 1f
+
     mrs x0, esr_el3
     mrs x1, far_el3
     mov x2, \code
     mov x3, sp
     mrs x4, elr_el3
 
+    b 2f
+
+1:
+    mrs x0, esr_el1
+    mrs x1, far_el1
+    mov x2, \code
+    orr x2, x2, 1
+    mov x3, sp
+    mrs x4, elr_el1
+
+2:
     bl Exception_Handler
 
     # update return address if return value is not zero

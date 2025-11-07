@@ -59,8 +59,8 @@ void init_gic()
         - Use SCR_EL3 for this
     */
     auto scr_el3 = Read_SCR_EL3();
-    // Route IRQs to EL3, leave FIQs for EL0/1
-    scr_el3 |= 0x1ULL << 1;
+    // Route IRQs to EL3, leave FIQs for EL0/1.  Route SErrors to EL3
+    scr_el3 |= (0x1ULL << 1) | (0x1ULL << 3);
     Write_SCR_EL3(scr_el3);
     
 

@@ -1,4 +1,5 @@
 #include <stm32mp2xx.h>
+#include <cstring>
 
 #include "pins.h"
 #include "log.h"
@@ -69,8 +70,57 @@ int main(uint32_t bootrom_val)
 
     init_ddr();
 
+    RCC->SERCCFGR |= RCC_SERCCFGR_SERCEN;
+    (void)RCC->SERCCFGR;
+    SERC->ENABLE = 0x1;
+
+    // try a switch to el1
+    __asm__ volatile (
+        "msr sctlr_el1, xzr\n"  // TODO set I, C, M bits to enable vmem directly
+
+        "adr x0, _vtors\n"      // TODO set own vtors for EL1
+        "msr vbar_el1, x0\n"
+
+        "mov x0, #(0x3 << 20)\n"
+        "msr cpacr_el1, x0\n"   // disable trapping of neon/fpu instructions
+
+        "ldr x0, =el1_stack\n"
+        "add x0, x0, #128*8\n"
+        "bfc x0, #0, #4\n"      // align stack
+        "msr sp_el1, x0\n"
+
+        "mrs x0, scr_el3\n"
+        "bfc x0, #62, #1\n"     // clear NSE (part of secure bits)
+        "bfc x0, #18, #1\n"     // clear EEL2 (no EL2)
+        "orr x0, x0, #(1 << 10)\n" // set RW (use A64 for EL1)
+        //"orr x0, x0, #1\n"      // set NS (combined with NSE - EL0/1 is non-secure)
+        "bfc x0, #0, #1\n"
+        "msr scr_el3, x0\n"
+
+        "mrs x0, spsr_el3\n"
+        "bfc x0, #0, #4\n"      // clear M bits
+        "orr x0, x0, #1\n" // EL1 with sp_el1
+        "orr x0, x0, #4\n"
+        "msr spsr_el3, x0\n"
+
+        "adr x0, el1_start\n"
+        "msr elr_el3, x0\n"     // load return address
+
+        "eret\n"
+        ::: "memory"
+    );
+
     while(true);
 
     return 0;
 }
+
+uint64_t el1_stack[128];
+
+extern "C" void el1_start()
+{
+    klog("EL1 success\n");
+    while(true);
+}
+
 
