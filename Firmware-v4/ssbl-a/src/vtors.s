@@ -97,6 +97,35 @@ _vtor_tbl_entry _lower32_serror
 .macro exception_stub code 
     save_regs
 
+# check for stack overflow
+    mrs x0, mpidr_el1
+    and x0, x0, #0xff
+    cmp x0, #0
+    beq 1f
+
+    ldr x0, =_ap_sstack
+    ldr x1, =_ap_estack
+    beq 2f
+1:
+    ldr x0, =_mp_sstack
+    ldr x1, =_mp_estack
+2:
+    mov x2, sp
+    add x0, x0, #512
+    cmp x2, x0
+    blo 1f
+    cmp x2, x1
+    bhi 1f
+    b 2f
+
+1:
+    // stack overflow
+    wfi
+    b 1b
+
+2:
+    // stack okay
+
 # get appropriate registers
     mrs x0, CurrentEL
     cmp x0, #(1 << 2)

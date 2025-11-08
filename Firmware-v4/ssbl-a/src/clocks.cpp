@@ -7,7 +7,7 @@ static uint32_t cpu_freq = 0;
 
 static void clock_start_sys();
 
-volatile uint64_t _cur_s = 0;
+volatile uint64_t * const _cur_s = (volatile uint64_t *)0x0e0bfe00;
 
 void init_clocks()
 {
@@ -180,16 +180,18 @@ void clock_start_sys()
 void clock_irq_handler()
 {
     TIM3->SR = 0;
-    _cur_s = _cur_s + 1;
+    *_cur_s = *_cur_s + 1;
 }
 
 timespec clock_cur()
 {
+    if(!(RCC->TIM3CFGR & RCC_TIM3CFGR_TIM3EN))
+        return { 0, 0 };
     while(true)
     {
-        uint64_t _s_a = _cur_s;
+        uint64_t _s_a = *_cur_s;
         uint64_t _cur_sc_ns = TIM3->CNT;
-        uint64_t _s_b = _cur_s;
+        uint64_t _s_b = *_cur_s;
 
         if(_s_a == _s_b)
         {

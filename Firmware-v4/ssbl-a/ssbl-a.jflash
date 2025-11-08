@@ -3,7 +3,7 @@
 [GENERAL]
   aATEModuleSel[24] = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   ConnectMode = 0
-  CurrentFile = "C:\Users\jncro\source\repos\gk\Firmware-v4\ssbl-a\build\gkv4_ssbl_a.bin"
+  CurrentFile = "C:\Users\jncro\source\repos\gk\Firmware-v4\ssbl-a\build\gkv4_ssbl_a.hex"
   DataFileSAddr = 0x60100000
   GUIMode = 0
   HostName = ""
@@ -24,10 +24,10 @@
   UseMaxSpeed1 = 0
 [CPU]
   NumInitSteps = 1
-  InitStep0_Action = "Reset"
-  InitStep0_Value0 = 0x00000000
-  InitStep0_Value1 = 0x00000000
-  InitStep0_Comment = "Reset and halt target"
+  InitStep0_Action = "Halt"
+  InitStep0_Value0 = 0xFFFFFFFF
+  InitStep0_Value1 = 0xFFFFFFFF
+  InitStep0_Comment = ""
   NumExitSteps = 0
   UseScriptFile = 0
   ScriptFile = ""

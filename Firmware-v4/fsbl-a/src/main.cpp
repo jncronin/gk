@@ -81,6 +81,21 @@ int main(uint32_t bootrom_val)
     USART6->CR1 = USART_CR1_FIFOEN | USART_CR1_TE | USART_CR1_UE;
 
     log("FSBL: starting SSBL\n");
+
+    // Set up VDERAM for access by SSBL-a
+    RCC->VDERAMCFGR |= RCC_VDERAMCFGR_VDERAMEN;
+    (void)RCC->VDERAMCFGR;
+    SYSCFG->VDERAMCR |= SYSCFG_VDERAMCR_VDERAM_EN;  // allocate to system rather than VDEC
+    (void)SYSCFG->VDERAMCR;
+    /* allocate last block of last page for access from non-secure world (for _cur_ms and other things)
+        this is the last 512 bytes @ 0x0e0bfe00
+    */
+    for(unsigned int i = 0; i < 31; i++)
+    {
+        RISAB6->PGSECCFGR[i] = 0xffU;       // secure access only - required to execute AP2 code from here
+    }
+    RISAB6->PGSECCFGR[31] = 0x7fU;
+    RISAB6->CR |= RISAB_CR_SRWIAD;          // allow secure data access back to the last page
     
     EV_ORANGE.set_as_output();
 

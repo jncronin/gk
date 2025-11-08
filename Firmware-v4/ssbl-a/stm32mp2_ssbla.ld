@@ -16,9 +16,9 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    RETRAM          (xrw) : ORIGIN = 0x0e080000, LENGTH = 64*1024
+    VDERAM          (xrw) : ORIGIN = 0x0e0a0000, LENGTH = 0x1c000   /* stack space at end */
+    VDERAM_SHARED   (rw)  : ORIGIN = 0x0e0bfe00, LENGTH = 512
     FLASH           (xrw) : ORIGIN = 0x60100000, LENGTH = 1*1024*1024
-    SRAM2           (xrw) : ORIGIN = 0x0e060000, LENGTH = 128*1024
 }
 
 SECTIONS
@@ -36,100 +36,83 @@ SECTIONS
     KEEP (*(.init))
     KEEP (*(.fini))
 
-    . = ALIGN(8);
+    . = ALIGN(16);
     _etext = .;        /* define a global symbols at end of code */
   } >FLASH
 
-  .rodata :
+  .rodata : ALIGN(16)
   {
-    . = ALIGN(8);
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
-    . = ALIGN(8);
   } >FLASH
 
   /* Store a fixed vtor table in QSPI for SSBL */
-  .vtors :
+  .vtors : ALIGN(2048)
   {
-    . = ALIGN(4096);
     KEEP(*(.vtors))
-    . = ALIGN(4096);
   } >FLASH
 
-  .ARM.extab (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .ARM.extab (READONLY) : ALIGN(16)/* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
-    . = ALIGN(8);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
-    . = ALIGN(8);
   } >FLASH
 
-  .ARM (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .ARM (READONLY) : ALIGN(16) /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
    {
-    . = ALIGN(8);
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
-    . = ALIGN(8);
   } >FLASH
 
-  .preinit_array  (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .preinit_array  (READONLY) : ALIGN(16) /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
-    . = ALIGN(8);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-    . = ALIGN(8);
   } >FLASH
 
-  .init_array (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .init_array (READONLY) :  ALIGN(16) /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
-    . = ALIGN(8);
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT(.init_array.*)))
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
-    . = ALIGN(8);
   } >FLASH
 
-  .fini_array (READONLY) : /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  .fini_array (READONLY) : ALIGN(16) /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
-    . = ALIGN(8);
     PROVIDE_HIDDEN (__fini_array_start = .);
     KEEP (*(SORT(.fini_array.*)))
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
-    . = ALIGN(8);
   } >FLASH
 
   /* AP runs from RAM to allow easier flash updating whilst it is running.
       Store the function here. */
-  . = ALIGN(8);
-  .ap_text :
+  .ap_text : ALIGN(16)
   {
     _sap_text = .;
     *(.ap_text)
 
-    . = ALIGN(8);
+    . = ALIGN(16);
     _eap_text = .;
-  } >SRAM2 AT> FLASH
+  } >VDERAM AT> FLASH
   _sap_text_flash = LOADADDR(.ap_text);
 
-  .data :
+  .data : ALIGN(16)
   {
-    . = ALIGN(8);
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
     *(.RamFunc)        /* .RamFunc sections */
     *(.RamFunc*)       /* .RamFunc* sections */
-    . = ALIGN(8);
+    . = ALIGN(16);
     _edata = .;        /* define a global symbol at data end */
 
-  } >RETRAM AT> FLASH
+  } >VDERAM AT> FLASH
   _sdata_flash = LOADADDR(.data);
 
-  . = ALIGN(8);
-  .bss :
+  .bss : ALIGN(16)
   {
     /* This is used by the startup in order to initialize the .bss section */
     _sbss = .;         /* define a global symbol at bss start */
@@ -138,13 +121,23 @@ SECTIONS
     *(.bss*)
     *(COMMON)
 
-    . = ALIGN(8);
+    . = ALIGN(16);
     _heap_start = .;
     . = . + 16*1024;
     _heap_end = .;
 
-    . = ALIGN(8);
+    . = ALIGN(16);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >RETRAM
+  } >VDERAM
+
+  /* Provide stack addresses */
+  _mp_sstack = 0x0e0bd000;
+  _mp_estack = 0x0e0bf000;
+  _ap_sstack = 0x0e0bc000;
+  _ap_estack = 0x0e0bd000;
+
+  /* Just provide addresses for s_ns_shared to stop it exploding .bin file */
+  _s_ns_shared_start = 0x0e0bfe00;
+  _cur_s = _s_ns_shared_start + 0;
 }

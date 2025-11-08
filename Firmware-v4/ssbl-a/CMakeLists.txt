@@ -98,3 +98,4 @@ utils_target_set_linker_script(${PROJECT_NAME}
 
 utils_target_print_size(${PROJECT_NAME})
 utils_target_generate_bin(${PROJECT_NAME})
+utils_target_generate_hex(${PROJECT_NAME})
