@@ -8,6 +8,7 @@
 #include "pmic.h"
 #include "ddr.h"
 #include "gic.h"
+#include "vmem.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -94,6 +95,7 @@ int main(uint32_t bootrom_val)
         pmic_read_register(0), pmic_read_register(1));
 
     init_ddr();
+    init_vmem();
 
     // try a switch to el1
     __asm__ volatile (
