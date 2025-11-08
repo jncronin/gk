@@ -66,6 +66,10 @@ int main(uint32_t bootrom_val)
             RISAB6->CID[i].WRCFGR = 0xffffffffU;
         }
     }
+    for(auto i = 0U; i < 32; i++)
+    {
+        RISAB6->PGCIDCFGR[i] = 0x1; // enable filtering for all pages
+    }
         
 
     // Start up the CM33 code running from QSPI @ 0x603fc000
