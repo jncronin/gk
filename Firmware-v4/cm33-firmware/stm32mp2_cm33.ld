@@ -11,7 +11,7 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    VDERAM          (xrw) : ORIGIN = 0x300b8000, LENGTH = 0x6000
+    VDERAM          (xrw) : ORIGIN = 0x300b8000, LENGTH = 0x5000
     FLASH           (xr)  : ORIGIN = 0x603fc000, LENGTH = 0x4000
 }
 
@@ -116,5 +116,5 @@ SECTIONS
     __bss_end__ = _ebss;
   } >VDERAM
 
-  _estack = 0x300c0000;
+  _estack = 0x300bf000;
 }

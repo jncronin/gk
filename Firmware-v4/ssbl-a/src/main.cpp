@@ -47,6 +47,27 @@ int main(uint32_t bootrom_val)
     RISAF2->REG[0].CIDCFGR = 7U;    // TRACE/CPU0/CPU1
     RISAF2->REG[0].CFGR = 0xf0101;  // all privilege, secure, enable
 
+    /* Set up RISAB6 to deny access to CM33 for the first 96 kiB of VDERAM,
+        enable access to the last 32 kiB
+        For CM33, the last page will be read-only (contains _cur_s updated by CA35)
+    */
+    for(auto i = 0U; i < 7; i++)
+    {
+        RISAB6->CID[i].PRIVCFGR = 0;
+
+        if(i == 2)
+        {
+            RISAB6->CID[i].RDCFGR = 0xff000000U;
+            RISAB6->CID[i].WRCFGR = 0x7f000000U;
+        }
+        else
+        {
+            RISAB6->CID[i].RDCFGR = 0xffffffffU;
+            RISAB6->CID[i].WRCFGR = 0xffffffffU;
+        }
+    }
+        
+
     // Start up the CM33 code running from QSPI @ 0x603fc000
     // Boot in secure mode
     RCC->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
