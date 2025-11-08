@@ -70,10 +70,6 @@ int main(uint32_t bootrom_val)
 
     init_ddr();
 
-    RCC->SERCCFGR |= RCC_SERCCFGR_SERCEN;
-    (void)RCC->SERCCFGR;
-    SERC->ENABLE = 0x1;
-
     // try a switch to el1
     __asm__ volatile (
         "msr sctlr_el1, xzr\n"  // TODO set I, C, M bits to enable vmem directly
@@ -94,7 +90,7 @@ int main(uint32_t bootrom_val)
         "bfc x0, #18, #1\n"     // clear EEL2 (no EL2)
         "orr x0, x0, #(1 << 10)\n" // set RW (use A64 for EL1)
         //"orr x0, x0, #1\n"      // set NS (combined with NSE - EL0/1 is non-secure)
-        "bfc x0, #0, #1\n"
+        "bfc x0, #0, #1\n"      // only seems to work for EL1 secure for some reason
         "msr scr_el3, x0\n"
 
         "mrs x0, spsr_el3\n"
