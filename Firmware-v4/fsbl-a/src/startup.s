@@ -76,6 +76,18 @@ Reset_Handler:
     ldr w3, =0xdeb60fff
     str w3, [x2]
 
+    /* SERC allows invalid physical addresses to be translated to bus errors
+     - essentially stops the debugger crashing the core when we inadvertantly
+       view memory that we shouldn't */
+    ldr x2, =0x442008b8
+    ldr w3, [x2]
+    orr w3, w3, #(0x1 << 1)
+    str w3, [x2]
+
+    ldr x2, =0x44080100
+    mov w3, #0x1
+    str w3, [x2]
+    
     // system setup
     ldr x2, =_estack
     mov sp, x2
