@@ -3,7 +3,7 @@
 [GENERAL]
   aATEModuleSel[24] = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   ConnectMode = 0
-  CurrentFile = "C:\Users\jncro\source\repos\gk\Firmware-v4\cm33-firmware\build\gkv4_cm33.bin"
+  CurrentFile = "C:\Users\jncro\source\repos\gk\Firmware-v4\cm33-firmware\build\gkv4_cm33.hex"
   DataFileSAddr = 0x60200000
   GUIMode = 0
   HostName = ""

@@ -1,7 +1,7 @@
 /*
 
 Executes from FLASH
-Uses RETRAM (last 64 kiB) for data/stack
+Uses VDERAM (last 32 kiB) for data/stack
 
 Add flash load address so J-Link can program properly
 
@@ -11,8 +11,8 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    RETRAM          (xrw) : ORIGIN = 0x30090000, LENGTH = 0x0f000
-    FLASH           (xr)  : ORIGIN = 0x60200000, LENGTH = 2*1024*1024
+    VDERAM          (xrw) : ORIGIN = 0x300b8000, LENGTH = 0x6000
+    FLASH           (xr)  : ORIGIN = 0x603fc000, LENGTH = 0x4000
 }
 
 SECTIONS
@@ -98,7 +98,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >RETRAM AT> FLASH
+  } >VDERAM AT> FLASH
   _sdata_flash = LOADADDR(.data);
 
   . = ALIGN(4);
@@ -114,7 +114,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >RETRAM
+  } >VDERAM
 
-  _estack = 0x300a0000;
+  _estack = 0x300c0000;
 }

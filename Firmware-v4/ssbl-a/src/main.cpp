@@ -37,22 +37,22 @@ int main(uint32_t bootrom_val)
     /* Give CM33 access to RISAF2 (OSPI) (already has secure access to the other RAMs except BKPSRAM)
         RISAF2->HWCFGR = 0x100c0505
         
-        We set up region 0 to be the last 2 MiB of flash, and send this to CID 2 (CPU2)
+        We set up region 0 to be the last 16 kiB of flash, and send this to CID 2 (CPU2)
 
         The rest should stay under the default i.e. boot CPU only
     */
     RISAF2->REG[0].CFGR = 0;
-    RISAF2->REG[0].STARTR = 0x200000;
+    RISAF2->REG[0].STARTR = 0x3fc000;
     RISAF2->REG[0].ENDR = 0x3fffff;
     RISAF2->REG[0].CIDCFGR = 7U;    // TRACE/CPU0/CPU1
     RISAF2->REG[0].CFGR = 0xf0101;  // all privilege, secure, enable
 
-    // Start up the CM33 code running from QSPI @ 0x60200000
+    // Start up the CM33 code running from QSPI @ 0x603fc000
     // Boot in secure mode
     RCC->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
     (void)RCC->SYSCPU1CFGR;
     CA35SYSCFG->M33_TZEN_CR |= CA35SYSCFG_M33_TZEN_CR_CFG_SECEXT;
-    CA35SYSCFG->M33_INITSVTOR_CR = 0x60200000;
+    CA35SYSCFG->M33_INITSVTOR_CR = 0x603fc000;
     RCC->CPUBOOTCR &= ~RCC_CPUBOOTCR_BOOT_CPU2;
     (void)RCC->CPUBOOTCR;
     RCC->C2RSTCSETR = RCC_C2RSTCSETR_C2RST;

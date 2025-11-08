@@ -9,16 +9,16 @@ Therefore, use RETRAM for our RAM needs
 The AP does a WFI loop in SRAM2 (where it also has its stack)
  - need to set the first page of SRAM2 for secure access therefore
 
-We use the 2nd 1 MiB of flash for our needs.  Leave the last 2 MiB for CM33 code.
+We use the second 128 kiB of flash.
 */
 
 ENTRY(Reset_Handler)
 
 MEMORY
 {
-    VDERAM          (xrw) : ORIGIN = 0x0e0a0000, LENGTH = 0x1c000   /* stack space at end */
+    VDERAM          (xrw) : ORIGIN = 0x0e0a0000, LENGTH = 0x14000   /* stack space at end */
     VDERAM_SHARED   (rw)  : ORIGIN = 0x0e0bfe00, LENGTH = 512
-    FLASH           (xrw) : ORIGIN = 0x60100000, LENGTH = 1*1024*1024
+    FLASH           (xrw) : ORIGIN = 0x60020000, LENGTH = 0x40000
 }
 
 SECTIONS
@@ -132,10 +132,10 @@ SECTIONS
   } >VDERAM
 
   /* Provide stack addresses */
-  _mp_sstack = 0x0e0bd000;
-  _mp_estack = 0x0e0bf000;
-  _ap_sstack = 0x0e0bc000;
-  _ap_estack = 0x0e0bd000;
+  _mp_sstack = 0x0e0b4000;
+  _mp_estack = 0x0e0b6000;
+  _ap_sstack = 0x0e0b6000;
+  _ap_estack = 0x0e0b8000;
 
   /* Just provide addresses for s_ns_shared to stop it exploding .bin file */
   _s_ns_shared_start = 0x0e0bfe00;

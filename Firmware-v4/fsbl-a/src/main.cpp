@@ -108,9 +108,9 @@ int main(uint32_t bootrom_val)
         for(int i = 0; i < 2500000; i++);
     }
 
-    void (*ssbl)(uint32_t bootrom_val) = (void (*)(uint32_t))0x60100000;
+    void (*ssbl)(uint32_t bootrom_val) = (void (*)(uint32_t))0x60020000;
     extern uint64_t AP_Target;
-    AP_Target = 0x60100000;
+    AP_Target = 0x60020000;
     ssbl(bootrom_val);
 
     return 0;
