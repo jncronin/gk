@@ -100,8 +100,15 @@ static uint64_t pts[16] = { 0 };
 void init_vmem()
 {
     pd = pmem_alloc();
+
+    // MMU types
     __asm__ volatile("msr mair_el1, %[mair] \n" : : [mair] "r" (mair) : "memory");
+
+    // Upper half page directory
     __asm__ volatile("msr ttbr1_el1, %[pd] \n" : : [pd] "r" (pd) : "memory");
+
+    // Disable level 2 paging
+    __asm__ volatile("msr hcr_el2, %[hcr_el2] \n" : : [hcr_el2] "r" (0) : "memory");
 
     /* identity map, include standard 32-bit device map as RW, secure, XN */
     volatile uint64_t *pd_entries = (volatile uint64_t *)pd;
