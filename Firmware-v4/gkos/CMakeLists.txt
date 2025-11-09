@@ -107,6 +107,7 @@ add_custom_target(gkos-hex
         ${CMAKE_OBJCOPY} -I binary -O elf64-littleaarch64 --change-addresses 0x60060000
             $<TARGET_FILE:${PROJECT_NAME}>
             ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
+    COMMAND
         ${CMAKE_OBJCOPY} -O ihex
             ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
             ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.hex

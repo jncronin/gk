@@ -140,4 +140,5 @@ SECTIONS
   /* Just provide addresses for s_ns_shared to stop it exploding .bin file */
   _s_ns_shared_start = 0x0e0bfe00;
   _cur_s = _s_ns_shared_start + 0;
+  _tim_precision_ns = _s_ns_shared_start + 8;
 }

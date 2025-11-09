@@ -8,6 +8,7 @@ static uint32_t cpu_freq = 0;
 static void clock_start_sys();
 
 volatile uint64_t * const _cur_s = (volatile uint64_t *)0x0e0bfe00;
+volatile uint64_t * const _tim_precision_ns = (volatile uint64_t *)0x0e0bfe08;
 
 void init_clocks()
 {
@@ -159,6 +160,8 @@ void clock_start_sys()
     #define TIM_FREQ            100000000
     #define TIM_PRESCALE        (200000000 / TIM_FREQ)
     #define TIM_PRECISION_NS    (1000000000 / TIM_FREQ)
+
+    *_tim_precision_ns = TIM_PRECISION_NS;
     
     RCC->TIM3CFGR |= RCC_TIM3CFGR_TIM3EN;
     RCC->TIM3CFGR &= ~RCC_TIM3CFGR_TIM3RST;
