@@ -74,8 +74,7 @@ static uint64_t pmem_alloc(uint64_t size = GRANULARITY, bool clear = true)
 
     if(clear)
     {
-        for(auto i = 0ULL; i < size; i++)
-            *(volatile uint64_t *)(cur_pmem_brk + i) = 0;
+        quick_clear_64((void *)ret, size);
     }
     return ret;
 }
@@ -127,7 +126,7 @@ void init_vmem()
         else
             attr |= PAGE_PRIV_RW;
 
-        pd_entries[0] = (0x20000000ULL * i) |
+        pd_entries[i] = (0x20000000ULL * i) |
             attr;
     }
 }

@@ -2,6 +2,7 @@
 #define VMEM_H
 
 #include <cstdint>
+#include <cstddef>
 
 /* Call to initialise a page directory in DDR and set up EL1 paging structures */
 void init_vmem();
@@ -12,5 +13,9 @@ void pmem_map_region(uint64_t base, uint64_t size, bool writeable, bool xn);
 /* Call to return the physical address for a particular vaddress mapped by
     pmem_map_region().  If not already mapped will map it. */
 uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable = false, bool xn = false);
+
+/* Quick clear/copy, assumes multiples of 64 bytes, 16 byte alignment */
+extern "C" void quick_clear_64(void *dest, size_t n = 65536);
+extern "C" void quick_copy_64(void *dest, const void *src, size_t n = 65536);
 
 #endif
