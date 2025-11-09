@@ -54,7 +54,6 @@
 #define MT_DEVICE           3
 #define MT_DEVICE_NGNRE     4
 
-// e.g. (TODO: put this in asm file which enables paging)
 const uint64_t mair = 0x04004499ff;
 
 /* basic pmem allocator in DDR */
@@ -108,6 +107,15 @@ void init_vmem()
 
     // Disable level 2 paging
     __asm__ volatile("msr hcr_el2, %[hcr_el2] \n" : : [hcr_el2] "r" (0) : "memory");
+
+    // Get tcr_el1
+    uint64_t tcr_el1;
+    __asm__ volatile("mrs %[tcr_el1], tcr_el1 \n" : [tcr_el1] "=r" (tcr_el1) : : "memory");
+    tcr_el1 &= ~(0x3fULL << 16);
+    tcr_el1 |= (64ULL - 42ULL) << 16;       // 42 bit upper half paging
+    tcr_el1 |= 3ULL << 30;                  // 64 kiB granule
+    tcr_el1 |= 2ULL << 32;                  // intermediate physical address 40 bits
+    __asm__ volatile("msr tcr_el1, %[tcr_el1] \n" : : [tcr_el1] "r" (tcr_el1) : "memory");
 
     /* identity map, include standard 32-bit device map as RW, secure, XN */
     volatile uint64_t *pd_entries = (volatile uint64_t *)pd;
@@ -181,5 +189,22 @@ void pmem_map_region(uint64_t base, uint64_t size, bool writeable, bool xn)
     for(auto i = start; i < end; i += GRANULARITY)
     {
         pmem_vaddr_to_paddr(i, writeable, xn);
+    }
+}
+
+uint64_t pmem_get_cur_brk()
+{
+    return cur_pmem_brk;
+}
+
+uint64_t pmem_paddr_to_vaddr(uint64_t paddr, int el)
+{
+    switch(el)
+    {
+        case 1:
+            return UH_START + paddr;
+        default:
+            klog("vmem: unsupported el: %d\n", el);
+            while(true);
     }
 }

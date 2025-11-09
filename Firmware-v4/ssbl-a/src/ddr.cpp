@@ -673,3 +673,8 @@ int stm32mp_board_ddr_power_init(ddr_type type)
     }
     return -1;
 }
+
+uint64_t ddr_get_size()
+{
+    return DDR_MEM_SIZE;
+}

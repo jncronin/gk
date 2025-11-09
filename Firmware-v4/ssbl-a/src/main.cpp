@@ -9,11 +9,18 @@
 #include "ddr.h"
 #include "gic.h"
 #include "vmem.h"
+#include "elf.h"
+#include "gkos_boot_interface.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
 static const constexpr pin EV_GREEN     { GPIOD, 8 };
 static const constexpr pin EV_ORANGE    { GPIOJ, 6 };
+
+gkos_boot_interface gbi{};
+
+// a stack to catch very early el1 exceptions
+uint64_t el1_stack[128];
 
 void init_clocks();
 
@@ -96,10 +103,35 @@ int main(uint32_t bootrom_val)
 
     init_ddr();
     init_vmem();
+    epoint el1_ept = nullptr;
+    if(elf_load((const void *)0x60060000, &el1_ept, 1) != 0)
+    {
+        klog("elf: el1 failed to load\n");
+        while(true);
+    }
 
-    // try a switch to el1
+    // TODO: load secure monitor into a paged EL3
+
+
+    gbi.ddr_start = pmem_get_cur_brk();
+    gbi.ddr_end = 0x80000000ULL + ddr_get_size();
+    uint64_t gbi_vaddr = pmem_paddr_to_vaddr((uint64_t)&gbi, 1);
+    
+    uint64_t el1_estack_paddr = ((uint64_t)&el1_stack + sizeof(el1_stack)) & ~15ULL;
+    el1_estack_paddr -= 16;
+    *reinterpret_cast<uint64_t *>(el1_estack_paddr) = gbi_vaddr;
+    *reinterpret_cast<uint64_t *>(el1_estack_paddr + 8) = gkos_magic;
+
+    auto el1_estack_vaddr = pmem_paddr_to_vaddr(el1_estack_paddr, 1);
+
+
+    // set-up for EL1 switch
     __asm__ volatile (
-        "msr sctlr_el1, xzr\n"  // TODO set I, C, M bits to enable vmem directly
+        "mov x0, xzr\n"
+        "orr x0, x0, #(0x1 << 0)\n"     // M
+        "orr x0, x0, #(0x1 << 2)\n"     // C
+        "orr x0, x0, #(0x1 << 12)\n"    // I
+        "msr sctlr_el1, x0\n"
 
         "adr x0, _vtors\n"      // TODO set own vtors for EL1
         "msr vbar_el1, x0\n"
@@ -107,10 +139,7 @@ int main(uint32_t bootrom_val)
         "mov x0, #(0x3 << 20)\n"
         "msr cpacr_el1, x0\n"   // disable trapping of neon/fpu instructions
 
-        "ldr x0, =el1_stack\n"
-        "add x0, x0, #128*8\n"
-        "bfc x0, #0, #4\n"      // align stack
-        "msr sp_el1, x0\n"
+        "msr sp_el1, %[el1_estack_vaddr]\n"
 
         "mrs x0, scr_el3\n"
         "bfc x0, #62, #1\n"     // clear NSE (part of secure bits)
@@ -120,30 +149,37 @@ int main(uint32_t bootrom_val)
         "bfc x0, #0, #1\n"      // only seems to work for EL1 secure for some reason
         "msr scr_el3, x0\n"
 
+        // do we need to disable IRQs here to prevent spsr being overwritten?
+
         "mrs x0, spsr_el3\n"
         "bfc x0, #0, #4\n"      // clear M bits
-        "orr x0, x0, #1\n" // EL1 with sp_el1
+        "orr x0, x0, #1\n"      // EL1 with sp_el1
         "orr x0, x0, #4\n"
         "msr spsr_el3, x0\n"
 
-        "adr x0, el1_start\n"
-        "msr elr_el3, x0\n"     // load return address
+        "msr elr_el3, %[el1_ept]\n"     // load return address
 
-        "eret\n"
-        ::: "memory"
+        //"eret\n"
+        : :
+            [el1_estack_vaddr] "r" (el1_estack_vaddr),
+            [el1_ept] "r" (el1_ept)
+        : "memory", "x0"
     );
 
+    // TODO: pass control to secure monitor (perform a jump within identity-mapped page)
+    //  which will then eret to EL1
+
+    __asm__ volatile("eret\n" ::: "memory");
     while(true);
 
     return 0;
 }
 
-uint64_t el1_stack[128];
-
+/*
 extern "C" void el1_start()
 {
     klog("EL1 success\n");
     while(true);
 }
-
+*/
 

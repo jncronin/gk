@@ -44,7 +44,7 @@ quick_copy_64:
     stp x9, x10, [x0], #16
 
 2:
-    cmp x0, x1
+    cmp x0, x2
     b.lo 1b
 
     ret

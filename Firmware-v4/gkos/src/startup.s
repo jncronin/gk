@@ -5,8 +5,8 @@
 .type _kstart, %function
 
 _kstart:
-    // startup parameters are passed in SP (via EL1_SP setup)
-    mov x0, sp
+    // startup parameters are passed via sp
+    mov x24, sp
 
     // get actual stack
     ldr x1, =_estack
@@ -14,6 +14,8 @@ _kstart:
 
     bl __libc_init_array
 
+    // get parameters stored on initial stack
+    ldp x0, x1, [x24]
     bl mp_kmain
 1:
     wfi

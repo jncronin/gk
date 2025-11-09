@@ -98,3 +98,19 @@ utils_target_set_linker_script(${PROJECT_NAME}
 )
 
 utils_target_print_size(${PROJECT_NAME})
+
+
+# Generate a file suitable for loading into JFlash or equivalent to flash the QSPI
+add_custom_target(gkos-hex
+    ALL
+    COMMAND
+        ${CMAKE_OBJCOPY} -I binary -O elf64-littleaarch64 --change-addresses 0x60060000
+            $<TARGET_FILE:${PROJECT_NAME}>
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
+        ${CMAKE_OBJCOPY} -O ihex
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.hex
+)
+add_dependencies(${PROJECT_NAME}-hex
+    ${PROJECT_NAME}
+)

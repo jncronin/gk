@@ -84,6 +84,7 @@ SECTIONS
 
   } :data
 
+  . = ALIGN(CONSTANT(COMMONPAGESIZE));
   .bss : ALIGN(16)
   {
     /* This is used by the startup in order to initialize the .bss section */

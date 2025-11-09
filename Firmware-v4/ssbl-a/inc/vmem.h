@@ -18,4 +18,10 @@ uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable = false, bool xn = f
 extern "C" void quick_clear_64(void *dest, size_t n = 65536);
 extern "C" void quick_copy_64(void *dest, const void *src, size_t n = 65536);
 
+/* Get used physical memory size */
+uint64_t pmem_get_cur_brk();
+
+/* Get a usable data pointer vmem address */
+uint64_t pmem_paddr_to_vaddr(uint64_t paddr, int el);
+
 #endif
