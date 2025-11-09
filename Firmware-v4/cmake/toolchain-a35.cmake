@@ -19,7 +19,7 @@ set(CMAKE_C_STANDARD_LIBRARIES "-lm")
 set(CMAKE_CXX_STANDARD_LIBRARIES "-lm")
 
 set(COMMON_FLAGS "-mcpu=${TARGET_CPU}")
-set(C_CXX_FLAGS  "--specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -D__GAMEKID__ -D_POSIX_MONOTONIC_CLOCK -D_GNU_SOURCE=1")
+set(C_CXX_FLAGS  "--specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -D__GAMEKID__=4 -D__GAMEKID_V4__=4 -D_POSIX_MONOTONIC_CLOCK -D_GNU_SOURCE=1")
 set(CXX_FLAGS    "-fno-exceptions -fno-rtti -fno-threadsafe-statics")
 
 set(CMAKE_C_FLAGS_INIT          "${COMMON_FLAGS} ${C_CXX_FLAGS}"              CACHE STRING "" FORCE)
@@ -29,8 +29,8 @@ set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--gc-sections"                           CA
 
 set(CMAKE_C_FLAGS_DEBUG     "-Og -g"          CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG   "-Og -g"          CACHE STRING "" FORCE)
-set(CMAKE_C_FLAGS_RELEASE   "-Os -g -DNDEBUG" CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "-Os -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE   "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
