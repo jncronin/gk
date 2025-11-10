@@ -8,22 +8,14 @@ _ZN8Spinlock4lockEv:
     mov x1, #1
 
 1:
-    // first non-locking test
-    ldr w2, [x0]
-    cbnz w2, 1b
-
-    // then atomic semantics
+    // atomic semantics
     ldxr w2, [x0]
-    cbz w2, 2f
+    cbnz w2, 1b         // already taken.  No need to release exclusive monitor here
+                        // because other core will only do a non-exclusive store of zero to release
 
-    // failed to acquire
-    clrex
-    b 1b
-
-2:
     // try to update
     stxr w2, w1, [x0]
-    cbnz w2, 1b
+    cbnz w2, 1b         // failed to update.  try again
 
     ret
 
@@ -42,28 +34,17 @@ _ZN8Spinlock6unlockEv:
 .type _ZN8Spinlock8try_lockEv,%function
 _ZN8Spinlock8try_lockEv:
     mov x1, #1
-    mov x3, x0
-    mov x0, #0      // pre-fill fail return
 
-    // first try non-locking
-    ldr w2, [x3]
-    cbnz w2, 2f
+    ldxr w2, [x0]
+    cbnz w2, 1f             // fail
 
-    // then atomic semantics
-    ldxr w2, [x3]
-    cbz w2, 1f
+    stxr w2, w1, [x0]
+    cbnz w2, 1f             // fail
 
-    // failed to acquire
-    clrex
-    b 2f
+    // pass
+    mov x0, #1
+    ret
 
 1:
-    // try to set
-    stxr w2, w1, [x3]
-    cbnz w2, 2f
-
-    // if this far then succeed
-    mov x0, #1
-
-2:
+    mov x0, xzr
     ret
