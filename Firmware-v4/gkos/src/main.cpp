@@ -1,5 +1,6 @@
 #include "logger.h"
 #include "clocks.h"
+#include "pmem.h"
 #include "../../ssbl-a/inc/gkos_boot_interface.h"
 
 extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
@@ -10,6 +11,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     klog("gkos: magic: %s, ddr: %llx - %llx\n", (const char *)(&magic_str[0]), gbi->ddr_start, gbi->ddr_end);
     
+    init_pmem(gbi->ddr_start, gbi->ddr_end);
+
     while(true)
     {
         udelay(1000000);
