@@ -10,8 +10,8 @@
 
 uintptr_t _clocks_cur_s_address();
 
-volatile uint64_t * const _cur_s = (volatile uint64_t *)CUR_S_ADDRESS;
-volatile uint64_t * const _tim_precision_ns = (volatile uint64_t *)(CUR_S_ADDRESS + 8);
+#define _cur_s (volatile uint64_t *)CUR_S_ADDRESS
+#define _tim_precision_ns (volatile uint64_t *)(CUR_S_ADDRESS + 8);
 
 timespec clock_cur()
 {

@@ -15,7 +15,7 @@ SECTIONS
 {
   .text 0x20000000 :
   {
-    /* KEEP(*(.vtors)) */
+    KEEP(*(.vtors))
     *(.text)           /* .text sections (code) */
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */

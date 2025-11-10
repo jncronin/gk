@@ -9,6 +9,14 @@ _kstart:
     mov x24, x0
     mov x25, x1
 
+    // init stack space
+    bl mp_preinit
+    mov sp, x0
+
+    // use our vtors
+    adr x0, _vtors
+    msr vbar_el3, x0
+
     bl __libc_init_array
 
     // get saved parameters

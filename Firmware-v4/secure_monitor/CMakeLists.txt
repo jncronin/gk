@@ -42,6 +42,7 @@ target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/clocks_cur.cpp"

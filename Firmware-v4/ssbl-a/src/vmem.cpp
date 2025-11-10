@@ -92,7 +92,7 @@ void init_vmem()
     }
 }
 
-uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn)
+uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el)
 {
     if(vaddr < 0x20000000 || vaddr >= 0x40000000)
     {
@@ -121,14 +121,14 @@ uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn)
     return pt_entries[pt_idx] & 0xffffffff0000ULL;
 }
 
-void pmem_map_region(uint64_t base, uint64_t size, bool writeable, bool xn)
+void pmem_map_region(uint64_t base, uint64_t size, bool writeable, bool xn, int el)
 {
     auto start = base & ~(GRANULARITY - 1ULL);
     auto end = (base + size + (GRANULARITY - 1ULL)) & ~(GRANULARITY - 1ULL);
 
     for(auto i = start; i < end; i += GRANULARITY)
     {
-        pmem_vaddr_to_paddr(i, writeable, xn);
+        pmem_vaddr_to_paddr(i, writeable, xn, el);
     }
 }
 
