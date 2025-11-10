@@ -5,6 +5,10 @@
 .type _kstart, %function
 
 _kstart:
+    // install vtors
+    adr x2, _vtors
+    msr vbar_el1, x2
+    
     // startup parameters are passed via sp
     mov x24, sp
 

@@ -50,7 +50,7 @@ void init_clocks()
     // PLL4 output is 1200 MHz - use to interface AXI via crossbar (2), divided by 2
     RCC->PREDIVxCFGR[2] = 1;
     RCC->FINDIVxCFGR[2] = 0x40;
-    RCC->XBARxCFGR[33] = 0x40;
+    RCC->XBARxCFGR[2] = 0x40;
 
     // Interface GIC400 via crossbar (5) - PLL4 / 3 = 400 MHz
     RCC->PREDIVxCFGR[5] = 0;
@@ -69,6 +69,9 @@ void init_clocks()
 
     // start the system timer
     clock_start_sys();
+
+    // start STGEN
+    STGENC->CNTCR = 0x1;
 }
 
 
