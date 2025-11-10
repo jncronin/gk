@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <cstddef>
 
-/* Call to initialise a page directory in DDR and set up EL1 paging structures */
-void init_vmem();
+/* Call to initialise a page directory in DDR and set up ELx paging structures */
+void init_vmem(int el = 3);
 
 /* Call to generate appropriate mappings for a block of memory */
 void pmem_map_region(uint64_t base, uint64_t size, bool writeable, bool xn, int el = 3);

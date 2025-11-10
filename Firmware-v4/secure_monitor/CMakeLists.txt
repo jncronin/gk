@@ -46,6 +46,7 @@ target_sources(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/clocks_cur.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/elf.cpp"
 )
 
 set_target_properties(${PROJECT_NAME}

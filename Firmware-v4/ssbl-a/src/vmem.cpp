@@ -39,8 +39,13 @@ static uint64_t pmem_alloc(uint64_t size = GRANULARITY, bool clear = true)
 static uint64_t pd = 0;
 static uint64_t pt = 0;
 
-void init_vmem()
+void init_vmem(int el)
 {
+    if(el != 3)
+    {
+        klog("vmem: invalid el: %d\n", el);
+        while(true);
+    }
     pd = pmem_alloc();
     pt = pmem_alloc();
 

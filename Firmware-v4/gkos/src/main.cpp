@@ -1,10 +1,11 @@
 #include "logger.h"
 #include "clocks.h"
 #include "pmem.h"
-#include "../../ssbl-a/inc/gkos_boot_interface.h"
+#include "gkos_boot_interface.h"
 
 extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 {
+    init_clocks(gbi);
     klog("gkos: startup\n");
 
     uint64_t magic_str[2] = { magic, 0 };

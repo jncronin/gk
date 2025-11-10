@@ -11,7 +11,7 @@ extern uint64_t ddr_start, ddr_end;
 Spinlock sl_pmem;
 Spinlock sl_vmem;
 
-static uint64_t pmem_alloc(uint64_t size = GRANULARITY, bool clear = true)
+uint64_t pmem_alloc(uint64_t size = GRANULARITY, bool clear = true)
 {
     // align up to granule size
     uint64_t ret;
@@ -68,7 +68,7 @@ uint64_t pmem_vaddr_to_paddr_el3(uint64_t vaddr, bool writeable, bool xn)
             attrs;        
     }
 
-    return pt_entries[pt_idx] & PAGE_ADDR_MASK;
+    return (pt_entries[pt_idx] & PAGE_ADDR_MASK) | (vaddr & 0xffffULL);
 }
 
 uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el)
@@ -78,6 +78,10 @@ uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el)
         case 3:
             return pmem_vaddr_to_paddr_el3(vaddr, writeable, xn);
 
+        case 1:
+            uint64_t pmem_vaddr_to_paddr1(uint64_t vaddr, bool writeable, bool xn);
+            return pmem_vaddr_to_paddr1(vaddr, writeable, xn);
+            
         default:
             klog("vmem: invalid el: %d\n", el);
             return 0;

@@ -4,10 +4,14 @@
 
 #define TIM3_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM3_BASE))
 
-volatile uint64_t * const _cur_s = (volatile uint64_t *)0xfffffc000e0bfe00;
-volatile uint64_t * const _tim_precision_ns = (volatile uint64_t *)0xfffffc000e0bfe08;
+volatile uint64_t * _cur_s;
+volatile uint64_t * _tim_precision_ns;
 
-// TODO: init a non-cached area where we read _cur_s from
+void init_clocks(const gkos_boot_interface *gbi)
+{
+    _cur_s = (volatile uint64_t *)(PMEM_TO_VMEM((uint64_t)gbi->cur_s));
+    _tim_precision_ns = (volatile uint64_t *)(PMEM_TO_VMEM((uint64_t)gbi->tim_ns_precision));
+}
 
 timespec clock_cur()
 {

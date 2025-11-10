@@ -78,13 +78,5 @@ int elf_load(const void *base, epoint *entry, int el)
 
 void *get_dest_page(Elf64_Addr addr, bool writeable, bool exec, int el)
 {
-    if(el == 1)
-    {
-        return (void *)pmem_vaddr_to_paddr(addr, writeable, !exec);
-    }
-    else
-    {
-        klog("elf: unsupported EL: %d\n", el);
-        while(true);
-    }
+    return (void *)pmem_vaddr_to_paddr(addr, writeable, !exec, el);
 }
