@@ -1,5 +1,5 @@
 #include "elf.h"
-#include "log.h"
+#include "logger.h"
 #include "vmem.h"
 
 static void *get_dest_page(Elf64_Addr addr, bool writeable, bool exec, int el);

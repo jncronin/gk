@@ -24,4 +24,10 @@ uint64_t pmem_get_cur_brk();
 /* Get a usable data pointer vmem address */
 uint64_t pmem_paddr_to_vaddr(uint64_t paddr, int el);
 
+#ifndef PMEM_OFFSET
+#error PMEM_OFFSET not defined
+#endif
+
+#define PMEM_TO_VMEM(x) ((x) + PMEM_OFFSET)
+
 #endif

@@ -1,5 +1,5 @@
 #include "pins.h"
-#include "log.h"
+#include "logger.h"
 #include <cstddef>
 
 static const constexpr pin I2C7_SDA { GPIOD, 14, 10 };

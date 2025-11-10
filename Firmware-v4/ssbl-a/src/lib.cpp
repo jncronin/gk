@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <sys/types.h>
-#include "log.h"
+#include "logger.h"
 
 extern int _heap_start;
 extern int _heap_end;
@@ -45,17 +45,7 @@ extern "C" void *_sbrk(intptr_t increment)
 
 extern "C" ssize_t _write(int fd, const void *buf, size_t count)
 {
-    if(!buf)
-    {
-        return -1;
-    }
-
-    for(size_t i = 0; i < count; i++)
-    {
-        log(((const char *)buf)[i]);
-    }
-
-    return (ssize_t)count;
+    return -1;
 }
 
 extern "C"
@@ -144,4 +134,12 @@ extern "C" void *__wrap_memset(void *dest, int c, size_t n)
     while(n--)
         *d++ = (char)c;
     return dest;
+}
+
+extern "C" size_t __wrap_strlen(const char *s)
+{
+    size_t ret = 0;
+    while(*s++)
+        ret++;
+    return ret;
 }

@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <cstdint>
 #include "gic.h"
-#include "log.h"
+#include "logger.h"
 
 struct exception_regs
 {

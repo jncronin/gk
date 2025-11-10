@@ -1,9 +1,8 @@
 #include <stm32mp2xx.h>
 #include "ddr.h"
 #include "pmic.h"
-#include "log.h"
+#include "logger.h"
 #include "clocks.h"
-#include <cstdio>
 
 #ifndef BIT
 #define BIT(x)  (1ULL << x)
@@ -210,14 +209,14 @@ void ddr_set_mt(uint32_t mt)
     }
 
     // Dump all RCC registers
-    printf("DDRCPCFGR:        %08x\n", RCC->DDRCPCFGR);
-    printf("DDRITFCFGR:       %08x\n", RCC->DDRITFCFGR);
-    printf("DDRPHYCAPBCFGR:   %08x\n", RCC->DDRPHYCAPBCFGR);
-    printf("DDRCAPBCFGR:      %08x\n", RCC->DDRCAPBCFGR);
-    printf("DDRITFCFGR:       %08x\n", RCC->DDRITFCFGR);
-    printf("DDRPHYCCFGR:      %08x\n", RCC->DDRPHYCCFGR);
-    printf("DDRCFGR:          %08x\n", RCC->DDRCFGR);
-    printf("DBGCFGR:          %08x\n", RCC->DBGCFGR);
+    klog("DDRCPCFGR:        %08x\n", RCC->DDRCPCFGR);
+    klog("DDRITFCFGR:       %08x\n", RCC->DDRITFCFGR);
+    klog("DDRPHYCAPBCFGR:   %08x\n", RCC->DDRPHYCAPBCFGR);
+    klog("DDRCAPBCFGR:      %08x\n", RCC->DDRCAPBCFGR);
+    klog("DDRITFCFGR:       %08x\n", RCC->DDRITFCFGR);
+    klog("DDRPHYCCFGR:      %08x\n", RCC->DDRPHYCCFGR);
+    klog("DDRCFGR:          %08x\n", RCC->DDRCFGR);
+    klog("DBGCFGR:          %08x\n", RCC->DBGCFGR);
 
     if(bypass)
     {
@@ -246,7 +245,7 @@ void ddr_set_mt(uint32_t mt)
 
     while(!(RCC->PLL2CFGR1 & RCC_PLL2CFGR1_PLLRDY));
 
-    printf("DDR: PLL2 frequency set to %u MHz, %s=%u MT/s\n",
+    klog("DDR: PLL2 frequency set to %u MHz, %s=%u MT/s\n",
         vco_val / 8 / 1000000, bypass ? "bypass mode" : "",
         vco_val / 4 * (bypass ? 1 : 4) / 1000000);
 }

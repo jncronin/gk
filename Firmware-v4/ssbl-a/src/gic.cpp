@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cstdio>
 #include "clocks.h"
+#include "logger.h"
 
 /*
     There is also a MSI interface - GIC2VM, which on STM32MP2 allows an extra 32 software
@@ -87,7 +88,7 @@ void gic_irq_handler()
             break;
 
         default:
-            printf("GIC: spurious interrupt: %d\n", irq_no);
+            klog("GIC: spurious interrupt: %d\n", irq_no);
             break;
     }
 

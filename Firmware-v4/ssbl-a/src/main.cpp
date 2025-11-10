@@ -2,7 +2,7 @@
 #include <cstring>
 
 #include "pins.h"
-#include "log.h"
+#include "logger.h"
 #include <cstdio>
 #include "i2c_poll.h"
 #include "pmic.h"
@@ -95,7 +95,6 @@ int main(uint32_t bootrom_val)
     RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
 
     klog("SSBL: CPU2 started\n");
-    printf("SSBL: from printf: %d\n", 1234);
 
     // get some details from STPMIC25
     klog("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",
@@ -103,83 +102,33 @@ int main(uint32_t bootrom_val)
 
     init_ddr();
     init_vmem();
-    epoint el1_ept = nullptr;
-    if(elf_load((const void *)0x60060000, &el1_ept, 1) != 0)
+
+    // load secure monitor into a paged EL3
+    epoint el3_ept = nullptr;
+    if(elf_load((const void *)0x60300000, &el3_ept, 1) != 0)
     {
-        klog("elf: el1 failed to load\n");
+        klog("elf: secure monitor failed to load\n");
         while(true);
     }
 
-    // TODO: load secure monitor into a paged EL3
-
-
     gbi.ddr_start = pmem_get_cur_brk();
     gbi.ddr_end = 0x80000000ULL + ddr_get_size();
-    uint64_t gbi_vaddr = pmem_paddr_to_vaddr((uint64_t)&gbi, 1);
+
+    void (*sm_ep)(const gkos_boot_interface *, uint64_t) =
+        (void (*)(const gkos_boot_interface *, uint64_t))el3_ept;
     
-    uint64_t el1_estack_paddr = ((uint64_t)&el1_stack + sizeof(el1_stack)) & ~15ULL;
-    el1_estack_paddr -= 16;
-    *reinterpret_cast<uint64_t *>(el1_estack_paddr) = gbi_vaddr;
-    *reinterpret_cast<uint64_t *>(el1_estack_paddr + 8) = gkos_magic;
-
-    auto el1_estack_vaddr = pmem_paddr_to_vaddr(el1_estack_paddr, 1);
-
-
-    // set-up for EL1 switch
+    // disable irqs/fiqs, enable paging
     __asm__ volatile (
-        "mov x0, xzr\n"
+        "msr daifset, #0x3\n"
+        "mrs x0, sctlr_el3\n"
         "orr x0, x0, #(0x1 << 0)\n"     // M
         "orr x0, x0, #(0x1 << 2)\n"     // C
         "orr x0, x0, #(0x1 << 12)\n"    // I
-        "msr sctlr_el1, x0\n"
+        "msr sctlr_el3, x0\n"
+    : : : "memory", "x0");
 
-        "adr x0, _vtors\n"      // TODO set own vtors for EL1
-        "msr vbar_el1, x0\n"
-
-        "mov x0, #(0x3 << 20)\n"
-        "msr cpacr_el1, x0\n"   // disable trapping of neon/fpu instructions
-
-        "msr sp_el1, %[el1_estack_vaddr]\n"
-
-        "mrs x0, scr_el3\n"
-        "bfc x0, #62, #1\n"     // clear NSE (part of secure bits)
-        "bfc x0, #18, #1\n"     // clear EEL2 (no EL2)
-        "orr x0, x0, #(1 << 10)\n" // set RW (use A64 for EL1)
-        //"orr x0, x0, #1\n"      // set NS (combined with NSE - EL0/1 is non-secure)
-        "bfc x0, #0, #1\n"      // only seems to work for EL1 secure for some reason
-        "msr scr_el3, x0\n"
-
-        // do we need to disable IRQs here to prevent spsr being overwritten?
-
-        "mrs x0, spsr_el3\n"
-        "bfc x0, #0, #4\n"      // clear M bits
-        "orr x0, x0, #1\n"      // EL1 with sp_el1
-        "orr x0, x0, #4\n"
-        "msr spsr_el3, x0\n"
-
-        "msr elr_el3, %[el1_ept]\n"     // load return address
-
-        //"eret\n"
-        : :
-            [el1_estack_vaddr] "r" (el1_estack_vaddr),
-            [el1_ept] "r" (el1_ept)
-        : "memory", "x0"
-    );
-
-    // TODO: pass control to secure monitor (perform a jump within identity-mapped page)
-    //  which will then eret to EL1
-
-    __asm__ volatile("eret\n" ::: "memory");
+    sm_ep(&gbi, gkos_ssbl_magic);
     while(true);
 
     return 0;
 }
-
-/*
-extern "C" void el1_start()
-{
-    klog("EL1 success\n");
-    while(true);
-}
-*/
-

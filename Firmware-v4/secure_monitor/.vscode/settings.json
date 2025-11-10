@@ -10,7 +10,6 @@
         "assert.h": "c",
         "ddrphy_phyinit.h": "c",
         "stm32mp_ddrctrl_regs.h": "c",
-        "errno.h": "c",
-        "cstddef": "cpp"
+        "errno.h": "c"
     },
 }

@@ -11,7 +11,7 @@ message(STATUS "CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
 
 include(../cmake/utils.cmake)
 
-project(gkv4_ssbl_a C CXX ASM)
+project(gkos_sm C CXX ASM)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
@@ -27,8 +27,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Device/ST/STM32MP2xx/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core_A/Include"
-        ${CMAKE_CURRENT_SOURCE_DIR}/inc/ddr_init
-        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -37,17 +36,15 @@ target_compile_definitions(${PROJECT_NAME}
         CORE_CM33
         ETH_MODE
         PMEM_OFFSET=0
-        GKOS_UNCACHED=1
 )
 
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/elf.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s
-        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/clocks_cur.cpp"
 )
 
 set_target_properties(${PROJECT_NAME}
@@ -76,7 +73,6 @@ target_compile_options(${PROJECT_NAME}
         -Wno-missing-field-initializers
         -Wno-int-to-pointer-cast
         -mgeneral-regs-only
-        -mstrict-align
 )
 
 target_compile_options(${PROJECT_NAME}
@@ -95,16 +91,33 @@ target_compile_options(${PROJECT_NAME}
 
 target_link_options(${PROJECT_NAME}
     PRIVATE
-        -Wl,--wrap=memmove
-        -Wl,--wrap=memcpy
-        -Wl,--wrap=memset
-        -Wl,--wrap=strlen
+        -Wl,--wrap=malloc
+        -Wl,--wrap=calloc
+        -Wl,--wrap=realloc
+        -Wl,--wrap=free
+        -Wl,-z,max-page-size=65536
+        -Wl,-z,common-page-size=65536
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
-    ${CMAKE_CURRENT_SOURCE_DIR}/stm32mp2_ssbla.ld
+    ${CMAKE_CURRENT_SOURCE_DIR}/gkos_sm.ld
 )
 
 utils_target_print_size(${PROJECT_NAME})
-utils_target_generate_bin(${PROJECT_NAME})
-utils_target_generate_hex(${PROJECT_NAME})
+
+
+# Generate a file suitable for loading into JFlash or equivalent to flash the QSPI
+add_custom_target(${PROJECT_NAME}-hex
+    ALL
+    COMMAND
+        ${CMAKE_OBJCOPY} -I binary -O elf64-littleaarch64 --change-addresses 0x60300000
+            $<TARGET_FILE:${PROJECT_NAME}>
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
+    COMMAND
+        ${CMAKE_OBJCOPY} -O ihex
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.hex
+)
+add_dependencies(${PROJECT_NAME}-hex
+    ${PROJECT_NAME}
+)
