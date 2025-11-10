@@ -48,3 +48,5 @@ _ZN8Spinlock8try_lockEv:
 1:
     mov x0, xzr
     ret
+
+.size _ZN8Spinlock8try_lockEv, .-_ZN8Spinlock8try_lockEv
