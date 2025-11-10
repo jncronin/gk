@@ -133,7 +133,8 @@ uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn)
     {
         uint64_t attrs = DT_PAGE |
             PAGE_ACCESS |
-            PAGE_INNER_SHAREABLE;
+            PAGE_INNER_SHAREABLE |
+            PAGE_ATTR(MT_NORMAL);
         if(xn)
             attrs |= PAGE_XN;
         if(writeable)
