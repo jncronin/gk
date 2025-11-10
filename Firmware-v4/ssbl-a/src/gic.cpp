@@ -46,22 +46,31 @@ extern "C" void Write_SCR_EL3(uint64_t);
 
 void init_gic()
 {
-    /* First set up the distributor to pass IRQs to the cores */
+    /* Make all interrupts group 1 (non-secure) with the exception of:
+        138 (TIM3)
+    */
+    for(auto i = 0U; i < 13; i++)
+    {
+        *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * i) = 0xffffffff;
+    }
+    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * (138 / 32)) =
+        *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * (138 / 32)) &
+        ~(1UL << (138 % 32));
+    
+    /* Set up the distributor to pass IRQs to the cores */
     *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0) = 0x3;     // CTLR
 
-    /* Now set up the current core to handle interrupts */
-    *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0) = 0x3;       // CTLR
+    /* Now set up the current core to handle interrupts, route group 0 to FIQ */
+    *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0) = 0x3 | (1UL << 3);       // CTLR, FIQEN
     *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0x4) = 0x80;    // priority mask - half-way value
 
     /* Within the core, enable interrupts.
-        At some point, we will want to separate group1/0 interrupts and
-        route one to EL3 and the other to EL1, but for now as we are
-        running in EL3 anyway, keep the default
+        Route FIQ to EL3, keep IRQ at own level
         - Use SCR_EL3 for this
     */
     auto scr_el3 = Read_SCR_EL3();
-    // Route IRQs to EL3, leave FIQs for EL0/1.  Route SErrors to EL3
-    scr_el3 |= (0x1ULL << 1) | (0x1ULL << 3);
+    // Route FIQs to EL3, leave IRQs for EL0/1.  Route SErrors to EL3
+    scr_el3 |= (0x1ULL << 2) | (0x1ULL << 3);
     Write_SCR_EL3(scr_el3);
     
 
@@ -73,9 +82,8 @@ void init_gic()
     gic_set_enable(138);
 }
 
-void gic_irq_handler()
+void gic_fiq_handler()
 {
-    // TODO: switch to using group1 at some point
     auto iar = *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0xc);
     __asm__ volatile("dmb ish\n" ::: "memory");
 

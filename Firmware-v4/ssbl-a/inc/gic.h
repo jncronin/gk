@@ -2,6 +2,6 @@
 #define GIC_H
 
 void init_gic();
-void gic_irq_handler();
+void gic_fiq_handler();
 
 #endif

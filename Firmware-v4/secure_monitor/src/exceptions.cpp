@@ -12,7 +12,7 @@ struct exception_regs
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
 {
-    if(etype == 0x280 || etype == 0x480)
+    if(etype == 0x300 || etype == 0x500 || etype == 0x700)
     {
         // handle interrupt
         gic_irq_handler();
