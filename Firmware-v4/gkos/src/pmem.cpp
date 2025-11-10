@@ -12,11 +12,10 @@ void init_pmem(uint64_t ddr_start, uint64_t ddr_end)
     auto total_length = buddy_end - buddy_start;
 
     auto mem_required = Pmem.BuddyMemSize(total_length);
+    mem_required = (mem_required + 65535ULL) & ~65535ULL;
 
     klog("pmem: buddy from %llx to %llx needs %llx bytes.  Allocating at %llx.\n",
-        buddy_start, buddy_end, total_length, ddr_start);
-
-    mem_required = (mem_required + 65535ULL) & ~65535ULL;
+        buddy_start, buddy_end, mem_required, ddr_start);
 
     void *mem = (void *)PMEM_TO_VMEM(ddr_start);
     ddr_start += mem_required;
