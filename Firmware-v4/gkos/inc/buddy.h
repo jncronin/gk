@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include "osmutex.h"
+#include "logger.h"
 
 struct BuddyEntry
 {
@@ -84,7 +85,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
 
         constexpr static uint64_t buddy_size_to_level(uint64_t size)
         {
-            return __builtin_clz(min_buddy_size) - __builtin_clz(size);
+            return __builtin_clzll(min_buddy_size) - __builtin_clzll(size);
         }
 
         constexpr static uint64_t addr_to_bitidx_at_level(uint64_t level, uint64_t addr)
@@ -112,10 +113,10 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
 
         void release_at_level(uint64_t level, uint64_t bitidx)
         {
-            auto qwordidx = bitidx / 64;
-            auto bit_within_qwordidx = bitidx % 64;
-            auto comp_bit = (bit_within_qwordidx & 1UL) ? (bit_within_qwordidx - 1UL) :
-                (bit_within_qwordidx + 1UL);
+            auto qwordidx = bitidx / 64ULL;
+            auto bit_within_qwordidx = bitidx % 64ULL;
+            auto comp_bit = (bit_within_qwordidx & 1ULL) ? (bit_within_qwordidx - 1ULL) :
+                (bit_within_qwordidx + 1ULL);
 
             auto wptr = &b[level_starts[level] + qwordidx];
             if(*wptr & (1ULL << comp_bit) && level < (num_levels() - 1))
@@ -144,9 +145,12 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
                 if(*wptr)
                 {
                     // we have a valid value here - return it
-                    auto bval = 63 - __builtin_clz(*wptr);
+                    auto bval = 63ULL - __builtin_clzll(*wptr);
+                    klog("buddy: found free level %llu at %llu:%llu, old qword=%llx & %llx\n", level, i, bval, *wptr, (uintptr_t)wptr);
                     *wptr &= ~(1ULL << bval);
-                    return bval + i * 64;
+
+                    klog("buddy: found free level %llu at %llu:%llu, new qword=%llx & %llx\n", level, i, bval, *wptr, (uintptr_t)wptr);
+                    return bval + i * 64ULL;
                 }
             }
 
@@ -165,6 +169,8 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
                     // set the complementary bit
                     auto wptr = &b[lstart + qword_idx];
                     *wptr |= (1ULL << (bit_idx + 1));
+
+                    klog("buddy: complementary bit set level %llu at %llu:%llu, new qword=%llx @ %llx\n", level, qword_idx, bit_idx, *wptr, (uintptr_t)wptr);
 
                     // return our bitindex
                     return bval;
@@ -211,7 +217,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
                 if(!is_power_of_2(length))
                 {
                     //BKPT();
-                    length = length == 1ULL ? 1ULL : 1ULL << (64-__builtin_clz(length - 1ULL));
+                    length = length == 1ULL ? 1ULL : 1ULL << (64-__builtin_clzll(length - 1ULL));
                 }
                 while(length < min_buddy_size)
                 {
@@ -269,7 +275,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
             // round up to a buddy size
             if(!is_power_of_2(length))
             {
-                length = length == 1ULL ? 1ULL : 1ULL << (64-__builtin_clz(length - 1ULL));
+                length = length == 1ULL ? 1ULL : 1ULL << (64-__builtin_clzll(length - 1ULL));
             }
             while(length < min_buddy_size)
             {
