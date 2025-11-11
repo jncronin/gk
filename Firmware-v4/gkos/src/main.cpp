@@ -4,9 +4,22 @@
 #include "gic.h"
 #include "vblock.h"
 #include "gkos_boot_interface.h"
+#include "process.h"
+#include "thread.h"
+#include "kheap.h"
+#include <memory>
 
-extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
+// test threads
+std::shared_ptr<Process> p_kernel;
+std::shared_ptr<Thread> t_a, t_b;
+
+static void *task_a(void *);
+static void *task_b(void *);
+
+extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)
 {
+    // These need to happen before __libc_init_array, which may call malloc
+
     init_clocks(gbi);
     
     klog("gkos: startup\n");
@@ -19,7 +32,12 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     // Initialize a upper half block manager in the space between the mapped physical memory and the kernel
     init_vblock();
+    init_kheap();
+    return 0;
+}
 
+extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
+{
     // allocate some space to test page faults
     auto pf_test = vblock_alloc(VBLOCK_64k, VBLOCK_TAG_WRITE);
     *(uint64_t *)pf_test.base = 0xdeadbeef;
@@ -52,6 +70,14 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     uint64_t last_ms = clock_cur_ms();
 
+
+    // Create some threads
+    p_kernel = std::make_shared<Process>();
+    p_kernel->name = "kernel";
+
+    t_a = Thread::Create("testa", task_a, nullptr, true, 1, p_kernel);
+    t_b = Thread::Create("testb", task_b, nullptr, true, 1, p_kernel);
+
     while(true)
     {
         //udelay(50000);
@@ -70,4 +96,20 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     }
 
     return 0;
+}
+
+void *task_a(void *)
+{
+    while(true)
+    {
+        klog("A\n");
+    }
+}
+
+void *task_b(void *)
+{
+    while(true)
+    {
+        klog("B\n");
+    }
 }

@@ -16,6 +16,9 @@ _kstart:
     ldr x1, =_estack
     mov sp, x1
 
+    ldp x0, x1, [x24]
+    bl mp_kpremain
+
     bl __libc_init_array
 
     // get parameters stored on initial stack

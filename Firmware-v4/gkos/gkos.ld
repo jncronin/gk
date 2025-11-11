@@ -9,6 +9,7 @@ PHDRS
   text PT_LOAD ;
   rodata PT_LOAD ;
   data PT_LOAD ;
+  bss PT_LOAD ;
 }
 
 SECTIONS
@@ -20,7 +21,11 @@ SECTIONS
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */
     *(.glue_7t)        /* glue thumb to arm code */
+    *(.eh_frame_hdr)
     *(.eh_frame)
+    *(.eh_frame*)
+    *(.gcc_except_table)
+    *(.gcc_except_table*)
 
     KEEP (*(.init))
     KEEP (*(.fini))
@@ -38,12 +43,14 @@ SECTIONS
 
   .ARM.extab (READONLY) : ALIGN(16)/* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {
+    *(.ARM.extab)
     *(.ARM.extab* .gnu.linkonce.armextab.*)
   } :rodata
 
   .ARM (READONLY) : ALIGN(16) /* The READONLY keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
    {
     __exidx_start = .;
+    *(.ARM.exidx)
     *(.ARM.exidx*)
     __exidx_end = .;
   } :rodata
@@ -100,5 +107,5 @@ SECTIONS
 
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } :data
+  } :bss
 }

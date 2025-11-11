@@ -1,6 +1,6 @@
 {
     "cmake.configureSettings": {
-        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35.cmake",
+        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35-hosted.cmake",
     },
     "files.associations": {
         "compare": "cpp",

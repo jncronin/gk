@@ -93,6 +93,7 @@ target_link_options(${PROJECT_NAME}
         -Wl,--wrap=calloc
         -Wl,--wrap=realloc
         -Wl,--wrap=free
+        -Wl,--wrap=reallocarray
         -Wl,-z,max-page-size=65536
         -Wl,-z,common-page-size=65536
 )
@@ -108,8 +109,11 @@ utils_target_print_size(${PROJECT_NAME})
 add_custom_target(gkos-hex
     ALL
     COMMAND
-        ${CMAKE_OBJCOPY} -I binary -O elf64-littleaarch64 --change-addresses 0x60060000
+        ${CMAKE_STRIP} -S -o ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.strip.elf
             $<TARGET_FILE:${PROJECT_NAME}>
+    COMMAND
+        ${CMAKE_OBJCOPY} -I binary -O elf64-littleaarch64 --change-addresses 0x60060000
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.strip.elf
             ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.bin.elf
     COMMAND
         ${CMAKE_OBJCOPY} -O ihex

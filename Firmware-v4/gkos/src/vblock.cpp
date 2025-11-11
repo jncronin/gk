@@ -488,12 +488,12 @@ std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
     // check level2
     auto idx2 = (addr % VBLOCK_512M) / VBLOCK_4M;
     auto l2 = (level2 *)level1[idx];
-    if(l2->b[idx] == VBLOCK_UNAVAIL || l2->b[idx] == VBLOCK_BLOCK_FREE)
+    if(l2->b[idx2] == VBLOCK_UNAVAIL || l2->b[idx2] == VBLOCK_BLOCK_FREE)
     {
         // not allocated
         return std::make_pair(BuddyEntry { .valid = false }, 0);
     }
-    else if(l2->b[idx] & VBLOCK_BLOCK_ALLOC)
+    else if(l2->b[idx2] & VBLOCK_BLOCK_ALLOC)
     {
         // allocated as large block
         return std::make_pair(BuddyEntry
@@ -507,7 +507,7 @@ std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
     // check level3
     auto idx3 = (addr % VBLOCK_4M) / VBLOCK_64k;
     auto l3 = (level3 *)l2->b[idx2];
-    if(!(l3->b[idx] & VBLOCK_BLOCK_ALLOC))
+    if(!(l3->b[idx3] & VBLOCK_BLOCK_ALLOC))
     {
         // not allocated
         return std::make_pair(BuddyEntry { .valid = false }, 0);
