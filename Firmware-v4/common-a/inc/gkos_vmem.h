@@ -36,6 +36,8 @@ const uint64_t mair = 0x04004499ff;
 #define PAGE_INNER_SHAREABLE    (0x3ULL << 8)
 #define PAGE_PRIV_RW            (0x0ULL << 6)
 #define PAGE_PRIV_RO            (0x2ULL << 6)
+#define PAGE_USER_RW            (0x1ULL << 6)
+#define PAGE_USER_RO            (0x3ULL << 6)
 #define PAGE_NON_SECURE         (0x1ULL << 5)
 #define PAGE_ATTR(x)            ((x) << 2)
 

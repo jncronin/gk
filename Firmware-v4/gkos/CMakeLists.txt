@@ -42,6 +42,7 @@ target_sources(${PROJECT_NAME}
         ${SOURCES}
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s"
 )
 
 set_target_properties(${PROJECT_NAME}

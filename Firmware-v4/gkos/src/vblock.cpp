@@ -108,6 +108,7 @@ class VBlock
 
         BuddyEntry Alloc(size_t size, uint32_t tag = 0);
         void Free(BuddyEntry &be);
+        std::pair<BuddyEntry, uint32_t> Valid(uintptr_t addr);
 };
 
 VBlock vblock;
@@ -117,9 +118,15 @@ void init_vblock()
     vblock.init();
 }
 
-BuddyEntry vblock_alloc(size_t size)
+BuddyEntry vblock_alloc(size_t size, uint32_t tag)
 {
-    return vblock.Alloc(size);
+    return vblock.Alloc(size, tag);
+}
+
+std::pair<bool, uint32_t> vblock_valid(uintptr_t addr)
+{
+    auto [be, tag] = vblock.Valid(addr);
+    return std::make_pair(be.valid, tag);
 }
 
 void VBlock::init()
@@ -454,4 +461,63 @@ uint64_t VBlock::PmemAllocLevel3()
         l3->b[i] = VBLOCK_BLOCK_FREE;
     
     return ret;
+}
+
+std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
+{
+    addr -= base;
+
+    auto idx = addr / VBLOCK_512M;
+
+    CriticalGuard cg(sl);
+    if(level1[idx] == VBLOCK_UNAVAIL || level1[idx] == VBLOCK_BLOCK_FREE)
+    {
+        // not allocated
+        return std::make_pair(BuddyEntry { .valid = false }, 0);
+    }
+    else if(level1[idx] & VBLOCK_BLOCK_ALLOC)
+    {
+        // allocated as large block
+        return std::make_pair(BuddyEntry
+            {
+                .base = base + idx * VBLOCK_512M,
+                .length = VBLOCK_512M,
+                .valid = true
+            }, (level1[idx] >> 32));
+    }
+    
+    // check level2
+    auto idx2 = (addr % VBLOCK_512M) / VBLOCK_4M;
+    auto l2 = (level2 *)level1[idx];
+    if(l2->b[idx] == VBLOCK_UNAVAIL || l2->b[idx] == VBLOCK_BLOCK_FREE)
+    {
+        // not allocated
+        return std::make_pair(BuddyEntry { .valid = false }, 0);
+    }
+    else if(l2->b[idx] & VBLOCK_BLOCK_ALLOC)
+    {
+        // allocated as large block
+        return std::make_pair(BuddyEntry
+            {
+                .base = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M,
+                .length = VBLOCK_4M,
+                .valid = true
+            }, (l2->b[idx2] >> 32));
+    }
+
+    // check level3
+    auto idx3 = (addr % VBLOCK_4M) / VBLOCK_64k;
+    auto l3 = (level3 *)l2->b[idx2];
+    if(!(l3->b[idx] & VBLOCK_BLOCK_ALLOC))
+    {
+        // not allocated
+        return std::make_pair(BuddyEntry { .valid = false }, 0);
+    }
+
+    return std::make_pair(BuddyEntry
+        {
+            .base = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M + idx3 * VBLOCK_64k,
+            .length = VBLOCK_64k,
+            .valid = true
+        }, (l3->b[idx3] >> 32));
 }

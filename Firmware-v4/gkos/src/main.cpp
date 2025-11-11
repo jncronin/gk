@@ -20,6 +20,10 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     // Initialize a upper half block manager in the space between the mapped physical memory and the kernel
     init_vblock();
 
+    // allocate some space to test page faults
+    auto pf_test = vblock_alloc(VBLOCK_64k, VBLOCK_TAG_WRITE);
+    *(uint64_t *)pf_test.base = 0xdeadbeef;
+
     // GIC - route irq 30 to us
     const auto irq_n = 30U;
     const auto target_word = irq_n / 4U;
