@@ -17,40 +17,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     
     init_pmem(gbi->ddr_start, gbi->ddr_end);
 
-    // test a few pmem allocations
-    for(int i = 0; i < 100; i++)
-    {
-        BuddyEntry be = Pmem.acquire(VBLOCK_64k);
-        klog("gkos: pmem test: %s %llx - %llx\n", be.valid ? "SUCCESS" : "FAIL",
-            be.base, be.length + be.base);
-    }
-
     // Initialize a upper half block manager in the space between the mapped physical memory and the kernel
     init_vblock();
-
-    // test a few level 1 allocations
-    for(int i = 0; i < 1000; i++)
-    {
-        BuddyEntry be;
-
-        if(i < 10)
-        {
-            be = vblock_alloc(VBLOCK_512M);
-            klog("gkos: vblock test: %s %llx - %llx\n", be.valid ? "SUCCESS" : "FAIL",
-                be.base, be.length + be.base);
-        }
-
-        if(i < 100)
-        {
-            be = vblock_alloc(VBLOCK_4M);
-            klog("gkos: vblock test: %s %llx - %llx\n", be.valid ? "SUCCESS" : "FAIL",
-                be.base, be.length + be.base);
-        }
-
-        be = vblock_alloc(VBLOCK_64k);
-        klog("gkos: vblock test: %s %llx - %llx\n", be.valid ? "SUCCESS" : "FAIL",
-            be.base, be.length + be.base);
-    }
 
     // GIC - route irq 30 to us
     const auto irq_n = 30U;
