@@ -40,6 +40,8 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
 )
 
 set_target_properties(${PROJECT_NAME}
