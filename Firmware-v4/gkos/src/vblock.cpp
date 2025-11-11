@@ -123,10 +123,9 @@ BuddyEntry vblock_alloc(size_t size, uint32_t tag)
     return vblock.Alloc(size, tag);
 }
 
-std::pair<bool, uint32_t> vblock_valid(uintptr_t addr)
+std::pair<BuddyEntry, uint32_t> vblock_valid(uintptr_t addr)
 {
-    auto [be, tag] = vblock.Valid(addr);
-    return std::make_pair(be.valid, tag);
+    return vblock.Valid(addr);
 }
 
 void VBlock::init()

@@ -79,10 +79,55 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far)
         }
 
         // Check vblock for access
-        auto [valid, tag] = vblock_valid(far);
-        if(!valid)
+        auto [be, tag] = vblock_valid(far);
+        if(!be.valid)
         {
             return SupervisorThreadFault();
+        }
+
+        if(tag & VBLOCK_TAG_GUARD_MASK)
+        {
+            // check against guard pages
+            auto start = be.base;
+            auto end = be.base + be.length;
+            auto lower_guard = (tag >> VBLOCK_TAG_GUARD_LOWER_POS) & 0x3U;
+            auto upper_guard = (tag >> VBLOCK_TAG_GUARD_UPPER_POS) & 0x3U;
+
+            switch(lower_guard)
+            {
+                case GUARD_BITS_64k:
+                    start += 64*1024ULL;
+                    break;
+                case GUARD_BITS_128k:
+                    start += 128*1024ULL;
+                    break;
+                case GUARD_BITS_256k:
+                    start += 256*1024ULL;
+                    break;
+                case GUARD_BITS_512k:
+                    start += 512*1024ULL;
+                    break;
+            }
+            switch(upper_guard)
+            {
+                case GUARD_BITS_64k:
+                    end -= 64*1024ULL;
+                    break;
+                case GUARD_BITS_128k:
+                    end -= 128*1024ULL;
+                    break;
+                case GUARD_BITS_256k:
+                    end -= 256*1024ULL;
+                    break;
+                case GUARD_BITS_512k:
+                    end -= 512*1024ULL;
+                    break;
+            }
+            if(far < start || far >= end)
+            {
+                klog("pf: guard page hit\n");
+                return SupervisorThreadFault();
+            }
         }
 
         klog("pf: lazy map %llx, tag %lu\n", far, tag);
