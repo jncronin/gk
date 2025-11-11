@@ -49,7 +49,7 @@ int elf_load(const void *base, epoint *entry, int el)
             hdr->e_phoff + hdr->e_phentsize * i);
         if(phdr->p_type == PT_LOAD)
         {
-            auto src = reinterpret_cast<const void *>((uintptr_t)base + phdr->p_offset);
+            auto src = (uintptr_t)base + phdr->p_offset;
 
             bool writeable = (phdr->p_flags & PF_W) != 0;
             bool exec = (phdr->p_flags & PF_X) != 0;
@@ -58,8 +58,9 @@ int elf_load(const void *base, epoint *entry, int el)
             while(sz < phdr->p_filesz)
             {
                 auto dest = get_dest_page(phdr->p_vaddr + sz, writeable, exec, el);
-                quick_copy_64(dest, src);
+                quick_copy_64(dest, (const void *)src);
                 sz += 65536;
+                src += 65536;
             }
             while(sz < phdr->p_memsz)
             {
