@@ -8,10 +8,11 @@
 struct exception_regs
 {
     uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18;
-    uint64_t fp, lr;
+    uint64_t fp, lr, res0, saved_spsr_el1, saved_elr_el1;
+    uint64_t fpu_regs[16];
 };
 
-static uint64_t TranslationFault_Handler(bool user, bool write, uint64_t address);
+static uint64_t TranslationFault_Handler(bool user, bool write, uint64_t address, uint64_t el);
 
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
@@ -39,13 +40,16 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
                 bool user = (etype > 0x201) || (ec == 0b100100);
                 bool write = (iss & (1ULL << 6)) != 0;
 
-                return TranslationFault_Handler(user, write, far);
+                klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx, sp: %llx, nested elr: %llx\n",
+                    etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
+
+                return TranslationFault_Handler(user, write, far, lr);
             }
         }
     }
 
-    klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx\n",
-        etype, esr, far, lr);
+    klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx, sp: %llx, nested elr: %llx\n",
+        etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
 
     while(true);
 
@@ -65,10 +69,10 @@ static uint64_t SupervisorThreadFault()
     while(true);
 }
 
-uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far)
+uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t lr)
 {
-    klog("TranslationFault %s %s @ %llx\n", user ? "USER" : "SUPERVISOR",
-        write ? "WRITE" : "READ", far);
+    klog("TranslationFault %s %s @ %llx from %llx\n", user ? "USER" : "SUPERVISOR",
+        write ? "WRITE" : "READ", far, lr);
 
     if(far >= 0x8000000000000000ULL)
     {
@@ -79,62 +83,20 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far)
         }
 
         // Check vblock for access
-        auto [be, tag] = vblock_valid(far);
+        auto be = vblock_valid(far);
         if(!be.valid)
         {
             return SupervisorThreadFault();
         }
-
-        if(tag & VBLOCK_TAG_GUARD_MASK)
+        if(far < be.data_start() || far >= be.data_end())
         {
-            // check against guard pages
-            auto start = be.base;
-            auto end = be.base + be.length;
-            auto lower_guard = (tag >> VBLOCK_TAG_GUARD_LOWER_POS) & 0x3U;
-            auto upper_guard = (tag >> VBLOCK_TAG_GUARD_UPPER_POS) & 0x3U;
-
-            switch(lower_guard)
-            {
-                case GUARD_BITS_64k:
-                    start += 64*1024ULL;
-                    break;
-                case GUARD_BITS_128k:
-                    start += 128*1024ULL;
-                    break;
-                case GUARD_BITS_256k:
-                    start += 256*1024ULL;
-                    break;
-                case GUARD_BITS_512k:
-                    start += 512*1024ULL;
-                    break;
-            }
-            switch(upper_guard)
-            {
-                case GUARD_BITS_64k:
-                    end -= 64*1024ULL;
-                    break;
-                case GUARD_BITS_128k:
-                    end -= 128*1024ULL;
-                    break;
-                case GUARD_BITS_256k:
-                    end -= 256*1024ULL;
-                    break;
-                case GUARD_BITS_512k:
-                    end -= 512*1024ULL;
-                    break;
-            }
-            if(far < start || far >= end)
-            {
-                klog("pf: guard page hit\n");
-                return SupervisorThreadFault();
-            }
+            klog("pf: guard page hit\n");
+            return SupervisorThreadFault();
         }
 
-        klog("pf: lazy map %llx, tag %lu\n", far, tag);
+        klog("pf: lazy map %llx\n", far);
 
-        if(vmem_map(far, 0, (tag & VBLOCK_TAG_USER) != 0,
-            (tag & VBLOCK_TAG_WRITE) != 0,
-            (tag & VBLOCK_TAG_EXEC) != 0) != 0)
+        if(vmem_map(far & ~(VBLOCK_64k), 0, be.user, be.write, be.exec))
         {
             return SupervisorThreadFault();
         }

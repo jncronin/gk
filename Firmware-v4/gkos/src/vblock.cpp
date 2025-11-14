@@ -90,9 +90,9 @@ class VBlock
         Spinlock sl;
 
     protected:
-        BuddyEntry AllocLevel1(uint32_t tag);
-        BuddyEntry AllocLevel2(uint32_t tag);
-        BuddyEntry AllocLevel3(uint32_t tag);
+        VMemBlock AllocLevel1(uint32_t tag);
+        VMemBlock AllocLevel2(uint32_t tag);
+        VMemBlock AllocLevel3(uint32_t tag);
 
         size_t GetFreeLevel1Index();
         size_t GetLevel1IndexToNotFullLevel2();
@@ -106,9 +106,9 @@ class VBlock
     public:
         void init();
 
-        BuddyEntry Alloc(size_t size, uint32_t tag = 0);
-        void Free(BuddyEntry &be);
-        std::pair<BuddyEntry, uint32_t> Valid(uintptr_t addr);
+        VMemBlock Alloc(size_t size, uint32_t tag = 0);
+        void Free(VMemBlock &be);
+        std::pair<VMemBlock, uint32_t> Valid(uintptr_t addr);
 };
 
 VBlock vblock;
@@ -118,14 +118,45 @@ void init_vblock()
     vblock.init();
 }
 
-BuddyEntry vblock_alloc(size_t size, uint32_t tag)
+VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
+    unsigned int lower_guard, unsigned int upper_guard)
 {
-    return vblock.Alloc(size, tag);
+    uint32_t tag = 0;
+    if(user)
+        tag |= VBLOCK_TAG_USER;
+    if(write)
+        tag |= VBLOCK_TAG_WRITE;
+    if(exec)
+        tag |= VBLOCK_TAG_EXEC;
+    if(lower_guard >= GUARD_BITS_MAX)
+        return InvalidVMemBlock();
+    if(upper_guard >= GUARD_BITS_MAX)
+        return InvalidVMemBlock();
+    tag |= (lower_guard << VBLOCK_TAG_GUARD_LOWER_POS) | (upper_guard << VBLOCK_TAG_GUARD_UPPER_POS);
+    auto ret = vblock.Alloc(size, tag);
+    if(ret.valid)
+    {
+        ret.user = user;
+        ret.write = write;
+        ret.exec = exec;
+        ret.upper_guard = upper_guard;
+        ret.lower_guard = lower_guard;
+    }
+    return ret;
 }
 
-std::pair<BuddyEntry, uint32_t> vblock_valid(uintptr_t addr)
+VMemBlock vblock_valid(uintptr_t addr)
 {
-    return vblock.Valid(addr);
+    auto [blk, tag] = vblock.Valid(addr);
+    if(blk.valid)
+    {
+        blk.user = (tag & VBLOCK_TAG_USER) != 0;
+        blk.write = (tag & VBLOCK_TAG_WRITE) != 0;
+        blk.exec = (tag & VBLOCK_TAG_EXEC) != 0;
+        blk.lower_guard = (tag >> VBLOCK_TAG_GUARD_LOWER_POS) & GUARD_BITS_MAX;
+        blk.upper_guard = (tag >> VBLOCK_TAG_GUARD_UPPER_POS) & GUARD_BITS_MAX;
+    } 
+    return blk;
 }
 
 void VBlock::init()
@@ -151,7 +182,7 @@ void VBlock::init()
     klog("vblock: init\n");
 }
 
-BuddyEntry VBlock::Alloc(size_t length, uint32_t tag)
+VMemBlock VBlock::Alloc(size_t length, uint32_t tag)
 {
     switch(length)
     {
@@ -166,7 +197,7 @@ BuddyEntry VBlock::Alloc(size_t length, uint32_t tag)
 
         default:
             klog("vblock: invalid size requested: %llu\n", length);
-            return BuddyEntry { .valid = false };
+            return InvalidVMemBlock();
     }
 }
 
@@ -275,29 +306,32 @@ std::pair<size_t, size_t> VBlock::GetLevel12IndexToNotFullLevel3()
     return std::make_pair(idx, VBLOCK_UNAVAIL);
 }
 
-BuddyEntry VBlock::AllocLevel1(uint32_t tag)
+VMemBlock VBlock::AllocLevel1(uint32_t tag)
 {
     CriticalGuard cg(sl);
     auto idx = GetFreeLevel1Index();
     if(idx == VBLOCK_UNAVAIL)
     {
-        return BuddyEntry { .valid = false };
+        return InvalidVMemBlock();
     }
     level1[idx] = VBLOCK_BLOCK_ALLOC | ((uint64_t)tag << 32);
     level1_free--;
     level1_last_accessed_block = idx + 1;
 
+#if DEBUG_VBLOCK
     klog("vblock: allocated 512MiB at %llx\n", base + idx * VBLOCK_512M);
+#endif
 
-    return BuddyEntry
-    {
-        .base = base + idx * VBLOCK_512M,
-        .length = VBLOCK_512M,
-        .valid = true
-    };
+    return VMemBlock {
+        MemRegion {
+            .base = base + idx * VBLOCK_512M,
+            .length = VBLOCK_512M,
+            .valid = true
+        } 
+    };  
 }
 
-BuddyEntry VBlock::AllocLevel2(uint32_t tag)
+VMemBlock VBlock::AllocLevel2(uint32_t tag)
 {
     CriticalGuard cg(sl);
     auto idx = GetLevel1IndexToNotFullLevel2();
@@ -307,9 +341,11 @@ BuddyEntry VBlock::AllocLevel2(uint32_t tag)
         // no current pointers to a free level 2 are available - make one
         idx = GetFreeLevel1Index();
         if(idx == VBLOCK_UNAVAIL)
-            return BuddyEntry { .valid = false };
+            return InvalidVMemBlock();
 
+#if DEBUG_VBLOCK
         klog("vblock: creating new level2 buddy\n");
+#endif
 
         l2_pmem = PmemAllocLevel2();
         level1[idx] = l2_pmem;
@@ -324,7 +360,7 @@ BuddyEntry VBlock::AllocLevel2(uint32_t tag)
     if(idx2 == VBLOCK_UNAVAIL)
     {
         klog("vblock: expected available level2 buddy but none available\n");
-        return BuddyEntry { .valid = false };
+        return InvalidVMemBlock();
     }
     auto l2 = (level2 *)l2_pmem;
     l2->b[idx2] = VBLOCK_BLOCK_ALLOC | ((uint64_t)tag << 32);
@@ -334,17 +370,21 @@ BuddyEntry VBlock::AllocLevel2(uint32_t tag)
 
     auto addr = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M;
 
+#if DEBUG_VBLOCK
     klog("vblock: allocated 4MiB at %llx\n", addr);
+#endif
 
-    return BuddyEntry
-    {
-        .base = addr,
-        .length = VBLOCK_4M,
-        .valid = true
+    return VMemBlock {
+        MemRegion
+        {
+            .base = addr,
+            .length = VBLOCK_4M,
+            .valid = true
+        }
     };
 }
 
-BuddyEntry VBlock::AllocLevel3(uint32_t tag)
+VMemBlock VBlock::AllocLevel3(uint32_t tag)
 {
     CriticalGuard cg(sl);
     auto [idx, idx2] = GetLevel12IndexToNotFullLevel3();
@@ -356,9 +396,11 @@ BuddyEntry VBlock::AllocLevel3(uint32_t tag)
         // no current pointers to a free level 2 are available - make one
         idx = GetFreeLevel1Index();
         if(idx == VBLOCK_UNAVAIL)
-            return BuddyEntry { .valid = false };
+            return InvalidVMemBlock();
 
+#if DEBUG_VBLOCK
         klog("vblock: creating new level2 buddy\n");
+#endif
 
         l2_pmem = PmemAllocLevel2();
         level1[idx] = l2_pmem;
@@ -377,9 +419,11 @@ BuddyEntry VBlock::AllocLevel3(uint32_t tag)
         // no current pointers to a free level 3 are available - make one
         idx2 = GetFreeLevel2Index(idx);
         if(idx2 == VBLOCK_UNAVAIL)
-            return BuddyEntry { .valid = false };
-        
+            return InvalidVMemBlock();
+
+#if DEBUG_VBLOCK
         klog("vblock: creating new level3 buddy\n");
+#endif
 
         l3_pmem = PmemAllocLevel3();
         l2->b[idx2] = l3_pmem;
@@ -395,7 +439,7 @@ BuddyEntry VBlock::AllocLevel3(uint32_t tag)
     if(idx2 == VBLOCK_UNAVAIL)
     {
         klog("vblock: expected available level3 buddy but none available\n");
-        return BuddyEntry { .valid = false };
+        return InvalidVMemBlock();
     }
 
     auto l3 = (level3 *)l3_pmem;
@@ -407,13 +451,17 @@ BuddyEntry VBlock::AllocLevel3(uint32_t tag)
 
     auto addr = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M + idx3 * VBLOCK_64k;
 
+#if DEBUG_VBLOCK
     klog("vblock: allocated 64 kiB at %llx\n", addr);
+#endif
 
-    return BuddyEntry
-    {
-        .base = addr,
-        .length = VBLOCK_64k,
-        .valid = true
+    return VMemBlock {
+        MemRegion
+        {
+            .base = addr,
+            .length = VBLOCK_64k,
+            .valid = true
+        }
     };
 }
 
@@ -424,7 +472,9 @@ uint64_t VBlock::PmemAllocLevel2()
         cur_level2_page = PMEM_TO_VMEM(Pmem.acquire(VBLOCK_64k).base);
         cur_level2_page_offset = 0;
 
+#if DEBUG_VBLOCK
         klog("vblock: new level2 page at %llx\n", cur_level2_page);
+#endif
     }
 
     auto ret = cur_level2_page + cur_level2_page_offset;
@@ -447,7 +497,9 @@ uint64_t VBlock::PmemAllocLevel3()
         cur_level3_page = PMEM_TO_VMEM(Pmem.acquire(VBLOCK_64k).base);
         cur_level3_page_offset = 0;
 
+#if DEBUG_VBLOCK
         klog("vblock: new level3 page at %llx\n", cur_level3_page);
+#endif
     }
 
     auto ret = cur_level3_page + cur_level3_page_offset;
@@ -462,7 +514,7 @@ uint64_t VBlock::PmemAllocLevel3()
     return ret;
 }
 
-std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
+std::pair<VMemBlock, uint32_t> VBlock::Valid(uintptr_t addr)
 {
     addr -= base;
 
@@ -472,17 +524,17 @@ std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
     if(level1[idx] == VBLOCK_UNAVAIL || level1[idx] == VBLOCK_BLOCK_FREE)
     {
         // not allocated
-        return std::make_pair(BuddyEntry { .valid = false }, 0);
+        return std::make_pair(InvalidVMemBlock(), 0);
     }
     else if(level1[idx] & VBLOCK_BLOCK_ALLOC)
     {
         // allocated as large block
-        return std::make_pair(BuddyEntry
-            {
+        return std::make_pair(VMemBlock {
+            MemRegion {
                 .base = base + idx * VBLOCK_512M,
                 .length = VBLOCK_512M,
                 .valid = true
-            }, (level1[idx] >> 32));
+            } }, (level1[idx] >> 32));
     }
     
     // check level2
@@ -491,17 +543,17 @@ std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
     if(l2->b[idx2] == VBLOCK_UNAVAIL || l2->b[idx2] == VBLOCK_BLOCK_FREE)
     {
         // not allocated
-        return std::make_pair(BuddyEntry { .valid = false }, 0);
+        return std::make_pair(InvalidVMemBlock(), 0);
     }
     else if(l2->b[idx2] & VBLOCK_BLOCK_ALLOC)
     {
         // allocated as large block
-        return std::make_pair(BuddyEntry
-            {
+        return std::make_pair(VMemBlock {
+            MemRegion {
                 .base = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M,
                 .length = VBLOCK_4M,
                 .valid = true
-            }, (l2->b[idx2] >> 32));
+            } }, (l2->b[idx2] >> 32));
     }
 
     // check level3
@@ -510,13 +562,13 @@ std::pair<BuddyEntry, uint32_t> VBlock::Valid(uintptr_t addr)
     if(!(l3->b[idx3] & VBLOCK_BLOCK_ALLOC))
     {
         // not allocated
-        return std::make_pair(BuddyEntry { .valid = false }, 0);
+        return std::make_pair(InvalidVMemBlock(), 0);
     }
 
-    return std::make_pair(BuddyEntry
-        {
+    return std::make_pair(VMemBlock {
+        MemRegion {
             .base = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M + idx3 * VBLOCK_64k,
             .length = VBLOCK_64k,
             .valid = true
-        }, (l3->b[idx3] >> 32));
+        } }, (l3->b[idx3] >> 32));
 }

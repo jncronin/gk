@@ -7,6 +7,7 @@
 #include "process.h"
 #include "thread.h"
 #include "kheap.h"
+#include "scheduler.h"
 #include <memory>
 
 // test threads
@@ -39,7 +40,7 @@ extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)
 extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 {
     // allocate some space to test page faults
-    auto pf_test = vblock_alloc(VBLOCK_64k, VBLOCK_TAG_WRITE);
+    auto pf_test = vblock_alloc(VBLOCK_64k, false, true, false);
     *(uint64_t *)pf_test.base = 0xdeadbeef;
 
     // GIC - route irq 30 to us
@@ -66,7 +67,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     );
 
     // time 1s using generic timer
-    __asm__ volatile("msr cntp_tval_el0, %[delay]\n" : : [delay] "r" (64000000) : "memory");
+    //__asm__ volatile("msr cntp_tval_el0, %[delay]\n" : : [delay] "r" (64000000) : "memory");
 
     uint64_t last_ms = clock_cur_ms();
 
@@ -75,8 +76,14 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     p_kernel = std::make_shared<Process>();
     p_kernel->name = "kernel";
 
-    t_a = Thread::Create("testa", task_a, nullptr, true, 1, p_kernel);
-    t_b = Thread::Create("testb", task_b, nullptr, true, 1, p_kernel);
+    Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
+    Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
+    sched.StartForCurrentCore();
+
+    __asm__ volatile(
+        "msr tpidr_el1, xzr\n"
+        "msr tpidr_el0, xzr\n"
+        "svc #1\n" ::: "memory");
 
     while(true)
     {
@@ -102,7 +109,16 @@ void *task_a(void *)
 {
     while(true)
     {
-        klog("A\n");
+        uint64_t cntp_ctl_el0, cntpct_el0, cntp_cval_el0;
+        __asm__ volatile(
+            "mrs %[cntp_ctl_el0], cntp_ctl_el0\n"
+            "mrs %[cntpct_el0], cntpct_el0\n"
+            "mrs %[cntp_cval_el0], cntp_cval_el0\n" :
+            [cntp_ctl_el0] "=r" (cntp_ctl_el0),
+            [cntpct_el0] "=r" (cntpct_el0),
+            [cntp_cval_el0] "=r" (cntp_cval_el0));
+        klog("A, ctl: %llx, pct: %llu, cval: %llu\n",
+            cntp_ctl_el0, cntpct_el0, cntp_cval_el0);
     }
 }
 
@@ -110,6 +126,15 @@ void *task_b(void *)
 {
     while(true)
     {
-        klog("B\n");
+        uint64_t cntp_ctl_el0, cntpct_el0, cntp_cval_el0;
+        __asm__ volatile(
+            "mrs %[cntp_ctl_el0], cntp_ctl_el0\n"
+            "mrs %[cntpct_el0], cntpct_el0\n"
+            "mrs %[cntp_cval_el0], cntp_cval_el0\n" :
+            [cntp_ctl_el0] "=r" (cntp_ctl_el0),
+            [cntpct_el0] "=r" (cntpct_el0),
+            [cntp_cval_el0] "=r" (cntp_cval_el0));
+        klog("B, ctl: %llx, pct: %llu, cval: %llu\n",
+            cntp_ctl_el0, cntpct_el0, cntp_cval_el0);
     }
 }

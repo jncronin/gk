@@ -85,6 +85,16 @@ class CriticalGuard
         uint64_t cpsr;
 };
 
+class UninterruptibleGuard
+{
+    public:
+        inline UninterruptibleGuard() { cpsr = DisableInterrupts(); }
+        inline ~UninterruptibleGuard() { RestoreInterrupts(cpsr); }
+
+    private:
+        uint64_t cpsr;
+};
+
 
 
 #endif

@@ -5,12 +5,12 @@
 // TODO: replace with a mutex
 static Spinlock sl_heap;
 
-static BuddyEntry be_heap { 0, 0, false };
+static VMemBlock be_heap { 0, 0, false };
 static uintptr_t sbrk_end;
 
 void init_kheap()
 {
-    be_heap = vblock_alloc(VBLOCK_512M, VBLOCK_TAG_WRITE);
+    be_heap = vblock_alloc(VBLOCK_512M, false, true, false);
     if(!be_heap.valid)
     {
         klog("kheap: failed to allocate\n");

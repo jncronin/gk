@@ -38,7 +38,7 @@ void init_pmem(uint64_t ddr_start, uint64_t ddr_end)
             continue;
         }
 
-        PmemBlock pb;
+        PMemBlock pb;
         pb.base = ddr_start;
         pb.length = max_size;
         pb.valid = true;

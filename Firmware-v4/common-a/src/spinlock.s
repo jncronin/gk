@@ -42,9 +42,9 @@ _ZN8Spinlock4lockEv:
 .type _ZN8Spinlock6unlockEv,%function
 _ZN8Spinlock6unlockEv:
 #ifdef GKOS_UNCACHED
-    str xzr, [x0]
+    str wzr, [x0]
 #else
-    stlr xzr, [x0]
+    stlr wzr, [x0]
 #endif
     ret
 .size _ZN8Spinlock6unlockEv, .-_ZN8Spinlock6unlockEv

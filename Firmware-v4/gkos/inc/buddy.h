@@ -5,13 +5,7 @@
 #include <cstring>
 #include "osmutex.h"
 #include "logger.h"
-
-struct BuddyEntry
-{
-    uint64_t base;
-    uint64_t length;
-    bool valid;
-};
+#include "ostypes.h"
 
 constexpr static bool is_power_of_2(uint64_t v)
 {
@@ -26,7 +20,8 @@ constexpr static bool is_multiple_of(uint64_t num, uint64_t denom)
     return (num % denom) == 0;
 }
 
-template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> class BuddyAllocator
+template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
+    typename Ret_T = MemRegion> class BuddyAllocator
 {
     public:
 
@@ -146,10 +141,13 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
                 {
                     // we have a valid value here - return it
                     auto bval = 63ULL - __builtin_clzll(*wptr);
+#if DEBUG_BUDDY
                     klog("buddy: found free level %llu at %llu:%llu, old qword=%llx & %llx\n", level, i, bval, *wptr, (uintptr_t)wptr);
+#endif
                     *wptr &= ~(1ULL << bval);
-
+#if DEBUG_BUDDY
                     klog("buddy: found free level %llu at %llu:%llu, new qword=%llx & %llx\n", level, i, bval, *wptr, (uintptr_t)wptr);
+#endif
                     return bval + i * 64ULL;
                 }
             }
@@ -169,9 +167,9 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
                     // set the complementary bit
                     auto wptr = &b[lstart + qword_idx];
                     *wptr |= (1ULL << (bit_idx + 1));
-
+#if DEBUG_BUDDY
                     klog("buddy: complementary bit set level %llu at %llu:%llu, new qword=%llx @ %llx\n", level, qword_idx, bit_idx, *wptr, (uintptr_t)wptr);
-
+#endif
                     // return our bitindex
                     return bval;
                 }
@@ -206,7 +204,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
         }
 
     public:
-        void release(const BuddyEntry &be)
+        void release(const Ret_T &be)
         {
             uint64_t cpsr;
 
@@ -268,9 +266,9 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr> 
             unlock(cpsr);
         }
 
-        BuddyEntry acquire(uint64_t length)
+        Ret_T acquire(uint64_t length)
         {
-            BuddyEntry ret;
+            Ret_T ret;
 
             // round up to a buddy size
             if(!is_power_of_2(length))

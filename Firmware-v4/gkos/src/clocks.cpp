@@ -52,3 +52,12 @@ void udelay(unsigned int d)
     auto until = clock_cur_us() + (uint64_t)d;
     while(clock_cur_us() < until);
 }
+
+void clock_get_timebase(struct timespec *tp)
+{
+    if(tp)
+    {
+        tp->tv_nsec = 0;
+        tp->tv_sec  = 0;
+    }
+}

@@ -13,5 +13,83 @@ uint64_t clock_cur_us();
 uint64_t clock_cur_ms();
 void udelay(unsigned int);
 
+void clock_get_timebase(struct timespec *tp);
+
+constexpr inline timespec operator+=(timespec &a, const timespec &b)
+{
+    a.tv_nsec += b.tv_nsec;
+    while(a.tv_nsec >= 1000000000)
+    {
+        a.tv_nsec -= 1000000000;
+        a.tv_sec++;
+    }
+    a.tv_sec += b.tv_sec;
+    return a;
+}
+constexpr inline timespec operator-=(timespec &a, const timespec &b)
+{
+    a.tv_nsec -= b.tv_nsec;
+    while(a.tv_nsec < 0)
+    {
+        a.tv_nsec += 1000000000;
+        a.tv_sec--;
+    }
+    a.tv_sec -= b.tv_sec;
+    return a;
+}
+constexpr inline timespec operator+(const timespec &a, const timespec &b)
+{
+    auto ret = a;
+    return ret += b;
+}
+constexpr inline timespec operator-(const timespec &a, const timespec &b)
+{
+    auto ret = a;
+    return ret -= b;
+}
+constexpr inline bool operator>=(const timespec &a, const timespec &b)
+{
+    if(a.tv_sec < b.tv_sec)
+        return false;
+    if(a.tv_sec > b.tv_sec)
+        return true;
+    return a.tv_nsec >= b.tv_nsec;
+}
+constexpr inline bool operator>(const timespec &a, const timespec &b)
+{
+    if(a.tv_sec < b.tv_sec)
+        return false;
+    if(a.tv_sec > b.tv_sec)
+        return true;
+    return a.tv_nsec > b.tv_nsec;
+}
+constexpr inline bool operator<=(const timespec &a, const timespec &b)
+{
+    if(a.tv_sec < b.tv_sec)
+        return true;
+    if(a.tv_sec > b.tv_sec)
+        return false;
+    return a.tv_nsec <= b.tv_nsec;
+}
+constexpr inline bool operator<(const timespec &a, const timespec &b)
+{
+    if(a.tv_sec < b.tv_sec)
+        return true;
+    if(a.tv_sec > b.tv_sec)
+        return false;
+    return a.tv_nsec < b.tv_nsec;
+}
+constexpr inline bool operator==(const timespec &a, const timespec &b)
+{
+    if(a.tv_sec != b.tv_sec)
+        return false;
+    return a.tv_nsec == b.tv_nsec;
+}
+constexpr inline bool operator!=(const timespec &a, const timespec &b)
+{
+    if(a.tv_sec != b.tv_sec)
+        return true;
+    return a.tv_nsec != b.tv_nsec;
+}
 
 #endif

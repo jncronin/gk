@@ -8,13 +8,14 @@ void gic_irq_handler()
     __asm__ volatile("dmb ish\n" ::: "memory");
 
     auto irq_no = iar & 0x3ff;
+    bool do_switch = false;
 
     switch(irq_no)
     {
         case 30:
-            // set another second in the future
-            __asm__ volatile("msr cntp_tval_el0, %[delay]\n" : : [delay] "r" (64000000) : "memory");
-            klog("gkos: systick\n");
+            // TODO: can this be filtered off similar to svc #1??
+            do_switch = true;
+            __asm__ volatile("msr cntp_ctl_el0, %[mask_timer]\n" : : [mask_timer] "r" (0x3));
 
             break;
 
@@ -26,4 +27,9 @@ void gic_irq_handler()
     // EOI
     *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0x24) = iar;
     __asm__ volatile("dmb st\n" ::: "memory");
+
+    if(do_switch)
+    {
+        __asm__ volatile("svc #1\n" ::: "memory");
+    }
 }

@@ -6,6 +6,42 @@
 
 static Spinlock sl_uh;
 
+int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr)
+{
+    uint64_t ptr = 0;
+
+    if(!vaddr.valid)
+        return -1;
+    
+    while(ptr < vaddr.data_length())
+    {
+        uintptr_t cur_page_paddr;
+        if(paddr.valid && (ptr + VBLOCK_64k) < paddr.length)
+        {
+            cur_page_paddr = paddr.base + ptr;
+        }
+        else
+        {
+            auto new_block = Pmem.acquire(VBLOCK_64k);
+            if(!new_block.valid)
+            {
+                klog("OOM\n");
+                return -1;
+            }
+            cur_page_paddr = new_block.base;
+        }
+
+        uintptr_t cur_page_vaddr = vaddr.data_start() + ptr;
+        auto ret = vmem_map(cur_page_vaddr, cur_page_paddr, vaddr.user, vaddr.write, vaddr.exec);
+        if(ret != 0)
+            return ret;
+
+        ptr += VBLOCK_64k;
+    }
+
+    return 0;
+}
+
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec)
 {
     Spinlock *ttbr_sl;
