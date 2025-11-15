@@ -2673,7 +2673,7 @@
 			)
 		)
 	)
-	(global_label "I2C1_SCL"
+	(global_label "I2C2_SCL"
 		(shape input)
 		(at 76.2 59.69 180)
 		(fields_autoplaced yes)
@@ -2783,7 +2783,7 @@
 			)
 		)
 	)
-	(global_label "I2C1_SDA"
+	(global_label "I2C2_SDA"
 		(shape input)
 		(at 76.2 62.23 180)
 		(fields_autoplaced yes)
