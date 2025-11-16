@@ -47,11 +47,13 @@ extern "C" void Write_SCR_EL3(uint64_t);
 void init_gic()
 {
     /* Make all interrupts group 1 (non-secure) with the exception of:
+        SGI(8-15)
         138 (TIM3)
     */
-    for(auto i = 0U; i < 13; i++)
+    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080) = 0xffff00ffUL;
+    for(auto i = 1U; i < 13; i++)
     {
-        *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * i) = 0xffffffff;
+        *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * i) = 0xffffffffUL;
     }
     *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * (138 / 32)) =
         *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x080 + 0x4 * (138 / 32)) &

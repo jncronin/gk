@@ -65,7 +65,7 @@ _vtor_tbl_entry _lower32_serror
     // stack frame needs x0-x18, x29-30
     // this is 21 registers which would leave an unaligned stack, therefore round up to multiple of 16
     // ssbl does not use floating point registers so don't save
-    sub sp, sp, #176
+    sub sp, sp, #192
     stp x0, x1, [sp, #0]
     stp x2, x3, [sp, #16]
     stp x4, x5, [sp, #32]
@@ -77,9 +77,15 @@ _vtor_tbl_entry _lower32_serror
     stp x16, x17, [sp, #128]
     stp x18, x29, [sp, #144]
     stp x30, xzr, [sp, #160] // finish with a zero for alignment
+    mrs x0, spsr_el1
+    mrs x1, elr_el1
+    stp x0, x1, [sp, #176]
 .endm
 
 .macro restore_regs
+    ldp x0, x1, [sp, #176]
+    msr elr_el1, x1
+    msr spsr_el1, x0
     ldp x0, x1, [sp, #0]
     ldp x2, x3, [sp, #16]
     ldp x4, x5, [sp, #32]
@@ -91,7 +97,7 @@ _vtor_tbl_entry _lower32_serror
     ldp x16, x17, [sp, #128]
     ldp x18, x29, [sp, #144]
     ldr x30, [sp, #160]
-    add sp, sp, #176
+    add sp, sp, #192
 .endm
 
 .macro exception_stub code 
@@ -120,12 +126,6 @@ _vtor_tbl_entry _lower32_serror
 
 2:
     bl Exception_Handler
-
-    # update return address if return value is not zero
-    cmp x0, #0
-    beq 1f
-    msr elr_el3, x0
-1:
 
     restore_regs
 

@@ -426,7 +426,8 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
 Thread *GetNextThreadForCore()
 {
     auto ret = sched.GetNextThread(GetCoreID());
-    klog("sched: get_next_thread_for_core: returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
+    klog("sched: get_next_thread_for_core(%u): returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
+        GetCoreID(),
         (uint64_t)ret, ret->name.c_str(), ret->tss.sp_el1, (uint64_t)&ret->tss);
     return ret;
 }

@@ -18,7 +18,8 @@ _ZN8Spinlock4lockEv:
     ret
 #else
     // 'this' in x0, which is also address of first member
-    mov x1, #1
+    mrs x1, mpidr_el1
+    add x1, x1, #1
 
 1:
     // atomic semantics
@@ -37,17 +38,19 @@ _ZN8Spinlock4lockEv:
 
 .size _ZN8Spinlock4lockEv, .-_ZN8Spinlock4lockEv
 
-.section .text._ZN8Spinlock6unlockEv
-.global _ZN8Spinlock6unlockEv
-.type _ZN8Spinlock6unlockEv,%function
-_ZN8Spinlock6unlockEv:
+.section .text._ZN8Spinlock6unlockEb
+.global _ZN8Spinlock6unlockEb
+.type _ZN8Spinlock6unlockEb,%function
+_ZN8Spinlock6unlockEb:
+    cbz w1, 1f
 #ifdef GKOS_UNCACHED
     str wzr, [x0]
 #else
     stlr wzr, [x0]
 #endif
+1:
     ret
-.size _ZN8Spinlock6unlockEv, .-_ZN8Spinlock6unlockEv
+.size _ZN8Spinlock6unlockEb, .-_ZN8Spinlock6unlockEb
 
 .section .text._ZN8Spinlock8try_lockEv
 .global _ZN8Spinlock8try_lockEv
@@ -67,7 +70,8 @@ _ZN8Spinlock8try_lockEv:
     mov x0, xzr
     ret
 #else
-    mov x1, #1
+    mrs x1, mpidr_el1
+    add x1, x1, #1
 
     ldxr w2, [x0]
     cbnz w2, 1f             // fail

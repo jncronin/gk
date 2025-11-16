@@ -2,12 +2,7 @@
 #include <cstdint>
 #include "gic.h"
 #include "logger.h"
-
-struct exception_regs
-{
-    uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18;
-    uint64_t fp, lr;
-};
+#include "smc.h"
 
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
@@ -19,7 +14,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         return 0;
     }
 
-    klog("EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
+    klog("SM EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
         etype, esr, far, lr);
 
 
@@ -31,8 +26,20 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
             return 0;
     }
 
+    if(etype == 0x400)
+    {
+        // exception from lower level
+        auto ec = (esr >> 26) & 0x3fULL;
+        klog("SM SYNC EXCEPTION from lower level: ec: %llx\n", ec);
+        if(ec == 0x17)
+        {
+            // SMC call
+            smc_handler((SMC_Call)(esr & 0xffffL), regs);
+            return 0;
+        }
+    }
+
     while(true);
 
-    // we can change the address to return to by returning anything other than 0 here
     return 0;
 }

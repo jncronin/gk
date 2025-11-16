@@ -8,6 +8,8 @@
 #include "thread.h"
 #include "kheap.h"
 #include "scheduler.h"
+#include "smc_interface.h"
+#include "vmem.h"
 #include <memory>
 
 // test threads
@@ -16,6 +18,8 @@ std::shared_ptr<Thread> t_a, t_b;
 
 static void *task_a(void *);
 static void *task_b(void *);
+
+static void start_ap(unsigned int ap_no);
 
 extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)
 {
@@ -57,15 +61,6 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
      // enable irqs
     __asm__ volatile("msr daifclr, #0xf\n");
 
-    // test systick timer - use generic timer el1 physical
-    __asm__ volatile(
-        "ldr x0, =0x303\n"          // prevent el0 from using timer
-        "msr cntkctl_el1, x0\n"
-        "mov x0, #0x1\n"            // enable, unmask interrupts
-        "msr cntp_ctl_el0, x0\n"
-        : : : "memory", "x0"
-    );
-
     // time 1s using generic timer
     //__asm__ volatile("msr cntp_tval_el0, %[delay]\n" : : [delay] "r" (64000000) : "memory");
 
@@ -78,6 +73,18 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
+
+    start_ap(1);
+
+    // test systick timer - use generic timer el1 physical
+    __asm__ volatile(
+        "ldr x0, =0x303\n"          // prevent el0 from using timer
+        "msr cntkctl_el1, x0\n"
+        "mov x0, #0x1\n"            // enable, unmask interrupts
+        "msr cntp_ctl_el0, x0\n"
+        : : : "memory", "x0"
+    );
+
     sched.StartForCurrentCore();
 
     __asm__ volatile(
@@ -117,7 +124,8 @@ void *task_a(void *)
             [cntp_ctl_el0] "=r" (cntp_ctl_el0),
             [cntpct_el0] "=r" (cntpct_el0),
             [cntp_cval_el0] "=r" (cntp_cval_el0));
-        klog("A, ctl: %llx, pct: %llu, cval: %llu\n",
+        klog("A (%u), ctl: %llx, pct: %llu, cval: %llu\n",
+            GetCoreID(),
             cntp_ctl_el0, cntpct_el0, cntp_cval_el0);
     }
 }
@@ -134,7 +142,61 @@ void *task_b(void *)
             [cntp_ctl_el0] "=r" (cntp_ctl_el0),
             [cntpct_el0] "=r" (cntpct_el0),
             [cntp_cval_el0] "=r" (cntp_cval_el0));
-        klog("B, ctl: %llx, pct: %llu, cval: %llu\n",
+        klog("B (%u), ctl: %llx, pct: %llu, cval: %llu\n",
+            GetCoreID(),
             cntp_ctl_el0, cntpct_el0, cntp_cval_el0);
     }
+}
+
+static void ap_epoint()
+{
+    __asm__ volatile(
+        "ldr x0, =0x303\n"          // prevent el0 from using timer
+        "msr cntkctl_el1, x0\n"
+        "mov x0, #0x1\n"            // enable, unmask interrupts
+        "msr cntp_ctl_el0, x0\n"
+        : : : "memory", "x0"
+    );
+
+    // GIC - enable IRQ 30 (physical timer)
+    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x100) = 1UL << 30;
+
+    // enable irqs
+    __asm__ volatile("msr daifclr, #0xf\n");
+
+    sched.StartForCurrentCore();
+    while(true);
+}
+
+void start_ap(unsigned int ap_no)
+{
+    // create a stack
+    auto vm_ap_stack = vblock_alloc(VBLOCK_64k, false, true, false);
+    if(!vm_ap_stack.valid)
+    {
+        klog("kernel: failed to allocate ap stack\n");
+        return;
+    }
+    if(vmem_map(vm_ap_stack, InvalidPMemBlock()) != 0)
+    {
+        klog("kernel: failed to map ap stack\n");
+        return;
+    }
+
+    __asm__ volatile(
+        "mov x0, %[ap_no]\n"
+        "mov x1, %[epoint]\n"
+        "mov x2, xzr\n"
+        "mov x3, xzr\n"
+        "mov x4, %[ap_stack]\n"
+        "mrs x5, ttbr1_el1\n"
+        "mrs x6, vbar_el1\n"
+        "smc %[svc_no]\n" ::
+        [svc_no] "i" (SMC_Call::StartupAP),
+        [ap_no] "r" (ap_no),
+        [epoint] "r" (ap_epoint),
+        [ap_stack] "r" (vm_ap_stack.data_end())
+        :
+        "x0", "x1", "x2", "x3", "x4", "x5"
+    );
 }

@@ -99,6 +99,7 @@ target_link_options(${PROJECT_NAME}
         -Wl,--wrap=memcpy
         -Wl,--wrap=memset
         -Wl,--wrap=strlen
+        -Wl,--wrap=strcmp
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}

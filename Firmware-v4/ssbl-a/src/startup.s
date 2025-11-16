@@ -94,19 +94,32 @@ AP_Reset_Handler:
 
 .size AP_Reset_Handler, .-AP_Reset_Handler
 
+.section .data
+.global AP_Target
+.align 4
+.type AP_Target, %object
+AP_Target: .quad 0 
+.size AP_Target, .-AP_Target
+
+
 .section .ap_text, "ax", %progbits
 .global AP_Hold
 .type AP_Hold, %function
 
 AP_Hold:
-    nop
-    nop
-    //wfi
+    ldr x0, =AP_Target
     ldr x2, =0x442d0018
+    str xzr, [x0]
+
+1:
+    isb // (similar to x86 pause here)
     mov w3, #(1U << 6)
     str w3, [x2]
     mov w3, #(1U << (6 + 16))
     str w3, [x2]
-    b AP_Hold
+    ldr x2, [x0]
+    cmp x2, #0
+    beq 1b
+    br x2
 
 .size AP_Hold, .-AP_Hold

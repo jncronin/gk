@@ -153,3 +153,24 @@ uint64_t pmem_paddr_to_vaddr(uint64_t paddr, int el)
             while(true);
     }
 }
+
+void init_vmem_ap()
+{
+    // MMU types
+    __asm__ volatile("msr mair_el3, %[mair] \n" : : [mair] "r" (mair) : "memory");
+
+    // Lower half page directory
+    __asm__ volatile("msr ttbr0_el3, %[pd] \n" : : [pd] "r" (pd) : "memory");
+
+    // Disable level 2 paging
+    __asm__ volatile("msr hcr_el2, %[hcr_el2] \n" : : [hcr_el2] "r" (0) : "memory");
+
+    // Get tcr_el3
+    uint64_t tcr_el3 = 0;
+    tcr_el3 |= (64ULL - 42ULL) << 0;                // 42 bit lower half paging
+    tcr_el3 |= (0x1ULL << 8) | (0x1ULL << 10);      // cached accesses to page tables
+    tcr_el3 |= (0x3ULL << 12);                      // shareable page tables
+    tcr_el3 |= 1ULL << 14;                          // 64 kiB granule
+    tcr_el3 |= 2ULL << 16;                          // intermediate physical address 40 bits
+    __asm__ volatile("msr tcr_el3, %[tcr_el3] \n" : : [tcr_el3] "r" (tcr_el3) : "memory");
+}

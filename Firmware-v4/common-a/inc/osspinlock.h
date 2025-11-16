@@ -5,13 +5,14 @@
 #include <cstdint>
 #include <concepts>
 #include <tuple>
+#include <array>
 
 inline __attribute__((always_inline)) static uint64_t DisableInterrupts()
 {
     uint64_t cpsr;
     __asm__ volatile(
         "mrs %[cpsr], daif\n"
-        "msr daifclr, #0b0010\n"
+        "msr daifset, #0b0010\n"
         : [cpsr] "=r" (cpsr) : : "memory");
     return cpsr;
 }
@@ -31,7 +32,7 @@ class Spinlock
     public:
         bool lock();
         bool try_lock();
-        void unlock();
+        void unlock(bool unlock = true);
 };
 
 static_assert(sizeof(Spinlock) == 4);
@@ -60,13 +61,17 @@ class CriticalGuard
     public:
         CriticalGuard(Spinlock_t &... args) : sl(args...)
         {
+            constexpr std::size_t size = sizeof...(args);
             while(true)
             {
+                std::array<bool, size> locked = {};
+                size_t i = 0U;
                 cpsr = DisableInterrupts();
-                if(std::apply([](Spinlock_t &... apply_args) { return (... && apply_args.try_lock()); }, sl))
+                if(std::apply([&](Spinlock_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
                     return;
 
-                std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+                i = 0U;
+                std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
                 RestoreInterrupts(cpsr);
             }
         }

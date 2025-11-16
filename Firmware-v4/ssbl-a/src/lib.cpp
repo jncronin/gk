@@ -143,3 +143,14 @@ extern "C" size_t __wrap_strlen(const char *s)
         ret++;
     return ret;
 }
+
+extern "C" int __wrap_strcmp(const char *s1, const char *s2)
+{
+    while(true)
+    {
+        if(*s1 != *s2 || *s1 == 0)
+            return *s1 - *s2;
+        s1++;
+        s2++;
+    }
+}

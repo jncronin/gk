@@ -40,6 +40,30 @@ typedef struct
     Elf64_Xword p_align; /* Alignment of segment */
 } __attribute__((packed)) Elf64_Phdr;
 
+typedef struct
+{
+    Elf64_Word sh_name; /* Section name */
+    Elf64_Word sh_type; /* Section type */
+    Elf64_Xword sh_flags; /* Section attributes */
+    Elf64_Addr sh_addr; /* Virtual address in memory */
+    Elf64_Off sh_offset; /* Offset in file */
+    Elf64_Xword sh_size; /* Size of section */
+    Elf64_Word sh_link; /* Link to other section */
+    Elf64_Word sh_info; /* Miscellaneous information */
+    Elf64_Xword sh_addralign; /* Address alignment boundary */
+    Elf64_Xword sh_entsize; /* Size of entries, if section has table */
+} __attribute__((packed)) Elf64_Shdr;
+
+typedef struct
+{
+    Elf64_Word st_name; /* Symbol name */
+    unsigned char st_info; /* Type and Binding attributes */
+    unsigned char st_other; /* Reserved */
+    Elf64_Half st_shndx; /* Section table index */
+    Elf64_Addr st_value; /* Symbol value */
+    Elf64_Xword st_size; /* Size of object (e.g., common) */
+} __attribute__((packed)) Elf64_Sym;
+
 #define EM_AARCH64      0xb7
 
 #define EI_CLASS        4
@@ -56,5 +80,22 @@ typedef struct
 
 typedef void (*epoint)();
 int elf_load(const void *baseaddr, epoint *entry = nullptr, int el = 1);
+
+#define SHT_NULL 0
+#define SHT_PROGBITS 1
+#define SHT_SYMTAB 2
+#define SHT_STRTAB 3
+#define SHT_RELA 4
+#define SHT_HASH 5
+#define SHT_DYNAMIC 6
+#define SHT_NOTE 7
+#define SHT_NOBITS 8
+#define SHT_REL 9
+#define SHT_SHLIB 10
+#define SHT_DYNSYM 11
+#define SHT_LOOS 0x60000000
+#define SHT_HIOS 0x6FFFFFFF
+#define SHT_LOPROC 0x70000000
+#define SHT_HIPROC 0x7FFFFFFF
 
 #endif

@@ -11,6 +11,7 @@
 #include "vmem.h"
 #include "elf.h"
 #include "gkos_boot_interface.h"
+#include "elf_get_symbol.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -22,7 +23,12 @@ gkos_boot_interface gbi{};
 // a stack to catch very early el1 exceptions
 uint64_t el1_stack[128];
 
+// data for AP
+uintptr_t ap_entry = 0;
+extern uintptr_t AP_Target;
+
 void init_clocks();
+void ap_main();
 
 int main(uint32_t bootrom_val)
 {
@@ -111,6 +117,16 @@ int main(uint32_t bootrom_val)
         while(true);
     }
 
+    // do we have an AP entry point?
+    ap_entry = elf_get_symbol((const void *)0x60300000, "_ap_kstart");
+    if(ap_entry)
+    {
+        klog("elf: AP entry point found at %llx\n", ap_entry);
+    }
+
+    // bring AP online
+    AP_Target = (uintptr_t)ap_main;
+
     gbi.ddr_start = pmem_get_cur_brk();
     gbi.ddr_end = 0x80000000ULL + ddr_get_size();
 
@@ -120,6 +136,11 @@ int main(uint32_t bootrom_val)
     // disable irqs/fiqs, enable paging
     __asm__ volatile (
         "msr daifset, #0x3\n"
+
+        "mrs x0, S3_1_C15_C2_1\n"       // CPUECTRL_EL1
+        "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
+        "msr S3_1_C15_C2_1, x0\n"
+        
         "mrs x0, sctlr_el3\n"
         "orr x0, x0, #(0x1 << 0)\n"     // M
         "orr x0, x0, #(0x1 << 2)\n"     // C
@@ -131,4 +152,39 @@ int main(uint32_t bootrom_val)
     while(true);
 
     return 0;
+}
+
+void ap_main()
+{
+    if(!ap_entry)
+    {
+        klog("AP: no sm entry point found, halting AP\n");
+        while(true)
+        {
+            __asm__ volatile("wfi \n" ::: "memory");
+        }
+    }
+
+    void init_vmem_ap();
+    init_vmem_ap();
+
+    // disable irqs/fiqs, enable paging
+    __asm__ volatile (
+        "msr daifset, #0x3\n"
+
+        "mrs x0, S3_1_C15_C2_1\n"       // CPUECTRL_EL1
+        "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
+        "msr S3_1_C15_C2_1, x0\n"
+        
+        "mrs x0, sctlr_el3\n"
+        "orr x0, x0, #(0x1 << 0)\n"     // M
+        "orr x0, x0, #(0x1 << 2)\n"     // C
+        "orr x0, x0, #(0x1 << 12)\n"    // I
+        "msr sctlr_el3, x0\n"
+    : : : "memory", "x0");
+
+    klog("AP: running sm entry point\n");
+    auto sm_ap_ep = (void (*)(uint64_t))ap_entry;
+    sm_ap_ep(gkos_ssbl_magic);
+    while(true);
 }
