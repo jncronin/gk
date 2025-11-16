@@ -17,6 +17,7 @@ Scheduler::Scheduler()
     {
         new (&current_thread[i]) PThread;
         new (&next_thread[i]) PThread;
+        new (&idle_threads[i]) PThread;
         scheduler_running[i] = false;
     }
 }
@@ -129,12 +130,14 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
     PThread cur_t;
     int cur_prio;
+    bool cur_blocking;
 
     // Get the priority of the currently running thread, or 0 if it is blocking
     {
         CriticalGuard cg(sl_cur_next);
         cur_t = current_thread[ncore];
         cur_prio = (cur_t == nullptr || cur_t->is_blocking) ? 0 : cur_t->base_priority;
+        cur_blocking = (cur_t == nullptr) ? true : cur_t->is_blocking;
     }
 
 #if GK_DYNAMIC_SYSTICK
@@ -232,8 +235,18 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     }
 
     // We didn't find any valid thread with equal or higher priority than the current one
+
+    // If current is blocking return the idle thread, else return the current one again
+    auto new_t = cur_blocking ? idle_threads[ncore] : cur_t;
+
+    if(new_t != cur_t)
+    {
+        CriticalGuard cg(sl_cur_next);
+        next_thread[ncore] = new_t;
+    }
+
 #if GK_DYNAMIC_SYSTICK
-    set_timeout(cur_t);
+    set_timeout(new_t);
 #else
     // default timeslice
     __asm__ volatile(
@@ -242,14 +255,31 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
         [delay] "r" (64 * GK_MAXTIMESLICE_US),
         [unmask_timer] "r" (0x1) : "memory");
 #endif
-    return cur_t.get();
+    return new_t.get();
 }
 
 extern char _ecm4_stack;
 extern char _ecm7_stack;
 
+static void *idle_thread(void *)
+{
+    while(true)
+    {
+        __asm__ volatile("wfi \n" ::: "memory");
+    }
+}
+
 void Scheduler::StartForCurrentCore [[noreturn]] ()
 {
+    auto core = GetCoreID();
+
+    // Create the idle thread for the current core
+    extern PProcess p_kernel;
+    idle_threads[core] = Thread::Create("idle_" + std::to_string(core),
+        idle_thread, nullptr, true, GK_PRIORITY_IDLE, p_kernel);
+
+    scheduler_running[core] = false;
+
     // #switch to first thread by triggering SVC1
     __asm__ volatile(
         "msr tpidr_el1, xzr\n"

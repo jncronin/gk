@@ -10,14 +10,15 @@
 #include "scheduler.h"
 #include "smc_interface.h"
 #include "vmem.h"
+#include "gk_conf.h"
 #include <memory>
 
 // test threads
 std::shared_ptr<Process> p_kernel;
 std::shared_ptr<Thread> t_a, t_b;
 
-static void *task_a(void *);
-static void *task_b(void *);
+[[maybe_unused]] static void *task_a(void *);
+[[maybe_unused]] static void *task_b(void *);
 
 static void start_ap(unsigned int ap_no);
 
@@ -71,8 +72,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     p_kernel = std::make_shared<Process>();
     p_kernel->name = "kernel";
 
-    Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
-    Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
+    //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
+    //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
 
     start_ap(1);
 
@@ -170,6 +171,12 @@ static void ap_epoint()
 
 void start_ap(unsigned int ap_no)
 {
+    if(ap_no >= GK_NUM_CORES)
+    {
+        klog("kernel: invalid ap core id %u\n", ap_no);
+        return;
+    }
+
     // create a stack
     auto vm_ap_stack = vblock_alloc(VBLOCK_64k, false, true, false);
     if(!vm_ap_stack.valid)

@@ -22,6 +22,8 @@ class Scheduler
             Spinlock sl;
         };
 
+        PThread idle_threads[ncores];
+
         IndexedThreadVector tlist[npriorities];
 
         /* Follows the chain of 'blocking_on' to allow priority escalation */
