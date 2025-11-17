@@ -5,8 +5,8 @@ TaskSwitch:
     bl GetNextThreadForCore
     mrs x1, tpidr_el1
     cmp x0, x1
-    b.eq 2f             // if the same thread then do nothing
-    cbz x1, 1f          // if zero in tpidr_el1 this is the first switch - don't save anythinh
+    b.eq 4f             // if the same thread then do nothing
+    cbz x1, 1f          // if zero in tpidr_el1 this is the first switch - don't save anything
 
     /* At this point we have saved on the stack:
         x0-x18
@@ -68,6 +68,16 @@ TaskSwitch:
     msr ttbr0_el1, x2
     msr tpidr_el0, x3
 
+    // if ttbr0_el1 is 0, disable lower half paging to prevent translation table walk faults escalating to el3
+    mrs x3, tcr_el1
+    cbz x2, 2f
+    orr x3, x3, #(0x1 << 7)
+    b 3f
+2:
+    bfc x3, #7, #1
+3:
+    msr tcr_el1, x3
+
     // restore fpu
     ldp q8, q9, [x0, #128]
     ldp q10, q11, [x0, #160]
@@ -89,7 +99,7 @@ TaskSwitch:
     // - this essentially releases a reference to the Thread shared_ptr
     bl SetNextThreadForCore
 
-2:
+4:
     b TaskSwitchEnd     // restores interrupt registers
 
 .size TaskSwitch, .-TaskSwitch
