@@ -28,6 +28,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core_A/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -35,6 +36,11 @@ target_compile_definitions(${PROJECT_NAME}
         STM32MP257Fxx
         CORE_CM33
         ETH_MODE
+        PINS_DONT_RCC_ENABLE
+        _POSIX_READER_WRITER_LOCKS
+        _UNIX98_THREAD_MUTEX_ATTRIBUTES
+        _POSIX_THREAD_PRIO_PROTECT
+        _POSIX_THREAD_PROCESS_SHARED
 )
 
 target_sources(${PROJECT_NAME}
@@ -43,6 +49,7 @@ target_sources(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/pins.cpp"
 )
 
 set_target_properties(${PROJECT_NAME}
@@ -70,7 +77,6 @@ target_compile_options(${PROJECT_NAME}
         -Wno-psabi
         -Wno-missing-field-initializers
         -Wno-int-to-pointer-cast
-        -mgeneral-regs-only
 )
 
 target_compile_options(${PROJECT_NAME}

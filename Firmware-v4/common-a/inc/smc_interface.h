@@ -1,13 +1,18 @@
 #ifndef SMC_INTERFACE_H
 #define SMC_INTERFACE_H
 
-enum SMC_Call
+enum class SMC_Call
 {
     StartupAP,
     SetPower,
 };
 
-enum SMC_Power_Target
+// stop clashes with stm32mp2 headers
+#ifdef GPU
+#undef GPU
+#endif
+
+enum class SMC_Power_Target
 {
     CPU,
     GPU,

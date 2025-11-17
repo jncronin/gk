@@ -3,8 +3,9 @@
 
 #include <memory>
 #include "ostypes.h"
-#include "osspinlock.h"
+#include "osmutex.h"
 #include "kernel_time.h"
+#include "syscalls.h"
 
 class Process;
 
@@ -20,6 +21,7 @@ class Thread
         kernel_time block_until;
 
         inline bool get_is_blocking() const { return is_blocking; }
+        inline void set_is_blocking(bool val, bool = false) { is_blocking = val; }
 
         std::shared_ptr<Process> p;
         std::string name;
@@ -30,6 +32,10 @@ class Thread
         VMemBlock mr_user_thread;
 
         void *thread_retval;
+
+        /* Used for waiting on inter-process RPC returns */
+        SimpleSignal ss;
+        WaitSimpleSignal_params ss_p;
 
         typedef void *(*threadstart_t)(void *p);
         static std::shared_ptr<Thread> Create(const std::string &name,

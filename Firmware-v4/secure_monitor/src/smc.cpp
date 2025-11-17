@@ -170,7 +170,7 @@ void smc_set_power_target(pmic_vreg::_type type, unsigned int id, unsigned int v
             {
                 auto pmic_readback = pmic_get_buck(id);
                 pmic_dump(pmic_readback);
-                regs->x0 = pmic_readback.mv;
+                regs->x0 = pmic_readback.is_enabled ? pmic_readback.mv : 0;
             }
             break;
 
@@ -178,7 +178,7 @@ void smc_set_power_target(pmic_vreg::_type type, unsigned int id, unsigned int v
             {
                 auto pmic_readback = pmic_get_ldo(id);
                 pmic_dump(pmic_readback);
-                regs->x0 = pmic_readback.mv;
+                regs->x0 = pmic_readback.is_enabled ? pmic_readback.mv : 0;
             }
             break;
 

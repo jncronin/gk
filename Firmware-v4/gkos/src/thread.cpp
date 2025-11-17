@@ -24,6 +24,8 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
 {
     auto t = std::make_shared<Thread>();
 
+    klog("thread_create: %s @ %llx\n", name.c_str(), (uintptr_t)t.get());
+
     t->name = name;
     t->p = owning_process;
     t->base_priority = priority;

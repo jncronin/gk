@@ -11,6 +11,7 @@
 #include "smc_interface.h"
 #include "vmem.h"
 #include "gk_conf.h"
+#include "sd.h"
 #include <memory>
 
 // test threads
@@ -48,16 +49,10 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     auto pf_test = vblock_alloc(VBLOCK_64k, false, true, false);
     *(uint64_t *)pf_test.base = 0xdeadbeef;
 
-    // GIC - route irq 30 to us
-    const auto irq_n = 30U;
-    const auto target_word = irq_n / 4U;
-    const auto target_bit = (irq_n % 4U) * 8U;
-    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x800 + 0x4 * target_word) =
-        (*(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x800 + 0x4 * target_word) & ~(0xffUL << target_bit)) |
-        (0x1UL << target_bit);
-    const auto enable_word = irq_n / 32U;
-    const auto enable_bit = irq_n % 32U;
-    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x100 + 0x4 * enable_word) = 1UL << enable_bit;
+    // GIC - enable IRQ 30 (physical timer) + IPIs
+    gic_set_enable(30);
+    gic_set_enable(GIC_SGI_YIELD);
+    gic_set_enable(GIC_SGI_IPI);
     
      // enable irqs
     __asm__ volatile("msr daifclr, #0xf\n");
@@ -67,13 +62,14 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     uint64_t last_ms = clock_cur_ms();
 
-
     // Create some threads
     p_kernel = std::make_shared<Process>();
     p_kernel->name = "kernel";
 
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
+
+    init_sd();
 
     start_ap(1);
 
@@ -159,8 +155,10 @@ static void ap_epoint()
         : : : "memory", "x0"
     );
 
-    // GIC - enable IRQ 30 (physical timer)
-    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0x100) = 1UL << 30;
+    // GIC - enable IRQ 30 (physical timer) + IPIs
+    gic_set_enable(30);
+    gic_set_enable(GIC_SGI_YIELD);
+    gic_set_enable(GIC_SGI_IPI);
 
     // enable irqs
     __asm__ volatile("msr daifclr, #0xf\n");

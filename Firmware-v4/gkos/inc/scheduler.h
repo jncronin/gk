@@ -5,6 +5,7 @@
 #include "thread.h"
 #include "osmutex.h"
 #include "kernel_time.h"
+#include "gic.h"
 
 #include <vector>
 
@@ -47,6 +48,7 @@ class Scheduler
         void Schedule(PThread t);
         void Unschedule(PThread t);
         Thread *GetNextThread(uint32_t ncore);
+        PThread &GetCurThread(uint32_t ncore);
         void SetNextThread(uint32_t ncore, Thread *);
 
         void StartForCurrentCore [[noreturn]] ();
@@ -90,10 +92,15 @@ static inline void Yield()
 {
     if(scheduler_running())
     {
-        __asm__ volatile("svc #1\n" ::: "memory");
+        gic_send_sgi(GIC_SGI_YIELD, GIC_TARGET_SELF);
     }
 }
 
-void Block(kernel_time until = kernel_time(), Thread *block_on = nullptr);
+void Block(kernel_time until = kernel_time(), PThread block_on = nullptr);
+
+static inline PThread &GetCurrentPThreadForCore()
+{
+    return sched.GetCurThread(GetCoreID());
+}
 
 #endif

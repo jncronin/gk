@@ -7,7 +7,8 @@
 void pin_set(const struct pin &p, int mode, int ospeed, int af, int otype, int pup)
 {
     GPIO_TypeDef *gpio = p.gpio;
-    
+
+#ifndef PINS_DONT_RCC_ENABLE
     RCC_ENABLE(GPIOA);
     RCC_ENABLE(GPIOB);
     RCC_ENABLE(GPIOC);
@@ -20,6 +21,7 @@ void pin_set(const struct pin &p, int mode, int ospeed, int af, int otype, int p
     RCC_ENABLE(GPIOJ);
     RCC_ENABLE(GPIOK);
     RCC_ENABLE(GPIOZ);
+#endif
 
     int pin = p.pin;
 

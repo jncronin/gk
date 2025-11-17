@@ -115,7 +115,9 @@ inline void Scheduler::set_timeout(const PThread new_t)
         reload = sysclk * GK_MAXTIMESLICE_US;
     }
 
+#if DEBUG_SCHEDULER
     klog("sched: setting delay for %llu ticks\n", reload);
+#endif
     __asm__ volatile(
         "msr cntp_tval_el0, %[delay]\n" 
         "msr cntp_ctl_el0, %[unmask_timer]\n" : :
@@ -160,7 +162,7 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
                         (uint32_t)clock_cur_us(),
                         (uint32_t)tthread->block_until.to_us());
 #endif
-                    tthread->is_blocking = true;
+                    tthread->is_blocking = false;
                     tthread->block_until = kernel_time();
                 }
                 else if(!kernel_time_is_valid(cur_earliest_blocker) || tthread->block_until < cur_earliest_blocker)
@@ -456,13 +458,21 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
 Thread *GetNextThreadForCore()
 {
     auto ret = sched.GetNextThread(GetCoreID());
+#if DEBUG_SCHEDULUER
     klog("sched: get_next_thread_for_core(%u): returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
         GetCoreID(),
         (uint64_t)ret, ret->name.c_str(), ret->tss.sp_el1, (uint64_t)&ret->tss);
+#endif
     return ret;
 }
 
 void SetNextThreadForCore(Thread *t)
 {
     sched.SetNextThread(GetCoreID(), t);
+}
+
+PThread &Scheduler::GetCurThread(uint32_t ncore)
+{
+    CriticalGuard cg(sl_cur_next);
+    return current_thread[ncore];
 }
