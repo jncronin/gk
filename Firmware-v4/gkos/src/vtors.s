@@ -1,5 +1,7 @@
 .cpu cortex-a35
 
+#include "gic_irq_nos.h"
+
 /* The exception handling mechanism is different for AArch64 compared with cortex-M
 
     There is no list of addresses per-exception but rather a single page sized object
@@ -150,15 +152,15 @@ _vtor_tbl_entry _lower32_serror
     save_regs
 
 # early identify a task switch irq (8 or 30)
-    ldr x1, =0xfffffc004ac20000         // GIC_INTERFACE_BASE
+    ldr x1, =GIC_INTERFACE_BASE         // GIC_INTERFACE_BASE
     ldr w0, [x1, #0x20]                 // non-secure IAR alias
     dmb ish
     and w2, w0, #1023
 
-    cmp w2, #0
+    cmp w2, #GIC_SGI_YIELD
     b.eq 2f
 
-    cmp w2, #30
+    cmp w2, #GIC_PPI_NS_PHYS
     b.eq 1f
 
     # neither of the above - use the full interrupt handler
