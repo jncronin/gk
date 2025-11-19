@@ -110,7 +110,6 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
     bool ignore_crc = false,
     int timeout_retry = 10)
 {
-    klog("sd_issue_command: %lu\n", command);
     int tcnt = 0;
     for(; tcnt < timeout_retry; tcnt++)
     {
