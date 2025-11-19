@@ -102,6 +102,7 @@ target_link_options(${PROJECT_NAME}
         -Wl,--wrap=reallocarray
         -Wl,-z,max-page-size=65536
         -Wl,-z,common-page-size=65536
+        ${CMAKE_CURRENT_SOURCE_DIR}/../test.bin.o
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}

@@ -77,16 +77,24 @@ int logger_printf(const timespec &now, const char *format, va_list va)
             if(!*format)
                 INVALID();
             
-            while(*format >= '0' && *format <= '9')
+            if(*format == '*')
             {
-                int cur_digit = *format - '0';
-                precision *= 10;
-                precision += cur_digit;
+                precision = -1;
                 has_precision = true;
+            }
+            else
+            {
+                while(*format >= '0' && *format <= '9')
+                {
+                    int cur_digit = *format - '0';
+                    precision *= 10;
+                    precision += cur_digit;
+                    has_precision = true;
 
-                format++;
-                if(!*format)
-                    INVALID();
+                    format++;
+                    if(!*format)
+                        INVALID();
+                }
             }
         }
 
@@ -121,7 +129,16 @@ int logger_printf(const timespec &now, const char *format, va_list va)
         
         if(*format == 's')
         {
-            ret += logger_string(va_arg(va, const char *));
+            auto str = va_arg(va, const char *);
+            if(has_precision)
+            {
+                auto prec = (precision >= 0) ? precision : (int)va_arg(va, size_t);
+                ret += logger_string(str, prec);
+            }
+            else
+            {
+                ret += logger_string(str);
+            }
         }
         else if(*format == 'd')
         {

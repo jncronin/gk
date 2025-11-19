@@ -29,6 +29,7 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     t->name = name;
     t->p = owning_process;
     t->base_priority = priority;
+    t->is_privileged = is_priv;
 
     // create a kernel stack for the thread
     t->mr_kernel_thread = vblock_alloc(VBLOCK_4M, false, true, false, GUARD_BITS_64k, GUARD_BITS_64k);
@@ -84,4 +85,31 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     }
 
     return t;
+}
+
+bool Thread::addr_is_valid(const void *buf, size_t len, bool for_write) const
+{
+    /* Upper and lower halves are both 4 TiB in size.  Catch anything larger now to prevent
+        overflow */
+    if(len > LH_END)
+        return false;
+    
+    auto start = (uintptr_t)buf;
+    auto end = start + len;
+
+    // TODO: check against actually assigned regions here - prevent kernel crashing with 
+    //  page faults to areas that will never be mapped
+    if(is_privileged)
+    {
+        if(start >= UH_START && end >= UH_START)
+        {
+            return true;
+        }
+    }
+    if(start < LH_END && end < LH_END)
+    {
+        return true;
+    }
+
+    return false;
 }

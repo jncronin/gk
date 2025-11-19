@@ -27,6 +27,7 @@ class Thread
         std::string name;
 
         int base_priority;
+        bool is_privileged;
 
         VMemBlock mr_kernel_thread;
         VMemBlock mr_user_thread;
@@ -43,6 +44,10 @@ class Thread
             void *p,
             bool is_priv, int priority,
             std::shared_ptr<Process> owning_process);
+
+        /* determine if a given address range is within the memory accessible by
+            this thread */
+        bool addr_is_valid(const void *buf, size_t len, bool for_write = false) const;
 };
 
 static inline Thread *GetCurrentKernelThreadForCore()

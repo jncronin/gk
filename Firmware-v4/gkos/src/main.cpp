@@ -23,6 +23,8 @@ std::shared_ptr<Thread> t_a, t_b;
 
 static void start_ap(unsigned int ap_no);
 
+void *init_thread(void *);
+
 extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)
 {
     // These need to happen before __libc_init_array, which may call malloc
@@ -69,7 +71,9 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
 
-    init_sd();
+    //init_sd();
+
+    Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
 
     start_ap(1);
 
