@@ -45,15 +45,23 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     auto kthread_ptr = (uint64_t *)(t->mr_kernel_thread.data_end());
 
     const uint64_t spsr_el1_return = 5; // el1 with el1 stack
-    
+
+    /* Set up the SP/FP to link to themselves at the top of the stack. */
+    *--kthread_ptr = 0;                 // recursive lr
+    auto recursive_fp = --kthread_ptr;
+    *recursive_fp = (uintptr_t)recursive_fp;
     // set up kernel thread for return to privileged process (TODO: alter for user code)
+    *--kthread_ptr = 0;                 // LR
+    *--kthread_ptr = (uintptr_t)recursive_fp;      // FP
     for(auto i = 0U; i < 16U; i++)
     {
         *--kthread_ptr = 0U;    // Q0-7
     }
-    *--kthread_ptr = (uint64_t)thread_stub;                // ELR_EL1
+    *--kthread_ptr = 0U;        // res2
+    *--kthread_ptr = 0U;        // res1
+    *--kthread_ptr = (uint64_t)thread_stub;         // ELR_EL1
     *--kthread_ptr = (uint64_t)spsr_el1_return;     // SPSR_EL1
-    for(auto i = 0U; i < 20U; i++)
+    for(auto i = 0U; i < 18U; i++)
     {
         *--kthread_ptr = 0U;    // GPRs
     }

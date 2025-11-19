@@ -33,6 +33,7 @@ void OnProjectLoad (void) {
   // User settings
   //
   File.Open ("$(ProjectDir)/build/gkos.elf");
+	Project.SetOSPlugin("${ProjectDir}/../../../gk-jlink-rtos/src/gkv4-ozone-rtos.js");
 }
 
 /*********************************************************************
