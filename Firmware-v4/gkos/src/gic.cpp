@@ -14,11 +14,8 @@ consteval uint32_t valid_cores()
     return v;
 }
 
-void gic_irq_handler()
+void gic_irq_handler(uint32_t iar)
 {
-    auto iar = *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0x20);
-    __asm__ volatile("dmb ish\n" ::: "memory");
-
     auto irq_no = iar & 0x3ff;
     bool do_switch = false;
 
@@ -26,10 +23,7 @@ void gic_irq_handler()
     {
         case GIC_SGI_YIELD:
         case 30:
-            // TODO: can these be filtered off similar to svc #1??
-            do_switch = true;
-            __asm__ volatile("msr cntp_ctl_el0, %[mask_timer]\n" : : [mask_timer] "r" (0x3));
-
+            klog("GIC: unfiltered task switch interrupt detected\n");
             break;
 
         default:

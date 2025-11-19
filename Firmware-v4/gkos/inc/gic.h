@@ -1,7 +1,9 @@
 #ifndef GIC_H
 #define GIC_H
 
-void gic_irq_handler();
+#include <cstdint>
+
+extern "C" void gic_irq_handler(uint32_t aiar);
 
 #define GIC_BASE             0xfffffc004AC00000ULL
 #define GIC_DISTRIBUTOR_BASE (GIC_BASE+0x10000ULL)
@@ -9,6 +11,8 @@ void gic_irq_handler();
 
 #define GIC_SGI_YIELD       0
 #define GIC_SGI_IPI         1
+
+#define GIC_PPI_NS_PHYS     30
 
 #define GIC_TARGET_SELF             -1
 #define GIC_TARGET_ALL              -2

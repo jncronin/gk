@@ -17,12 +17,7 @@ static uint64_t TranslationFault_Handler(bool user, bool write, uint64_t address
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
 {
-    if(etype == 0x281)
-    {
-        gic_irq_handler();
-        return 0;
-    }
-    else if(etype == 0x201 || etype == 0x401 || etype == 0x601)
+    if(etype == 0x201 || etype == 0x401 || etype == 0x601)
     {
         // exception
         auto ec = (esr >> 26) & 0x3fULL;

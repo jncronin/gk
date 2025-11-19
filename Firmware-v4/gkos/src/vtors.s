@@ -146,7 +146,41 @@ _vtor_tbl_entry _lower32_serror
     eret
 .endm
 
-.macro irq_stub code 
+.macro irq_stub code
+    save_regs
+
+# early identify a task switch irq (8 or 30)
+    ldr x1, =0xfffffc004ac20000         // GIC_INTERFACE_BASE
+    ldr w0, [x1, #0x20]                 // non-secure IAR alias
+    dmb ish
+    and w2, w0, #1023
+
+    cmp w2, #0
+    b.eq 2f
+
+    cmp w2, #30
+    b.eq 1f
+
+    # neither of the above - use the full interrupt handler
+    bl gic_irq_handler
+    eret
+
+1:
+    # task switches need to EOI prior to the switch, so do that here
+    # timer interrupts are level triggered so need to mask the timer before EOI'ing
+    mov x3, #3
+    msr cntp_ctl_el0, x3
+
+2:
+    # EOI
+    str w0, [x1, #0x24]
+    dmb st
+
+    b TaskSwitch
+    # does not return here - can branch to TaskSwitchEnd
+.endm
+
+.macro other_stub code 
     save_regs
 
 # get appropriate registers
@@ -176,12 +210,12 @@ _curel_irq:
 
 .type _curel_fiq,%function
 _curel_fiq:
-    irq_stub 0x300
+    other_stub 0x300
 .size _curel_fiq, .-_curel_fiq
 
 .type _curel_serror,%function
 _curel_serror:
-    irq_stub 0x380
+    other_stub 0x380
 .size _curel_serror, .-_curel_serror
 
 .type _lower64_sync,%function
@@ -196,12 +230,12 @@ _lower64_irq:
 
 .type _lower64_fiq,%function
 _lower64_fiq:
-    irq_stub 0x500
+    other_stub 0x500
 .size _lower64_fiq, .-_lower64_fiq
 
 .type _lower64_serror,%function
 _lower64_serror:
-    irq_stub 0x580
+    other_stub 0x580
 .size _lower64_serror, .-_lower64_serror
 
 .type _lower32_sync,%function
@@ -216,12 +250,12 @@ _lower32_irq:
 
 .type _lower32_fiq,%function
 _lower32_fiq:
-    irq_stub 0x700
+    other_stub 0x700
 .size _lower32_fiq, .-_lower32_fiq
 
 .type _lower32_serror,%function
 _lower32_serror:
-    irq_stub 0x780
+    other_stub 0x780
 .size _lower32_serror, .-_lower32_serror
 
 .type TaskSwitchEnd,%function
