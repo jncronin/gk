@@ -4,6 +4,9 @@
 #include "gic.h"
 #include "vblock.h"
 #include "vmem.h"
+#include "thread.h"
+#include "process.h"
+#include "syscalls_int.h"
 
 struct exception_regs
 {
@@ -19,6 +22,12 @@ static uint64_t TranslationFault_Handler(bool user, bool write, uint64_t address
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
 {
+    if(etype == 0x401 && (esr == 0x46000000 || esr == 0x56000000))
+    {
+        SyscallHandler((syscall_no)regs->x0, (void *)regs->x1, (void *)regs->x2, (void *)regs->x3);
+        return 0;
+    }
+
     if(etype == 0x201 || etype == 0x401 || etype == 0x601)
     {
         // exception
@@ -47,6 +56,17 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
     klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx, sp: %llx, nested elr: %llx\n",
         etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
+
+    uint64_t ttbr0, ttbr1, tcr;
+    __asm__ volatile("mrs %[ttbr0], ttbr0_el1\n"
+        "mrs %[ttbr1], ttbr1_el1\n"
+        "mrs %[tcr], tcr_el1\n"
+    :
+        [ttbr0] "=r" (ttbr0),
+        [ttbr1] "=r" (ttbr1),
+        [tcr] "=r" (tcr)
+    : : "memory");
+    klog("EXCEPTION: ttbr0: %llx, ttbr1: %llx, tcr: %llx\n", ttbr0, ttbr1, tcr);
 
     while(true);
 
@@ -97,6 +117,48 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
         {
             return SupervisorThreadFault();
         }
+        return 0;
+    }
+    else
+    {
+        // check vblock for access
+        auto umem = GetCurrentThreadForCore()->p->user_mem.get();
+        if(umem == nullptr)
+        {
+            klog("pf: lower half without a valid lower half vblock\n");
+            return user ? UserThreadFault() : SupervisorThreadFault();
+        }
+
+        VMemBlock be = InvalidVMemBlock();
+        {
+            CriticalGuard cg(umem->sl);
+            be = vblock_valid(far, umem->blocks);
+        }
+
+        if(!be.valid)
+        {
+            klog("pf: user space vblock not found\n");
+            return user ? UserThreadFault() : SupervisorThreadFault();
+        }
+
+        if(far < be.data_start() || far >= be.data_end())
+        {
+            klog("pf: guard page hit\n");
+            return user ? UserThreadFault() : SupervisorThreadFault();
+        }
+
+        klog("pf: lazy map %llx\n", far);
+
+        {
+            CriticalGuard cg(umem->sl);
+
+            if(vmem_map(far & ~(VBLOCK_64k), 0, be.user, be.write, be.exec, umem->ttbr0))
+            {
+                return user ? UserThreadFault() : SupervisorThreadFault();
+            }
+        }
+
+        klog("pf: done\n");
         return 0;
     }
 

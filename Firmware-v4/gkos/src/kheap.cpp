@@ -16,6 +16,7 @@ void init_kheap()
         klog("kheap: failed to allocate\n");
         while(true);
     }
+    klog("kheap: %llx - %llx\n", be_heap.base, be_heap.end());
 
     sbrk_end = be_heap.base;
 }

@@ -11,6 +11,7 @@
         "ddrphy_phyinit.h": "c",
         "stm32mp_ddrctrl_regs.h": "c",
         "errno.h": "c",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "cstring": "cpp"
     },
 }

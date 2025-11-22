@@ -38,7 +38,6 @@
 #define VBLOCK_BLOCK_ALLOC      1ULL
 #define VBLOCK_BLOCK_FREE       0ULL
 
-#define LEVEL1_COUNT    2048
 #define LEVEL2_COUNT    128
 #define LEVEL3_COUNT    64
 
@@ -66,60 +65,21 @@ static const constexpr size_t level3_buddy_byte_count = align_power_2(sizeof(lev
 static_assert(level2_buddy_byte_count == 2048);
 static_assert(level3_buddy_byte_count == 1024);
 
-class VBlock
-{
-    protected:
-        uint64_t *level1 = nullptr;
-        
-        // because levels 2 and 3 do not occupy a whole page, we can use a single page to store more than
-        //  one.  Therefore if a request for a new page comes in, we can chop up the one here.
-        uintptr_t cur_level2_page = 0;
-        size_t cur_level2_page_offset = 0;
-
-        uintptr_t cur_level3_page = 0;
-        size_t cur_level3_page_offset = 0;
-
-        // store metrics for level 1
-        size_t level1_free = 0;
-        size_t level1_last_accessed_block = 0;      // ideally next available 512 MiB block
-        size_t level1_last_accessed_pointer = 0;    // ideally pointer to level2 with next available space
-
-        // our base address
-        uint64_t base = 0;
-
-        Spinlock sl;
-
-    protected:
-        VMemBlock AllocLevel1(uint32_t tag);
-        VMemBlock AllocLevel2(uint32_t tag);
-        VMemBlock AllocLevel3(uint32_t tag);
-
-        size_t GetFreeLevel1Index();
-        size_t GetLevel1IndexToNotFullLevel2();
-        std::pair<size_t, size_t> GetLevel12IndexToNotFullLevel3();
-        size_t GetFreeLevel2Index(size_t level1_idx);
-        size_t GetFreeLevel3Index(size_t level1_idx, size_t level2_idx);
-
-        uint64_t PmemAllocLevel2();
-        uint64_t PmemAllocLevel3();
-
-    public:
-        void init();
-
-        VMemBlock Alloc(size_t size, uint32_t tag = 0);
-        void Free(VMemBlock &be);
-        std::pair<VMemBlock, uint32_t> Valid(uintptr_t addr);
-};
-
-VBlock vblock;
+constinit VBlock vblock;
 
 void init_vblock()
 {
-    vblock.init();
+    vblock.init(VBLOCK_START, 2040U);
 }
 
 VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
-    unsigned int lower_guard, unsigned int upper_guard)
+    unsigned int lower_guard, unsigned int upper_guard, VBlock &vb)
+{
+    return vblock_alloc_fixed(size, ~0ULL, user, write, exec, lower_guard, upper_guard, vb);
+}
+
+VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write, bool exec,
+    unsigned int lower_guard, unsigned int upper_guard, VBlock &vb)
 {
     uint32_t tag = 0;
     if(user)
@@ -133,7 +93,7 @@ VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
     if(upper_guard >= GUARD_BITS_MAX)
         return InvalidVMemBlock();
     tag |= (lower_guard << VBLOCK_TAG_GUARD_LOWER_POS) | (upper_guard << VBLOCK_TAG_GUARD_UPPER_POS);
-    auto ret = vblock.Alloc(size, tag);
+    auto ret = (addr == ~0ULL) ? vb.Alloc(size, tag) : vb.AllocFixed(size, addr, tag);
     if(ret.valid)
     {
         ret.user = user;
@@ -145,9 +105,9 @@ VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
     return ret;
 }
 
-VMemBlock vblock_valid(uintptr_t addr)
+VMemBlock vblock_valid(uintptr_t addr, VBlock &vb)
 {
-    auto [blk, tag] = vblock.Valid(addr);
+    auto [blk, tag] = vb.Valid(addr);
     if(blk.valid)
     {
         blk.user = (tag & VBLOCK_TAG_USER) != 0;
@@ -159,27 +119,36 @@ VMemBlock vblock_valid(uintptr_t addr)
     return blk;
 }
 
-void VBlock::init()
+void VBlock::init(uintptr_t _base, unsigned int free_pages, unsigned int _level1_count)
 {
     CriticalGuard cg(sl);
-    base = VBLOCK_START;
+    base = _base;
 
     // get a free page for level1
     level1 = (uint64_t *)PMEM_TO_VMEM(Pmem.acquire(VBLOCK_64k).base);
 
-    for(auto i = 0U; i < 2048; i++)
+    level1_count = _level1_count ? _level1_count : align_power_2(free_pages);
+    if(level1_count > 8192U)
     {
-        if(i < 2040)
+        klog("VBlock::init: level1_count too high: %llu\n", level1_count);
+        return;
+    }
+
+    for(auto i = 0U; i < level1_count; i++)
+    {
+        if(i < free_pages)
             level1[i] = VBLOCK_BLOCK_FREE;
         else
             level1[i] = VBLOCK_UNAVAIL;
     }
 
-    level1_free = 2040;
+    level1_free = free_pages;
     level1_last_accessed_block = 0;
     level1_last_accessed_pointer = 0;
 
-    klog("vblock: init\n");
+    inited = true;
+
+    klog("vblock: init (free pages: %u, level1_count: %u)\n", free_pages, level1_count);
 }
 
 VMemBlock VBlock::Alloc(size_t length, uint32_t tag)
@@ -201,15 +170,36 @@ VMemBlock VBlock::Alloc(size_t length, uint32_t tag)
     }
 }
 
+VMemBlock VBlock::AllocFixed(size_t length, uintptr_t addr, uint32_t tag)
+{
+    addr -= base;
+
+    switch(length)
+    {
+        case VBLOCK_64k:
+            return AllocFixedLevel3(addr, tag);
+
+        case VBLOCK_4M:
+            return AllocFixedLevel2(addr, tag);
+
+        case VBLOCK_512M:
+            return AllocFixedLevel1(addr, tag);
+
+        default:
+            klog("vblock: invalid size requested: %llu\n", length);
+            return InvalidVMemBlock();
+    }
+}
+
 size_t VBlock::GetFreeLevel1Index()
 {
     if(level1_free == 0)
         return VBLOCK_UNAVAIL;
 
     // loop offset from last accessed
-    for(size_t i = 0U; i < LEVEL1_COUNT; i++)
+    for(size_t i = 0U; i < level1_count; i++)
     {
-        auto idx = (i + level1_last_accessed_block) % LEVEL1_COUNT;
+        auto idx = (i + level1_last_accessed_block) % level1_count;
         if(level1[idx] == VBLOCK_BLOCK_FREE)
             return idx;
     }
@@ -258,9 +248,9 @@ size_t VBlock::GetFreeLevel3Index(size_t l1_idx, size_t l2_idx)
 size_t VBlock::GetLevel1IndexToNotFullLevel2()
 {
     // loop offset from last accessed
-    for(size_t i = 0U; i < LEVEL1_COUNT; i++)
+    for(size_t i = 0U; i < level1_count; i++)
     {
-        auto idx = (i + level1_last_accessed_pointer) % LEVEL1_COUNT;
+        auto idx = (i + level1_last_accessed_pointer) % level1_count;
         if(!(level1[idx] & VBLOCK_BLOCK_ALLOC) && level1[idx] != VBLOCK_UNAVAIL &&
             level1[idx] != VBLOCK_BLOCK_FREE)
         {
@@ -276,9 +266,9 @@ size_t VBlock::GetLevel1IndexToNotFullLevel2()
 std::pair<size_t, size_t> VBlock::GetLevel12IndexToNotFullLevel3()
 {
     // loop offset from last accessed
-    for(size_t i = 0U; i < LEVEL1_COUNT; i++)
+    for(size_t i = 0U; i < level1_count; i++)
     {
-        auto idx = (i + level1_last_accessed_pointer) % LEVEL1_COUNT;
+        auto idx = (i + level1_last_accessed_pointer) % level1_count;
         if(!(level1[idx] & VBLOCK_BLOCK_ALLOC) && level1[idx] != VBLOCK_UNAVAIL &&
             level1[idx] != VBLOCK_BLOCK_FREE)
         {
@@ -331,6 +321,77 @@ VMemBlock VBlock::AllocLevel1(uint32_t tag)
     };  
 }
 
+VMemBlock VBlock::AllocFixedLevel1(uintptr_t addr, uint32_t tag)
+{
+    CriticalGuard cg(sl);
+    auto idx = addr / VBLOCK_512M;
+    
+    if(level1[idx] != VBLOCK_BLOCK_FREE)
+    {
+        return InvalidVMemBlock();
+    }
+
+    level1[idx] = VBLOCK_BLOCK_ALLOC | ((uint64_t)tag << 32);
+    level1_free--;
+    level1_last_accessed_block = idx + 1;
+
+#if DEBUG_VBLOCK
+    klog("vblock: allocated 512MiB at %llx\n", base + idx * VBLOCK_512M);
+#endif
+
+    return VMemBlock {
+        MemRegion {
+            .base = base + idx * VBLOCK_512M,
+            .length = VBLOCK_512M,
+            .valid = true
+        } 
+    };  
+}
+
+VMemBlock VBlock::AllocFixedLevel2(uintptr_t addr, uint32_t tag)
+{
+    CriticalGuard cg(sl);
+    auto idx = addr / VBLOCK_512M;
+    if(level1[idx] & VBLOCK_BLOCK_ALLOC)
+    {
+        return InvalidVMemBlock();
+    }
+    if(level1[idx] == VBLOCK_BLOCK_FREE)
+    {
+        // TODO: add all these Pmem.acquires to the process used phys mem list
+        level1[idx] = PmemAllocLevel2();
+        level1_free--;
+    }
+
+    auto idx2 = (addr % VBLOCK_512M) / VBLOCK_4M;
+    auto l2 = (level2 *)level1[idx];
+
+    if(l2->b[idx2] != VBLOCK_BLOCK_FREE)
+    {
+        return InvalidVMemBlock();
+    }
+
+    l2->b[idx2] = VBLOCK_BLOCK_ALLOC | ((uint64_t)tag << 32);
+    l2->free_count--;
+    l2->last_accessed_block = idx2 + 1;
+    level1_last_accessed_pointer = idx;
+
+    addr = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M;
+
+#if DEBUG_VBLOCK
+    klog("vblock: allocated 4MiB at %llx\n", addr);
+#endif
+
+    return VMemBlock {
+        MemRegion
+        {
+            .base = addr,
+            .length = VBLOCK_4M,
+            .valid = true
+        }
+    };
+}
+
 VMemBlock VBlock::AllocLevel2(uint32_t tag)
 {
     CriticalGuard cg(sl);
@@ -379,6 +440,63 @@ VMemBlock VBlock::AllocLevel2(uint32_t tag)
         {
             .base = addr,
             .length = VBLOCK_4M,
+            .valid = true
+        }
+    };
+}
+
+VMemBlock VBlock::AllocFixedLevel3(uintptr_t addr, uint32_t tag)
+{
+    CriticalGuard cg(sl);
+    auto idx = addr / VBLOCK_512M;
+    if(level1[idx] & VBLOCK_BLOCK_ALLOC)
+    {
+        return InvalidVMemBlock();
+    }
+    if(level1[idx] == VBLOCK_BLOCK_FREE)
+    {
+        // TODO: add all these Pmem.acquires to the process used phys mem list
+        level1[idx] = PmemAllocLevel2();
+        level1_free--;
+    }
+
+    auto idx2 = (addr % VBLOCK_512M) / VBLOCK_4M;
+    auto l2 = (level2 *)level1[idx];
+
+    if(l2->b[idx2] & VBLOCK_BLOCK_ALLOC)
+    {
+        return InvalidVMemBlock();
+    }
+    if(l2->b[idx2] == VBLOCK_BLOCK_FREE)
+    {
+        l2->b[idx2] = PmemAllocLevel3();
+        l2->free_count--;
+    }
+
+    auto idx3 = (addr % VBLOCK_4M) / VBLOCK_64k;
+    auto l3 = (level3 *)l2->b[idx2];
+    if(l3->b[idx3] != VBLOCK_BLOCK_FREE)
+    {
+        return InvalidVMemBlock();
+    }
+
+    l3->b[idx3] = VBLOCK_BLOCK_ALLOC | ((uint64_t)tag << 32);
+    l3->free_count--;
+    l3->last_accessed_block = idx3 + 1;
+    level1_last_accessed_pointer = idx;
+    l2->last_accessed_buddy = idx2;
+
+    addr = base + idx * VBLOCK_512M + idx2 * VBLOCK_4M + idx3 * VBLOCK_64k;
+
+#if DEBUG_VBLOCK
+    klog("vblock: allocated 64 kiB at %llx\n", addr);
+#endif
+
+    return VMemBlock {
+        MemRegion
+        {
+            .base = addr,
+            .length = VBLOCK_64k,
             .valid = true
         }
     };
@@ -516,6 +634,11 @@ uint64_t VBlock::PmemAllocLevel3()
 
 std::pair<VMemBlock, uint32_t> VBlock::Valid(uintptr_t addr)
 {
+    if(!inited)
+    {
+        return std::make_pair(InvalidVMemBlock(), 0);
+    }
+
     addr -= base;
 
     auto idx = addr / VBLOCK_512M;

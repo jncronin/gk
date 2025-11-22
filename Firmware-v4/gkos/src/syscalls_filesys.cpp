@@ -128,6 +128,17 @@ int Process::open_files_t::get_free_fildes(int start_fd)
     return -1;
 }
 
+int Process::open_files_t::get_fixed_fildes(int fd)
+{
+    if(fd < 0)
+        return -1;
+    if(fd >= GK_MAX_OPEN_FILES)
+        return -1;
+    while((size_t)fd >= f.size())
+        f.push_back(PFile {});
+    return f[fd] == nullptr ? fd : -1;
+}
+
 static inline bool starts_with(const std::string &s, char c)
 {
     return s.length() > 0 && s[0] == c;

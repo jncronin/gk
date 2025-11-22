@@ -6,7 +6,7 @@
 
 static Spinlock sl_uh;
 
-int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr)
+int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, uintptr_t ttbr1)
 {
     uint64_t ptr = 0;
 
@@ -16,9 +16,17 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr)
     while(ptr < vaddr.data_length())
     {
         uintptr_t cur_page_paddr;
-        if(paddr.valid && (ptr + VBLOCK_64k) < paddr.length)
+        if(paddr.valid)
         {
-            cur_page_paddr = paddr.base + ptr;
+            if((ptr + VBLOCK_64k) <= paddr.length)
+            {
+                cur_page_paddr = paddr.base + ptr;
+            }
+            else
+            {
+                klog("vmem_map: provided paddr not big enough for vaddr\n");
+                return -1;
+            }
         }
         else
         {
@@ -32,7 +40,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr)
         }
 
         uintptr_t cur_page_vaddr = vaddr.data_start() + ptr;
-        auto ret = vmem_map(cur_page_vaddr, cur_page_paddr, vaddr.user, vaddr.write, vaddr.exec);
+        auto ret = vmem_map(cur_page_vaddr, cur_page_paddr, vaddr.user, vaddr.write, vaddr.exec, ttbr0, ttbr1);
         if(ret != 0)
             return ret;
 
@@ -42,34 +50,49 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr)
     return 0;
 }
 
-int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec)
+static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr);
+
+int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
+    uintptr_t ttbr0, uintptr_t ttbr1)
 {
-    Spinlock *ttbr_sl;
     uint64_t ttbr;
 
     if(vaddr >= UH_START)
     {
-        ttbr_sl = &sl_uh;
-    }
-    else
-    {
-        klog("lower half mapping not implemented\n");
-        while(true);
-    }
-
-    CriticalGuard cg(*ttbr_sl);
-
-    if(vaddr >= UH_START)
-    {
-        __asm__ volatile("mrs %[ttbr], ttbr1_el1\n" : [ttbr] "=r" (ttbr) : : "memory");
+        if(ttbr1 == ~0ULL)
+        {
+            __asm__ volatile("mrs %[ttbr], ttbr1_el1\n" : [ttbr] "=r" (ttbr) : : "memory");
+        }
+        else
+        {
+            ttbr = ttbr1;
+        }
         vaddr -= UH_START;
+
+        {
+            CriticalGuard cg(sl_uh);
+            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr);
+        }
     }
     else
     {
-        klog("lower half mapping not implemented\n");
-        while(true);
-    }
+        if(ttbr0 == ~0ULL)
+        {
+            klog("lower half address but ttbr0 not provided\n");
+            return -1;
+        }
+        else
+        {
+            ttbr = ttbr0;
+        }
 
+        // no lock here - already done in calling function
+        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr);
+    }
+}
+
+static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr)
+{
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto l3_addr = (vaddr >> 16) & 0x1fffULL;
 

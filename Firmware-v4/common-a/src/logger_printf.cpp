@@ -81,6 +81,10 @@ int logger_printf(const timespec &now, const char *format, va_list va)
             {
                 precision = -1;
                 has_precision = true;
+
+                format++;
+                if(!*format)
+                    INVALID();
             }
             else
             {

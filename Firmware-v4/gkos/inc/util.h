@@ -3,7 +3,7 @@
 
 #include <type_traits>
 
-template <typename T> consteval size_t highest_bit_set(T x)
+template <typename T> constexpr size_t highest_bit_set(T x)
 {
     if(x == 0)
         return ~((T)0);
@@ -19,7 +19,7 @@ template <typename T> consteval size_t highest_bit_set(T x)
     return sizeof(T) * 8 - ret - 1;
 }
 
-template <typename T> consteval T align_power_2(T x)
+template <typename T> constexpr T align_power_2(T x)
 {
     auto hb = highest_bit_set(x);
     auto hb_shift = (T)1 << hb;

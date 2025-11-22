@@ -70,7 +70,7 @@ TaskSwitch:
 
     // if ttbr0_el1 is 0, disable lower half paging to prevent translation table walk faults escalating to el3
     mrs x3, tcr_el1
-    cbz x2, 2f
+    cbnz x2, 2f
     orr x3, x3, #(0x1 << 7)
     b 3f
 2:

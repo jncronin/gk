@@ -22,11 +22,12 @@ int ramdisk_open(const std::string &fname, PFile *f,
 
 RamdiskFile::RamdiskFile(void *_buf, size_t len, bool for_read, bool for_write)
 {
-    buf = buf;
+    buf = _buf;
     size = len;
     can_read = for_read;
     can_write = for_write;
     offset = 0;
+    type = FileType::FT_Ram;
 }
 
 ssize_t RamdiskFile::Write(const char *_buf, size_t count, int *_errno)

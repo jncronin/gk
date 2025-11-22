@@ -56,17 +56,13 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     gic_set_enable(GIC_SGI_YIELD);
     gic_set_enable(GIC_SGI_IPI);
     
-     // enable irqs
-    __asm__ volatile("msr daifclr, #0xf\n");
-
     // time 1s using generic timer
     //__asm__ volatile("msr cntp_tval_el0, %[delay]\n" : : [delay] "r" (64000000) : "memory");
 
     uint64_t last_ms = clock_cur_ms();
 
     // Create some threads
-    p_kernel = std::make_shared<Process>();
-    p_kernel->name = "kernel";
+    p_kernel = std::make_shared<Process>("kernel", true);
 
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
@@ -77,21 +73,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     start_ap(1);
 
-    // test systick timer - use generic timer el1 physical
-    __asm__ volatile(
-        "ldr x0, =0x303\n"          // prevent el0 from using timer
-        "msr cntkctl_el1, x0\n"
-        "mov x0, #0x1\n"            // enable, unmask interrupts
-        "msr cntp_ctl_el0, x0\n"
-        : : : "memory", "x0"
-    );
-
     sched.StartForCurrentCore();
-
-    __asm__ volatile(
-        "msr tpidr_el1, xzr\n"
-        "msr tpidr_el0, xzr\n"
-        "svc #1\n" ::: "memory");
 
     while(true)
     {
@@ -151,21 +133,10 @@ void *task_b(void *)
 
 static void ap_epoint()
 {
-    __asm__ volatile(
-        "ldr x0, =0x303\n"          // prevent el0 from using timer
-        "msr cntkctl_el1, x0\n"
-        "mov x0, #0x1\n"            // enable, unmask interrupts
-        "msr cntp_ctl_el0, x0\n"
-        : : : "memory", "x0"
-    );
-
     // GIC - enable IRQ 30 (physical timer) + IPIs
     gic_set_enable(30);
     gic_set_enable(GIC_SGI_YIELD);
     gic_set_enable(GIC_SGI_IPI);
-
-    // enable irqs
-    __asm__ volatile("msr daifclr, #0xf\n");
 
     sched.StartForCurrentCore();
     while(true);

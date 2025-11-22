@@ -2,6 +2,7 @@
 #include "clocks.h"
 #include "gk_conf.h"
 #include "kernel_time.h"
+#include "cpu.h"
 
 #define DEBUG_SCHEDULER 0
 
@@ -282,11 +283,15 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
 
     scheduler_running[core] = false;
 
-    // #switch to first thread by triggering SVC1
+    // Set up the appropriate virtual memory layout for the core
+    cpu_setup_vmem();
+    cpu_start_local_timer();
+
+    // switch to first thread by triggering SVC1
     __asm__ volatile(
         "msr tpidr_el1, xzr\n"
         "msr tpidr_el0, xzr\n"
-        "msr daifclr, #0b10\n"
+        "msr daifclr, #0xf\n"
         "svc #1\n" ::: "memory");
 
     // shouldn't get here
