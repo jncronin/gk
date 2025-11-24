@@ -13,6 +13,15 @@ include(../cmake/utils.cmake)
 
 project(gkos C CXX ASM)
 
+
+set(LIB_ONLY ON)
+add_subdirectory(../../Firmware/lwext4 lwext4)
+set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
+
+set(ZLIB_BUILD_EXAMPLES OFF)
+add_subdirectory(../../Firmware/zlib-1.3.1 zlib)
+
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
@@ -29,6 +38,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core_A/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/lwext4/include"
+        "${LWEXT4_GENERATED_DIR}"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -103,6 +114,12 @@ target_link_options(${PROJECT_NAME}
         -Wl,-z,max-page-size=65536
         -Wl,-z,common-page-size=65536
         ${CMAKE_CURRENT_SOURCE_DIR}/../test.bin.o
+)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        lwext4
+        zlib
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
