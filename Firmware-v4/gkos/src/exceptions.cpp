@@ -95,6 +95,12 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
     klog("TranslationFault %s %s @ %llx from %llx\n", user ? "USER" : "SUPERVISOR",
         write ? "WRITE" : "READ", far, lr);
 
+    if(far < VBLOCK_64k)
+    {
+        // catch null references
+        return user ? UserThreadFault() : SupervisorThreadFault();
+    }
+
     if(far >= 0x8000000000000000ULL)
     {
         if(user)

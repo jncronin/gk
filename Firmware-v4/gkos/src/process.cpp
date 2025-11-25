@@ -29,7 +29,8 @@ Process::Process(const std::string &_name, bool _is_privileged)
             user_mem->ttbr0 = ttbr0_reg.base;
             user_mem->blocks.init(0);
 
-            // allocate the first page to catch null pointer references
+            // allocate the first page to catch null pointer references - not actually used except
+            //  to prevent other regions being allocated there - the main logic is in TranslationFault_Handler
             vblock_alloc_fixed(VBLOCK_64k, 0, false, false, false, 0, 0, user_mem->blocks);
         }
     }
