@@ -129,77 +129,47 @@ int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
     void *cl_a, void *cl_b, void *ones, void *zeros, int *_errno);
 int syscall_icacheinvalidate(int *_errno);
 
-static inline int deferred_return(int ret, int _errno, kernel_time until)
+static inline int deferred_return(int *_errno = nullptr, kernel_time until = kernel_time_invalid())
 {
-    if(ret == -1)
+    auto t = GetCurrentKernelThreadForCore();
+    while(true)
     {
-        //errno = _errno;
-        return ret;
-    }
-    if(ret == -2)
-    {
-        // deferred return
-        auto t = GetCurrentThreadForCore();
         if(t->ss.Wait(SimpleSignal::Set, 0, until))
         {
             if(t->ss_p.ival1 == -1)
             {
-                //errno = t->ss_p.ival2;
-                return -1;
+                if(_errno)
+                    *_errno = t->ss_p.ival2;
             }
-            else
-            {
-                return t->ss_p.ival1;
-            }
-        }
-        else
-        {
-            if(clock_cur() >= until)
-            {
-                return -4;
-            }
-        }
-    }
-    return ret;
-}
-
-static inline int deferred_return(int ret, int _errno)
-{
-    if(ret == -1)
-    {
-        //errno = _errno;
-        return ret;
-    }
-    if(ret == -2)
-    {
-        // deferred return
-        auto t = GetCurrentThreadForCore();
-        while(!t->ss.Wait(SimpleSignal::Set, 0));
-        if(t->ss_p.ival1 == -1)
-        {
-            //errno = t->ss_p.ival2;
-            return -1;
-        }
-        else
-        {
             return t->ss_p.ival1;
         }
+        else if(kernel_time_is_valid(until) && clock_cur() >= until)
+        {
+            if(_errno)
+                *_errno = ETIME;
+            return -1;
+        }
     }
-    return ret;
 }
 
-template<typename Func, class... Args> int deferred_call(Func f, Args... a)
+template<typename Func, class... Args> std::pair<int, int> deferred_call(Func f, Args... a)
 {
     int _errno = 0;
     int ret = f(a..., &_errno);
-    return deferred_return(ret, _errno);
+    if(ret == -2)
+        return std::make_pair(deferred_return(&_errno), _errno);
+    else
+        return std::make_pair(ret, _errno);
 }
 
-template<typename Func, class... Args> int deferred_call(Func f, kernel_time until, Args... a)
+template<typename Func, class... Args> std::pair<int, int> deferred_call(Func f, kernel_time until, Args... a)
 {
     int _errno = 0;
     int ret = f(a..., &_errno);
-    return deferred_return(ret, _errno, until);
+    if(ret == -2)
+        return std::make_pair(deferred_return(&_errno, until), _errno);
+    else
+        return std::make_pair(ret, _errno);
 }
 
 /* inline functions to support quick checking of usermode pointers for syscalls */

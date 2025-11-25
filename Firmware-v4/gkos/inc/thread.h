@@ -7,6 +7,8 @@
 #include "kernel_time.h"
 #include "syscalls.h"
 
+static constexpr uint32_t thread_signal_lwext = 0x1;
+
 class Process;
 
 class Thread

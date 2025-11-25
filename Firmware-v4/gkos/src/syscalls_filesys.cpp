@@ -6,11 +6,11 @@
 
 #include <cstring>
 #include <fcntl.h>
-//#include <ext4.h>
+#include <ext4.h>
 #include <string>
 #include <sstream>
 
-//#include "ext4_thread.h"
+#include "ext4_thread.h"
 
 int syscall_fstat(int file, struct stat *st, int *_errno)
 {
@@ -217,16 +217,17 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     auto t = GetCurrentThreadForCore();
     auto p = t->p;
     bool is_opendir = (mode == S_IFDIR) && (flags == O_RDONLY);
+
     CriticalGuard cg(p->open_files.sl);
-    int fd = p->open_files.get_free_fildes();
+    ADDR_CHECK_BUFFER_R(pathname, 1);
+    auto act_name = parse_fname(pathname);
+
+    auto fd = p->open_files.get_free_fildes();
     if(fd == -1)
     {
         *_errno = EMFILE;
         return -1;
     }
-    ADDR_CHECK_BUFFER_R(pathname, 1);
-
-    auto act_name = parse_fname(pathname);
 
     // special case /dev files
     if(act_name == "/dev/stdin")
@@ -292,21 +293,24 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
 
     // use lwext4
-#if 0
     ext4_file _f = { 0 };
     auto lwf = std::make_shared<LwextFile>(_f, act_name);
     p->open_files.f[fd] = lwf;
+
+    cg.unlock();
     auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
         p, fd, t->ss, t->ss_p);
     if(ext4_send_message(msg))
-        return -2;  // deferred return
+    {
+        return deferred_return(_errno);
+    }
     else
     {
+        cg.relock();
         p->open_files.f[fd] = nullptr;
         *_errno = ENOMEM;
         return -1;
     }
-#endif
 
     return -1;
 }

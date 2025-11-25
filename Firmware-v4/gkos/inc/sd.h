@@ -27,8 +27,8 @@ struct sd_request
     int *res_out;
 };
 
-int sd_perform_transfer_async(const sd_request &req);
-int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
-    void *mem_address, bool is_read, int nretries = 10);
+int sd_transfer_async(const sd_request &req);
+int sd_transfer(uint32_t block_start, uint32_t block_count,
+    void *mem_address, bool is_read);
 
 #endif

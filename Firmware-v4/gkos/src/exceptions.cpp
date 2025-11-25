@@ -24,6 +24,8 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 {
     if(etype == 0x401 && (esr == 0x46000000 || esr == 0x56000000))
     {
+        // syscalls run with interrupts enabled
+        __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
         SyscallHandler((syscall_no)regs->x0, (void *)regs->x1, (void *)regs->x2, (void *)regs->x3);
         return 0;
     }
@@ -67,6 +69,8 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         [tcr] "=r" (tcr)
     : : "memory");
     klog("EXCEPTION: ttbr0: %llx, ttbr1: %llx, tcr: %llx\n", ttbr0, ttbr1, tcr);
+    auto t = GetCurrentKernelThreadForCore();
+    klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", t->p->name.c_str(), t->name.c_str(), (uintptr_t)t);
 
     while(true);
 

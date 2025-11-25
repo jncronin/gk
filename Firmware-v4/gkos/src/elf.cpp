@@ -12,10 +12,10 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
     // check header for sanity
     Elf64_Ehdr hdr;
     deferred_call(syscall_lseek, fd, 0, SEEK_SET);
-    auto bret = deferred_call(syscall_read, fd, (char *)&hdr, sizeof(hdr));
+    auto [ bret, berrno ] = deferred_call(syscall_read, fd, (char *)&hdr, sizeof(hdr));
     if(bret != sizeof(hdr))
     {
-        klog("elf_load_fildes: failed to read header: %d\n", bret);
+        klog("elf_load_fildes: failed to read header: %d, %d\n", bret, berrno);
         return -1;
     }
 
@@ -60,10 +60,10 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
     {
         Elf64_Phdr phdr;
         deferred_call(syscall_lseek, fd, hdr.e_phoff + hdr.e_phentsize * i, SEEK_SET);
-        bret = deferred_call(syscall_read, fd, (char *)&phdr, sizeof(Elf64_Phdr));
+        std::tie(bret, berrno) = deferred_call(syscall_read, fd, (char *)&phdr, sizeof(Elf64_Phdr));
         if(bret != sizeof(Elf64_Phdr))
         {
-            klog("elf_load_filedes: failed to load phdr: %d\n", bret);
+            klog("elf_load_filedes: failed to load phdr: %d, %d\n", bret, berrno);
             return -1;
         }
         if(phdr.p_type == PT_LOAD)
@@ -118,11 +118,11 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
                 {
                     auto to_load = std::min(max_copy, filesz);
 
-                    bret = deferred_call(syscall_read, fd, (char *)(dest_page + dest_offset_within_page), (int)to_load);
+                    std::tie(bret, berrno) = deferred_call(syscall_read, fd, (char *)(dest_page + dest_offset_within_page), (int)to_load);
 
                     if(bret != (int)to_load)
                     {
-                        klog("elf_load_fildes: failed to load program %d\n", bret);
+                        klog("elf_load_fildes: failed to load program %d, %d\n", bret, berrno);
                         return -1;
                     }
 

@@ -14,6 +14,8 @@ consteval uint32_t valid_cores()
     return v;
 }
 
+void SDMMC1_IRQHandler();
+
 void gic_irq_handler(uint32_t iar)
 {
     auto irq_no = iar & 0x3ff;
@@ -24,6 +26,10 @@ void gic_irq_handler(uint32_t iar)
         case GIC_SGI_YIELD:
         case 30:
             klog("GIC: unfiltered task switch interrupt detected\n");
+            break;
+
+        case 155:
+            SDMMC1_IRQHandler();
             break;
 
         default:
@@ -72,7 +78,7 @@ int gic_send_sgi(unsigned int sgi_no, int core_id)
         return -1;
     }
 
-    *(volatile uint32_t *)(GIC_INTERFACE_BASE + 0xf00) = sgi_no |
+    *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0xf00) = sgi_no |
         (1U << 15) |
         (core_list << 16) |
         (filter << 24);

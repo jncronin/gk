@@ -4,7 +4,7 @@
 #include "kernel_time.h"
 #include "cpu.h"
 
-#define DEBUG_SCHEDULER 0
+#define DEBUG_SCHEDULER 1
 
 Scheduler sched;
 
@@ -66,6 +66,8 @@ void Scheduler::Schedule(PThread t)
 
 inline void Scheduler::set_timeout(const PThread new_t)
 {
+    const uint32_t unmask_val = 0x3;        // test tickless
+
     // Get earliest timeout in anything with higher priority than new_t
     auto new_p = new_t->base_priority;
     kernel_time earliest_blocker = kernel_time_invalid();
@@ -95,7 +97,7 @@ inline void Scheduler::set_timeout(const PThread new_t)
                 "msr cntp_tval_el0, %[delay]\n" 
                 "msr cntp_ctl_el0, %[unmask_timer]\n" : :
                 [delay] "r" (sysclk * GK_MAXTIMESLICE_US),
-                [unmask_timer] "r" (0x1) : "memory");
+                [unmask_timer] "r" (unmask_val) : "memory");
             Yield();
             return;
         }
@@ -123,7 +125,7 @@ inline void Scheduler::set_timeout(const PThread new_t)
         "msr cntp_tval_el0, %[delay]\n" 
         "msr cntp_ctl_el0, %[unmask_timer]\n" : :
         [delay] "r" (reload),
-        [unmask_timer] "r" (0x1) : "memory");
+        [unmask_timer] "r" (unmask_val) : "memory");
 }
 
 Thread *Scheduler::GetNextThread(uint32_t ncore)
@@ -158,10 +160,10 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
                 if(tthread->block_until <= clock_cur())
                 {
 #if DEBUG_SCHEDULER
-                    klog("sched: unblock %s due to timeout (%u >= %u)\n",
+                    klog("sched: unblock %s due to timeout (%llu >= %llu)\n",
                         tthread->name.c_str(),
-                        (uint32_t)clock_cur_us(),
-                        (uint32_t)tthread->block_until.to_us());
+                        clock_cur_us(),
+                        kernel_time_to_us(tthread->block_until));
 #endif
                     tthread->is_blocking = false;
                     tthread->block_until = kernel_time();
@@ -281,7 +283,7 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
     idle_threads[core] = Thread::Create("idle_" + std::to_string(core),
         idle_thread, nullptr, true, GK_PRIORITY_IDLE, p_kernel);
 
-    scheduler_running[core] = false;
+    scheduler_running[core] = true;
 
     // Set up the appropriate virtual memory layout for the core
     cpu_setup_vmem();
@@ -325,10 +327,10 @@ void Scheduler::unblock_delayer(Thread *t)
     {
 #if DEBUG_SCHEDULER
         {
-            klog("sched: awaken sleeping thread %s (%u -> %u)\n",
+            klog("sched: awaken sleeping thread %s (%llu -> %llu)\n",
                 t->name.c_str(),
-                (uint32_t)clock_cur_us(),
-                (uint32_t)t->block_until.to_us()
+                clock_cur_us(),
+                kernel_time_to_us(t->block_until)
             );
         }
 #endif
@@ -463,7 +465,7 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
 Thread *GetNextThreadForCore()
 {
     auto ret = sched.GetNextThread(GetCoreID());
-#if DEBUG_SCHEDULUER
+#if DEBUG_SCHEDULER
     klog("sched: get_next_thread_for_core(%u): returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
         GetCoreID(),
         (uint64_t)ret, ret->name.c_str(), ret->tss.sp_el1, (uint64_t)&ret->tss);

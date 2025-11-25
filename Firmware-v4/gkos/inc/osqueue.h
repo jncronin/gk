@@ -12,13 +12,13 @@
 
 #include "gk_conf.h"
 
-class BaseQueue
+template <typename T> class BaseQueue
 {
     public:
-        BaseQueue(void *buf, int _nitems, size_t item_size) : _b(buf), nitems(_nitems), sz(item_size) {}
+        BaseQueue(T *buf, int _nitems, size_t item_size) : _b(buf), nitems(_nitems), sz(item_size) {}
 
     protected:
-        void *_b;
+        T *_b;
         int nitems;
         size_t sz;
 
@@ -53,7 +53,7 @@ class BaseQueue
             waiting_threads.clear();
         }
 
-        bool _Push(const void *v)
+        bool _Push(const T &v)
         {
             if(full())
             {
@@ -64,7 +64,27 @@ class BaseQueue
                 return false;
             }
 
-            memcpy(&(reinterpret_cast<char *>(_b)[_wptr * sz]), v, sz);
+            _b[_wptr] = v;
+
+            //_b[_wptr] = v;
+            _wptr = ptr_plus_one(_wptr);
+            signal_waiting();
+            return true;
+        }
+
+        bool _Push(T &&v)
+        {
+            if(full())
+            {
+#if DEBUG_FULLQUEUE
+                CriticalGuard cg2(s_rtt);
+                SEGGER_RTT_printf(0, "queue: write fail\n");
+#endif
+                return false;
+            }
+
+            _b[_wptr] = std::move(v);
+
             //_b[_wptr] = v;
             _wptr = ptr_plus_one(_wptr);
             signal_waiting();
@@ -82,13 +102,19 @@ class BaseQueue
             return ptr_plus_one(_wptr) == _rptr;
         }
 
-        bool Push(const void *v)
+        bool Push(const T &v)
         {
             CriticalGuard cg(sl);
             return _Push(v);
         }
 
-        bool Peek(void *v)
+        bool Push(T &&v)
+        {
+            CriticalGuard cg(sl);
+            return _Push(std::move(v));
+        }
+
+        bool Peek(T *v)
         {
             if(!v)
                 return false;
@@ -97,12 +123,15 @@ class BaseQueue
             if(empty())
                 return false;
 
-            memcpy(v, &(reinterpret_cast<char *>(_b)[_rptr * sz]), sz);
+            *v = _b[_rptr];
             return true;
         }
 
-        bool TryPop(void *v)
+        bool TryPop(T *v)
         {
+            if(!v)
+                return false;
+            
             CriticalGuard cg(sl);
             if(empty())
             {
@@ -110,13 +139,13 @@ class BaseQueue
             }
             else
             {
-                memcpy(v, &(reinterpret_cast<char *>(_b)[_rptr * sz]), sz);
+                *v = _b[_rptr];
                 _rptr = ptr_plus_one(_rptr);
                 return true;
             }
         }
 
-        bool Pop(void *v, kernel_time timeout = kernel_time())
+        bool Pop(T *v, kernel_time timeout = kernel_time())
         {
             if(!v)
                 return false;
@@ -143,12 +172,12 @@ class BaseQueue
                     }
                     else
                     {
-                        memcpy(v, &(reinterpret_cast<char *>(_b)[_rptr * sz]), sz);
+                        *v = _b[_rptr];
                         _rptr = ptr_plus_one(_rptr);
                         return true;
                     }
                 }
-                __DMB();
+                __asm__ volatile("dmb sy\n" ::: "memory");
                 if(kernel_time_is_valid(timeout) && clock_cur() >= timeout)
                 {
                     return false;
@@ -158,15 +187,12 @@ class BaseQueue
 
 };
 
-template <typename T, int _nitems> class FixedQueue : public BaseQueue
+template <typename T, int _nitems> class FixedQueue : public BaseQueue<T>
 {
     public:
-        FixedQueue() : BaseQueue(buf, _nitems, sizeof(T)) {}
+        FixedQueue() : BaseQueue<T>(buf, _nitems, sizeof(T)) {}
 
-        bool Push(const T& v)
-        {
-            return BaseQueue::Push(&v);
-        }
+        using BaseQueue<T>::Push;
 
         size_t Push(const T* v, size_t n)
         {
@@ -183,18 +209,18 @@ template <typename T, int _nitems> class FixedQueue : public BaseQueue
         T buf[_nitems];
 };
 
-class Queue : public BaseQueue
+template <typename T> class Queue : public BaseQueue<T>
 {
     public:
-        Queue(int _nitems, size_t item_size) : BaseQueue(nullptr, _nitems, item_size)
+        Queue(int _nitems, size_t item_size) : BaseQueue<T>(nullptr, _nitems, item_size)
         {
-            _b = new char[nitems * item_size];
+            this->_b = new char[_nitems * item_size];
         }
 
         ~Queue()
         {
-            if(_b)
-                delete[] reinterpret_cast<char *>(_b);
+            if(this->_b)
+                delete[] reinterpret_cast<char *>(this->_b);
         }
 };
 

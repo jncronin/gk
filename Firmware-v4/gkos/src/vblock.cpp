@@ -5,6 +5,8 @@
 #include "vmem.h"
 #include "logger.h"
 #include "osspinlock.h"
+#include "process.h"
+#include "thread.h"
 
 /* This is a custom buddy implementation with three levels (512 MiB, 4 MiB, 64 kiB) to support upper half
     paging for gkos.
@@ -35,6 +37,7 @@
 #define VBLOCK_END      0xffffffff00000000ULL
 
 #define VBLOCK_UNAVAIL          (~0ULL)
+#define VBLOCK_BLOCK_ALLOC_MASK 3ULL
 #define VBLOCK_BLOCK_ALLOC      1ULL
 #define VBLOCK_BLOCK_FREE       0ULL
 
@@ -73,13 +76,13 @@ void init_vblock()
 }
 
 VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
-    unsigned int lower_guard, unsigned int upper_guard, VBlock &vb)
+    unsigned int lower_guard, unsigned int upper_guard, VBlock &vb, bool map)
 {
-    return vblock_alloc_fixed(size, ~0ULL, user, write, exec, lower_guard, upper_guard, vb);
+    return vblock_alloc_fixed(size, ~0ULL, user, write, exec, lower_guard, upper_guard, vb, map);
 }
 
 VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write, bool exec,
-    unsigned int lower_guard, unsigned int upper_guard, VBlock &vb)
+    unsigned int lower_guard, unsigned int upper_guard, VBlock &vb, bool map)
 {
     uint32_t tag = 0;
     if(user)
@@ -102,6 +105,35 @@ VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write,
         ret.upper_guard = upper_guard;
         ret.lower_guard = lower_guard;
     }
+
+    if(map)
+    {
+        auto p = GetCurrentThreadForCore()->p;
+
+        for(auto ptr = 0U; ptr < ret.data_length(); ptr += VBLOCK_64k)
+        {
+            auto pb = Pmem.acquire(VBLOCK_64k);
+            if(!pb.valid)
+            {
+                klog("vblock: alloc: request to map but no free physical pages\n");
+                vb.Free(ret);
+                ret.valid = false;
+                return ret;
+            }
+            auto mapret = vmem_map(ret.data_start() + ptr, pb.base, user, write, exec);
+            if(mapret)
+            {
+                klog("vblock: alloc: request to map but map failed: %d\n", mapret);
+                vb.Free(ret);
+                ret.valid = false;
+                return ret;
+            }
+            {
+                CriticalGuard cg(p->owned_pages.sl);
+                p->owned_pages.add(pb);
+            }
+        }
+    }
     return ret;
 }
 
@@ -117,6 +149,19 @@ VMemBlock vblock_valid(uintptr_t addr, VBlock &vb)
         blk.upper_guard = (tag >> VBLOCK_TAG_GUARD_UPPER_POS) & GUARD_BITS_MAX;
     } 
     return blk;
+}
+
+int vblock_free(VMemBlock &v, VBlock &vb, bool unmap)
+{
+    auto freed = vb.Free(v);
+
+    if(!freed)
+        return -1;
+    if(unmap)
+    {
+        return vmem_unmap(v);
+    }
+    return 0;
 }
 
 void VBlock::init(uintptr_t _base, unsigned int free_pages, unsigned int _level1_count)
@@ -694,4 +739,114 @@ std::pair<VMemBlock, uint32_t> VBlock::Valid(uintptr_t addr)
             .length = VBLOCK_64k,
             .valid = true
         } }, (l3->b[idx3] >> 32));
+}
+
+bool VBlock::Free(VMemBlock &v)
+{
+    switch(v.length)
+    {
+        case VBLOCK_64k:
+            return FreeLevel3(v);
+        case VBLOCK_4M:
+            return FreeLevel2(v);
+        case VBLOCK_512M:
+            return FreeLevel1(v);
+        default:
+            klog("vblock: invalid length of blcok to free: %llu\n", v.length);
+            return false;
+    }
+}
+
+bool VBlock::FreeLevel1(VMemBlock &v)
+{
+    auto addr = v.base;
+    addr -= base;
+
+    auto idx = addr / VBLOCK_512M;
+
+    CriticalGuard cg(sl);
+    if((level1[idx] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
+    {
+        // allocated
+        level1[idx] = VBLOCK_BLOCK_FREE;
+        v.valid = false;
+        return true;
+    }
+
+    v.valid = false;
+    return false;
+}
+
+bool VBlock::FreeLevel2(VMemBlock &v)
+{
+    auto addr = v.base;
+    addr -= base;
+
+    auto idx = addr / VBLOCK_512M;
+
+    CriticalGuard cg(sl);
+    if((level1[idx] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC ||
+        level1[idx] == VBLOCK_BLOCK_FREE ||
+        level1[idx] == VBLOCK_UNAVAIL)
+    {
+        // invalid for a level1 pointing to level2
+        v.valid = false;
+        return false;
+    }
+
+    // check level2
+    auto idx2 = (addr % VBLOCK_512M) / VBLOCK_4M;
+    auto l2 = (level2 *)level1[idx];
+    if((l2->b[idx2] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
+    {
+        l2->b[idx2] = VBLOCK_BLOCK_FREE;
+        v.valid = false;
+        return true;
+    }
+
+    v.valid = false;
+    return false;
+}
+
+bool VBlock::FreeLevel3(VMemBlock &v)
+{
+    auto addr = v.base;
+    addr -= base;
+
+    auto idx = addr / VBLOCK_512M;
+
+    CriticalGuard cg(sl);
+    if((level1[idx] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC ||
+        level1[idx] == VBLOCK_BLOCK_FREE ||
+        level1[idx] == VBLOCK_UNAVAIL)
+    {
+        // invalid for a level1 pointing to level2
+        v.valid = false;
+        return false;
+    }
+
+    // check level2
+    auto idx2 = (addr % VBLOCK_512M) / VBLOCK_4M;
+    auto l2 = (level2 *)level1[idx];
+    if((l2->b[idx2] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC ||
+        l2->b[idx2] == VBLOCK_BLOCK_FREE)
+    {
+        // not pointing to a level3 block
+        v.valid = false;
+        return false;
+    }
+
+    // check level3
+    auto idx3 = (addr % VBLOCK_4M) / VBLOCK_64k;
+    auto l3 = (level3 *)l2->b[idx2];
+    if((l3->b[idx3] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
+    {
+        // valid to free
+        l3->b[idx3] = VBLOCK_BLOCK_FREE;
+        v.valid = false;
+        return true;
+    }
+
+    v.valid = false;
+    return false;
 }

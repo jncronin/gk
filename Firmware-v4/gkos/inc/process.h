@@ -57,4 +57,9 @@ class Process
         Process(const std::string &name, bool is_privileged = false);
 };
 
+using PProcess = std::shared_ptr<Process>;
+using WPProcess = std::weak_ptr<Process>;
+
+extern PProcess p_kernel;
+
 #endif

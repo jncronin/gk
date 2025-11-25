@@ -12,6 +12,7 @@
 #include "vmem.h"
 #include "gk_conf.h"
 #include "sd.h"
+#include "ext4_thread.h"
 #include <memory>
 
 // test threads
@@ -67,7 +68,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
 
-    //init_sd();
+    init_sd();
+    init_ext4();
 
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
 

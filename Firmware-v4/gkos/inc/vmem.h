@@ -11,6 +11,8 @@
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr0 = ~0ULL,
     uintptr_t ttbr1 = ~0ULL);
 int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
+int vmem_unmap(const VMemBlock &vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
+void vmem_invlpg(uintptr_t vaddr);
 
 /* Quick clear/copy, assumes multiples of 64 bytes, 16 byte alignment */
 extern "C" void quick_clear_64(void *dest, size_t n = 65536);

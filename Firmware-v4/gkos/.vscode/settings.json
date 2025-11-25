@@ -2,6 +2,7 @@
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35-hosted.cmake",
     },
+    "cortex-debug.armToolchainPrefix": "aarch64-none-elf",
     "files.associations": {
         "compare": "cpp",
         "cstdint": "cpp",
@@ -64,6 +65,15 @@
         "variant": "cpp",
         "xhash": "cpp",
         "xstring": "cpp",
-        "xtr1common": "cpp"
+        "xtr1common": "cpp",
+        "map": "cpp",
+        "ratio": "cpp",
+        "iostream": "cpp",
+        "istream": "cpp",
+        "semaphore": "cpp",
+        "sstream": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "cinttypes": "cpp"
     },
 }

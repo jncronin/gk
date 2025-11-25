@@ -11,7 +11,7 @@ void *init_thread(void *)
 {
     // load a test userspace thread from memory
 
-    auto proc_fd = syscall_open("/dev/ramdisk/test.bin", O_RDONLY, 0, &errno);
+    auto proc_fd = syscall_open("/gkmenu-0.1.1-gkv4/bin/gkmenu", O_RDONLY, 0, &errno);
     if(proc_fd < 0)
     {
         klog("init: failed to open test process\n");
@@ -33,7 +33,7 @@ void *init_thread(void *)
 
     if(ret == 0)
     {
-        auto t_test = Thread::Create("test", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_test);
+        auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_test);
         if(t_test)
         {
             klog("init: thread created, scheduling it\n");

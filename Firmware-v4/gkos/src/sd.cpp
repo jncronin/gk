@@ -19,6 +19,7 @@
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define GPIOE_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOE_BASE))
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
+#define RIFSC_VMEM (PMEM_TO_VMEM(RIFSC_BASE))
 
 #define DEBUG_SD    1
 #define PROFILE_SDT 0
@@ -30,6 +31,10 @@ extern PProcess p_kernel;
 #define SDCLK_IDENT     200000
 #define SDCLK_DS        25000000
 #define SDCLK_HS        50000000
+
+int sd_perform_transfer_async(const sd_request &req);
+int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
+    void *mem_address, bool is_read, int nretries = 10);
 
 static const constexpr unsigned int unaligned_buf_size = 512;
 __attribute__((aligned(32))) char unaligned_buf[unaligned_buf_size];
@@ -321,8 +326,13 @@ static void SDMMC_set_clock(int freq)
 }
 
 
+int sd_cache_init();
 void init_sd()
 {
+    if(sd_cache_init())
+    {
+        return;
+    }
     Schedule(Thread::Create("sd", sd_thread, nullptr, true, GK_PRIORITY_VHIGH, p_kernel));
 }
 
@@ -368,6 +378,23 @@ void sd_reset()
     {
         p.set_as_af();
     }
+
+    /* Give SDMMC1 access to DDR via RIFSC.  Use same CID as CA35/secure/priv for the master interface ID 1 */
+    *(volatile uint32_t *)(RIFSC_VMEM + 0xc10 + 1 * 0x4) =
+        (1UL << 2) |                // use cid specified here
+        (1UL << 4) |                // CID 1
+        (1UL << 8) |                // secure
+        (1UL << 9);                 // priv
+    /* The IDMA is forced to non-secure if its RISUP (RISUP 76) is programmed as non-secure,
+        therefore set as secure here */
+    const uint32_t risup = 76;
+    const uint32_t risup_word = risup / 32;
+    const uint32_t risup_bit = risup % 32;
+    auto risup_reg = (volatile uint32_t *)(RIFSC_VMEM + 0x10 + 0x4 * risup_word);
+    auto old_val = *risup_reg;
+    old_val |= 1U << risup_bit;
+    *risup_reg = old_val;
+    __asm__ volatile("dmb sy\n" ::: "memory");
 
     // Ensure clock is set-up for identification mode - other bits are zero after reset
     SDMMC_set_clock(SDCLK_IDENT);
@@ -966,7 +993,6 @@ void *sd_thread(void *param)
                     *sdr.res_out = ret;
                 }
             }
-
             sdt_ready.Wait(SimpleSignal::Set, 0U);
             if(sdr.res_out)
             {
@@ -1089,7 +1115,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     if(!is_read)
     {
         // writes need to commit all cache contents to ram first
-        CleanA35Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
+        //CleanA35Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
     else
     {
@@ -1116,7 +1142,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     if(is_read)
     {
         // bring data back into cache if necessary
-        InvalidateA35Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
+        //InvalidateA35Cache(cache_start, cache_end - cache_start, CacheType_t::Data);
     }
 
     int cret = *ret;
@@ -1198,12 +1224,13 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     return ret;
 }
 
-extern "C" void SDMMC1_VMEM_IRQHandler()
+void SDMMC1_IRQHandler()
 {
     auto const errors = DCRCFAIL |
         DTIMEOUT |
         TXUNDERR | RXOVERR;
     auto sta = SDMMC1_VMEM->STA;
+    klog("sd: int: %lx\n", sta);
     if(sta & errors)
     {
         SDMMC1_VMEM->DCTRL |= SDMMC_DCTRL_FIFORST;

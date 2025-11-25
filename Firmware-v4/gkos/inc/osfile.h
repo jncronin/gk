@@ -70,27 +70,7 @@ class UARTFile : public File
         bool can_write;
 };
 
-/*
-class SeggerRTTFile : public File
-{
-    public:
-        ssize_t Write(const char *buf, size_t count, int *_errno);
-        ssize_t Read(char *buf, size_t count, int *_errno);
-
-        int Fstat(struct stat *buf, int *_errno);
-        off_t Lseek(off_t offset, int whence, int *_errno);
-
-        int Isattty(int *_errno);
-        
-        SeggerRTTFile(unsigned int buf, bool for_read, bool for_write);
-        
-
-    protected:
-        unsigned int buf_idx;
-        bool can_read;
-        bool can_write;
-};
-
+#if 0
 class USBTTYFile : public File
 {
     public:
@@ -102,28 +82,9 @@ class USBTTYFile : public File
 
         int Isattty(int *_errno);
 };
+#endif
 
-class LwextFile : public File
-{
-    public:
-        ssize_t Write(const char *buf, size_t count, int *_errno);
-        ssize_t Read(char *buf, size_t count, int *_errno);
-        int ReadDir(dirent *de, int *_errno);
-
-        int Fstat(struct stat *buf, int *_errno);
-        off_t Lseek(off_t offset, int whence, int *_errno);
-        int Ftruncate(off_t length, int *_errno);
-
-        int Close(int *_errno);
-
-        LwextFile(ext4_file fildes, std::string fname);
-        ext4_file f;
-        ext4_dir d;
-
-        bool is_dir = false;
-        std::string fname;
-};
-
+/*
 class FatfsFile : public File
 {
     public:

@@ -6,6 +6,7 @@
 #include <concepts>
 #include <tuple>
 #include <array>
+#include "logger.h"
 
 inline __attribute__((always_inline)) static uint64_t DisableInterrupts()
 {
@@ -59,21 +60,64 @@ class CriticalGuard
         using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
 
     public:
-        CriticalGuard(Spinlock_t &... args) : sl(args...)
+        CriticalGuard(Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false)
         {
-            constexpr std::size_t size = sizeof...(args);
+            relock();
+        }
+
+        void relock()
+        {
+            if(is_locked)
+            {
+                klog("CriticalGuard: nested lock() - potential bug\n");
+            }
+            constexpr std::size_t size = sizeof...(Spinlock_t);
             while(true)
             {
                 std::array<bool, size> locked = {};
                 size_t i = 0U;
-                cpsr = DisableInterrupts();
+                disable_interrupts();
                 if(std::apply([&](Spinlock_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
+                {
+                    is_locked = true;
                     return;
+                }
 
                 i = 0U;
                 std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
-                RestoreInterrupts(cpsr);
+                restore_interrupts();
             }
+        }
+
+        void unlock(bool lock_test = true)
+        {
+            if(lock_test && !is_locked)
+            {
+                klog("CriticalGuard: mismatched lock/unlock - potential bug\n");
+            }
+            std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+            is_locked = false;
+            restore_interrupts();
+        }
+
+        void disable_interrupts()
+        {
+            if(has_disabled_ints)
+            {
+                klog("CriticalGuard: nested interrupt disable - potential bug\n");
+            }
+            cpsr = DisableInterrupts();
+            has_disabled_ints = true;
+        }
+
+        void restore_interrupts()
+        {
+            if(!has_disabled_ints)
+            {
+                klog("CriticalGuard: mismatched restore/disable interrupts\n");
+            }
+            has_disabled_ints = false;
+            RestoreInterrupts(cpsr);
         }
 
         CriticalGuard() = delete;
@@ -81,13 +125,48 @@ class CriticalGuard
 
         ~CriticalGuard()
         {
-            std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
-            RestoreInterrupts(cpsr);
+            unlock(false);
         }
 
     private:
         std::tuple<Spinlock_t &...> sl;
         uint64_t cpsr;
+        bool is_locked;
+        bool has_disabled_ints;
+};
+
+template <Spinlock_c... Spinlock_t> requires all_same<Spinlock_t...>
+class Guard
+{
+    private:
+        using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
+
+    public:
+        Guard(Spinlock_t &... args) : sl(args...)
+        {
+            constexpr std::size_t size = sizeof...(args);
+            while(true)
+            {
+                std::array<bool, size> locked = {};
+                size_t i = 0U;
+                if(std::apply([&](Spinlock_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
+                    return;
+
+                i = 0U;
+                std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
+            }
+        }
+
+        Guard() = delete;
+        Guard(const Guard &) = delete;
+
+        ~Guard()
+        {
+            std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+        }
+
+    private:
+        std::tuple<Spinlock_t &...> sl;
 };
 
 class UninterruptibleGuard

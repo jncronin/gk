@@ -51,6 +51,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
 }
 
 static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr);
+static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
     uintptr_t ttbr0, uintptr_t ttbr1)
@@ -166,4 +167,104 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
     pt[l3_addr] = (paddr & ~0xffffULL) | attr;
 
     return 0;
+}
+
+int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
+{
+    uint64_t ttbr;
+    auto vaddr = _vaddr.base;
+
+    if(vaddr >= UH_START)
+    {
+        if(ttbr1 == ~0ULL)
+        {
+            __asm__ volatile("mrs %[ttbr], ttbr1_el1\n" : [ttbr] "=r" (ttbr) : : "memory");
+        }
+        else
+        {
+            ttbr = ttbr1;
+        }
+        vaddr -= UH_START;
+
+        {
+            CriticalGuard cg(sl_uh);
+            return vmem_unmap_int(vaddr, _vaddr.length, ttbr, vaddr + UH_START);
+        }
+    }
+    else
+    {
+        if(ttbr0 == ~0ULL)
+        {
+            klog("lower half address but ttbr0 not provided\n");
+            return -1;
+        }
+        else
+        {
+            ttbr = ttbr0;
+        }
+
+        // no lock here - already done in calling function
+        return vmem_unmap_int(vaddr, _vaddr.length, ttbr, vaddr);
+    }
+}
+
+int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr)
+{
+    auto end = vaddr + len;
+    vaddr &= ~(VBLOCK_64k - 1);
+    end = (end + (VBLOCK_64k - 1)) & ~(VBLOCK_64k - 1);
+
+    act_vaddr &= ~(VBLOCK_64k - 1);
+
+    auto vaddr_adjust = act_vaddr - vaddr;
+
+    while(vaddr < end)
+    {
+        // don't handle large pages here
+        auto l2_addr = (vaddr >> 29) & 0x1fffULL;
+        auto l3_addr = (vaddr >> 16) & 0x1fffULL;
+
+        auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr);
+        volatile uint64_t *pt;
+        if((pd[l2_addr] & 0x1) != 0)
+        {
+            auto pt_paddr = pd[l2_addr] & 0xffffffff0000ULL;
+            pt = (volatile uint64_t *)PMEM_TO_VMEM(pt_paddr);
+
+            if((pt[l3_addr] & DT_PAGE) == DT_PAGE)
+            {
+                // ideally try and batch up the ipi invlpg here but its not entirely clear how at the moment
+
+                auto page = pt[l3_addr] & 0xffffffff0000ULL;
+
+                pt[l3_addr] = 0;
+
+                auto act_vpage = vaddr + vaddr_adjust;
+                vmem_invlpg(act_vpage);
+
+                PMemBlock pb;
+                pb.base = page;
+                pb.length = VBLOCK_64k;
+                pb.valid = true;
+                Pmem.release(pb);
+            }
+        }
+
+        vaddr += VBLOCK_64k;
+    }
+
+    return 0;
+}
+
+void vmem_invlpg(uintptr_t vaddr)
+{
+    __asm__ volatile(
+        "dsb ishst\n"
+        "tlbi vaae1is, %[addr_enc]\n"
+        "dsb ish\n"
+        "isb\n"
+        : :
+        [addr_enc] "r" (vaddr >> 12)
+        : "memory"
+    );
 }

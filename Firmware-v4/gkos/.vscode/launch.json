@@ -1,0 +1,46 @@
+{
+    "configurations": [
+        {
+            "cwd": "${workspaceFolder}",
+            "executable": "./build/gkos.elf",
+            "name": "Debug",
+            "request": "attach",
+            "type": "cortex-debug",
+            "device": "STM32MP257F_A35_0",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "none",
+            "servertype": "jlink",
+            "serverpath": "/program files/segger/jlink/JLinkGDBServerCL.exe",
+            "numberOfProcessors": 2,
+            "targetProcessor": 0,
+            "svdFile": "/program files/segger/ozone/config/cpu/cortex-a35_aarch64.svd",
+            "chainedConfigurations": {
+                "enabled": true,
+                "waitOnEvent": "postInit",
+                "detached": true,
+                "lifeCycleShared": true,
+                "launches": [
+                    {
+                        "name": "Debug-C1",
+                        "folder": "${workspaceFolder}"
+                    }
+                ]
+            }
+        },
+        {
+            "cwd": "${workspaceFolder}",
+            "executable": "./build/gkos.elf",
+            "name": "Debug-C1",
+            "request": "attach",
+            "type": "cortex-debug",
+            "device": "STM32MP257F_A35_1",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "none",
+            "servertype": "jlink",
+            "serverpath": "/program files/segger/jlink/JLinkGDBServerCL.exe",
+            "numberOfProcessors": 2,
+            "targetProcessor": 0,
+            "svdFile": "/program files/segger/ozone/config/cpu/cortex-a35_aarch64.svd"
+        }
+    ]
+}

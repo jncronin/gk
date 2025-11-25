@@ -17,7 +17,13 @@ int logger_printf(const timespec &now, const char *format, va_list va)
 {
     int ret = 0;
 
-    ret += logger_string("[", 1);
+    unsigned int core_id;
+    __asm__ volatile("mrs %[core_id], mpidr_el1\n" : [core_id] "=r" (core_id) :: "memory");
+    core_id &= 0xf;
+
+    ret += logger_string("[C", 2);
+    ret += logger_int(0, core_id, false, 10, -1, -1, 4, false, false);
+    ret += logger_string(",", 1);
     ret += logger_int(now.tv_sec, 0, true, 10, -1, -1, 8, false, false);
     ret += logger_string(".", 1);
     ret += logger_int(now.tv_nsec, 0, true, 10, 9, -1, 8, true, false);
@@ -103,7 +109,7 @@ int logger_printf(const timespec &now, const char *format, va_list va)
         }
 
         // length
-        int length = 8;
+        int length = 4;
         if(*format == 'l')
         {
             length = 4;

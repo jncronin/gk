@@ -19,11 +19,12 @@ extern VBlock vblock;
 void init_vblock();
 VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
     unsigned int lower_guard = 0, unsigned int upper_guard = 0,
-    VBlock &vb = vblock);
+    VBlock &vb = vblock, bool map = false);
 VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write, bool exec,
     unsigned int lower_guard = 0, unsigned int upper_guard = 0,
-    VBlock &vb = vblock);
+    VBlock &vb = vblock, bool map = false);
 VMemBlock vblock_valid(uintptr_t addr, VBlock &vb = vblock);
+int vblock_free(VMemBlock &v, VBlock &vb = vblock, bool unmap = false);
 
 #define VBLOCK_64k      65536ULL
 #define VBLOCK_4M       (4ULL*1024*1024)
@@ -64,6 +65,10 @@ class VBlock
         VMemBlock AllocFixedLevel2(uintptr_t addr, uint32_t tag);
         VMemBlock AllocFixedLevel3(uintptr_t addr, uint32_t tag);
 
+        bool FreeLevel1(VMemBlock &v);
+        bool FreeLevel2(VMemBlock &v);
+        bool FreeLevel3(VMemBlock &v);
+
         size_t GetFreeLevel1Index();
         size_t GetLevel1IndexToNotFullLevel2();
         std::pair<size_t, size_t> GetLevel12IndexToNotFullLevel3();
@@ -80,7 +85,7 @@ class VBlock
 
         VMemBlock Alloc(size_t size, uint32_t tag = 0);
         VMemBlock AllocFixed(size_t size, uintptr_t addr, uint32_t tag = 0);
-        void Free(VMemBlock &be);
+        bool Free(VMemBlock &be);
         std::pair<VMemBlock, uint32_t> Valid(uintptr_t addr);
 };
 
