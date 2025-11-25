@@ -91,9 +91,17 @@ class CriticalGuard
 
         void unlock(bool lock_test = true)
         {
-            if(lock_test && !is_locked)
+            if(!is_locked)
             {
-                klog("CriticalGuard: mismatched lock/unlock - potential bug\n");
+                if(lock_test)
+                {
+                    klog("CriticalGuard: mismatched lock/unlock - potential bug\n");
+                }
+                if(has_disabled_ints)
+                {
+                    restore_interrupts();
+                }
+                return;
             }
             std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
             is_locked = false;

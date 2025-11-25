@@ -21,7 +21,7 @@
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
 #define RIFSC_VMEM (PMEM_TO_VMEM(RIFSC_BASE))
 
-#define DEBUG_SD    1
+#define DEBUG_SD    0
 #define PROFILE_SDT 0
 
 extern PProcess p_kernel;

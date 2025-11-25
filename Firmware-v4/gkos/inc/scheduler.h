@@ -70,7 +70,7 @@ void Schedule(PThread t);
 
 // Called from PendSV therefore not mangled
 extern "C" {
-    Thread *GetNextThreadForCore();
+    Thread *GetNextThreadForCore(uint32_t iar, void *, uint32_t irq);
     void SetNextThreadForCore(Thread *t);
 }
 

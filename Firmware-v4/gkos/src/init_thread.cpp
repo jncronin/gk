@@ -41,5 +41,8 @@ void *init_thread(void *)
         }    
     }
 
-    while(true);
+    while(true)
+    {
+        Block();
+    }
 }

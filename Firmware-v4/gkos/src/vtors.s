@@ -170,6 +170,9 @@ _vtor_tbl_entry _lower32_serror
 
     # neither of the above - use the full interrupt handler
     bl gic_irq_handler
+
+    restore_regs
+    
     eret
 
 1:

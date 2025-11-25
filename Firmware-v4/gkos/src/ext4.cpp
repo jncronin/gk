@@ -33,7 +33,6 @@ static_assert(EXT4_DE_FIFO == DT_FIFO);
 static_assert(EXT4_DE_SOCK == DT_SOCK);
 static_assert(EXT4_DE_SYMLINK == DT_LNK);
 
-extern Process kernel_proc;
 extern char _sext4_data, _eext4_data;
 
 extern bool sd_ready;
@@ -148,7 +147,7 @@ static int get_mbr_entry()
                 sd_part = bdevs.partitions[i];
             }
 
-            klog("\toffeset: 0x%" PRIx32 ", %" PRIu32 "MB\n",
+            klog("\toffset:  0x%" PRIx32 ", %" PRIu32 "MB\n",
                 (uint32_t)bdevs.partitions[i].part_offset,
                 (uint32_t)(bdevs.partitions[i].part_offset / (1024 * 1024)));
             klog("\tsize:    0x%" PRIx32 ", %" PRIu32 "MB\n",
@@ -169,6 +168,7 @@ static int prepare_ext4()
         return false;
 
     // now check for valid fs
+    klog("ext4: registering partition %d\n", mbr_entry);
     int r = ext4_device_register(&sd_part, "sd");
     if(r != EOK)
     {
@@ -187,12 +187,16 @@ static int do_mount()
     const bool readonly = false;
 #endif
 
+    klog("ext4: mounting on / %s\n", readonly ? "RO" : "RW");
+
     int r = ext4_mount("sd", "/", readonly);
     if(r != EOK)
     {
         klog("ext4: mount failed %d\n", r);
         return r;
     }
+
+    klog("ext4: mount complete\n");
 
 #if !GK_EXT_READONLY
 #if GK_EXT_USE_JOURNAL 

@@ -173,7 +173,9 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
         }
         else
         {
+#ifdef DEBUG_SDC
             klog("sdc: cache hit for %llu @ v %llx\n", block_start, has_bb.vaddr);
+#endif
         }
 
         memcpy((void *)dest_addr, (const void *)(has_bb.vaddr + offset_bytes), block_size);
@@ -188,6 +190,63 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
 
 int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 {
-    klog("sdc_write: not implemented\n");
-    return -1;
+    /* Divide into bigblocks.  If the entire bigblock is written then don't need to load the
+        bigblock first, otherwise do */
+
+    uintptr_t src_addr = (uintptr_t)mem_address;
+
+    while(block_count)
+    {
+        auto cur_bb = block_start / b_per_bb;
+        auto b_offset_within_bb = block_start - cur_bb * b_per_bb;
+        auto byte_offset_within_bb = b_offset_within_bb * block_size;
+        
+        auto blocks_within_bb = std::min(b_per_bb,
+            std::min(b_per_bb - b_offset_within_bb, block_count));
+
+        auto whole_bb = blocks_within_bb == b_per_bb;
+
+        auto has_bb = sdc_bigblock_to_addr(cur_bb);
+
+        // need to load if not already loaded and not whole_bb
+        if(!has_bb.has_data && !whole_bb)
+        {
+            klog("sdc_write: partial bigblock write b: %llu within bb: %llx at b_offset: %llx - loading\n",
+                    blocks_within_bb, cur_bb, b_offset_within_bb);
+            
+            // load the data
+            auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
+            klog("sdc: big block load complete, ret %d\n", rret);
+            if(rret != 0)
+                return rret;
+            
+            InvalidateA35Cache(has_bb.vaddr, VBLOCK_64k, CacheType_t::Data, true);
+        }
+        else if(has_bb.has_data)
+        {
+            klog("sdc_write: cache hit, skipping load\n");
+        }
+        else if(whole_bb)
+        {
+            klog("sdc_write: whole bb, skipping load\n");
+        }
+
+        // copy the data
+        auto dest = has_bb.vaddr + byte_offset_within_bb;
+        memcpy((void *)dest, (const void *)src_addr, blocks_within_bb * block_size);
+
+        // put back in cache
+        CleanA35Cache(dest, blocks_within_bb * block_size, CacheType_t::Data, true);
+
+        // write out
+        auto wret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, false);
+        klog("sdc: big block write complete, ret %d\n", wret);
+        if(wret != 0)
+            return wret;
+
+        block_start += blocks_within_bb;
+        block_count -= blocks_within_bb;
+        src_addr += blocks_within_bb * block_size;
+    }
+    return 0;
 }

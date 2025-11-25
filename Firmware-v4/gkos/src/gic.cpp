@@ -107,7 +107,8 @@ int gic_set_enable(unsigned int irq_n)
 int gic_set_target(unsigned int irq_n, int cpu_id)
 {
     unsigned int ucpu_id = (cpu_id == GIC_TARGET_SELF) ? GetCoreID() : (unsigned int)cpu_id;
-    gic_set_8bit(irq_n, ucpu_id & 0xf, GIC_DISTRIBUTOR_BASE + 0x800);
+
+    gic_set_8bit(irq_n, (1U << ucpu_id) & 0xfU, GIC_DISTRIBUTOR_BASE + 0x800);
     return 0;
 }
 

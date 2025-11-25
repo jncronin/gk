@@ -54,8 +54,6 @@ uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
 void SimpleSignal::Signal(SignalOperation op, uint32_t val)
 {
     CriticalGuard cg(sl);
-    auto t = GetCurrentThreadForCore();
-    bool hpt = false;
     do_op(op, val);
     auto pwt = waiting_thread.lock();
     if(pwt)
@@ -63,13 +61,7 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
         CriticalGuard cg2(pwt->sl_blocking);
         pwt->set_is_blocking(false);
         pwt->blocking_on_prim = nullptr;
-        if(pwt->base_priority > t->base_priority)
-            hpt = true;
         signal_thread_woken(pwt);
-    }
-    if(hpt)
-    {
-        Yield();
     }
 }
 

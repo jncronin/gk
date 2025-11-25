@@ -4,7 +4,7 @@
 #include "kernel_time.h"
 #include "cpu.h"
 
-#define DEBUG_SCHEDULER 1
+#define DEBUG_SCHEDULER 0
 
 Scheduler sched;
 
@@ -119,7 +119,8 @@ inline void Scheduler::set_timeout(const PThread new_t)
     }
 
 #if DEBUG_SCHEDULER
-    klog("sched: setting delay for %llu ticks\n", reload);
+    if(unmask_val == 0x1)
+        klog("sched: setting delay for %llu ticks\n", reload);
 #endif
     __asm__ volatile(
         "msr cntp_tval_el0, %[delay]\n" 
@@ -462,12 +463,12 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
     next_thread[ncore] = nullptr;
 }
 
-Thread *GetNextThreadForCore()
+Thread *GetNextThreadForCore(uint32_t iar, void *, uint32_t irq)
 {
     auto ret = sched.GetNextThread(GetCoreID());
 #if DEBUG_SCHEDULER
-    klog("sched: get_next_thread_for_core(%u): returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
-        GetCoreID(),
+    klog("sched: get_next_thread_for_core(%u): switch due to %x returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
+        GetCoreID(), iar,
         (uint64_t)ret, ret->name.c_str(), ret->tss.sp_el1, (uint64_t)&ret->tss);
 #endif
     return ret;
