@@ -62,8 +62,28 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     uint64_t last_ms = clock_cur_ms();
 
-    // Create some threads
+    // Set up the kernel process
     p_kernel = std::make_shared<Process>("kernel", true);
+    {
+        CriticalGuard cg(p_kernel->open_files.sl);
+        auto fd_stdin = p_kernel->open_files.get_fixed_fildes(STDIN_FILENO);
+        p_kernel->open_files.f[fd_stdin] = std::make_shared<UARTFile>(true, false);
+
+        auto fd_stdout = p_kernel->open_files.get_fixed_fildes(STDOUT_FILENO);
+        p_kernel->open_files.f[fd_stdout] = std::make_shared<UARTFile>(false, true);
+
+        auto fd_stderr = p_kernel->open_files.get_fixed_fildes(STDERR_FILENO);
+        p_kernel->open_files.f[fd_stderr] = std::make_shared<UARTFile>(false, true);
+    }
+    {
+        CriticalGuard cg(p_kernel->env.sl);
+        p_kernel->env.envs.push_back("NAME=gk");
+        p_kernel->env.envs.push_back("HOME=/home/user");
+        p_kernel->env.envs.push_back("USER=user");
+        p_kernel->env.envs.push_back("NUMBER_OF_PROCESSORS=" + std::to_string(sched.ncores));
+    }
+
+    // Create some threads
 
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));

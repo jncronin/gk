@@ -17,15 +17,8 @@ void *init_thread(void *)
         klog("init: failed to open test process\n");
     }
 
-    klog("init: opened test process id %d\n", proc_fd);
-    p_test = std::make_shared<Process>("test", false);
-
-    // give test access to uart
-    {
-        CriticalGuard cg(p_test->open_files.sl);
-        auto fd2 = p_test->open_files.get_fixed_fildes(2);
-        p_test->open_files.f[fd2] = std::make_shared<UARTFile>(false, true);
-    }
+    klog("init: opened test process fd %d\n", proc_fd);
+    p_test = std::make_shared<Process>("test", false, GetCurrentThreadForCore()->p);
 
     Thread::threadstart_t test_ep;
     auto ret = elf_load_fildes(proc_fd, p_test, &test_ep);

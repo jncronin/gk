@@ -11,6 +11,10 @@
 #include <unordered_set>
 
 class Thread;
+class Process;
+
+using PProcess = std::shared_ptr<Process>;
+using WPProcess = std::weak_ptr<Process>;
 
 class Process
 {
@@ -43,6 +47,13 @@ class Process
                 VBlock blocks;
         };
 
+        class environ_t
+        {
+            public:
+                Spinlock sl;
+                std::vector<std::string> envs;
+        };
+
         std::string name;
         std::vector<std::shared_ptr<Thread>> threads;
         Spinlock sl;
@@ -52,13 +63,12 @@ class Process
 
         open_files_t open_files{};
         owned_pages_t owned_pages{};
+        environ_t env{};
 
         std::string cwd = "";
-        Process(const std::string &name, bool is_privileged = false);
+        Process(const std::string &name, bool is_privileged = false,
+            PProcess parent = nullptr);
 };
-
-using PProcess = std::shared_ptr<Process>;
-using WPProcess = std::weak_ptr<Process>;
 
 extern PProcess p_kernel;
 

@@ -1,11 +1,16 @@
 #include "process.h"
 #include "pmem.h"
 #include "vmem.h"
+#include "thread.h"
 
-Process::Process(const std::string &_name, bool _is_privileged)
+Process::Process(const std::string &_name, bool _is_privileged, PProcess parent)
 {
     name = _name;
     is_privileged = _is_privileged;
+
+    // don't allow unprivileged processes to create privileged ones
+    if(parent && parent->is_privileged == false)
+        is_privileged = false;
 
     if(!is_privileged)
     {
@@ -32,6 +37,20 @@ Process::Process(const std::string &_name, bool _is_privileged)
             // allocate the first page to catch null pointer references - not actually used except
             //  to prevent other regions being allocated there - the main logic is in TranslationFault_Handler
             vblock_alloc_fixed(VBLOCK_64k, 0, false, false, false, 0, 0, user_mem->blocks);
+        }
+    }
+
+    // inherit fds + environ
+    if(parent)
+    {
+        {
+            CriticalGuard cg(open_files.sl, parent->open_files.sl);
+            open_files.f = parent->open_files.f;
+        }
+
+        {
+            CriticalGuard cg(env.sl, parent->env.sl);
+            env.envs = parent->env.envs;
         }
     }
 }

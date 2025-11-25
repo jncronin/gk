@@ -103,4 +103,9 @@ static inline PThread &GetCurrentPThreadForCore()
     return sched.GetCurThread(GetCoreID());
 }
 
+static inline PProcess GetCurrentProcessForCore()
+{
+    return GetCurrentKernelThreadForCore()->p;
+}
+
 #endif
