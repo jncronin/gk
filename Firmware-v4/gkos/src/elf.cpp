@@ -66,7 +66,7 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
             klog("elf_load_filedes: failed to load phdr: %d, %d\n", bret, berrno);
             return -1;
         }
-        if(phdr.p_type == PT_LOAD)
+        if(phdr.p_type == PT_LOAD || phdr.p_type == PT_TLS)
         {
             auto foffset = phdr.p_offset;
             deferred_call(syscall_lseek, fd, foffset, SEEK_SET);
@@ -78,6 +78,27 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
             auto memsz = (unsigned long long)phdr.p_memsz;
             auto vaddr = phdr.p_vaddr;
 
+            bool is_tls = phdr.p_type == PT_TLS;
+            if(is_tls)
+            {
+                if(p->vb_tls.valid)
+                {
+                    klog("elf: too many PT_TLS sections in file\n");
+                    return -1;
+                }
+
+                CriticalGuard cg(p->user_mem->sl);
+                p->vb_tls = vblock_alloc(vblock_size_for(memsz), false, false, false, 0, 0, p->user_mem->blocks);
+                if(!p->vb_tls.valid)
+                {
+                    klog("elf: couldn't allocate vblock for PT_TLS of size %llu (%llu)\n",
+                        memsz, vblock_size_for(memsz));
+                    return -1;
+                }
+                p->vb_tls_data_size = memsz;
+                vaddr = p->vb_tls.data_start();
+            }
+
             while(memsz)
             {
                 // allocate memory for the current page
@@ -86,8 +107,25 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
 
                 {
                     CriticalGuard cg(p->user_mem->sl, p->owned_pages.sl);
-                    auto cur_vblock = vblock_alloc_fixed(VBLOCK_64k, cur_page, true, writeable, exec, 0, 0,
-                        p->user_mem->blocks);
+                    VMemBlock cur_vblock;
+                    if(is_tls)
+                    {
+                        // fake vblock for 1 page to satisfy per-page mapping done later
+                        cur_vblock.base = cur_page;
+                        cur_vblock.length = VBLOCK_64k;
+                        cur_vblock.valid = true;
+                        cur_vblock.user = false;
+                        cur_vblock.write = false;
+                        cur_vblock.exec = false;
+                        cur_vblock.lower_guard = 0;
+                        cur_vblock.upper_guard = 0;
+                    }
+                    else
+                    {
+                        // normal PT_LOAD segment
+                        cur_vblock = vblock_alloc_fixed(VBLOCK_64k, cur_page, true, writeable, exec, 0, 0,
+                            p->user_mem->blocks);
+                    }
 
                     if(!cur_vblock.valid)
                     {

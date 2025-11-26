@@ -12,6 +12,8 @@
 #define VBLOCK_TAG_GUARD_LOWER_POS          3
 #define VBLOCK_TAG_GUARD_UPPER_POS          5
 #define VBLOCK_TAG_GUARD(lower, upper)      (((lower) << VBLOCK_TAG_GUARD_LOWER_POS) | ((upper) << VBLOCK_TAG_GUARD_UPPER_POS))
+#define VBLOCK_TAG_TLS                      (1ULL << 7)
+
 
 class VBlock;
 extern VBlock vblock;
@@ -23,8 +25,10 @@ VMemBlock vblock_alloc(size_t size, bool user, bool write, bool exec,
 VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write, bool exec,
     unsigned int lower_guard = 0, unsigned int upper_guard = 0,
     VBlock &vb = vblock, bool map = false);
-VMemBlock vblock_valid(uintptr_t addr, VBlock &vb = vblock);
+VMemBlock vblock_valid(uintptr_t addr, VBlock &vb = vblock, uint32_t *tag = nullptr);
 int vblock_free(VMemBlock &v, VBlock &vb = vblock, bool unmap = false);
+
+size_t vblock_size_for(size_t n);
 
 #define VBLOCK_64k      65536ULL
 #define VBLOCK_4M       (4ULL*1024*1024)

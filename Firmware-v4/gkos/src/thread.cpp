@@ -98,11 +98,24 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
         t->tss.sp_el0 = uthread_ptr;
 
         t->tss.ttbr0 = owning_process->user_mem->ttbr0;
-        // TODO userspace tls structure
-        //t->tss.tpidr_el0 = ...
+
+        // userspace tls structure
+        if(owning_process->vb_tls.valid)
+        {
+            auto vb_t_tls = owning_process->user_mem->blocks.Alloc(
+                vblock_size_for(owning_process->vb_tls_data_size + 16),     // pointer to DTV at the beginning
+                VBLOCK_TAG_TLS | VBLOCK_TAG_USER | VBLOCK_TAG_WRITE
+            );
+            if(!vb_t_tls.valid)
+            {
+                klog("thread: could not allocate block for thread tls of size %llu\n",
+                    owning_process->vb_tls_data_size + 16);
+                return nullptr;
+            }
+
+            t->tss.tpidr_el0 = vb_t_tls.data_start();
+        }
     }
-
-
 
     {
         CriticalGuard cg(owning_process->sl);

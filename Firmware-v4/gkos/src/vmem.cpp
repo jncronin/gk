@@ -50,11 +50,11 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
     return 0;
 }
 
-static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr);
+static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr);
 static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
-    uintptr_t ttbr0, uintptr_t ttbr1)
+    uintptr_t ttbr0, uintptr_t ttbr1, uintptr_t *paddr_out)
 {
     uint64_t ttbr;
 
@@ -72,7 +72,7 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
 
         {
             CriticalGuard cg(sl_uh);
-            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr);
+            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out);
         }
     }
     else
@@ -88,11 +88,12 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
         }
 
         // no lock here - already done in calling function
-        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr);
+        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out);
     }
 }
 
-static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr)
+static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr,
+    uintptr_t *paddr_out)
 {
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto l3_addr = (vaddr >> 16) & 0x1fffULL;
@@ -165,6 +166,9 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
         attr |= PAGE_NG;
 
     pt[l3_addr] = (paddr & ~0xffffULL) | attr;
+
+    if(paddr_out)
+        *paddr_out = paddr;
 
     return 0;
 }

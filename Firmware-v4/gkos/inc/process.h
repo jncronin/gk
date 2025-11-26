@@ -85,6 +85,10 @@ class Process
         /* pthread TLS data */
         pthread_tls_t pthread_tls{};
 
+        /* elf TLS template */
+        VMemBlock vb_tls = InvalidVMemBlock();
+        size_t vb_tls_data_size;        // actual size of TLS data to copy
+
         std::string cwd = "";
         Process(const std::string &name, bool is_privileged = false,
             PProcess parent = nullptr);

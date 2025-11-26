@@ -123,7 +123,7 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
 
         klog("pf: lazy map %llx\n", far);
 
-        if(vmem_map(far & ~(VBLOCK_64k), 0, be.user, be.write, be.exec))
+        if(vmem_map(far & ~(VBLOCK_64k - 1), 0, be.user, be.write, be.exec))
         {
             return SupervisorThreadFault();
         }
@@ -140,9 +140,10 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
         }
 
         VMemBlock be = InvalidVMemBlock();
+        uint32_t be_tag;
         {
             CriticalGuard cg(umem->sl);
-            be = vblock_valid(far, umem->blocks);
+            be = vblock_valid(far, umem->blocks, &be_tag);
         }
 
         if(!be.valid)
@@ -162,10 +163,47 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
         {
             CriticalGuard cg(umem->sl);
 
-            if(vmem_map(far & ~(VBLOCK_64k), 0, be.user, be.write, be.exec, umem->ttbr0))
+            if(vmem_map(far & ~(VBLOCK_64k - 1), 0, be.user, be.write, be.exec, umem->ttbr0))
             {
                 return user ? UserThreadFault() : SupervisorThreadFault();
             }
+        }
+
+        if(be_tag & VBLOCK_TAG_TLS)
+        {
+            // need to copy tls data into the block
+            auto dest_offset = far - be.data_start();
+            auto dest_page = dest_offset / VBLOCK_64k;
+
+            uintptr_t src_pointer;
+            size_t src_size;
+            {
+                auto p = GetCurrentProcessForCore();
+                CriticalGuard cg(p->sl);
+                src_pointer = p->vb_tls.data_start();
+                src_size = p->vb_tls_data_size;
+            }
+
+            auto src_offset = dest_page * VBLOCK_64k - 16;
+            auto dst_page_offset = 0;
+
+            if(dest_page == 0)
+            {
+                auto dst = (volatile uint64_t *)be.data_start();
+                dst[0] = 0;     // should point to DTV (see ELF Handling for TLS) but for now catch accesses
+                dst[1] = 0;     // reserved
+
+                src_offset += 16;
+                dst_page_offset += 16;
+            }
+
+            auto bytes_left = src_size - src_offset;
+            auto to_copy = std::min(bytes_left, VBLOCK_64k - dst_page_offset);
+
+            memcpy((void *)(be.data_start() + dest_page * VBLOCK_64k + dst_page_offset),
+                (const void *)(src_pointer + src_offset), to_copy);
+
+            klog("pf: lazy initialize tls region\n");
         }
 
         klog("pf: done\n");

@@ -9,7 +9,7 @@
 #define PMEM_TO_VMEM(a) ((a) + UH_START)
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr0 = ~0ULL,
-    uintptr_t ttbr1 = ~0ULL);
+    uintptr_t ttbr1 = ~0ULL, uintptr_t *paddr_out = nullptr);
 int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 int vmem_unmap(const VMemBlock &vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 void vmem_invlpg(uintptr_t vaddr);

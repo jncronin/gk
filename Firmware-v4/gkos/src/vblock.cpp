@@ -137,7 +137,7 @@ VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write,
     return ret;
 }
 
-VMemBlock vblock_valid(uintptr_t addr, VBlock &vb)
+VMemBlock vblock_valid(uintptr_t addr, VBlock &vb, uint32_t *tag_out)
 {
     auto [blk, tag] = vb.Valid(addr);
     if(blk.valid)
@@ -147,7 +147,10 @@ VMemBlock vblock_valid(uintptr_t addr, VBlock &vb)
         blk.exec = (tag & VBLOCK_TAG_EXEC) != 0;
         blk.lower_guard = (tag >> VBLOCK_TAG_GUARD_LOWER_POS) & GUARD_BITS_MAX;
         blk.upper_guard = (tag >> VBLOCK_TAG_GUARD_UPPER_POS) & GUARD_BITS_MAX;
-    } 
+
+        if(tag_out)
+            *tag_out = tag;
+    }
     return blk;
 }
 
@@ -161,6 +164,17 @@ int vblock_free(VMemBlock &v, VBlock &vb, bool unmap)
     {
         return vmem_unmap(v);
     }
+    return 0;
+}
+
+size_t vblock_size_for(size_t size)
+{
+    if(size <= VBLOCK_64k)
+        return VBLOCK_64k;
+    if(size <= VBLOCK_4M)
+        return VBLOCK_4M;
+    if(size <= VBLOCK_512M)
+        return VBLOCK_512M;
     return 0;
 }
 
