@@ -18,6 +18,8 @@ struct sem_t
 
 int get_free_fildes(Process &p, int start_fd = 0);
 
+intptr_t syscall_sbrk(intptr_t increment, int *_errno);
+
 int syscall_fstat(int file, struct stat *st, int *_errno);
 int syscall_write(int file, char *buf, int nbytes, int *_errno);
 int syscall_read(int file, char *buf, int nbytes, int *_errno);

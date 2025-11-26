@@ -64,6 +64,15 @@ class Process
                 std::map<pthread_key_t, void (*)(void *)> tls_data;
         };
 
+        class heap_t
+        {
+            public:
+                Spinlock sl;
+                // allow for lazy-initialized heap because process could conceivably mmap everything
+                VMemBlock vb_heap = InvalidVMemBlock();
+                uintptr_t brk = 0;
+        };
+
         std::string name;
         std::vector<std::shared_ptr<Thread>> threads;
         id_t pid;
@@ -75,6 +84,7 @@ class Process
         open_files_t open_files{};
         owned_pages_t owned_pages{};
         environ_t env{};
+        heap_t heap{};
 
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);

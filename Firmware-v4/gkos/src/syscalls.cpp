@@ -43,6 +43,13 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             *reinterpret_cast<int *>(r1) = -1;
             break;
 
+        case __syscall_sbrk:
+            {
+                *reinterpret_cast<intptr_t *>(r1) = syscall_sbrk((intptr_t)r2,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         case __syscall_get_env_count:
             {
                 *reinterpret_cast<int *>(r1) = syscall_get_env_count(reinterpret_cast<int *>(r3));
