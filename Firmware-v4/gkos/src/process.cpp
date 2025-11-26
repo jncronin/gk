@@ -62,7 +62,10 @@ void Process::owned_pages_t::add(const PMemBlock &b)
 
     while(start < end)
     {
-        p.insert(start);
+        auto val = (uint32_t)(start >> 16);
+        if(b.is_shared)
+            val |= 0x80000000UL;
+        p.insert(val);
         start += VBLOCK_64k;
     }
 }

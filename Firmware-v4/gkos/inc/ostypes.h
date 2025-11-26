@@ -7,6 +7,8 @@
 class Process;
 class Thread;
 
+using id_t = unsigned int;
+
 using PProcess = std::shared_ptr<Process>;
 using PThread = std::shared_ptr<Thread>;
 using WPThread = std::weak_ptr<Thread>;
@@ -20,6 +22,7 @@ struct MemRegion
 
 struct PMemBlock : public MemRegion
 {
+    bool is_shared = false;
 };
 
 #define GUARD_BITS_64k                      0x1

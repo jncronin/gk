@@ -2,6 +2,7 @@
 #include "vblock.h"
 #include "process.h"
 #include "vmem.h"
+#include "threadproclist.h"
 
 void thread_stub(Thread::threadstart_t func, void *p)
 {
@@ -30,6 +31,10 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     t->p = owning_process;
     t->base_priority = priority;
     t->is_privileged = is_priv;
+    t->id = ThreadList.Register(t);
+
+    if(!owning_process->is_privileged)
+        t->is_privileged = false;
 
     // create a kernel stack for the thread
     t->mr_kernel_thread = vblock_alloc(VBLOCK_4M, false, true, false, GUARD_BITS_64k, GUARD_BITS_64k);

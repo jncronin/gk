@@ -13,7 +13,7 @@
 
 struct sem_t
 {
-    UserspaceSemaphore *s;
+    id_t s;
 };
 
 int get_free_fildes(Process &p, int start_fd = 0);
@@ -59,7 +59,7 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno);
 int syscall_pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime, int *signalled, int *_errno);
 int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno);
 
-int syscall_pthread_join(Thread *thread, void **retval, int *_errno);
+int syscall_pthread_join(pthread_t thread, void **retval, int *_errno);
 int syscall_pthread_exit(void **retval, int *_errno);
 
 int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr_t *attr, int *_errno);
@@ -76,8 +76,8 @@ int syscall_sem_getvalue(sem_t *sem, int *outval, int *_errno);
 int syscall_sem_post(sem_t *sem, int *_errno);
 int syscall_sem_trywait(sem_t *sem, int clock_id, const timespec *until, int *_errno);
 
-int syscall_set_thread_priority(Thread *thread, int priority, int *_errno);
-int syscall_get_thread_priority(Thread *thread, int *_errno);
+int syscall_set_thread_priority(pthread_t thread, int priority, int *_errno);
+int syscall_get_thread_priority(pthread_t thread, int *_errno);
 int syscall_sched_get_priority_max(int policy, int *_errno);
 int syscall_sched_get_priority_min(int policy, int *_errno);
 

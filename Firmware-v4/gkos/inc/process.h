@@ -9,6 +9,8 @@
 #include "vblock.h"
 #include "ostypes.h"
 #include <unordered_set>
+#include <map>
+#include "sync_primitive_locks.h"
 
 class Thread;
 class Process;
@@ -34,7 +36,7 @@ class Process
         {
             public:
                 Spinlock sl;
-                std::unordered_set<uintptr_t> p{};
+                std::unordered_set<uint32_t> p{};
 
                 void add(const PMemBlock &b);
         };
@@ -54,8 +56,17 @@ class Process
                 std::vector<std::string> envs;
         };
 
+        class pthread_tls_t
+        {
+            public:
+                Spinlock sl;
+                pthread_key_t next_key = 0;
+                std::map<pthread_key_t, void (*)(void *)> tls_data;
+        };
+
         std::string name;
         std::vector<std::shared_ptr<Thread>> threads;
+        id_t pid;
         Spinlock sl;
 
         bool is_privileged = true;
@@ -64,6 +75,15 @@ class Process
         open_files_t open_files{};
         owned_pages_t owned_pages{};
         environ_t env{};
+
+        /* Owned userspace sync primitives */
+        owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);
+        owned_sync_list<Condition> owned_conditions = owned_sync_list(ConditionList);
+        owned_sync_list<RwLock> owned_rwlocks = owned_sync_list(RwLockList);
+        owned_sync_list<UserspaceSemaphore> owned_semaphores = owned_sync_list(UserspaceSemaphoreList);
+
+        /* pthread TLS data */
+        pthread_tls_t pthread_tls{};
 
         std::string cwd = "";
         Process(const std::string &name, bool is_privileged = false,

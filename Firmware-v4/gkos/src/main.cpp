@@ -13,6 +13,7 @@
 #include "gk_conf.h"
 #include "sd.h"
 #include "ext4_thread.h"
+#include "threadproclist.h"
 #include <memory>
 
 // test threads
@@ -82,6 +83,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
         p_kernel->env.envs.push_back("USER=user");
         p_kernel->env.envs.push_back("NUMBER_OF_PROCESSORS=" + std::to_string(sched.ncores));
     }
+    p_kernel->pid = ProcessList.Register(p_kernel);
 
     // Create some threads
 

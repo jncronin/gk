@@ -2,10 +2,13 @@
 #define THREAD_H
 
 #include <memory>
+#include <map>
+#include <vector>
 #include "ostypes.h"
 #include "osmutex.h"
 #include "kernel_time.h"
 #include "syscalls.h"
+#include "sync_primitive_locks.h"
 
 static constexpr uint32_t thread_signal_lwext = 0x1;
 
@@ -23,10 +26,17 @@ class Thread
         kernel_time block_until;
 
         inline bool get_is_blocking() const { return is_blocking; }
-        inline void set_is_blocking(bool val, bool = false) { is_blocking = val; }
+        inline void set_is_blocking(bool val, bool = false)
+        {
+            is_blocking = val;
+            blocking_on_prim = nullptr;
+            blocking_on_thread = WPThread{};
+            block_until = kernel_time_invalid();
+        }
 
         std::shared_ptr<Process> p;
         std::string name;
+        id_t id;
 
         int base_priority;
         bool is_privileged;
@@ -39,6 +49,29 @@ class Thread
         /* Used for waiting on inter-process RPC returns */
         SimpleSignal ss;
         WaitSimpleSignal_params ss_p;
+
+        /* Userpsace sync primitives locked by this thread */
+        locked_sync_list<Mutex> locked_mutexes;
+        locked_sync_list<RwLock> locked_rwlocks;
+
+        /* pthread TLS data */
+        Spinlock sl_pthread_tls;
+        std::map<pthread_key_t, void *> tls_data;
+        /* pthread cleanup handlers - not fully implemented - need to run in process userspace context */
+        struct cleanup_handler
+        {
+            void (*routine)(void *);
+            void *arg;
+        };
+        std::vector<cleanup_handler> cleanup_list;
+
+        /* return value, or pointers to a waiting thread and where it wants the retval placed */
+        void *retval;
+        WPThread join_thread{};
+        void **join_thread_retval;
+
+        /* cleanup stuff */
+        bool for_deletion = false;
 
         typedef void *(*threadstart_t)(void *p);
         static std::shared_ptr<Thread> Create(const std::string &name,
