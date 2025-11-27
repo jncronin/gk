@@ -28,6 +28,8 @@
 #define GK_ENABLE_PROFILE           0
 #define GK_AUDIO_LATENCY_LIMIT_MS   50
 #define GK_PIPESIZE                 65536
+#define GK_SCREEN_WIDTH             800
+#define GK_SCREEN_HEIGHT            480
 
 #define GK_LOG_PERSISTENT           0
 #define GK_LOG_RTT                  1

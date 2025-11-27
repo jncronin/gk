@@ -131,6 +131,9 @@ int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,
     void *cl_a, void *cl_b, void *ones, void *zeros, int *_errno);
 int syscall_icacheinvalidate(int *_errno);
 
+int syscall_getscreenmodeex(int *width, int *height, int *pf, int *refresh, int *_errno);
+int syscall_setscreenmode(int *width, int *height, int *pf, int *refresh, int *_errno);
+
 static inline int deferred_return(int *_errno = nullptr, kernel_time until = kernel_time_invalid())
 {
     auto t = GetCurrentKernelThreadForCore();

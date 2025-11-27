@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <map>
 #include "sync_primitive_locks.h"
+#include "gk_conf.h"
 
 class Thread;
 class Process;
@@ -73,6 +74,16 @@ class Process
                 uintptr_t brk = 0;
         };
 
+        class screen_t
+        {
+            public:
+                Spinlock sl;
+                uint16_t screen_w = GK_SCREEN_WIDTH;
+                uint16_t screen_h = GK_SCREEN_HEIGHT;
+                uint8_t screen_pf = 0;
+                unsigned int screen_refresh = 60;
+        };
+
         std::string name;
         std::vector<std::shared_ptr<Thread>> threads;
         id_t pid;
@@ -85,6 +96,7 @@ class Process
         owned_pages_t owned_pages{};
         environ_t env{};
         heap_t heap{};
+        screen_t screen{};
 
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);

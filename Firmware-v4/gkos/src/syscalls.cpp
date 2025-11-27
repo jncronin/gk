@@ -283,6 +283,30 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
+        case __syscall_getscreenmode:
+            {
+                auto p = reinterpret_cast<__syscall_getscreenmode_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_getscreenmodeex(p->x, p->y, p->pf, nullptr,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_getscreenmodeex:
+            {
+                auto p = reinterpret_cast<__syscall_getscreenmodeex_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_getscreenmodeex(p->x, p->y, p->pf, p->refresh,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_setscreenmode:
+            {
+                auto p = reinterpret_cast<__syscall_getscreenmodeex_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setscreenmode(p->x, p->y, p->pf, p->refresh,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
         case __syscall_thread_cleanup:
             {
@@ -327,81 +351,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
-#if 0
-        case __syscall_sbrk:
-            {
-                auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
-
-                CriticalGuard cg(p.sl);
-                if(p.heap.valid)
-                {
-                    auto nbytes = (int)r2;
-
-                    if(nbytes == 0)
-                    {
-                        *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
-                    }
-                    else if(nbytes > 0)
-                    {
-                        auto unbytes = static_cast<uint32_t>(nbytes);
-
-                        if((p.heap.length - p.brk) < unbytes)
-                        {
-                            *reinterpret_cast<int *>(r1) = -1;
-                            *reinterpret_cast<int *>(r3) = ENOMEM;
-                        }
-                        else
-                        {
-                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
-
-                            // Not required to clear - newlib doesn't define MORECORE_CLEARS
-                            /*
-                            for(unsigned int i = 0; i < unbytes; i += 4)
-                            {
-                                *reinterpret_cast<uint32_t *>(p.heap.address + p.brk + i) = 0;
-                            }
-                            */
-                            p.brk += unbytes;
-                        }
-                    }
-#if 1
-                    else
-                    {
-                        // nbytes < 0
-                        auto unbytes = static_cast<uint32_t>(-nbytes);
-
-                        if(p.brk < unbytes)
-                        {
-                            *reinterpret_cast<int *>(r1) = -1;
-                            *reinterpret_cast<int *>(r3) = ENOMEM;
-                        }
-                        else
-                        {
-                            *reinterpret_cast<uint32_t *>(r1) = p.heap.address + p.brk;
-                            p.brk -= unbytes;
-                        }
-                    }
-#endif
-
-#if 0
-                    {
-                        klog("sbrk: nbytes: %d, new_brk: %u, ret: %x, ret@: %x\n",
-                            nbytes, p.brk, *reinterpret_cast<uint32_t *>(r1), reinterpret_cast<uint32_t>(r1));
-                    }
-#endif
-                }
-                else
-                {
-                    // Invalid heap
-                    *reinterpret_cast<int *>(r1) = -1;
-                    *reinterpret_cast<int *>(r3) = ENOMEM;
-                }
-            }
-            break;
-#endif
-
-#if 0
         case __syscall_fstat:
             {
                 auto p = reinterpret_cast<struct __syscall_fstat_params *>(r2);
@@ -409,7 +358,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
-#endif
 
         case __syscall_write:
             {
@@ -419,7 +367,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
-#if 0
         case __syscall_read:
             {
                 auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
@@ -437,7 +384,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_isatty:
             {
-                auto p = reinterpret_cast<int>(r2);
+                auto p = (int)(intptr_t)r2;
                 int ret = syscall_isatty(p, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
@@ -461,7 +408,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_close1:
             {
-                auto f = reinterpret_cast<int>(r2);
+                auto f = (int)(intptr_t)r2;
                 int ret = syscall_close1(f, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
@@ -469,12 +416,13 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         case __syscall_close2:
             {
-                auto f = reinterpret_cast<int>(r2);
+                auto f = (int)(intptr_t)r2;
                 int ret = syscall_close2(f, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
 
+#if 0
         case __syscall_exit:
             {
                 auto rc = reinterpret_cast<int>(r1);
