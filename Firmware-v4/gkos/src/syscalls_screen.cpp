@@ -32,7 +32,7 @@ static bool scr_height_valid(int h)
 
 static bool scr_pf_valid(int pf)
 {
-    if(pf < 0 || pf > 10)
+    if(pf < 0 || pf > GK_PIXELFORMAT_MAX)
         return false;
     return true;
 }
