@@ -156,11 +156,14 @@ _vtor_tbl_entry _lower32_serror
 .macro irq_stub code
     save_regs
 
-# early identify a task switch irq (8 or 30)
+# early identify a spurious irq (1023) or task switch irq (8 or 30)
     ldr x1, =GIC_INTERFACE_BASE         // GIC_INTERFACE_BASE
     ldr w0, [x1, #0x20]                 // non-secure IAR alias
     dmb ish
     and w2, w0, #1023
+
+    cmp w2, #GIC_IRQ_SPURIOUS
+    b.eq 3f
 
     cmp w2, #GIC_SGI_YIELD
     b.eq 2f
@@ -168,9 +171,10 @@ _vtor_tbl_entry _lower32_serror
     cmp w2, #GIC_PPI_NS_PHYS
     b.eq 1f
 
-    # neither of the above - use the full interrupt handler
+    # none of the above - use the full interrupt handler
     bl gic_irq_handler
 
+3:
     restore_regs
     
     eret
