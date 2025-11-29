@@ -12,6 +12,8 @@
 #include "sync_primitive_locks.h"
 #include "threadproclist.h"
 
+#define DEBUG_SYNC 0
+
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     void *(*start_func)(void *), void *arg, int *_errno)
 {
@@ -79,30 +81,33 @@ int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t
         *_errno = ENOMEM;
         return -1;
     }
+
+#if DEBUG_SYNC
+    klog("pthread_mutex: create mutex id %d\n", m->id);
+#endif
     
     auto t = GetCurrentThreadForCore();
     *mutex = t->p->owned_mutexes.add(m);
 
-    /* We need some clever way of addressing mutexes
-        On balance, a global list seems to work best
-        Add that, and an _id_ value here so we can store
-        this value in the "locked_mutexes" member in threads
-        
-        Potentially use the thread/process list template.
-
-        Need to change the owned_mutexes etc lists to use this
-        global id value instead.
-        */
     return 0;
 }
 
 static PMutex check_mutex(pthread_mutex_t *mutex)
 {
+#if DEBUG_SYNC
+    klog("check_mutex: mutex = %llx\n", (uintptr_t)mutex);
+#endif
     if(!mutex)
         return nullptr;
+#if DEBUG_SYNC
+    klog("check_mutex: *mutex = %u\n", *mutex);
+#endif
     if(*mutex == _PTHREAD_MUTEX_INITIALIZER)
     {
         syscall_pthread_mutex_init(mutex, nullptr, nullptr);
+#if DEBUG_SYNC
+        klog("check_mutex: mutex_initialzer - init(), now id = %u\n", *mutex);
+#endif
     }
     auto t = GetCurrentThreadForCore();
     return t->p->owned_mutexes.get(*mutex);

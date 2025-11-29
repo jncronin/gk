@@ -15,17 +15,17 @@ using PUserspaceSemaphore = std::shared_ptr<UserspaceSemaphore>;
 
 template <class PrimType> struct owned_sync_list
 {
-    IDList<PrimType> &global_list;
+    IDList<PrimType, std::shared_ptr<PrimType>> &global_list;
     using PT = std::shared_ptr<PrimType>;
 
-    owned_sync_list(IDList<PrimType> &_global_list) : global_list(_global_list) {}
+    owned_sync_list(IDList<PrimType, std::shared_ptr<PrimType>> &_global_list) : global_list(_global_list) {}
 
     Spinlock sl;
     std::set<id_t> pset;
 
     id_t add(id_t id)
     {
-        CriticalGuard cg(sl);
+        CriticalGuard cg(sl, global_list.sl);
         pset.insert(id);
         return id;
     }
@@ -52,8 +52,12 @@ template <class PrimType> struct owned_sync_list
         auto iter = pset.find(id);
         if(iter != pset.end())
         {
-            return global_list._get(id);
+            auto ret = global_list._get(id);
+            if(!ret)
+                klog("sync_list_get: id %u not in global list\n", id);
+            return ret;
         }
+        klog("sync_list_get: id %u not in local list\n", id);
         return nullptr;
     }
 
