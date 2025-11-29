@@ -13,6 +13,7 @@
 //#include "sound.h"
 //#include "btnled.h"
 #include "util.h"
+#include "screen.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -306,6 +307,19 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
                     reinterpret_cast<int *>(r3));
             }
             break;
+
+        case __syscall_gpuenqueue:
+            {
+                auto p = reinterpret_cast<__syscall_gpuenqueue_params *>(r2);
+                int ret = syscall_gpuenqueue(p->msgs, p->nmsg, p->nsent, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_flipscreen:
+            *reinterpret_cast<uintptr_t *>(r1) = screen_update();
+            break;
+
 
 #if 0
         case __syscall_thread_cleanup:

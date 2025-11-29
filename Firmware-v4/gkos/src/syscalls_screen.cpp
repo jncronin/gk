@@ -1,5 +1,6 @@
 #include "process.h"
 #include "syscalls_int.h"
+#include "screen.h"
 
 int syscall_getscreenmodeex(int *width, int *height, int *pf, int *refresh, int *_errno)
 {
@@ -96,6 +97,46 @@ int syscall_setscreenmode(int *width, int *height, int *pf, int *refresh, int *_
     p->screen.screen_h = new_height;
     p->screen.screen_pf = new_pf;
     p->screen.screen_refresh = new_refresh;
+
+    return 0;
+}
+
+// old GPUEnqueue methods
+int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int *_errno)
+{
+    ADDR_CHECK_BUFFER_R(msgs, nmsg * sizeof(msgs));
+
+    for(auto i = 0U; i < nmsg; i++)
+    {
+        auto cur_msg = msgs[i];
+
+        switch(cur_msg.type)
+        {
+            case gpu_message_type::FlipBuffers:
+                {
+                    auto next_buffer = screen_update();
+                    if(cur_msg.dest_addr)
+                    {
+                        ADDR_CHECK_STRUCT_W((uintptr_t *)cur_msg.dest_addr);
+
+                        *(uintptr_t *)cur_msg.dest_addr = next_buffer;
+                    }
+                }
+                break;
+
+            case gpu_message_type::SignalThread:
+                break;
+
+            default:
+                klog("gpu: unhandled message type %d\n", (int)cur_msg.type);
+        }
+    }
+
+    if(nsent)
+    {
+        ADDR_CHECK_STRUCT_W(nsent);
+        *nsent = nmsg;
+    }
 
     return 0;
 }

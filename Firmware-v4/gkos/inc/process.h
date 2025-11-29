@@ -82,6 +82,9 @@ class Process
                 uint16_t screen_h = GK_SCREEN_HEIGHT;
                 uint8_t screen_pf = 0;
                 unsigned int screen_refresh = 60;
+
+                unsigned int screen_layer = 0;
+                VMemBlock bufs[3] = { InvalidVMemBlock(), InvalidVMemBlock(), InvalidVMemBlock() };
         };
 
         std::string name;

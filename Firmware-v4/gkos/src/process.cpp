@@ -2,6 +2,7 @@
 #include "pmem.h"
 #include "vmem.h"
 #include "thread.h"
+#include "screen.h"
 
 Process::Process(const std::string &_name, bool _is_privileged, PProcess parent)
 {
@@ -51,6 +52,20 @@ Process::Process(const std::string &_name, bool _is_privileged, PProcess parent)
         {
             CriticalGuard cg(env.sl, parent->env.sl);
             env.envs = parent->env.envs;
+        }
+    }
+
+    // screen setup
+    {
+        CriticalGuard cg(screen.sl);
+        screen.screen_layer = is_privileged ? 1 : 0;
+
+        for(unsigned int buf = 0; buf < 3; buf++)
+        {
+            screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes), !is_privileged, true,
+                false, 0, 0, is_privileged ? vblock : user_mem->blocks);
+            screen_map_for_process(screen.bufs[buf], screen.screen_layer, buf,
+                is_privileged ? 0U : user_mem->ttbr0);
         }
     }
 }
