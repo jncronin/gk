@@ -164,6 +164,14 @@ int logger_printf(const timespec &now, const char *format, va_list va)
                 has_precision ? precision : -1,
                 length, zeropad, *format == 'X');
         }
+        else if(*format == 'p' || *format == 'P')
+        {
+            ret += logger_string("0x", 2) +
+                logger_int(0, va_arg(va, uintptr_t), false, 16,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    sizeof(uintptr_t), zeropad, *format == 'P'); 
+        }
         else if(*format == 'u')
         {
             ret += logger_int(0, va_arg(va, uint64_t), false, 10,
