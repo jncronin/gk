@@ -237,14 +237,12 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
 
             if((pt[l3_addr] & DT_PAGE) == DT_PAGE)
             {
-                // ideally try and batch up the ipi invlpg here but its not entirely clear how at the moment
-
                 auto page = pt[l3_addr] & 0xffffffff0000ULL;
 
                 pt[l3_addr] = 0;
 
                 auto act_vpage = vaddr + vaddr_adjust;
-                vmem_invlpg(act_vpage);
+                vmem_invlpg(act_vpage, ttbr);
 
                 PMemBlock pb;
                 pb.base = page;
@@ -260,15 +258,16 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
     return 0;
 }
 
-void vmem_invlpg(uintptr_t vaddr)
+void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr)
 {
+    // All ttbr1 pages are marked as global, vae1s ignores the asid here and instead acts like vaae1s
     __asm__ volatile(
         "dsb ishst\n"
-        "tlbi vaae1is, %[addr_enc]\n"
+        "tlbi vae1is, %[addr_enc]\n"
         "dsb ish\n"
         "isb\n"
         : :
-        [addr_enc] "r" (vaddr >> 12)
+        [addr_enc] "r" ((vaddr >> 12) | (ttbr & 0xffff000000000000ULL))
         : "memory"
     );
 }
