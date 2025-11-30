@@ -18,7 +18,7 @@ void *init_thread(void *)
     }
 
     klog("init: opened test process fd %d\n", proc_fd);
-    p_test = std::make_shared<Process>("test", false, GetCurrentThreadForCore()->p);
+    p_test = Process::Create("test", false, GetCurrentThreadForCore()->p);
 
     Thread::threadstart_t test_ep;
     auto ret = elf_load_fildes(proc_fd, p_test, &test_ep);

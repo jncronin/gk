@@ -4,16 +4,18 @@
 #include "thread.h"
 #include "screen.h"
 
-Process::Process(const std::string &_name, bool _is_privileged, PProcess parent)
+PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
 {
-    name = _name;
-    is_privileged = _is_privileged;
+    auto ret = ProcessList.Create();
+
+    ret->name = _name;
+    ret->is_privileged = _is_privileged;
 
     // don't allow unprivileged processes to create privileged ones
     if(parent && parent->is_privileged == false)
-        is_privileged = false;
+        ret->is_privileged = false;
 
-    if(!is_privileged)
+    if(!ret->is_privileged)
     {
         // generate a user space paging setup
         auto ttbr0_reg = Pmem.acquire(VBLOCK_64k);
@@ -25,19 +27,19 @@ Process::Process(const std::string &_name, bool _is_privileged, PProcess parent)
         quick_clear_64((void *)PMEM_TO_VMEM(ttbr0_reg.base));
 
         {
-            CriticalGuard cg(owned_pages.sl);
-            owned_pages.add(ttbr0_reg);
+            CriticalGuard cg(ret->owned_pages.sl);
+            ret->owned_pages.add(ttbr0_reg);
         }
 
-        user_mem = std::make_unique<userspace_mem_t>();
+        ret->user_mem = std::make_unique<userspace_mem_t>();
         {
-            CriticalGuard cg(user_mem->sl);
-            user_mem->ttbr0 = ttbr0_reg.base;
-            user_mem->blocks.init(0);
+            CriticalGuard cg(ret->user_mem->sl);
+            ret->user_mem->ttbr0 = ttbr0_reg.base | ((uint64_t)ret->id << 48);
+            ret->user_mem->blocks.init(0);
 
             // allocate the first page to catch null pointer references - not actually used except
             //  to prevent other regions being allocated there - the main logic is in TranslationFault_Handler
-            vblock_alloc_fixed(VBLOCK_64k, 0, false, false, false, 0, 0, user_mem->blocks);
+            vblock_alloc_fixed(VBLOCK_64k, 0, false, false, false, 0, 0, ret->user_mem->blocks);
         }
     }
 
@@ -45,29 +47,32 @@ Process::Process(const std::string &_name, bool _is_privileged, PProcess parent)
     if(parent)
     {
         {
-            CriticalGuard cg(open_files.sl, parent->open_files.sl);
-            open_files.f = parent->open_files.f;
+            CriticalGuard cg(ret->open_files.sl, parent->open_files.sl);
+            ret->open_files.f = parent->open_files.f;
         }
 
         {
-            CriticalGuard cg(env.sl, parent->env.sl);
-            env.envs = parent->env.envs;
+            CriticalGuard cg(ret->env.sl, parent->env.sl);
+            ret->env.envs = parent->env.envs;
         }
     }
 
     // screen setup
     {
-        CriticalGuard cg(screen.sl);
-        screen.screen_layer = is_privileged ? 1 : 0;
+        CriticalGuard cg(ret->screen.sl);
+        ret->screen.screen_layer = ret->is_privileged ? 1 : 0;
 
         for(unsigned int buf = 0; buf < 3; buf++)
         {
-            screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes), !is_privileged, true,
-                false, 0, 0, is_privileged ? vblock : user_mem->blocks);
-            screen_map_for_process(screen.bufs[buf], screen.screen_layer, buf,
-                is_privileged ? 0U : user_mem->ttbr0);
+            ret->screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes),
+                !ret->is_privileged, true,
+                false, 0, 0, ret->is_privileged ? vblock : ret->user_mem->blocks);
+            screen_map_for_process(ret->screen.bufs[buf], ret->screen.screen_layer, buf,
+                ret->is_privileged ? 0U : ret->user_mem->ttbr0);
         }
     }
+
+    return ret;
 }
 
 void Process::owned_pages_t::add(const PMemBlock &b)

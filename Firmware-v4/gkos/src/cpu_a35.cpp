@@ -27,6 +27,8 @@ void cpu_setup_vmem()
     tcr_el1 |= (0x3ULL << 12);              // shareable page tables
     tcr_el1 |= (0x1ULL << 14);              // 64 kiB granule
 
+    tcr_el1 |= (1ULL << 36);                // ASID is 16 bytes
+
     __asm__ volatile(
         "msr mair_el1, %[mair]\n"
         "msr tcr_el1, %[tcr_el1]\n"

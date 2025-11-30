@@ -64,7 +64,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     uint64_t last_ms = clock_cur_ms();
 
     // Set up the kernel process
-    p_kernel = std::make_shared<Process>("kernel", true);
+    p_kernel = Process::Create("kernel", true);
     {
         CriticalGuard cg(p_kernel->open_files.sl);
         auto fd_stdin = p_kernel->open_files.get_fixed_fildes(STDIN_FILENO);
@@ -83,7 +83,6 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
         p_kernel->env.envs.push_back("USER=user");
         p_kernel->env.envs.push_back("NUMBER_OF_PROCESSORS=" + std::to_string(sched.ncores));
     }
-    p_kernel->pid = ProcessList.Register(p_kernel);
 
     // Create some threads
 

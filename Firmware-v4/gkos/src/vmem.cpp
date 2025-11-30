@@ -98,7 +98,7 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto l3_addr = (vaddr >> 16) & 0x1fffULL;
 
-    auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr);
+    auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr & 0xffffffffffffULL);
     volatile uint64_t *pt;
     if((pd[l2_addr] & 0x1) == 0)
     {
