@@ -782,7 +782,7 @@ void sd_reset()
     // Enable interrupts
     SDMMC1_VMEM->MASK = DCRCFAIL | DTIMEOUT |
         TXUNDERR | RXOVERR | DATAEND;
-    gic_set_target(155, GetCoreID());
+    gic_set_target(155, GIC_ENABLED_CORES);
     gic_set_enable(155);
     
     {
