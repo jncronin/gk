@@ -33,8 +33,8 @@ void gic_irq_handler(uint32_t iar)
             SDMMC1_IRQHandler();
             break;
 
-        case 227:
-        case 228:
+        case 259:
+        case 260:
             USB3DR_IRQHandler();
             break;
 

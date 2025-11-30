@@ -2467,6 +2467,8 @@ static const constexpr size_t n_usb_ports = sizeof(usb_ports) / sizeof(usb_ports
 
 extern "C" bool dcd_init (uint8_t rhport)
 {
+	VERBOSE("usb: dcd_init\n");
+
 	if(rhport >= n_usb_ports)
 		return false;
 
@@ -2476,11 +2478,15 @@ extern "C" bool dcd_init (uint8_t rhport)
 	usb_dwc3_init_driver(nullptr, &usb_ports[rhport].pcd, &usb_ports[rhport].hnd,
 		(void *)usb_ports[rhport].base_addr);
 
+	usb_dwc3_start_device(&usb_ports[rhport].hnd);
+
 	return true;
 }
 
 extern "C" void dcd_int_enable (uint8_t rhport)
 {
+	VERBOSE("usb: dcd_int_enable\n");
+
 	if(rhport >= n_usb_ports)
 		return;
 
@@ -2489,6 +2495,8 @@ extern "C" void dcd_int_enable (uint8_t rhport)
 
 extern "C" void dcd_int_disable (uint8_t rhport)
 {
+	VERBOSE("usb: dcd_int_disable\n");
+
 	if(rhport >= n_usb_ports)
 		return;
 
@@ -2497,6 +2505,8 @@ extern "C" void dcd_int_disable (uint8_t rhport)
 
 extern "C" bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_ep)
 {
+	VERBOSE("usb: dcd_edpt_open\n");
+
 	if(rhport >= n_usb_ports)
 		return false;
 	
@@ -2531,6 +2541,8 @@ extern "C" bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc
 
 extern "C" void dcd_edpt_stall (uint8_t rhport, uint8_t ep_addr)
 {
+	VERBOSE("usb: dcd_edpt_stall\n");
+
 	if(rhport >= n_usb_ports)
 		return;
 	
@@ -2548,6 +2560,7 @@ extern "C" void dcd_edpt_stall (uint8_t rhport, uint8_t ep_addr)
 
 extern "C" void dcd_set_address(uint8_t rhport, uint8_t dev_addr)
 {
+	VERBOSE("usb: dcd_set_address\n");
 	if(rhport >= n_usb_ports)
 		return;
 	
@@ -2558,18 +2571,23 @@ extern "C" void dcd_set_address(uint8_t rhport, uint8_t dev_addr)
 
 extern "C" void dcd_sof_enable(uint8_t rhport, bool en)
 {
+	VERBOSE("usb: dcd_sof_enable\n");
 }
 
 extern "C" void dcd_edpt_close_all(uint8_t rhport)
 {
+	VERBOSE("usb: dcd_edpt_close_all\n");
 }
 
 extern "C" void dcd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr)
 {
+	VERBOSE("usb: dcd_edpt_clear_stall\n");
 }
 
 extern "C" bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
 {
+	VERBOSE("usb: dcd_edpt_xfer\n");
+
 	if(rhport >= n_usb_ports)
 		return false;
 	
@@ -2592,7 +2610,7 @@ extern "C" bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t * buffer,
 extern "C" void dcd_int_handler(uint8_t rhport)
 {
 	VERBOSE("usb: interrupt\n");
-	
+
 	if(rhport >= n_usb_ports)
 		return;
 	

@@ -38,13 +38,12 @@ void init_usb()
     }
     klog("usb: power valid\n");
 
-    /* Force USB2 device mode */
-    SYSCFG_VMEM->USB3DRCR = SYSCFG_USB3DRCR_USB3DR_USB2ONLYD;
+    /* Put blocks in reset */
+    RCC_VMEM->USB3DRDCFGR |= RCC_USB3DRDCFGR_USB3DRDEN | RCC_USB3DRDCFGR_USB3DRDRST;
+    RCC_VMEM->USB2PHY2CFGR |= RCC_USB2PHY2CFGR_USB2PHY2EN | RCC_USB2PHY2CFGR_USB2PHY2RST;
+    __asm__ volatile("dmb sy\n" ::: "memory");
 
-    /* Enable clock(s) to USB */
-    RCC_VMEM->USB3DRDCFGR |= RCC_USB3DRDCFGR_USB3DRDEN;
-    RCC_VMEM->USB3DRDCFGR &= ~RCC_USB3DRDCFGR_USB3DRDRST;
-
+    /* Enable PHY2 clk */
     // flexgen channel 58 to ck_ker_usb2phy2 @ 20 MHz (default)
     // Use PLL4 = 1200 MHz / 60 -> 20 MHz SDCLK
     SYSCFG_VMEM->USB2PHY2CR = (SYSCFG_VMEM->USB2PHY2CR & ~SYSCFG_USB2PHY2CR_USB2PHY2SEL_Msk) |
@@ -55,8 +54,20 @@ void init_usb()
     RCC_VMEM->XBARxCFGR[58] = 0x40U;
     __asm__ volatile("dmb sy\n" ::: "memory");
 
-    RCC_VMEM->USB2PHY2CFGR |= RCC_USB2PHY2CFGR_USB2PHY2EN;
+    Block(clock_cur() + kernel_time_from_us(10));
+
+    /* Release phy from reset */
     RCC_VMEM->USB2PHY2CFGR &= ~RCC_USB2PHY2CFGR_USB2PHY2RST;
+    __asm__ volatile("dmb sy\n" ::: "memory");
+
+    Block(clock_cur() + kernel_time_from_us(260));
+
+    /* Release device from reset */
+    RCC_VMEM->USB3DRDCFGR &= ~RCC_USB3DRDCFGR_USB3DRDRST;
+    __asm__ volatile("dmb sy\n" ::: "memory");
+
+    /* Force USB2 device mode */
+    SYSCFG_VMEM->USB3DRCR = SYSCFG_USB3DRCR_USB3DR_USB2ONLYD;
 
     /* Enable secure access for USB DMA (index 4 / RISUP 66) */
     *(volatile uint32_t *)(RIFSC_VMEM + 0xc10 + 4 * 0x4) =
@@ -74,10 +85,14 @@ void init_usb()
     __asm__ volatile("dmb sy\n" ::: "memory");
 
     /* Enable USB interrupts */
-    gic_set_target(227, GIC_ENABLED_CORES);
-    gic_set_enable(227);
-    gic_set_target(228, GIC_ENABLED_CORES);
-    gic_set_enable(228);
+    gic_set_target(259, GIC_ENABLED_CORES);
+    gic_set_enable(259);
+    gic_set_target(260, GIC_ENABLED_CORES);
+    gic_set_enable(260);
+
+    /* Force VBUS to always be detected (TODO: on gk board use VBUS sampling from PMIC) */
+    SYSCFG_VMEM->USB2PHY2CR |= SYSCFG_USB2PHY2CR_VBUSVLDEXTSEL |
+        SYSCFG_USB2PHY2CR_VBUSVLDEXT;
 }
 
 extern void USB3DR_IRQHandler()

@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "stm32mp_ddrctrl_regs.h": "c"
+        "stm32mp_ddrctrl_regs.h": "c",
+        "usb_device.h": "c"
     }
 }
