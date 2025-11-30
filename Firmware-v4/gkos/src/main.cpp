@@ -25,6 +25,8 @@ std::shared_ptr<Thread> t_a, t_b;
 
 static void start_ap(unsigned int ap_no);
 
+unsigned int reboot_flags = 0;
+
 void *init_thread(void *);
 
 extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)

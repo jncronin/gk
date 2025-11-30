@@ -12,6 +12,8 @@
 
 #include "gk_conf.h"
 
+class unknown_queue_type { };
+
 template <typename T> class BaseQueue
 {
     public:
@@ -64,7 +66,16 @@ template <typename T> class BaseQueue
                 return false;
             }
 
-            _b[_wptr] = v;
+
+            if constexpr(std::is_same_v<T, unknown_queue_type>)
+            {
+                auto b = (char *)_b;
+                memcpy(&b[_wptr * sz], (const void *)&v, sz);
+            }
+            else
+            {
+                _b[_wptr] = v;
+            }
 
             //_b[_wptr] = v;
             _wptr = ptr_plus_one(_wptr);
@@ -74,6 +85,8 @@ template <typename T> class BaseQueue
 
         bool _Push(T &&v)
         {
+            static_assert(std::is_same_v<T, unknown_queue_type> == false);
+
             if(full())
             {
 #if DEBUG_FULLQUEUE
@@ -100,6 +113,13 @@ template <typename T> class BaseQueue
         inline bool full()
         {
             return ptr_plus_one(_wptr) == _rptr;
+        }
+
+        bool Push(const void *v)
+        {
+            static_assert(std::is_same_v<T, unknown_queue_type>);
+            CriticalGuard cg(sl);
+            return _Push((const T &)v);
         }
 
         bool Push(const T &v)
@@ -139,10 +159,24 @@ template <typename T> class BaseQueue
             }
             else
             {
-                *v = _b[_rptr];
+                if constexpr(std::is_same_v<T, unknown_queue_type>)
+                {
+                    auto b = (char *)_b;
+                    memcpy(v, &b[_rptr * sz], sz);
+                }
+                else
+                {
+                    *v = _b[_rptr];
+                }
                 _rptr = ptr_plus_one(_rptr);
                 return true;
             }
+        }
+
+        bool Pop(void *v, kernel_time timeout = kernel_time())
+        {
+            static_assert(std::is_same_v<T, unknown_queue_type>);
+            return Pop((T *)v, timeout);
         }
 
         bool Pop(T *v, kernel_time timeout = kernel_time())
@@ -172,7 +206,15 @@ template <typename T> class BaseQueue
                     }
                     else
                     {
-                        *v = _b[_rptr];
+                        if constexpr(std::is_same_v<T, unknown_queue_type>)
+                        {
+                            auto b = (char *)_b;
+                            memcpy((void *)v, &b[_rptr * sz], sz);
+                        }
+                        else
+                        {
+                            *v = _b[_rptr];
+                        }
                         _rptr = ptr_plus_one(_rptr);
                         return true;
                     }
@@ -212,9 +254,9 @@ template <typename T, int _nitems> class FixedQueue : public BaseQueue<T>
 template <typename T> class Queue : public BaseQueue<T>
 {
     public:
-        Queue(int _nitems, size_t item_size) : BaseQueue<T>(nullptr, _nitems, item_size)
+        Queue(int _nitems, size_t item_size = sizeof(T)) : BaseQueue<T>(nullptr, _nitems, item_size)
         {
-            this->_b = new char[_nitems * item_size];
+            this->_b = (T*)new char[_nitems * item_size];
         }
 
         ~Queue()
@@ -223,5 +265,7 @@ template <typename T> class Queue : public BaseQueue<T>
                 delete[] reinterpret_cast<char *>(this->_b);
         }
 };
+
+using CStyleQueue = Queue<unknown_queue_type>;
 
 #endif

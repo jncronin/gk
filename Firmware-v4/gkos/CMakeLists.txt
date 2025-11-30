@@ -120,6 +120,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         lwext4
         zlib
+        tusb
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
@@ -127,6 +128,37 @@ utils_target_set_linker_script(${PROJECT_NAME}
 )
 
 utils_target_print_size(${PROJECT_NAME})
+
+# tinyusb
+file(GLOB_RECURSE TUSB_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/src/*.c
+#    ${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/lib/networking/rndis_reports.c
+)
+
+add_library(tusb)
+target_include_directories(tusb
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
+
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/lib/networking"
+)
+target_compile_definitions(tusb
+    PRIVATE
+        _POSIX_READER_WRITER_LOCKS
+        _UNIX98_THREAD_MUTEX_ATTRIBUTES
+        _POSIX_THREAD_PRIO_PROTECT
+        _POSIX_THREAD_PROCESS_SHARED
+)
+
+target_sources(tusb
+    PRIVATE
+        ${TUSB_SOURCES}
+)
+
+
 
 
 # Generate a file suitable for loading into JFlash or equivalent to flash the QSPI

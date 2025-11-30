@@ -3,12 +3,17 @@
 #include "logger.h"
 #include "syscalls_int.h"
 #include "elf.h"
+#include "usb.h"
 #include <fcntl.h>
 
 PProcess p_test;
 
 void *init_thread(void *)
 {
+    usb_process_start();
+
+
+#if 0
     // load a test userspace thread from memory
 
     auto proc_fd = syscall_open("/gkmenu-0.1.1-gkv4/bin/gkmenu", O_RDONLY, 0, &errno);
@@ -33,6 +38,7 @@ void *init_thread(void *)
             sched.Schedule(t_test);
         }    
     }
+#endif
 
     while(true)
     {
