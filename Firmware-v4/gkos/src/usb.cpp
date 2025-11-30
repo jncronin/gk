@@ -72,11 +72,17 @@ void init_usb()
     old_val |= 1U << risup_bit;
     *risup_reg = old_val;
     __asm__ volatile("dmb sy\n" ::: "memory");
+
+    /* Enable USB interrupts */
+    gic_set_target(227, GIC_ENABLED_CORES);
+    gic_set_enable(227);
+    gic_set_target(228, GIC_ENABLED_CORES);
+    gic_set_enable(228);
 }
 
-extern "C" void OTG_HS_IRQHandler()
+extern void USB3DR_IRQHandler()
 {
-    tud_int_handler(1);
+    tud_int_handler(0);
 }
 
 bool usb_process_start()

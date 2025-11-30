@@ -14,7 +14,7 @@
 #include "pmem.h"
 static PMemBlock pb_usb = InvalidPMemBlock();
 
-#define STM32MP_USB_DWC3_BASE	(pb_usb.base)
+#define STM32MP_USB_DWC3_BASE	(PMEM_TO_VMEM(pb_usb.base))
 #define STM32MP_USB_DWC3_SIZE	PAGE_SIZE
 
 
@@ -2587,4 +2587,18 @@ extern "C" bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t * buffer,
 
 	auto ret = usb_dwc3_ep_start_xfer(hnd, &ep);
 	return ret == USBD_OK;
+}
+
+extern "C" void dcd_int_handler(uint8_t rhport)
+{
+	VERBOSE("usb: interrupt\n");
+	
+	if(rhport >= n_usb_ports)
+		return;
+	
+	auto hnd = &usb_ports[rhport].hnd;
+
+	uint32_t param = 0;
+
+	usb_dwc3_it_handler(hnd, &param);
 }
