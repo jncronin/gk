@@ -40,7 +40,8 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
         }
 
         uintptr_t cur_page_vaddr = vaddr.data_start() + ptr;
-        auto ret = vmem_map(cur_page_vaddr, cur_page_paddr, vaddr.user, vaddr.write, vaddr.exec, ttbr0, ttbr1);
+        auto ret = vmem_map(cur_page_vaddr, cur_page_paddr, vaddr.user, vaddr.write, vaddr.exec, ttbr0, ttbr1,
+            nullptr, vaddr.memory_type);
         if(ret != 0)
             return ret;
 
@@ -50,11 +51,12 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
     return 0;
 }
 
-static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr);
+static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr,
+    unsigned int memory_type = MT_NORMAL);
 static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
-    uintptr_t ttbr0, uintptr_t ttbr1, uintptr_t *paddr_out)
+    uintptr_t ttbr0, uintptr_t ttbr1, uintptr_t *paddr_out, unsigned int memory_type)
 {
     uint64_t ttbr;
 
@@ -72,7 +74,7 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
 
         {
             CriticalGuard cg(sl_uh);
-            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out);
+            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type);
         }
     }
     else
@@ -88,12 +90,12 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
         }
 
         // no lock here - already done in calling function
-        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out);
+        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type);
     }
 }
 
 static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr,
-    uintptr_t *paddr_out)
+    uintptr_t *paddr_out, unsigned int memory_type)
 {
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto l3_addr = (vaddr >> 16) & 0x1fffULL;
@@ -144,7 +146,7 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
         paddr = paddr_be.base;
     }
 
-    uint64_t attr = PAGE_ACCESS | PAGE_INNER_SHAREABLE | DT_PAGE | PAGE_ATTR(MT_NORMAL);
+    uint64_t attr = PAGE_ACCESS | PAGE_INNER_SHAREABLE | DT_PAGE | PAGE_ATTR((uint64_t)memory_type);
     if(user)
     {
         if(write)

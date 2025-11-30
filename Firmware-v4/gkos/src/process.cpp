@@ -67,6 +67,7 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
             ret->screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes),
                 !ret->is_privileged, true,
                 false, 0, 0, ret->is_privileged ? vblock : ret->user_mem->blocks);
+            ret->screen.bufs[buf].memory_type = MT_NORMAL_WT;
             screen_map_for_process(ret->screen.bufs[buf], ret->screen.screen_layer, buf,
                 ret->is_privileged ? 0U : ret->user_mem->ttbr0);
         }

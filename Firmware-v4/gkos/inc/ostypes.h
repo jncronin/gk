@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <memory>
+#include "gkos_vmem.h"
 
 class Process;
 class Thread;
@@ -36,6 +37,7 @@ struct VMemBlock : public MemRegion
     bool write;
     bool exec;
     unsigned int lower_guard, upper_guard;
+    unsigned int memory_type = MT_NORMAL;
 
     inline uint64_t guard_size (unsigned int guard_bits) const
     {
