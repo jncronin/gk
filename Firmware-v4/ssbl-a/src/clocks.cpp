@@ -28,10 +28,10 @@ void init_clocks()
 
         */
     
-    // Set up CPU2 clock, ck_icn_hs_mcu, to be PLL4 / 3 = 400 MHz
+    // Set up CPU2 clock, ck_icn_hs_mcu, to be PLL5 / 3 = 400 MHz
     RCC->FINDIVxCFGR[0] = 0x42U;
     while(RCC->FINDIVSR1 & (1U << 0));              // wait for finish changing
-    RCC->XBARxCFGR[0] = 0x40U;
+    RCC->XBARxCFGR[0] = 0x41U;
     while(RCC->XBARxCFGR[0] & RCC_XBARxCFGR_XBARxSTS);     // wait for finish changing  
 
     // And ck_icn_ls_mcu to be half this
@@ -47,15 +47,15 @@ void init_clocks()
     RCC->FINDIVxCFGR[33] = 0x40;    // enabled, div 1
     RCC->XBARxCFGR[33] = 0x48;      // enabled, hsi_ker_ck
 
-    // PLL4 output is 1200 MHz - use to interface AXI via crossbar (2), divided by 2
+    // PLL5 output is 1200 MHz - use to interface AXI via crossbar (2), divided by 2
     RCC->PREDIVxCFGR[2] = 1;
     RCC->FINDIVxCFGR[2] = 0x40;
-    RCC->XBARxCFGR[2] = 0x40;
+    RCC->XBARxCFGR[2] = 0x41;
 
-    // Interface GIC400 via crossbar (5) - PLL4 / 3 = 400 MHz
+    // Interface GIC400 via crossbar (5) - PLL5 / 3 = 400 MHz
     RCC->PREDIVxCFGR[5] = 0;
     RCC->FINDIVxCFGR[5] = 0x42;
-    RCC->XBARxCFGR[5] = 0x40;
+    RCC->XBARxCFGR[5] = 0x41;
 
     // clk_icn_p_stgen, clk_icn_p_gicv2m come from APB4 clock which is already running
     // clk_icn_p_syscpu1 if from AHB5

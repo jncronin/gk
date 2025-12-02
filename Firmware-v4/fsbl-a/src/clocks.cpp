@@ -31,6 +31,9 @@ void init_clocks()
 
     /* We cannot alter PLL4 because it is used to clock the RCC registers.
         Add a PLL5 which is clocked off HSE40 at the same output (1200 MHz) */
+    RCC->MUXSELCFGR = (RCC->MUXSELCFGR & ~RCC_MUXSELCFGR_MUXSEL1_Msk) |
+        (1U << RCC_MUXSELCFGR_MUXSEL1_Pos);
+    __asm__ volatile("dmb sy\n" ::: "memory");
     RCC->PLL5CFGR1 = RCC->PLL4CFGR1 & ~RCC_PLL5CFGR1_PLLEN;
     RCC->PLL5CFGR2 = (2UL << RCC_PLL5CFGR2_FREFDIV_Pos) |
         (120UL << RCC_PLL5CFGR2_FBDIV_Pos);
