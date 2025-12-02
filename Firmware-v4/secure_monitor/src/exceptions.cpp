@@ -14,7 +14,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         return 0;
     }
 
-    klog("SM EXCEPTION: type: %08lx, esr: %08lx, far: %08lx, lr: %08lx\n",
+    klog("SM EXCEPTION: type: %08lx, esr: %08lx, far: %llx, lr: %llx\n",
         etype, esr, far, lr);
 
 
