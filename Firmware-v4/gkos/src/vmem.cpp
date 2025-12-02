@@ -3,6 +3,8 @@
 #include "logger.h"
 #include "pmem.h"
 #include "vblock.h"
+#include "scheduler.h"
+#include "process.h"
 
 static Spinlock sl_uh;
 
@@ -54,6 +56,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
 static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr,
     unsigned int memory_type = MT_NORMAL);
 static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
+static uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr);
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
     uintptr_t ttbr0, uintptr_t ttbr1, uintptr_t *paddr_out, unsigned int memory_type)
@@ -214,6 +217,44 @@ int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
     }
 }
 
+uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
+{
+    if(vaddr >= UH_START)
+    {
+        // higher half
+        vaddr = vaddr - UH_START;
+
+        if(ttbr1 == ~0ULL)
+            __asm__ volatile("mrs %[ttbr], ttbr1_el1\n" : [ttbr] "=r" (ttbr1) : : "memory");
+        ttbr1 &= 0xffffffffffffULL;
+
+        CriticalGuard cg(sl_uh);
+        return vmem_vaddr_to_paddr_int(vaddr, ttbr1);
+    }
+    else if(vaddr >= LH_END)
+    {
+        return 0;
+    }
+    else
+    {
+        // lower half
+
+        if(ttbr0 == ~0ULL)
+        {
+            auto p = GetCurrentProcessForCore();
+            if(p->user_mem == nullptr)
+                return 0;
+            CriticalGuard cg(p->user_mem->sl);
+            ttbr0 = p->user_mem->ttbr0 & 0xffffffffffffULL;
+            return vmem_vaddr_to_paddr_int(vaddr, ttbr0);
+        }
+        else
+        {
+            return vmem_vaddr_to_paddr_int(vaddr, ttbr0 & 0xffffffffffffULL);
+        }
+    }
+}
+
 int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr)
 {
     auto end = vaddr + len;
@@ -272,4 +313,45 @@ void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr)
         [addr_enc] "r" ((vaddr >> 12) | (ttbr & 0xffff000000000000ULL))
         : "memory"
     );
+}
+
+uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr)
+{
+    auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr);
+
+    auto l2_addr = (vaddr >> 29) & 0x1fffULL;
+    auto pd_ent = pd[l2_addr];
+
+    if((pd_ent & 0x3) == 0x3)
+    {
+        // its a table
+        auto pt_paddr = pd_ent & 0xffffffff0000ULL;
+        auto pt = (volatile uint64_t *)PMEM_TO_VMEM(pt_paddr);
+
+        auto l3_addr = (vaddr >> 16) & 0x1fffULL;
+        auto pt_ent = pt[l3_addr];
+
+        if((pt_ent & 0x3) == 0x1)
+        {
+            // its a valid page
+            auto page_addr = pt_ent & 0xffffffff0000ULL;
+            auto page_offset = vaddr & 0xffffULL;
+            return page_addr | page_offset;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else if((pd_ent & 0x3) == 0x1)
+    {
+        // its a block
+        auto block_addr = pd_ent & 0xffffe0000000ULL;
+        auto block_offset = vaddr & 0x1fffffffULL;
+        return block_addr | block_offset;
+    }
+    else
+    {
+        return 0;
+    }
 }
