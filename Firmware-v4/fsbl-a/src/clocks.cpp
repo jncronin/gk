@@ -1,5 +1,7 @@
 #include <stm32mp2xx.h>
 
+void log(const char *);
+
 void init_clocks()
 {
     // Enable HSE
@@ -38,6 +40,12 @@ void init_clocks()
     RCC->PLL5CFGR6 = RCC->PLL4CFGR6;
     RCC->PLL5CFGR7 = RCC->PLL4CFGR7;
     RCC->PLL5CFGR1 |= RCC_PLL5CFGR1_PLLEN;
+
+    // Run Core + MCU off PLL5
+    log("FSBL: setting core clocks to PLL5\n");
+    RCC->XBARxCFGR[0] = 0x41;
+    log("FSBL: done\n");
+
     
     // This all seems reasonable.  Clock OSPI1 off PLL4 / 12 -> 100 MHz
     RCC->FINDIVxCFGR[48] = 0x40U | 11U;
