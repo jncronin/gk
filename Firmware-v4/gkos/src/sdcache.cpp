@@ -215,12 +215,16 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
         // need to load if not already loaded and not whole_bb
         if(!has_bb.has_data && !whole_bb)
         {
+#if DEBUG_SDC
             klog("sdc_write: partial bigblock write b: %llu within bb: %llx at b_offset: %llx - loading\n",
                     blocks_within_bb, cur_bb, b_offset_within_bb);
+#endif
             
             // load the data
             auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
+#if DEBUG_SDC
             klog("sdc: big block load complete, ret %d\n", rret);
+#endif
             if(rret != 0)
                 return rret;
             
@@ -228,11 +232,15 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
         }
         else if(has_bb.has_data)
         {
+#if DEBUG_SDC
             klog("sdc_write: cache hit, skipping load\n");
+#endif
         }
         else if(whole_bb)
         {
+#if DEBUG_SDC
             klog("sdc_write: whole bb, skipping load\n");
+#endif
         }
 
         // copy the data
@@ -244,7 +252,9 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 
         // write out
         auto wret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, false);
+#if DEBUG_SDC
         klog("sdc: big block write complete, ret %d\n", wret);
+#endif
         if(wret != 0)
             return wret;
 
