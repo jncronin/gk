@@ -12,7 +12,7 @@
 #include "ostypes.h"
 #include "vmem.h"
 #include "pmem.h"
-static PMemBlock pb_usb = InvalidPMemBlock();
+PMemBlock pb_usb = InvalidPMemBlock();
 
 #define STM32MP_USB_DWC3_BASE	(PMEM_TO_VMEM(pb_usb.base))
 #define STM32MP_USB_DWC3_SIZE	PAGE_SIZE
@@ -572,7 +572,9 @@ static uintptr_t api_mapdmaaddr(uint8_t buf[], uint32_t size, uint8_t to_device)
 		inv_dcache_range((uintptr_t)buf, size);
 	}
 
-	return (uintptr_t)buf;
+	auto paddr = vmem_vaddr_to_paddr((uintptr_t)buf);
+
+	return (uintptr_t)paddr;
 }
 
 static void api_unmapdmaaddr(uintptr_t dma_addr __unused, uint32_t size __unused,
@@ -2444,179 +2446,6 @@ void usb_dwc3_init_driver(struct usb_handle *usb_core_handle, struct pcd_handle 
 	dwc3_handle->State = HAL_PCD_STATE_READY;
 
 	
-	//register_usb_driver(usb_core_handle, pcd_handle, &usb_dwc3driver,
-	//		    dwc3_handle);
-}
-
-/* tinyusb port */
-#include "tusb.h"
-
-struct dcd3_setup
-{
-	uintptr_t base_addr;
-	dwc3_handle_t hnd;
-	pcd_handle pcd;
-};
-
-/* the various ports on stm32mp2 - we only support the dwc3 port aka usb3dr */
-static dcd3_setup usb_ports[] = {
-	{ .base_addr = PMEM_TO_VMEM(0x48300000ULL), .hnd = { 0 }, .pcd = { 0 } }
-};
-
-static const constexpr size_t n_usb_ports = sizeof(usb_ports) / sizeof(usb_ports[0]);
-
-extern "C" bool dcd_init (uint8_t rhport)
-{
-	VERBOSE("usb: dcd_init\n");
-
-	if(rhport >= n_usb_ports)
-		return false;
-
-	if(!pb_usb.valid)
-		pb_usb = Pmem.acquire(65536);
-	
-	usb_dwc3_init_driver(nullptr, &usb_ports[rhport].pcd, &usb_ports[rhport].hnd,
-		(void *)usb_ports[rhport].base_addr);
-
-	usb_dwc3_start_device(&usb_ports[rhport].hnd);
-
-	return true;
-}
-
-extern "C" void dcd_int_enable (uint8_t rhport)
-{
-	VERBOSE("usb: dcd_int_enable\n");
-
-	if(rhport >= n_usb_ports)
-		return;
-
-	usb_dwc3_enable_eventint(&usb_ports[rhport].hnd, 0);
-}
-
-extern "C" void dcd_int_disable (uint8_t rhport)
-{
-	VERBOSE("usb: dcd_int_disable\n");
-
-	if(rhport >= n_usb_ports)
-		return;
-
-	usb_dwc3_disable_eventint(&usb_ports[rhport].hnd, 0);
-}
-
-extern "C" bool dcd_edpt_open (uint8_t rhport, tusb_desc_endpoint_t const * desc_ep)
-{
-	VERBOSE("usb: dcd_edpt_open\n");
-
-	if(rhport >= n_usb_ports)
-		return false;
-	
-	auto hnd = &usb_ports[rhport].hnd;
-
-	uint8_t dwc3_ep_type = 0;
-	switch(desc_ep->bmAttributes.xfer)
-	{
-		case TUSB_XFER_CONTROL:
-			dwc3_ep_type = EP_TYPE_CTRL;
-			break;
-		case TUSB_XFER_INTERRUPT:
-			dwc3_ep_type = EP_TYPE_INTR;
-			break;
-		case TUSB_XFER_ISOCHRONOUS:
-			dwc3_ep_type = EP_TYPE_ISOC;
-			break;
-		case TUSB_XFER_BULK:
-			dwc3_ep_type = EP_TYPE_BULK;
-			break;
-	};
-
-	auto ep_num = desc_ep->bEndpointAddress & 0xfU;
-	bool is_in = (desc_ep->bEndpointAddress & 0x80U) == 0x80U;
-	auto phy_ep_num = ep_num + is_in ? 1U : 0U;
-
-	auto ret = dwc3_ep_configure(hnd, ep_num, is_in, dwc3_ep_type, desc_ep->wMaxPacketSize & 0x7ffU, 
-		ep_num, desc_ep->bInterval, phy_ep_num, 0, USB_DWC3_DEPCFG_ACTION_INIT);
-
-	return ret == USBD_OK;
-}
-
-extern "C" void dcd_edpt_stall (uint8_t rhport, uint8_t ep_addr)
-{
-	VERBOSE("usb: dcd_edpt_stall\n");
-
-	if(rhport >= n_usb_ports)
-		return;
-	
-	auto hnd = &usb_ports[rhport].hnd;
-
-	auto ep_num = ep_addr & 0xfU;
-	bool is_in = ep_addr == 0x80U;
-
-	usbd_ep ep;
-	ep.is_in = is_in;
-	ep.num = ep_num;
-
-	usb_dwc3_ep_set_stall(hnd, &ep);
-}
-
-extern "C" void dcd_set_address(uint8_t rhport, uint8_t dev_addr)
-{
-	VERBOSE("usb: dcd_set_address\n");
-	if(rhport >= n_usb_ports)
-		return;
-	
-	auto hnd = &usb_ports[rhport].hnd;
-
-	usb_dwc3_set_address(hnd, dev_addr);
-}
-
-extern "C" void dcd_sof_enable(uint8_t rhport, bool en)
-{
-	VERBOSE("usb: dcd_sof_enable\n");
-}
-
-extern "C" void dcd_edpt_close_all(uint8_t rhport)
-{
-	VERBOSE("usb: dcd_edpt_close_all\n");
-}
-
-extern "C" void dcd_edpt_clear_stall(uint8_t rhport, uint8_t ep_addr)
-{
-	VERBOSE("usb: dcd_edpt_clear_stall\n");
-}
-
-extern "C" bool dcd_edpt_xfer(uint8_t rhport, uint8_t ep_addr, uint8_t * buffer, uint16_t total_bytes)
-{
-	VERBOSE("usb: dcd_edpt_xfer\n");
-
-	if(rhport >= n_usb_ports)
-		return false;
-	
-	auto hnd = &usb_ports[rhport].hnd;
-
-	auto ep_num = ep_addr & 0xfU;
-	bool is_in = ep_addr == 0x80U;
-
-	usbd_ep ep;
-	ep.is_in = is_in;
-	ep.num = ep_num;
-	ep.xfer_buff = buffer;
-	ep.xfer_len = total_bytes;
-	ep.xfer_count = 0;
-
-	auto ret = usb_dwc3_ep_start_xfer(hnd, &ep);
-	return ret == USBD_OK;
-}
-
-extern "C" void dcd_int_handler(uint8_t rhport)
-{
-	VERBOSE("usb: interrupt\n");
-
-	if(rhport >= n_usb_ports)
-		return;
-	
-	auto hnd = &usb_ports[rhport].hnd;
-
-	uint32_t param = 0;
-
-	usb_dwc3_it_handler(hnd, &param);
+	register_usb_driver(usb_core_handle, pcd_handle, &usb_dwc3driver,
+			    dwc3_handle);
 }

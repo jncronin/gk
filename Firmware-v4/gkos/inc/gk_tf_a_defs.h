@@ -8,6 +8,10 @@
 #include "logger.h"
 #include <string.h>
 
+#ifndef NULL
+#define NULL nullptr
+#endif
+
 #ifndef BIT
 #define BIT(x)  (1ULL << x)
 #endif
