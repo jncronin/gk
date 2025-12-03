@@ -161,11 +161,15 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
         auto has_bb = sdc_bigblock_to_addr(cur_bb);
         if(!has_bb.has_data)
         {
+#if DEBUG_SDC
             klog("sdc: cache miss for %llu - loading %llu to v %llx p %llx\n", block_start, cur_bb * b_per_bb,
                 has_bb.vaddr, has_bb.paddr);
+#endif
             // load the data
             auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
+#if DEBUG_SDC
             klog("sdc: big block load complete, ret %d\n", rret);
+#endif
             if(rret != 0)
                 return rret;
             
