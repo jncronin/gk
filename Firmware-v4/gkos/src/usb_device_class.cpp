@@ -10,7 +10,7 @@ uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
     klog("usb: class_init(..., %u)\n", cfgidx);
 
 #if GK_ENABLE_USB_MASS_STORAGE
-    
+    usb_msc_init(pdev, cfgidx);
 #endif
 
     return USBD_OK;

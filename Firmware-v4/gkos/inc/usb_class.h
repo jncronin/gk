@@ -7,7 +7,7 @@
 
 #if GK_ENABLE_USB_MASS_STORAGE
 uint8_t usb_msc_setup(usb_handle *pdev, uint8_t bRequest);
-
+uint8_t usb_msc_init(usb_handle *pdev, uint8_t cfgidx);
 
 #endif
 

@@ -850,3 +850,25 @@ enum usb_status register_platform(struct usb_handle *pdev,
 
 	return USBD_OK;
 }
+
+usb_status usb_core_configure_ep(usb_handle *pdev, uint8_t ep_addr, uint8_t ep_type, uint16_t max_packet_size)
+{
+	struct usbd_ep *ep;
+	struct pcd_handle *hpcd = (struct pcd_handle *)pdev->data;
+	uint8_t num;
+
+	num = ep_addr & EP_NUM_MASK;
+	if (num >= USBD_EP_NB) {
+		return USBD_FAIL;
+	}
+
+	bool is_in = (ep_addr & 0x80) != 0;
+	ep = is_in ? &hpcd->in_ep[num] : &hpcd->out_ep[num];
+
+	ep->is_in = is_in;
+	ep->maxpacket = max_packet_size;
+	ep->num = num;
+	ep->type = ep_type;
+
+	return pdev->driver->configure_ep(hpcd->instance, ep);
+}

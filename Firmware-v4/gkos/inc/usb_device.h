@@ -237,6 +237,7 @@ struct usb_driver {
 					    uint32_t maxpacket,
 					    uint8_t **xfer_buff);
 	enum usb_action (*it_handler)(void *handle, uint32_t *param);
+	enum usb_status (*configure_ep)(void *handle, struct usbd_ep *ep);
 };
 
 /* USB Peripheral Controller Drivers */
@@ -288,5 +289,11 @@ enum usb_status register_usb_driver(struct usb_handle *pdev,
 				    void *driver_handle);
 enum usb_status register_platform(struct usb_handle *pdev,
 				  const struct usb_desc *plat_call_back);
+
+enum usb_status usb_core_configure_ep(struct usb_handle *pdev,
+					uint8_t ep_addr,
+					uint8_t ep_type,
+					uint16_t max_packet_size
+);
 
 #endif /* USB_DEVICE_H */
