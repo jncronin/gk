@@ -24,7 +24,7 @@ static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr)
     __asm__ volatile(
         "mrs %[daif], daif\n"
         "msr daifset, 0xf\n"
-        "at s1e0r, %[vaddr]\n"
+        "at s1e1r, %[vaddr]\n"
         "mrs %[paddr], par_el1\n"
         "msr daif, %[daif]\n"
         :
@@ -35,7 +35,10 @@ static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr)
         :
         "memory"
     );
-    return paddr;
+    if(paddr & 0x1)
+        return 0;
+    else
+        return (paddr & 0xffffffff0000ULL) | (vaddr & 0xffffULL);
 }
 
 /* Quick clear/copy, assumes multiples of 64 bytes, 16 byte alignment */
