@@ -14,6 +14,7 @@
 
 #include "usb_device.h"
 #include "usb_dwc3.h"
+#include "usb_class.h"
 
 #define DEBUG_USB 1
 
@@ -25,6 +26,9 @@ PProcess p_usb;
 __attribute__((aligned(CACHE_LINE_SIZE))) usb_handle usb_core;
 __attribute__((aligned(CACHE_LINE_SIZE))) pcd_handle pcd_handle;
 __attribute__((aligned(CACHE_LINE_SIZE))) dwc3_handle_t dwc3_handle;
+
+// store the state of individual class statuses
+usb_class_info usb_cinfo;
 
 extern usb_desc usb_desc_callback;
 
@@ -187,7 +191,7 @@ void *usb_task(void *pvParams)
 
     extern usb_class usb_class_handlers;
     usb_core._class = &usb_class_handlers;
-    usb_core.class_data = nullptr;      // TODO: can use this
+    usb_core.class_data = &usb_cinfo;
 
     register_platform(&usb_core, &usb_desc_callback);
     

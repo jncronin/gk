@@ -25,7 +25,17 @@ uint8_t usb_class_de_init(struct usb_handle *pdev, uint8_t cfgidx)
 uint8_t usb_class_data_in(struct usb_handle *pdev, uint8_t epnum)
 {
     klog("usb: class_data_in(..., %u)\n", epnum);
-    return USBD_OK;
+
+    switch(epnum | 0x80)
+    {
+#if GK_ENABLE_USB_MASS_STORAGE
+        case EPNUM_MSC_IN:
+            return usb_msc_data_in(pdev, epnum);
+#endif
+
+        default:
+            return USBD_FAIL;
+    }
 }
 
 uint8_t usb_class_ep0_rx_ready(struct usb_handle *pdev)
@@ -61,7 +71,17 @@ uint8_t usb_class_iso_out_incomplete(struct usb_handle *pdev, uint8_t epnum)
 uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
 {
     klog("usb: class_data_out(..., %u)\n", epnum);
-    return USBD_OK;
+
+    switch(epnum)
+    {
+#if GK_ENABLE_USB_MASS_STORAGE
+        case EPNUM_MSC_OUT:
+            return usb_msc_data_out(pdev, epnum);
+#endif
+
+        default:
+            return USBD_FAIL;
+    }
 }
 
 uint8_t usb_class_setup(struct usb_handle *pdev, struct usb_setup_req *req)
