@@ -5,8 +5,8 @@
  */
 
 // modified for gkos
-#define DEBUG_TF_A_VERBOSE		1
-#define DEBUG_TF_A_INFO			1
+#define DEBUG_TF_A_VERBOSE		0
+#define DEBUG_TF_A_INFO			0
 #include "gk_tf_a_defs.h"
 
 #include "ostypes.h"
@@ -40,6 +40,11 @@ VMemBlock vb_usb = InvalidVMemBlock();
 #define EP_TYPE_BULK	2U
 #define EP_TYPE_INTR	3U
 #define EP_TYPE_MSK	3U
+
+static_assert(EP_TYPE_CTRL == USBD_EP_TYPE_CTRL);
+static_assert(EP_TYPE_ISOC == USBD_EP_TYPE_ISOC);
+static_assert(EP_TYPE_BULK == USBD_EP_TYPE_BULK);
+static_assert(EP_TYPE_INTR == USBD_EP_TYPE_INTR);
 
 #define USB_DWC3_GLOBAL_BASE	0xc100
 #define USB_DWC3_DEVICE_BASE	0xc700
@@ -1972,6 +1977,24 @@ static enum usb_status usb_dwc3_write_empty_tx_fifo(void *handle __unused, uint3
 	return USBD_OK;
 }
 
+static usb_status usb_dwc3_configure_ep(void *handle, usbd_ep *ep)
+{
+	dwc3_handle_t *dwc3_handle = (dwc3_handle_t *)handle;
+
+	auto phy_epnum = ep->num * 2U + (ep->is_in ? 1U : 0U);
+
+	auto ret = dwc3_ep_configure(dwc3_handle, ep->num, ep->is_in, ep->type,
+		ep->maxpacket, ep->num, 0, phy_epnum,
+		0, USB_DWC3_DEPCFG_ACTION_INIT);
+
+	if(ret == USBD_OK)
+	{
+		DWC3_regupdateset(dwc3_handle->usb_device, DWC3_DALEPENA, DWC3_DALEPENA_EP(phy_epnum));
+	}
+
+	return ret;
+}
+
 static const struct usb_driver usb_dwc3driver = {
 	.ep0_out_start = usb_dwc3_ep0_out_start,
 	.ep_start_xfer = usb_dwc3_ep_start_xfer,
@@ -1983,7 +2006,8 @@ static const struct usb_driver usb_dwc3driver = {
 	.stop_device = usb_dwc3_stop_device,
 	.set_address = usb_dwc3_set_address,
 	.write_empty_tx_fifo = usb_dwc3_write_empty_tx_fifo,
-	.it_handler = usb_dwc3_it_handler
+	.it_handler = usb_dwc3_it_handler,
+	.configure_ep = usb_dwc3_configure_ep
 };
 
 /* USB2 PHY Mask 0xf */
@@ -2386,8 +2410,8 @@ void usb_dwc3_init_driver(struct usb_handle *usb_core_handle, struct pcd_handle 
 
 #define EVTBUF_AREA_OFFSET	0U
 #define TRB_OUT_AREA_OFFSET	(EVTBUF_AREA_OFFSET + USB_DWC3_EVENT_BUFFER_SIZE)
-#define TRB_IN_AREA_OFFSET	(TRB_OUT_AREA_OFFSET + sizeof(usb_dwc3_trb_t))
-#define SETUP_AREA_OFFSET	(TRB_IN_AREA_OFFSET + sizeof(usb_dwc3_trb_t))
+#define TRB_IN_AREA_OFFSET	(TRB_OUT_AREA_OFFSET + sizeof(usb_dwc3_trb_t) * USB_DWC3_NUM_OUT_EP)
+#define SETUP_AREA_OFFSET	(TRB_IN_AREA_OFFSET + sizeof(usb_dwc3_trb_t) * USB_DWC3_NUM_IN_EP)
 
 	void *coh_area = (void *)(uintptr_t)PHYS_AREA;
 
@@ -2420,21 +2444,27 @@ void usb_dwc3_init_driver(struct usb_handle *usb_core_handle, struct pcd_handle 
 			   dwc3_handle->intbuffers.evtbuffer_addr[i]);
 	}
 
-	/* MAP TRB Coherent and DMA address for EP0IN and EP0OUT */
-	dwc3_handle->IN_ep[0].trb_dma_addr = (uint32_t)api_getdmaaddr((void *)TRB_IN_AREA,
-								      sizeof(usb_dwc3_trb_t), 1);
-	assert(dwc3_handle->IN_ep[0].trb_dma_addr != 0U);
+	/* MAP TRB Coherent and DMA address for all endpoints */
+	for(unsigned int ep_num = 0; ep_num < USB_DWC3_NUM_IN_EP; ep_num++)
+	{
+		dwc3_handle->IN_ep[ep_num].trb_dma_addr = (uint32_t)api_getdmaaddr((void *)(TRB_IN_AREA + ep_num * sizeof(usb_dwc3_trb_t)),
+										sizeof(usb_dwc3_trb_t), 1);
+		assert(dwc3_handle->IN_ep[ep_num].trb_dma_addr != 0U);
 
-	dwc3_handle->IN_ep[0].trb_addr = (usb_dwc3_trb_t *)TRB_IN_AREA;
-	assert(dwc3_handle->IN_ep[0].trb_addr != NULL);
+		dwc3_handle->IN_ep[ep_num].trb_addr = (usb_dwc3_trb_t *)(TRB_IN_AREA + ep_num * sizeof(usb_dwc3_trb_t));
+		assert(dwc3_handle->IN_ep[ep_num].trb_addr != NULL);
+	}
 
-	dwc3_handle->OUT_ep[0].trb_dma_addr = (uint32_t)api_getdmaaddr((void *)TRB_OUT_AREA,
-								       sizeof(usb_dwc3_trb_t),
-								       1);
-	assert(dwc3_handle->OUT_ep[0].trb_dma_addr != 0U);
+	for(unsigned int ep_num = 0; ep_num < USB_DWC3_NUM_OUT_EP; ep_num++)
+	{
+		dwc3_handle->OUT_ep[ep_num].trb_dma_addr = (uint32_t)api_getdmaaddr((void *)(TRB_OUT_AREA + ep_num * sizeof(usb_dwc3_trb_t)),
+										sizeof(usb_dwc3_trb_t),
+										1);
+		assert(dwc3_handle->OUT_ep[ep_num].trb_dma_addr != 0U);
 
-	dwc3_handle->OUT_ep[0].trb_addr = (usb_dwc3_trb_t *)TRB_OUT_AREA;
-	assert(dwc3_handle->OUT_ep[0].trb_addr != NULL);
+		dwc3_handle->OUT_ep[ep_num].trb_addr = (usb_dwc3_trb_t *)(TRB_OUT_AREA + ep_num * sizeof(usb_dwc3_trb_t));
+		assert(dwc3_handle->OUT_ep[ep_num].trb_addr != NULL);
+	}
 
 	/* Init Device */
 	dwc3_handle->EP0_State = HAL_PCD_EP0_SETUP_QUEUED;
