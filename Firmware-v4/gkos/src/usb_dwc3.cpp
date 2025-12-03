@@ -1328,6 +1328,7 @@ static enum usb_action dwc3_handle_ep_event(dwc3_handle_t *dwc3_handle, uint32_t
 			 * then error, as done in Linux driver
 			 */
 			if ((ep_num == 0U) && (ep->xfer_len != ep->xfer_count)) {
+				VERBOSE("usb: incomplete EP0IN packet\n");
 				ret = dwc3_epaddr_set_stall(dwc3_handle, ep_num); // OUT EP0
 				if (ret != USBD_OK) {
 					ERROR("%s: %d\n", __func__, __LINE__);
