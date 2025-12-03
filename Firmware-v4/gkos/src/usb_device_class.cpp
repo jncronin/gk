@@ -1,11 +1,18 @@
 #include "usb_device.h"
 #include "logger.h"
+#include "gk_conf.h"
+#include "usb_class.h"
 
 //TODO: initialize usb_device_class similar to plat/st/common/usb_class.c
 
 uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
 {
     klog("usb: class_init(..., %u)\n", cfgidx);
+
+#if GK_ENABLE_USB_MASS_STORAGE
+    
+#endif
+
     return USBD_OK;
 }
 
@@ -61,6 +68,25 @@ uint8_t usb_class_setup(struct usb_handle *pdev, struct usb_setup_req *req)
 {
     klog("usb: class_setup(..., bm_request=%u, b_request=%u)\n",
         req->bm_request, req->b_request);
+
+    switch (req->bm_request & USB_REQ_TYPE_MASK)
+    {
+        case USB_REQ_TYPE_CLASS:
+            switch (req->b_request)
+            {
+#if GK_ENABLE_USB_MASS_STORAGE
+                case 254:
+                case 255:
+                    return usb_msc_setup(pdev, req->b_request);
+#endif
+
+
+                default:
+                    return USBD_FAIL;
+            }
+            break;
+    }
+
     return USBD_OK;
 }
 

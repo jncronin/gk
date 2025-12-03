@@ -25,7 +25,7 @@
 /* USB address between 1 through 127 = 0x7F mask */
 #define ADDRESS_MASK	GENMASK(6, 0)
 
-extern unsigned int USBD_MAX_NUM_INTERFACES;
+#include "usb_descriptors.h"
 #define USBD_MAX_NUM_CONFIGURATION		1U
 
 #define USB_LEN_DEV_QUALIFIER_DESC		0x0AU
