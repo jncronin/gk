@@ -13,6 +13,7 @@
 #define GK_ENABLE_TEST_THREADS      0
 #define GK_ENABLE_TOUCH             1
 #define GK_ENABLE_TILT              1
+#define GK_ENABLE_USB_CDC           0
 #define GK_CHECK_USER_ADDRESSES     1
 #define GK_USE_IRQ_PRIORITIES       0
 #define GK_USE_CACHE                1

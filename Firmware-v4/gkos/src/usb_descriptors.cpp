@@ -21,10 +21,12 @@ enum
     ITF_NUM_ETH = 0,
     ITH_NUM_ETH_DATA,
     ITF_NUM_CDC,
-#else
+#elif GK_ENABLE_USB_CDC
     ITF_NUM_CDC = 0,
 #endif
+#if GK_ENABLE_USB_CDC
     ITF_NUM_CDC_DATA,
+#endif
 #if GK_LOG_USB
     ITF_NUM_LOG_CDC,
     ITF_NUM_LOG_CDC_DATA,
@@ -97,7 +99,9 @@ const uint8_t desc_fs_configuration[] =
 #if GK_ENABLE_NETWORK
     TUD_RNDIS_DESCRIPTOR(ITF_NUM_ETH, 5, EPNUM_ETH_NOTIF, 8, EPNUM_ETH_OUT, EPNUM_ETH_IN, CFG_TUD_NET_ENDPOINT_SIZE),
 #endif
+#if GK_ENABLE_USB_CDC
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, CFG_TUD_CDC_EP_BUFSIZE),
+#endif
 #if GK_LOG_USB
     TUD_CDC_DESCRIPTOR(ITF_NUM_LOG_CDC, 4, EPNUM_CDC_LOG_NOTIF, 8, EPNUM_CDC_LOG_OUT, EPNUM_CDC_LOG_IN, CFG_TUD_CDC_EP_BUFSIZE),
 #endif
@@ -214,12 +218,14 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 static uint8_t *usb_device_desc(uint16_t *length)
 {
   *length = sizeof(device_desc);
+  klog("usb_device_desc: length: %u, data: %p\n", *length, device_desc);
   return (uint8_t *)device_desc;
 }
 
 static uint8_t *usb_config_desc(uint16_t *length)
 {
   *length = sizeof(desc_fs_configuration);
+  klog("usb_config_desc: length: %u, data: %p\n", *length, desc_fs_configuration);
   return (uint8_t *)desc_fs_configuration;
 }
 
@@ -232,6 +238,7 @@ static const uint8_t usb_lang_id_desc_buf[] = {
 uint8_t *usb_lang_id_desc(uint16_t *length)
 {
   *length = sizeof(usb_lang_id_desc_buf);
+  klog("usb_lang_id_desc: length: %u, data: %p\n", *length, usb_lang_id_desc_buf);
   return (uint8_t *)usb_lang_id_desc_buf;
 }
 
@@ -251,24 +258,28 @@ constexpr auto n_user_strs = sizeof(usb_user_strs) / sizeof(usb_user_strs[0]);
 uint8_t *usb_manufacturer_desc(uint16_t *length)
 {
   *length = usb_manufacturer_buf.size();
+  klog("usb_manufacturer_desc: length: %u, data: %p\n", *length, usb_manufacturer_buf.data());
   return (uint8_t *)usb_manufacturer_buf.data();
 }
 
 uint8_t *usb_product_desc(uint16_t *length)
 {
   *length = usb_product_buf.size();
+  klog("usb_product_desc: length: %u, data: %p\n", *length, usb_product_buf.data());
   return (uint8_t *)usb_product_buf.data();
 }
 
 uint8_t *usb_serial_desc(uint16_t *length)
 {
   *length = chip_id_buf.size();
+  klog("usb_serial_desc: length: %u, data: %p\n", *length, chip_id_buf.data());
   return (uint8_t *)chip_id_buf.data();
 }
 
 static uint8_t *usb_interface_desc(uint16_t *length)
 {
   *length = usb_interface_buf.size();
+  klog("usb_interface_desc: length: %u, data: %p\n", *length, usb_interface_buf.data());
   return (uint8_t *)usb_interface_buf.data();
 }
 
@@ -277,18 +288,21 @@ static uint8_t *usb_get_usr_desc(uint8_t index, uint16_t *length)
   if(index >= n_user_strs)
     return nullptr;
   *length = usb_user_strs[index].size();
+  klog("usb_get_usr_desc(%u): length: %u, data: %p\n", index, *length, usb_user_strs[index].data());
   return (uint8_t *)usb_user_strs[index].data();
 }
 
 static uint8_t *usb_config_str_desc(uint16_t *length)
 {
   *length = usb_config_str_buf.size();
+  klog("usb_config_str_desc: length: %u, data: %p\n", *length, usb_config_str_buf.data());
   return (uint8_t *)usb_config_str_buf.data();
 }
 
 static uint8_t *usb_get_qualifier_desc(uint16_t *length)
 {
   *length = sizeof(usb_qualifier_desc_buf);
+  klog("usb_get_qualifier_desc: length: %u, data: %p\n", *length, usb_qualifier_desc_buf);
   return (uint8_t *)usb_qualifier_desc_buf;
 }
 
