@@ -167,9 +167,15 @@ void *usb_task(void *pvParams)
     init_usb();
 
     extern PMemBlock pb_usb;
+    extern VMemBlock vb_usb;
     if(!pb_usb.valid)
     {
-        pb_usb = Pmem.acquire(65536);
+        pb_usb = Pmem.acquire(VBLOCK_64k);
+    }
+    if(!vb_usb.valid)
+    {
+        vb_usb = vblock.Alloc(VBLOCK_64k);
+        vmem_map(vb_usb.base, pb_usb.base, false, true, false, ~0ULL, ~0ULL, nullptr, MT_DEVICE);
     }
 
     pcd_handle.in_ep[0].maxpacket = 64;

@@ -13,8 +13,9 @@
 #include "vmem.h"
 #include "pmem.h"
 PMemBlock pb_usb = InvalidPMemBlock();
+VMemBlock vb_usb = InvalidVMemBlock();
 
-#define STM32MP_USB_DWC3_BASE	(PMEM_TO_VMEM(pb_usb.base))
+#define STM32MP_USB_DWC3_BASE	(vb_usb.base)
 #define STM32MP_USB_DWC3_SIZE	PAGE_SIZE
 
 
@@ -584,7 +585,7 @@ static void api_unmapdmaaddr(uintptr_t dma_addr __unused, uint32_t size __unused
 
 static uintptr_t api_getdmaaddr(void *buf, uint32_t size __unused, uint8_t to_device __unused)
 {
-	return VMEM_TO_PMEM(buf);
+	return vmem_vaddr_to_paddr((uintptr_t)buf);
 }
 
 __unused static void api_putdmaaddr(uintptr_t dma_addr __unused, uint32_t size __unused,
