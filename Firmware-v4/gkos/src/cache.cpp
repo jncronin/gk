@@ -5,8 +5,10 @@
 
 void InvalidateA35Cache(uintptr_t base, uintptr_t length, CacheType_t ctype, bool for_dma)
 {
+    auto end = base + length;
+    end = (end + (CACHE_LINE_SIZE - 1)) & ~(CACHE_LINE_SIZE - 1);
     base &= ~(CACHE_LINE_SIZE - 1);
-    length &= ~(CACHE_LINE_SIZE - 1);
+    length = end - base;
 
     switch(ctype)
     {
@@ -38,7 +40,7 @@ void InvalidateA35Cache(uintptr_t base, uintptr_t length, CacheType_t ctype, boo
 void CleanA35Cache(uintptr_t base, uintptr_t length, CacheType_t ctype, bool for_dma)
 {
     auto end = base + length;
-    end &= ~(CACHE_LINE_SIZE - 1);
+    end = (end + (CACHE_LINE_SIZE - 1)) & ~(CACHE_LINE_SIZE - 1);
     base &= ~(CACHE_LINE_SIZE - 1);
     length = end - base;
 
