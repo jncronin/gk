@@ -54,7 +54,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
 }
 
 static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr,
-    unsigned int memory_type = MT_NORMAL);
+    unsigned int memory_type = MT_NORMAL, bool is_global = false);
 static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
 static uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr);
 
@@ -77,7 +77,7 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
 
         {
             CriticalGuard cg(sl_uh);
-            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type);
+            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type, true);
         }
     }
     else
@@ -93,12 +93,12 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
         }
 
         // no lock here - already done in calling function
-        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type);
+        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type, false);
     }
 }
 
 static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr,
-    uintptr_t *paddr_out, unsigned int memory_type)
+    uintptr_t *paddr_out, unsigned int memory_type, bool is_global)
 {
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto l3_addr = (vaddr >> 16) & 0x1fffULL;
@@ -167,7 +167,7 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
     if(!exec)
         attr |= PAGE_XN;
 
-    if(vaddr < UH_START)
+    if(!is_global)
         attr |= PAGE_NG;
 
     pt[l3_addr] = (paddr & ~0xffffULL) | attr;
@@ -331,6 +331,8 @@ uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr)
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto pd_ent = pd[l2_addr];
 
+    klog("vtp: pd: %llx, l2_addr: %llx, pd_ent: %llx\n", (uintptr_t)pd, l2_addr, pd_ent);
+
     if((pd_ent & 0x3) == 0x3)
     {
         // its a table
@@ -340,7 +342,9 @@ uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr)
         auto l3_addr = (vaddr >> 16) & 0x1fffULL;
         auto pt_ent = pt[l3_addr];
 
-        if((pt_ent & 0x3) == 0x1)
+        klog("vtp: pf: %llx, l3_addr: %llx, pt_ent: %llx\n", (uintptr_t)pt, l3_addr, pt_ent);
+
+        if((pt_ent & 0x3) == 0x3)
         {
             // its a valid page
             auto page_addr = pt_ent & 0xffffffff0000ULL;
