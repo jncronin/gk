@@ -82,8 +82,8 @@ const uint8_t device_desc[] =
 	HIBYTE(USB_VID), /* idVendor */
 	LOBYTE(USB_PID), /* idVendor */
 	HIBYTE(USB_PID), /* idVendor */
-	0x00, /* bcdDevice rel. 2.00 */
-	0x02,
+	0x00, /* bcdDevice rel. 4.00 */
+	0x04,
 	USBD_IDX_MFC_STR, /* Index of manufacturer string */
 	USBD_IDX_PRODUCT_STR, /* Index of product string */
 	USBD_IDX_SERIAL_STR, /* Index of serial number string */
