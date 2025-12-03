@@ -18,9 +18,6 @@ VMemBlock vb_usb = InvalidVMemBlock();
 #define STM32MP_USB_DWC3_BASE	(vb_usb.base)
 #define STM32MP_USB_DWC3_SIZE	PAGE_SIZE
 
-
-#define CONFIG_USBD_EP_NB			12U
-
 #include <assert.h>
 #include <stdint.h>
 
