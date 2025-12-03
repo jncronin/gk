@@ -37,6 +37,8 @@ enum
     ITF_NUM_TOTAL
 };
 
+unsigned int USBD_MAX_NUM_INTERFACES = ITF_NUM_TOTAL;
+
 #define EPNUM_CDC_NOTIF   0x81
 #define EPNUM_CDC_OUT     0x02
 #define EPNUM_CDC_IN      0x82
