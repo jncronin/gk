@@ -182,8 +182,8 @@ void *usb_task(void *pvParams)
     pcd_handle.out_ep[0].maxpacket = 64;
     usb_dwc3_init_driver(&usb_core, &pcd_handle, &dwc3_handle, (void *)PMEM_TO_VMEM(0x48300000ULL));
 
-    //usb_core.ep0_state = USBD_EP0_DATA_IN;
-    //usb_core.dev_state = USBD_STATE_CONFIGURED;
+    usb_core.ep0_state = USBD_EP0_DATA_IN;
+    usb_core.dev_state = USBD_STATE_CONFIGURED;
 
     extern usb_class usb_class_handlers;
     usb_core._class = &usb_class_handlers;
