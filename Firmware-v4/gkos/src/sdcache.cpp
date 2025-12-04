@@ -115,6 +115,7 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
     auto last_iter = sdc_list.end();
     last_iter--;
     auto bb_to_erase = *last_iter;
+    sdc_list.pop_back();
 
     map_value mv_old = sdc_map[bb_to_erase];
     sdc_map.erase(bb_to_erase);
@@ -125,8 +126,14 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
     ret.paddr = mv_old.paddr;
     ret.vaddr = mv_old.vaddr;
 
+#if DEBUG_SDC
+    klog("sdc: recycling entry for bb: %u to %u, vaddr: %llx, paddr: %llx\n",
+        bb_to_erase, bigblock, ret.vaddr, ret.paddr);
+#endif
+
     // put list iter at the beginning
-    sdc_list.splice(sdc_list.begin(), sdc_list, last_iter);
+    sdc_list.push_front(bigblock);
+    sdc_map[bigblock].list_loc = sdc_list.begin();
 
     return ret;
 }
@@ -199,6 +206,11 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 
     uintptr_t src_addr = (uintptr_t)mem_address;
 
+#if DEBUG_SDC
+    klog("sdc: write: block_start: %llu, block_count: %llu, mem_address: %p\n",
+        block_start, block_count, mem_address);
+#endif
+
     while(block_count)
     {
         auto cur_bb = block_start / b_per_bb;
@@ -245,6 +257,10 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 
         // copy the data
         auto dest = has_bb.vaddr + byte_offset_within_bb;
+#if DEBUG_SDC
+        klog("sdc: write: has_bb.vaddr: %llx, byte_offset_within_bb: %llx, src_addr: %llx, blocks_within_bb: %llu\n",
+            has_bb.vaddr, byte_offset_within_bb, src_addr, blocks_within_bb);
+#endif
         memcpy((void *)dest, (const void *)src_addr, blocks_within_bb * block_size);
 
         // put back in cache
