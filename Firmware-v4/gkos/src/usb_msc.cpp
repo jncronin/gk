@@ -71,7 +71,7 @@ struct scsi_read10_header
     uint8_t control;
 } __attribute__((packed));
 
-__attribute__((aligned(CACHE_LINE_SIZE))) uint8_t msc_buffer[512];
+__attribute__((aligned(CACHE_LINE_SIZE))) uint8_t msc_buffer[65536];
 
 // sense codes
 #define SENSE_CODE_NO_SENSE                         0
