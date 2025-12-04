@@ -7,7 +7,7 @@
 
 uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
 {
-    klog("usb: class_init(..., %u)\n", cfgidx);
+//    klog("usb: class_init(..., %u)\n", cfgidx);
 
 #if GK_ENABLE_USB_MASS_STORAGE
     usb_msc_init(pdev, cfgidx);
@@ -18,13 +18,13 @@ uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
 
 uint8_t usb_class_de_init(struct usb_handle *pdev, uint8_t cfgidx)
 {
-    klog("usb: class_de_init(..., %u)\n", cfgidx);
+//    klog("usb: class_de_init(..., %u)\n", cfgidx);
     return USBD_OK;
 }
 
 uint8_t usb_class_data_in(struct usb_handle *pdev, uint8_t epnum)
 {
-    klog("usb: class_data_in(..., %u)\n", epnum);
+//    klog("usb: class_data_in(..., %u)\n", epnum);
 
     switch(epnum | 0x80)
     {
@@ -40,37 +40,37 @@ uint8_t usb_class_data_in(struct usb_handle *pdev, uint8_t epnum)
 
 uint8_t usb_class_ep0_rx_ready(struct usb_handle *pdev)
 {
-    klog("usb: class_ep0_rx_ready(...)\n");
+//    klog("usb: class_ep0_rx_ready(...)\n");
     return USBD_OK;
 }
 
 uint8_t usb_class_ep0_tx_ready(struct usb_handle *pdev)
 {
-    klog("usb: class_ep0_tx_ready(...)\n");
+//    klog("usb: class_ep0_tx_ready(...)\n");
     return USBD_OK;
 }
 
 uint8_t usb_class_sof(struct usb_handle *pdev)
 {
-    klog("usb: class_sof(...)\n");
+//    klog("usb: class_sof(...)\n");
     return USBD_OK;
 }
 
 uint8_t usb_class_iso_in_incomplete(struct usb_handle *pdev, uint8_t epnum)
 {
-    klog("usb: class_iso_in_incomplete(..., %u)\n", epnum);
+//    klog("usb: class_iso_in_incomplete(..., %u)\n", epnum);
     return USBD_OK;
 }
 
 uint8_t usb_class_iso_out_incomplete(struct usb_handle *pdev, uint8_t epnum)
 {
-    klog("usb: class_iso_out_incomplete(..., %u)\n", epnum);
+//    klog("usb: class_iso_out_incomplete(..., %u)\n", epnum);
     return USBD_OK;
 }
 
 uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
 {
-    klog("usb: class_data_out(..., %u)\n", epnum);
+//    klog("usb: class_data_out(..., %u)\n", epnum);
 
     switch(epnum)
     {
@@ -86,8 +86,8 @@ uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
 
 uint8_t usb_class_setup(struct usb_handle *pdev, struct usb_setup_req *req)
 {
-    klog("usb: class_setup(..., bm_request=%u, b_request=%u)\n",
-        req->bm_request, req->b_request);
+//    klog("usb: class_setup(..., bm_request=%u, b_request=%u)\n",
+//        req->bm_request, req->b_request);
 
     switch (req->bm_request & USB_REQ_TYPE_MASK)
     {
