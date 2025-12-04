@@ -8,8 +8,8 @@
 #include <queue>
 #include <cstring>
 #include <clocks.h>
-#include "weak_ptr_unordered_set.h"
-
+#include <unordered_set>
+#include "threadproclist.h"
 #include "gk_conf.h"
 
 class unknown_queue_type { };
@@ -26,7 +26,7 @@ template <typename T> class BaseQueue
 
         int _wptr = 0;
         int _rptr = 0;
-        WeakPtrUnorderedSet<Thread> waiting_threads;
+        std::unordered_set<id_t> waiting_threads;
         Spinlock sl;
 
         constexpr inline int ptr_plus_one(int p)
@@ -41,7 +41,7 @@ template <typename T> class BaseQueue
         {
             for(auto bt : waiting_threads)
             {
-                auto btp = bt.lock();
+                auto btp = ThreadList.Get(bt);
                 if(btp)
                 {
                     CriticalGuard cg(btp->sl_blocking);
@@ -193,15 +193,12 @@ template <typename T> class BaseQueue
                     CriticalGuard cg(sl);
                     if(empty())
                     {
-                        {
-                        UninterruptibleGuard ug;
-                            auto t = GetCurrentPThreadForCore();
-                            waiting_threads.insert(t);
-                            t->set_is_blocking(true);
-                            t->blocking_on_prim = this;
-                            if(kernel_time_is_valid(timeout))
-                                t->block_until = timeout;
-                        }
+                        auto t = GetCurrentPThreadForCore();
+                        waiting_threads.insert(t->id);
+                        t->set_is_blocking(true);
+                        t->blocking_on_prim = this;
+                        if(kernel_time_is_valid(timeout))
+                            t->block_until = timeout;
                         Yield();
                     }
                     else
