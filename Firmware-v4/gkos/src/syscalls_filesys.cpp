@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include "ext4_thread.h"
+#include "vmem.h"
 
 int syscall_fstat(int file, struct stat *st, int *_errno)
 {
@@ -24,7 +25,19 @@ int syscall_fstat(int file, struct stat *st, int *_errno)
     }
     ADDR_CHECK_STRUCT_W(st);
 
-    return p->open_files.f[file]->Fstat(st, _errno);
+    struct stat kernel_st;
+
+    auto ret = p->open_files.f[file]->Fstat(&kernel_st, _errno);
+    if(ret == -2)
+    {
+        ret = deferred_return(_errno);
+    }
+
+    if(ret == 0)
+    {
+        *st = kernel_st;
+    }
+    return ret;
 }
 
 int syscall_write(int file, char *buf, int nbytes, int *_errno)
