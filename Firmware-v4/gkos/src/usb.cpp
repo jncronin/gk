@@ -17,7 +17,7 @@
 #include "usb_dwc3.h"
 #include "usb_class.h"
 
-#define DEBUG_USB 1
+#define DEBUG_USB 0
 
 bool usb_israwsd = false;
 

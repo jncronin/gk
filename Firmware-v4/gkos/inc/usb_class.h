@@ -17,6 +17,12 @@ uint8_t usb_msc_init(usb_handle *pdev, uint8_t cfgidx);
 uint8_t usb_msc_data_out(usb_handle *pdev, uint8_t epnum);
 uint8_t usb_msc_data_in(usb_handle *pdev, uint8_t epnum);
 
+
+// user-provided callbacks
+uint32_t usb_msc_cb_get_num_blocks();
+uint32_t usb_msc_cb_get_block_size();
+bool usb_msc_cb_get_is_ready();
+
 class usb_msc_status : public usb_class_status
 {
     public:
@@ -26,6 +32,8 @@ class usb_msc_status : public usb_class_status
         uint32_t expected_length;
         uint32_t data_sent_in_len;
         bool data_sent_in_last_packet;
+        bool command_succeeded;
+        uint8_t sense_key, additional_sense_code;
 
         uint8_t epnum_in, epnum_out;
 
