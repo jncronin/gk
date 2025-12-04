@@ -10,6 +10,8 @@ PProcess p_test;
 
 void *init_thread(void *)
 {
+    // TODO: provision fs
+    
     usb_process_start();
 
 

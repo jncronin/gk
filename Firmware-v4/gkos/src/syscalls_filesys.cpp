@@ -3,6 +3,7 @@
 #include "thread.h"
 #include "process.h"
 #include "ramdisk.h"
+#include "fatfs_file.h"
 
 #include <cstring>
 #include <fcntl.h>
@@ -275,6 +276,23 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         {
             *_errno = ENOENT;
             return rdret;
+        }
+    }
+    if(act_name.starts_with("/dev/fat/"))
+    {
+        if(is_opendir)
+        {
+            *_errno = ENOTDIR;
+            return -1;
+        }
+        auto ffret = fatfs_open(act_name.substr(9), &p->open_files.f[fd],
+            (flags & 3) != O_WRONLY, (flags & 3) != O_RDONLY);
+        if(ffret == 0)
+            return fd;
+        else
+        {
+            *_errno = ENOENT;
+            return ffret;
         }
     }
     if(act_name == "/dev/ttyUSB0")

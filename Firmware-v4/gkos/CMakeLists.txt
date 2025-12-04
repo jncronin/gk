@@ -40,6 +40,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/lwext4/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source"
         "${LWEXT4_GENERATED_DIR}"
 )
 
