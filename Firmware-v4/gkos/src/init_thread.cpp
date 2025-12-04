@@ -31,6 +31,8 @@ void *init_thread(void *)
     auto ret = elf_load_fildes(proc_fd, p_test, &test_ep);
     klog("init: elf_load_fildes: ret: %d, ep: %llx\n", ret, test_ep);
 
+    p_test->cwd = "/gkmenu-0.1.1-gk";
+
     if(ret == 0)
     {
         auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_test);
