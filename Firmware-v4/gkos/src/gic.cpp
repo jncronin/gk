@@ -95,7 +95,6 @@ int gic_send_sgi(unsigned int sgi_no, int core_id)
 static void gic_set_bit(unsigned int irq_n, uintptr_t base);
 static void gic_set_8bit(unsigned int irq_n, unsigned int val, uintptr_t base);
 static void gic_set_2bit(unsigned int irq_n, unsigned int val, uintptr_t base);
-static void gic_clear_enable(unsigned int irq_n);
 static void gic_set_priority(unsigned int irq_n, unsigned int priority);
 static void gic_set_cfg(unsigned int irq_n, unsigned int cfg);
 
@@ -105,9 +104,10 @@ int gic_set_enable(unsigned int irq_n)
     return 0;
 }
 
-[[maybe_unused]] void gic_clear_enable(unsigned int irq_n)
+int gic_clear_enable(unsigned int irq_n)
 {
     gic_set_bit(irq_n, GIC_DISTRIBUTOR_BASE + 0x180);
+    return 0;
 }
 
 int gic_set_target(unsigned int irq_n, int cpu_id)

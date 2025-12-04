@@ -11,6 +11,7 @@
 #include "vmem.h"
 #include "clocks.h"
 #include "pmem.h"
+#include "osqueue.h"
 
 #include "usb_device.h"
 #include "usb_dwc3.h"
@@ -36,6 +37,15 @@ extern usb_desc usb_desc_callback;
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
 #define RIFSC_VMEM (PMEM_TO_VMEM(RIFSC_BASE))
+
+// messages to send to usb system
+#define USB_MESSAGE_INT             0x1
+#define USB_MESSAGE_VBUS_DOWN       0x2
+#define USB_MESSAGE_VBUS_UP         0x3
+
+
+// message queue
+FixedQueue<uint32_t, 32> usb_queue;
 
 void init_usb()
 {
@@ -140,7 +150,11 @@ void init_usb()
 
 extern void USB3DR_IRQHandler()
 {
-    usb_core_handle_it(&usb_core);
+    gic_clear_enable(259);
+    gic_clear_enable(260);
+
+    usb_queue.Push(USB_MESSAGE_INT);
+    //usb_core_handle_it(&usb_core);
 }
 
 bool usb_process_start()
@@ -208,45 +222,24 @@ void *usb_task(void *pvParams)
 
     while(true)
     {
+        uint32_t cur_msg = 0;
+        while(!usb_queue.Pop(&cur_msg));
+
 #if DEBUG_USB
-        {
-            klog("usb: loop\n");
-        }
+        klog("usb: loop\n");
 #endif
 
-#if 0
-        if(!is_enabled)
+        switch(cur_msg)
         {
-            if(PWR->CSR2 & PWR_CSR2_USB33RDY)
-            {
-                is_enabled = true;
-                NVIC_EnableIRQ(OTG_HS_IRQn);
-            }
-            else
-            {
-                Block(clock_cur() + kernel_time::from_ms(500));
-            }
+            case USB_MESSAGE_INT:
+                usb_core_handle_it(&usb_core);
+                gic_set_enable(259);
+                gic_set_enable(260);
+                break;
+
+            default:
+                klog("usb: spurious message: %u\n", cur_msg);
+                break;
         }
-        else
-        {
-            if(!(PWR->CSR2 & PWR_CSR2_USB33RDY))
-            {
-                is_enabled = false;
-                NVIC_DisableIRQ(OTG_HS_IRQn);
-            }
-            else
-            {
-                tud_task();
-            }
-        }
-#endif
-        //tud_task();
-
-        //usb_core_
-
-        //tud_task();
-
-        //usb_core_handle_it(&usb_core);
-        Block();
     }
 }
