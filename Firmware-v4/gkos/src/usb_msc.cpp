@@ -84,6 +84,7 @@ __attribute__((aligned(CACHE_LINE_SIZE))) uint8_t msc_buffer[512];
 #define ADDITIONAL_SENSE_LBA_OUT_OF_RANGE           0x21
 
 static uint8_t usb_msc_handle_data_sent_in(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci);
+static uint8_t usb_msc_handle_expect_data_out(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci);
 
 uint8_t usb_msc_setup(usb_handle *pdev, uint8_t bRequest)
 {
@@ -297,6 +298,51 @@ static uint8_t usb_msc_handle_read_capacity(usb_handle *pdev, std::shared_ptr<us
     return usb_core_transmit(pdev, ci->epnum_in, msc_buffer, to_send);
 }
 
+static uint8_t usb_msc_handle_write10(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci,
+    scsi_read10_header *hdr)
+{
+    // check validity
+    auto dev_n_blocks = usb_msc_cb_get_num_blocks();
+    auto lba = __builtin_bswap32(hdr->lba_be);
+    auto req_n_blocks = (uint32_t)__builtin_bswap16(hdr->nblocks_be);
+
+    if((req_n_blocks * usb_msc_cb_get_block_size()) != ci->expected_length)
+    {
+        klog("usb_msc: write10, expected_len: %u, lba: %u, n_blocks: %u\n",
+            ci->expected_length, __builtin_bswap32(hdr->lba_be), __builtin_bswap16(hdr->nblocks_be));
+        return USBD_FAIL;
+    }
+
+    klog("usb_msc: write10, expected_len: %u, lba: %u, n_blocks: %u\n",
+        ci->expected_length, __builtin_bswap32(hdr->lba_be), __builtin_bswap16(hdr->nblocks_be));
+
+    if((lba >= dev_n_blocks) || ((lba + req_n_blocks) >= dev_n_blocks))
+    {
+        // out of range
+        ci->sense_key = SENSE_CODE_ILLEGAL_REQUEST;
+        ci->additional_sense_code = ADDITIONAL_SENSE_LBA_OUT_OF_RANGE;
+        ci->command_succeeded = false;
+        ci->data_sent_in_len = 0;
+        ci->data_sent_in_last_packet = true;
+
+        // TODO: stall data out pipe       
+
+        return usb_msc_handle_data_sent_in(pdev, ci);
+    }
+    else
+    {
+        // prep a (potentially multi-sector) write
+        ci->next_lba = lba;
+        ci->next_buf = msc_buffer;
+        ci->buflen = sizeof(msc_buffer);
+        ci->data_sent_in_last_packet = false;
+        ci->data_sent_in_len = 0;
+        ci->data_written_len = 0;
+        ci->state = usb_msc_status::EXPECT_DATA_OUT;
+        return usb_msc_handle_expect_data_out(pdev, ci);
+    }
+}
+
 static uint8_t usb_msc_handle_read10(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci,
     scsi_read10_header *hdr)
 {
@@ -312,8 +358,10 @@ static uint8_t usb_msc_handle_read10(usb_handle *pdev, std::shared_ptr<usb_msc_s
         return USBD_FAIL;
     }
 
+#if DEBUG_SD
     klog("usb_msc: read10, expected_len: %u, lba: %u, n_blocks: %u\n",
         ci->expected_length, __builtin_bswap32(hdr->lba_be), __builtin_bswap16(hdr->nblocks_be));
+#endif
 
     if((lba >= dev_n_blocks) || ((lba + req_n_blocks) >= dev_n_blocks))
     {
@@ -377,7 +425,7 @@ static uint8_t usb_msc_handle_header(usb_handle *pdev, std::shared_ptr<usb_msc_s
 
         case 0x12:
             // INQUIRY
-            if(scsi_header_length != 6 || !is_in)
+            if(scsi_header_length < 6 || !is_in)
             {
                 klog("usb_msc: inquiry invalid params: header_len: %u, is_in: %s\n",
                     scsi_header_length, is_in ? "TRUE" : "FALSE");
@@ -429,6 +477,18 @@ static uint8_t usb_msc_handle_header(usb_handle *pdev, std::shared_ptr<usb_msc_s
             return usb_msc_handle_read10(pdev, ci,
                 (scsi_read10_header *)&msc_buffer[15]);
 
+        case 0x2a:
+            // WRITE (10)
+            if(scsi_header_length != 10 || is_in)
+            {
+                klog("usb_msc: write (10) invalid params: header_len: %u, is_in: %s\n",
+                    scsi_header_length, is_in ? "TRUE" : "FALSE");
+                return USBD_FAIL;
+            }
+
+            return usb_msc_handle_write10(pdev, ci,
+                (scsi_read10_header *)&msc_buffer[15]);
+
         default:
             klog("usb_msc: unsupported scsi command %u\n", msc_buffer[15]);
             // send a fail csw
@@ -439,6 +499,51 @@ static uint8_t usb_msc_handle_header(usb_handle *pdev, std::shared_ptr<usb_msc_s
             ci->additional_sense_code = 0;
             return usb_msc_handle_data_sent_in(pdev, ci);
     }
+}
+
+static uint8_t usb_msc_handle_expect_data_out(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci)
+{
+    // first write any data we have just received
+    while(ci->data_written_len < ci->data_sent_in_len)
+    {
+        auto to_write = ci->data_written_len - ci->data_sent_in_len;
+        size_t bwritten = 0;
+
+        auto ret = usb_msc_cb_write_data(ci->next_lba, to_write, ci->next_buf, &bwritten);
+        if(ret != 0)
+        {
+            klog("usb_msc: write_data fail: to_write: %u, lba: %u, buf: %p\n",
+                to_write, ci->next_lba, ci->next_buf);
+            
+            // TODO stall out ep
+            ci->command_succeeded = false;
+            ci->data_sent_in_last_packet = true;
+            ci->sense_key = SENSE_CODE_MEDIUM_ERROR;
+            ci->additional_sense_code = 0xc;
+            return usb_msc_handle_data_sent_in(pdev, ci);
+        }
+
+        auto nsectors = bwritten / usb_msc_cb_get_block_size();
+        ci->next_lba += nsectors;
+        ci->data_written_len += bwritten;
+    }
+
+    // have we finished?
+    if(ci->data_sent_in_len >= ci->expected_length)
+    {
+        klog("usb_msc: write complete\n");
+        // send success
+        ci->data_sent_in_last_packet = true;
+        ci->command_succeeded = true;
+        return usb_msc_handle_data_sent_in(pdev, ci);
+    }
+
+    // request more data
+    auto bytes_left = ci->expected_length - ci->data_sent_in_len;
+    auto to_request = std::min(bytes_left, (uint32_t)ci->buflen);
+    ci->data_sent_in_len += to_request;
+    ci->state = usb_msc_status::EXPECT_DATA_OUT;
+    return usb_core_receive(pdev, ci->epnum_out, (uint8_t *)ci->next_buf, to_request);
 }
 
 uint8_t usb_msc_data_out(usb_handle *pdev, uint8_t epnum)
@@ -452,7 +557,11 @@ uint8_t usb_msc_data_out(usb_handle *pdev, uint8_t epnum)
             // we have received a header, interpret it and handle the rest of the message, if any
             return usb_msc_handle_header(pdev, ci);
 
+        case usb_msc_status::EXPECT_DATA_OUT:
+            return usb_msc_handle_expect_data_out(pdev, ci);
+
         default:
+            klog("usb_msc: data_out: invalid state: %d\n", ci->state);
             return USBD_FAIL;
     }
 }
@@ -494,7 +603,7 @@ uint8_t usb_msc_handle_data_sent_in(usb_handle *pdev, std::shared_ptr<usb_msc_st
             ci->command_succeeded = false;
             ci->data_sent_in_last_packet = true;
             ci->sense_key = SENSE_CODE_MEDIUM_ERROR;
-            ci->additional_sense_code = 11; // unrecovered read error
+            ci->additional_sense_code = 0x11; // unrecovered read error
             return usb_msc_handle_data_sent_in(pdev, ci);
         }
 
@@ -505,11 +614,13 @@ uint8_t usb_msc_handle_data_sent_in(usb_handle *pdev, std::shared_ptr<usb_msc_st
         ci->data_sent_in_len += to_send;
         ci->command_succeeded = true;
 
+#if DEBUG_USB
         if(ci->data_sent_in_last_packet)
         {
             klog("usb_msc: read10: to_send: %u, bytes_read: %u, bytes_left: %u, data_sent_in_len: %u, next_lba: %u\n", to_send,
                 bytes_read, bytes_left, ci->data_sent_in_len, ci->next_lba);
         }
+#endif
 
         // send the data
         ci->state = usb_msc_status::DATA_SENT_IN;

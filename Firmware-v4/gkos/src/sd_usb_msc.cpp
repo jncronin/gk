@@ -28,6 +28,26 @@ bool usb_msc_cb_get_is_ready()
     return sd_get_ready();
 }
 
+int usb_msc_cb_write_data(uint32_t lba, size_t nbytes, const void *buf, size_t *nwritten)
+{
+    auto nsectors = nbytes / usb_msc_cb_get_block_size();
+    if(lba == 0 && !usb_israwsd)
+    {
+        // handle fake mbr separately - silent fail
+        nsectors = 1;
+
+        if(nwritten) *nwritten = 512U;
+        return 0;
+    }
+
+    auto ret = sd_transfer(lba, nsectors, (void *)buf, false);
+    if(ret == 0)
+    {
+        if(nwritten) *nwritten = nsectors * usb_msc_cb_get_block_size();
+    }
+    return ret;
+}
+
 int usb_msc_cb_read_data(uint32_t lba, size_t nbytes, void *buf, size_t *nread)
 {
     auto nsectors = nbytes / usb_msc_cb_get_block_size();

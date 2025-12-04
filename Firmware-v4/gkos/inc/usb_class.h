@@ -28,11 +28,12 @@ int usb_msc_cb_write_data(uint32_t lba, size_t nbytes, const void *buf, size_t *
 class usb_msc_status : public usb_class_status
 {
     public:
-        enum msc_state { HEADER_REQ, DATA_SENT_IN, CSW_SENT_IN };
+        enum msc_state { HEADER_REQ, DATA_SENT_IN, CSW_SENT_IN, EXPECT_DATA_OUT };
         msc_state state;
         uint32_t tag;
         uint32_t expected_length;
         uint32_t data_sent_in_len;
+        uint32_t data_written_len;
         bool data_sent_in_last_packet;
         bool command_succeeded;
         uint8_t sense_key, additional_sense_code;
