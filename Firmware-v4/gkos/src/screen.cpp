@@ -46,6 +46,7 @@ uintptr_t screen_update()
 {
     auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->screen.sl);
+    p->_init_screen();
     auto layer = p->screen.screen_layer;
     if(layer >= 2)
         return 0;

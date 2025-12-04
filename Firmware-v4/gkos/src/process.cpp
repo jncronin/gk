@@ -57,23 +57,26 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
         }
     }
 
-    // screen setup
-    {
-        CriticalGuard cg(ret->screen.sl);
-        ret->screen.screen_layer = ret->is_privileged ? 1 : 0;
-
-        for(unsigned int buf = 0; buf < 3; buf++)
-        {
-            ret->screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes),
-                !ret->is_privileged, true,
-                false, 0, 0, ret->is_privileged ? vblock : ret->user_mem->blocks);
-            ret->screen.bufs[buf].memory_type = MT_NORMAL_WT;
-            screen_map_for_process(ret->screen.bufs[buf], ret->screen.screen_layer, buf,
-                ret->is_privileged ? 0U : ret->user_mem->ttbr0);
-        }
-    }
-
     return ret;
+}
+
+void Process::_init_screen()
+{
+    // screen setup
+    if(screen.bufs[0].valid)
+        return;
+    
+    screen.screen_layer = is_privileged ? 1 : 0;
+
+    for(unsigned int buf = 0; buf < 3; buf++)
+    {
+        screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes),
+            !is_privileged, true,
+            false, 0, 0, is_privileged ? vblock : user_mem->blocks);
+        screen.bufs[buf].memory_type = MT_NORMAL_WT;
+        screen_map_for_process(screen.bufs[buf], screen.screen_layer, buf,
+            is_privileged ? 0U : user_mem->ttbr0);
+    }
 }
 
 void Process::owned_pages_t::add(const PMemBlock &b)

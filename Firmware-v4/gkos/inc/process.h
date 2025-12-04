@@ -86,6 +86,7 @@ class Process
                 unsigned int screen_layer = 0;
                 VMemBlock bufs[3] = { InvalidVMemBlock(), InvalidVMemBlock(), InvalidVMemBlock() };
         };
+        void _init_screen();
 
         std::string name;
         std::vector<std::shared_ptr<Thread>> threads;
