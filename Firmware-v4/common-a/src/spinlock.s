@@ -19,6 +19,7 @@ _ZN8Spinlock4lockEv:
 #else
     // 'this' in x0, which is also address of first member
     mrs x1, mpidr_el1
+    and x1, x1, #0xff
     add x1, x1, #1
 
 1:
