@@ -66,7 +66,7 @@ void Scheduler::Schedule(PThread t)
 
 inline void Scheduler::set_timeout(const PThread new_t)
 {
-    const uint32_t unmask_val = 0x3;        // test tickless
+    const uint32_t unmask_val = 0x1;
 
     // Get earliest timeout in anything with higher priority than new_t
     auto new_p = new_t->base_priority;
@@ -82,7 +82,7 @@ inline void Scheduler::set_timeout(const PThread new_t)
         }
     }
 
-    unsigned int sysclk = 64;   // 1 us = 64 ticks @ 64 MHz
+    const unsigned int sysclk = 64;   // 1 us = 64 ticks @ 64 MHz
     unsigned int reload = 0;
 
     if(kernel_time_is_valid(earliest_blocker))

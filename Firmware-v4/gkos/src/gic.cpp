@@ -15,6 +15,7 @@ consteval uint32_t valid_cores()
 }
 
 void SDMMC1_IRQHandler();
+void USB3DR_IRQHandler();
 
 void gic_irq_handler(uint32_t iar)
 {
@@ -30,6 +31,11 @@ void gic_irq_handler(uint32_t iar)
 
         case 155:
             SDMMC1_IRQHandler();
+            break;
+
+        case 259:
+        case 260:
+            USB3DR_IRQHandler();
             break;
 
         default:
@@ -89,7 +95,6 @@ int gic_send_sgi(unsigned int sgi_no, int core_id)
 static void gic_set_bit(unsigned int irq_n, uintptr_t base);
 static void gic_set_8bit(unsigned int irq_n, unsigned int val, uintptr_t base);
 static void gic_set_2bit(unsigned int irq_n, unsigned int val, uintptr_t base);
-static void gic_clear_enable(unsigned int irq_n);
 static void gic_set_priority(unsigned int irq_n, unsigned int priority);
 static void gic_set_cfg(unsigned int irq_n, unsigned int cfg);
 
@@ -99,16 +104,17 @@ int gic_set_enable(unsigned int irq_n)
     return 0;
 }
 
-[[maybe_unused]] void gic_clear_enable(unsigned int irq_n)
+int gic_clear_enable(unsigned int irq_n)
 {
     gic_set_bit(irq_n, GIC_DISTRIBUTOR_BASE + 0x180);
+    return 0;
 }
 
 int gic_set_target(unsigned int irq_n, int cpu_id)
 {
-    unsigned int ucpu_id = (cpu_id == GIC_TARGET_SELF) ? GetCoreID() : (unsigned int)cpu_id;
+    unsigned int ucpu_id = (cpu_id == GIC_TARGET_SELF) ? (1U << GetCoreID()) : (unsigned int)cpu_id;
 
-    gic_set_8bit(irq_n, (1U << ucpu_id) & 0xfU, GIC_DISTRIBUTOR_BASE + 0x800);
+    gic_set_8bit(irq_n, ucpu_id & 0xfU, GIC_DISTRIBUTOR_BASE + 0x800);
     return 0;
 }
 

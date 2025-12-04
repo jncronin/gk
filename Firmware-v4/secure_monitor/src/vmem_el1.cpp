@@ -19,6 +19,10 @@
         0xffff fc00 0000 0000
          to
         0xffff fc0f ffff ffff (we could go to 40 bit here and have 2nd part be fcff...)
+
+    We then repeat the mapping at
+        0xffff fd00 0000 0000
+      with all memory as type MT_DEVICE (for debugging how external DMA engines see memory)
     
     This is all possible in the first level (level 2) table using the first 128
         8 byte entries in the 64 kiB page directory.
@@ -91,6 +95,10 @@ void init_vmem(int el)
 
         pd_entries[i] = (0x20000000ULL * i) |
             attr;
+
+        // MT_DEVICE mapping
+        pd_entries[i + 2048] = (0x20000000ULL * i) |
+            (PAGE_ACCESS | PAGE_INNER_SHAREABLE | DT_BLOCK | PAGE_PRIV_RW | PAGE_ATTR(MT_DEVICE));
     }
 }
 

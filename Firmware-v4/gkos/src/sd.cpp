@@ -782,7 +782,7 @@ void sd_reset()
     // Enable interrupts
     SDMMC1_VMEM->MASK = DCRCFAIL | DTIMEOUT |
         TXUNDERR | RXOVERR | DATAEND;
-    gic_set_target(155, GetCoreID());
+    gic_set_target(155, GIC_ENABLED_CORES);
     gic_set_enable(155);
     
     {
@@ -1230,7 +1230,9 @@ void SDMMC1_IRQHandler()
         DTIMEOUT |
         TXUNDERR | RXOVERR;
     auto sta = SDMMC1_VMEM->STA;
+#if DEBUG_SD
     klog("sd: int: %lx\n", sta);
+#endif
     if(sta & errors)
     {
         SDMMC1_VMEM->DCTRL |= SDMMC_DCTRL_FIFORST;

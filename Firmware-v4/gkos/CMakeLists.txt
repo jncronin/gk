@@ -39,6 +39,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/lwext4/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source"
         "${LWEXT4_GENERATED_DIR}"
 )
 
@@ -127,7 +129,6 @@ utils_target_set_linker_script(${PROJECT_NAME}
 )
 
 utils_target_print_size(${PROJECT_NAME})
-
 
 # Generate a file suitable for loading into JFlash or equivalent to flash the QSPI
 add_custom_target(gkos-hex

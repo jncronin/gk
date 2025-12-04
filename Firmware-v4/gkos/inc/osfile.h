@@ -15,7 +15,8 @@ enum FileType
     FT_Lwext,
     FT_Socket,
     FT_Pipe,
-    FT_Ram
+    FT_Ram,
+    FT_FAT
 };
 
 class File

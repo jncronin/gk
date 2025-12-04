@@ -1,5 +1,7 @@
 #include <stm32mp2xx.h>
 
+void log(const char *);
+
 void init_clocks()
 {
     // Enable HSE
@@ -26,6 +28,27 @@ void init_clocks()
 
         to give an output of 1200 MHz
     */
+
+    /* We cannot alter PLL4 because it is used to clock the RCC registers.
+        Add a PLL5 which is clocked off HSE40 at the same output (1200 MHz) */
+    RCC->MUXSELCFGR = (RCC->MUXSELCFGR & ~RCC_MUXSELCFGR_MUXSEL1_Msk) |
+        (1U << RCC_MUXSELCFGR_MUXSEL1_Pos);
+    __asm__ volatile("dmb sy\n" ::: "memory");
+    RCC->PLL5CFGR1 = RCC->PLL4CFGR1 & ~RCC_PLL5CFGR1_PLLEN;
+    RCC->PLL5CFGR2 = (2UL << RCC_PLL5CFGR2_FREFDIV_Pos) |
+        (120UL << RCC_PLL5CFGR2_FBDIV_Pos);
+    RCC->PLL5CFGR3 = RCC->PLL4CFGR3;
+    RCC->PLL5CFGR4 = RCC->PLL4CFGR4;
+    RCC->PLL5CFGR5 = RCC->PLL4CFGR5;
+    RCC->PLL5CFGR6 = RCC->PLL4CFGR6;
+    RCC->PLL5CFGR7 = RCC->PLL4CFGR7;
+    RCC->PLL5CFGR1 |= RCC_PLL5CFGR1_PLLEN;
+
+    // Run Core + MCU off PLL5
+    log("FSBL: setting core clocks to PLL5\n");
+    RCC->XBARxCFGR[0] = 0x41;
+    log("FSBL: done\n");
+
     
     // This all seems reasonable.  Clock OSPI1 off PLL4 / 12 -> 100 MHz
     RCC->FINDIVxCFGR[48] = 0x40U | 11U;

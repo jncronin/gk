@@ -115,6 +115,7 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
     auto last_iter = sdc_list.end();
     last_iter--;
     auto bb_to_erase = *last_iter;
+    sdc_list.pop_back();
 
     map_value mv_old = sdc_map[bb_to_erase];
     sdc_map.erase(bb_to_erase);
@@ -125,8 +126,14 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
     ret.paddr = mv_old.paddr;
     ret.vaddr = mv_old.vaddr;
 
+#if DEBUG_SDC
+    klog("sdc: recycling entry for bb: %u to %u, vaddr: %llx, paddr: %llx\n",
+        bb_to_erase, bigblock, ret.vaddr, ret.paddr);
+#endif
+
     // put list iter at the beginning
-    sdc_list.splice(sdc_list.begin(), sdc_list, last_iter);
+    sdc_list.push_front(bigblock);
+    sdc_map[bigblock].list_loc = sdc_list.begin();
 
     return ret;
 }
@@ -161,11 +168,15 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
         auto has_bb = sdc_bigblock_to_addr(cur_bb);
         if(!has_bb.has_data)
         {
+#if DEBUG_SDC
             klog("sdc: cache miss for %llu - loading %llu to v %llx p %llx\n", block_start, cur_bb * b_per_bb,
                 has_bb.vaddr, has_bb.paddr);
+#endif
             // load the data
             auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
+#if DEBUG_SDC
             klog("sdc: big block load complete, ret %d\n", rret);
+#endif
             if(rret != 0)
                 return rret;
             
@@ -195,6 +206,11 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 
     uintptr_t src_addr = (uintptr_t)mem_address;
 
+#if DEBUG_SDC
+    klog("sdc: write: block_start: %llu, block_count: %llu, mem_address: %p\n",
+        block_start, block_count, mem_address);
+#endif
+
     while(block_count)
     {
         auto cur_bb = block_start / b_per_bb;
@@ -211,12 +227,16 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
         // need to load if not already loaded and not whole_bb
         if(!has_bb.has_data && !whole_bb)
         {
+#if DEBUG_SDC
             klog("sdc_write: partial bigblock write b: %llu within bb: %llx at b_offset: %llx - loading\n",
                     blocks_within_bb, cur_bb, b_offset_within_bb);
+#endif
             
             // load the data
             auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
+#if DEBUG_SDC
             klog("sdc: big block load complete, ret %d\n", rret);
+#endif
             if(rret != 0)
                 return rret;
             
@@ -224,15 +244,23 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
         }
         else if(has_bb.has_data)
         {
+#if DEBUG_SDC
             klog("sdc_write: cache hit, skipping load\n");
+#endif
         }
         else if(whole_bb)
         {
+#if DEBUG_SDC
             klog("sdc_write: whole bb, skipping load\n");
+#endif
         }
 
         // copy the data
         auto dest = has_bb.vaddr + byte_offset_within_bb;
+#if DEBUG_SDC
+        klog("sdc: write: has_bb.vaddr: %llx, byte_offset_within_bb: %llx, src_addr: %llx, blocks_within_bb: %llu\n",
+            has_bb.vaddr, byte_offset_within_bb, src_addr, blocks_within_bb);
+#endif
         memcpy((void *)dest, (const void *)src_addr, blocks_within_bb * block_size);
 
         // put back in cache
@@ -240,7 +268,9 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 
         // write out
         auto wret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, false);
+#if DEBUG_SDC
         klog("sdc: big block write complete, ret %d\n", wret);
+#endif
         if(wret != 0)
             return wret;
 

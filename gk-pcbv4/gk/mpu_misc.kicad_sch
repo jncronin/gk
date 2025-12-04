@@ -17126,7 +17126,7 @@
 				)
 			)
 		)
-		(property "Value" "24MHz"
+		(property "Value" "40MHz"
 			(at 39.37 26.7968 0)
 			(effects
 				(font
