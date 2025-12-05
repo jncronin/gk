@@ -140,6 +140,11 @@ int main(uint32_t bootrom_val)
         "mrs x0, S3_1_C15_C2_1\n"       // CPUECTRL_EL1
         "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
         "msr S3_1_C15_C2_1, x0\n"
+
+        "isb\n"
+        "tlbi alle3is\n"
+        "dsb ish\n"
+        "isb\n"
         
         "mrs x0, sctlr_el3\n"
         "orr x0, x0, #(0x1 << 0)\n"     // M
@@ -175,6 +180,11 @@ void ap_main()
         "mrs x0, S3_1_C15_C2_1\n"       // CPUECTRL_EL1
         "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
         "msr S3_1_C15_C2_1, x0\n"
+
+        "isb\n"
+        "tlbi alle3is\n"
+        "dsb ish\n"
+        "isb\n"
         
         "mrs x0, sctlr_el3\n"
         "orr x0, x0, #(0x1 << 0)\n"     // M

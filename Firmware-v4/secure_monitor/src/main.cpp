@@ -105,6 +105,11 @@ extern "C" void mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
         "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
         "msr S3_1_C15_C2_1, x0\n"
 
+        "isb\n"
+        "tlbi alle1is\n"
+        "dsb ish\n"
+        "isb\n"
+
         "mov x0, xzr\n"
         "orr x0, x0, #(0x1 << 0)\n"     // M
         "orr x0, x0, #(0x1 << 2)\n"     // C
@@ -174,6 +179,11 @@ extern "C" void ap_kmain(uint64_t magic)
                 "mrs x0, S3_1_C15_C2_1\n"       // CPUECTRL_EL1
                 "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
                 "msr S3_1_C15_C2_1, x0\n"
+
+                "isb\n"
+                "tlbi alle3is\n"
+                "dsb ish\n"
+                "isb\n"
 
                 "mov x0, xzr\n"
                 "orr x0, x0, #(0x1 << 0)\n"     // M
