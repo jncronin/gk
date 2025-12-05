@@ -9,7 +9,7 @@
 #include <sys/times.h>
 #include <cstring>
 #include "elf.h"
-//#include "cleanup.h"
+#include "cleanup.h"
 //#include "sound.h"
 //#include "btnled.h"
 #include "util.h"
@@ -19,16 +19,12 @@
 
 extern PProcess p_kernel;
 
-extern "C" {
-    void SyscallHandler(syscall_no num, void *r1, void *r2, void *r3);
-}
-
-void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
+void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
 {
 #if DEBUG_SYSCALLS
-    uint32_t dr1 = (uint32_t)(uintptr_t)r1;
-    uint32_t dr2 = (uint32_t)(uintptr_t)r2;
-    uint32_t dr3 = (uint32_t)(uintptr_t)r3;
+    void *dr1 = r1;
+    void *dr2 = r2;
+    void *dr3 = r3;
 #endif
     [[maybe_unused]] auto syscall_start = clock_cur_ms();
     switch(sno)
@@ -321,14 +317,17 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             break;
 
 
-#if 0
         case __syscall_thread_cleanup:
             {
                 auto t = GetCurrentThreadForCore();
-                t->Cleanup(r1);
+                CriticalGuard cg(t->sl_blocking);
+                t->retval = r1;
+                t->for_deletion = true;
+                t->set_is_blocking(true);
+                CleanupQueue.Push({ .is_thread = true, .t = GetCurrentPThreadForCore() });
+                Yield();
             }
             break;
-#endif
 
         case __syscall_set_thread_priority:
             {
@@ -389,8 +388,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
 #if DEBUG_SYSCALLS
                 {
-                    klog("syscall_read: file %d addr: %x, len: %d, ret: %d\n",
-                        p->file, (uint32_t)(uintptr_t)p->ptr, p->len, ret);
+                    klog("syscall_read: file %d addr: %p, len: %d, ret: %d\n",
+                        p->file, p->ptr, p->len, ret);
                 }
 #endif
             }
@@ -436,32 +435,32 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
             }
             break;
 
-#if 0
         case __syscall_exit:
             {
-                auto rc = reinterpret_cast<int>(r1);
+                auto rc = (int)(intptr_t)(r1);
 
                 auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
+                auto p = t->p;
 
-                CriticalGuard cg(p.sl);
-                for(auto pt : p.threads)
+                CriticalGuard cg(p->sl);
+                for(auto pt : p->threads)
                 {
-                    CriticalGuard cg2(pt->sl);
+                    CriticalGuard cg2(pt->sl_blocking);
                     pt->for_deletion = true;
                     pt->set_is_blocking(true);
                 }
 
-                p.rc = rc;
+                p->rc = rc;
 
                 //proc_list.DeleteProcess(p.pid, rc);
 
-                CleanupQueue.Push({ .is_thread = false, .p = &p });
+                CleanupQueue.Push({ .is_thread = false, .p = p });
 
                 Yield();
             }
             break;
 
+#if 0
         case WaitSimpleSignal:
             {
                 auto t = GetCurrentThreadForCore();
@@ -945,7 +944,11 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
         default:
             {
-                klog("syscall: unhandled syscall %d\n", (int)sno);
+                klog("syscall: unhandled syscall %d, Process %s, Thread %s @ %p, lr: %llx\n", (int)sno,
+                    GetCurrentProcessForCore()->name.c_str(),
+                    GetCurrentThreadForCore()->name.c_str(),
+                    GetCurrentThreadForCore(),
+                    lr);
             }
             //__asm__ volatile ("bkpt #0\n");
             if(r1)
@@ -986,7 +989,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3)
 
 #if DEBUG_SYSCALLS
     {
-        klog("syscalls: %d (%x, %x, %x)\n", (int)sno, dr1, dr2, dr3);
+        klog("syscalls: %d (%p, %p, %p)\n", (int)sno, dr1, dr2, dr3);
     }
 #endif
 }

@@ -219,6 +219,6 @@ static inline bool addr_is_valid(const void *buf, size_t len, bool is_write = fa
 
 #endif
 
-extern "C" void SyscallHandler(syscall_no sno, void *x1, void *x2, void *x3);
+extern "C" void SyscallHandler(syscall_no sno, void *x1, void *x2, void *x3, uintptr_t lr);
 
 #endif

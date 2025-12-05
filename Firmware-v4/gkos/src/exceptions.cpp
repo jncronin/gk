@@ -26,7 +26,8 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     {
         // syscalls run with interrupts enabled
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
-        SyscallHandler((syscall_no)regs->x0, (void *)regs->x1, (void *)regs->x2, (void *)regs->x3);
+        SyscallHandler((syscall_no)regs->x0, (void *)regs->x1, (void *)regs->x2, (void *)regs->x3,
+            regs->lr);
         return 0;
     }
 

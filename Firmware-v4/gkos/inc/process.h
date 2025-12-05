@@ -102,6 +102,9 @@ class Process
         heap_t heap{};
         screen_t screen{};
 
+        /* Return value */
+        int rc = 0;
+
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);
         owned_sync_list<Condition> owned_conditions = owned_sync_list(ConditionList);
