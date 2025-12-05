@@ -482,6 +482,7 @@ int fs_provision()
                     else
                     {
                         klog("fs_provision: couldn't open fat file %s (%d)\n", fi.fname, _errno);
+                        fs_p_ret = -1;
                     }
                 }
 
