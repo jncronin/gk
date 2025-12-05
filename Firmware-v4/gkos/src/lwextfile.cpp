@@ -31,7 +31,8 @@ ssize_t LwextFile::Read(char *buf, size_t count, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
 
 ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
@@ -53,7 +54,8 @@ ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
 
 int LwextFile::Fstat(struct stat *buf, int *_errno)
@@ -70,7 +72,8 @@ int LwextFile::Fstat(struct stat *buf, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
 
 off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
@@ -92,7 +95,8 @@ off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
 
 int LwextFile::Ftruncate(off_t length, int *_errno)
@@ -114,7 +118,8 @@ int LwextFile::Ftruncate(off_t length, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
 
 int LwextFile::Close(int *_errno)
@@ -131,7 +136,8 @@ int LwextFile::Close(int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
 
 int LwextFile::ReadDir(dirent *de, int *_errno)
@@ -153,5 +159,6 @@ int LwextFile::ReadDir(dirent *de, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-    return -2;  // deferred return
+    while(!t->ss.Wait(SimpleSignal::Set, 0));
+    return t->ss_p.ival1;
 }
