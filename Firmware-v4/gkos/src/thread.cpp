@@ -86,14 +86,14 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     if(!is_priv)
     {
         CriticalGuard cg(owning_process->user_mem->sl);
-        auto el0_stack = vblock_alloc(VBLOCK_4M, true, true, false, GUARD_BITS_64k, GUARD_BITS_64k,
+        t->mr_user_thread = vblock_alloc(VBLOCK_4M, true, true, false, GUARD_BITS_64k, GUARD_BITS_64k,
             owning_process->user_mem->blocks);
-        if(!el0_stack.valid)
+        if(!t->mr_user_thread.valid)
         {
             klog("thread: could not allocate el0 stack\n");
             return nullptr;
         }
-        auto uthread_ptr = el0_stack.data_end();
+        auto uthread_ptr = t->mr_user_thread.data_end();
         klog("thread: sp_el0 = %llx\n", uthread_ptr);
         t->tss.sp_el0 = uthread_ptr;
 
@@ -102,18 +102,18 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
         // userspace tls structure
         if(owning_process->vb_tls.valid)
         {
-            auto vb_t_tls = owning_process->user_mem->blocks.Alloc(
+            t->mr_elf_tls = owning_process->user_mem->blocks.Alloc(
                 vblock_size_for(owning_process->vb_tls_data_size + 16),     // pointer to DTV at the beginning
                 VBLOCK_TAG_TLS | VBLOCK_TAG_USER | VBLOCK_TAG_WRITE
             );
-            if(!vb_t_tls.valid)
+            if(!t->mr_elf_tls.valid)
             {
                 klog("thread: could not allocate block for thread tls of size %llu\n",
                     owning_process->vb_tls_data_size + 16);
                 return nullptr;
             }
 
-            t->tss.tpidr_el0 = vb_t_tls.data_start();
+            t->tss.tpidr_el0 = t->mr_elf_tls.data_start();
         }
     }
 

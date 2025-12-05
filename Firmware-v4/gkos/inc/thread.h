@@ -41,8 +41,9 @@ class Thread
         int base_priority;
         bool is_privileged;
 
-        VMemBlock mr_kernel_thread;
-        VMemBlock mr_user_thread;
+        VMemBlock mr_kernel_thread = InvalidVMemBlock();
+        VMemBlock mr_user_thread = InvalidVMemBlock();
+        VMemBlock mr_elf_tls = InvalidVMemBlock();
 
         void *thread_retval;
 
