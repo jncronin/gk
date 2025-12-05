@@ -56,7 +56,9 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
                     etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
 #endif
 
-                return TranslationFault_Handler(user, write, far, lr);
+                auto ret = TranslationFault_Handler(user, write, far, lr);
+                if(ret == 0)
+                    return ret;
             }
         }
     }
@@ -95,14 +97,14 @@ static uint64_t UserThreadFault()
 {
     klog("User thread fault\n");
     DumpThreadFault();
-    while(true);
+    return ~0ULL;
 }
 
 static uint64_t SupervisorThreadFault()
 {
     klog("Supervisor thread fault\n");
     DumpThreadFault();
-    while(true);
+    return ~0ULL;
 }
 
 uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t lr)
