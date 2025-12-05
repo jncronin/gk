@@ -286,7 +286,7 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
 
         auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr);
         volatile uint64_t *pt;
-        if((pd[l2_addr] & 0x1) != 0)
+        if((pd[l2_addr] & DT_PT) == DT_PT)
         {
             auto pt_paddr = pd[l2_addr] & 0xffffffff0000ULL;
             pt = (volatile uint64_t *)PMEM_TO_VMEM(pt_paddr);
@@ -298,6 +298,9 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
                 pt[l3_addr] = 0;
 
                 auto act_vpage = vaddr + vaddr_adjust;
+
+                klog("vmem_unmap: unmap page vaddr %llx paddr %llx\n", act_vpage, page);
+                
                 vmem_invlpg(act_vpage, ttbr);
 
                 PMemBlock pb;
