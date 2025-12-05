@@ -8,6 +8,8 @@
 #include "process.h"
 #include "syscalls_int.h"
 
+#define DEBUG_PF        0
+
 struct exception_regs
 {
     uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, res0;
@@ -49,8 +51,10 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
                 bool user = (etype > 0x201) || (ec == 0b100100);
                 bool write = (iss & (1ULL << 6)) != 0;
 
+#if DEBUG_PF
                 klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx, sp: %llx, nested elr: %llx\n",
                     etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
+#endif
 
                 return TranslationFault_Handler(user, write, far, lr);
             }
@@ -103,8 +107,10 @@ static uint64_t SupervisorThreadFault()
 
 uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t lr)
 {
+#if DEBUG_PF
     klog("TranslationFault %s %s @ %llx from %llx\n", user ? "USER" : "SUPERVISOR",
         write ? "WRITE" : "READ", far, lr);
+#endif
 
     if(far < VBLOCK_64k)
     {
@@ -132,7 +138,9 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
             return SupervisorThreadFault();
         }
 
+#if DEBUG_PF
         klog("pf: lazy map %llx\n", far);
+#endif
 
         if(vmem_map(far & ~(VBLOCK_64k - 1), 0, be.user, be.write, be.exec))
         {
@@ -177,7 +185,9 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
             return user ? UserThreadFault() : SupervisorThreadFault();
         }
 
+#if DEBUG_PF
         klog("pf: lazy map %llx\n", far);
+#endif
 
         {
             CriticalGuard cg(umem->sl);
@@ -222,10 +232,14 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
             memcpy((void *)(be.data_start() + dest_page * VBLOCK_64k + dst_page_offset),
                 (const void *)(src_pointer + src_offset), to_copy);
 
+#if DEBUG_PF
             klog("pf: lazy initialize tls region\n");
+#endif
         }
 
+#if DEBUG_PF
         klog("pf: done\n");
+#endif
         return 0;
     }
 
