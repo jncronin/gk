@@ -460,6 +460,36 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_sleep_ms:
+            {
+                auto tout = clock_cur() + kernel_time_from_ms(*reinterpret_cast<unsigned int *>(r2));
+                auto curt = GetCurrentThreadForCore();
+                {
+                    CriticalGuard cg(curt->sl_blocking);
+                    curt->block_until = tout;
+                    curt->set_is_blocking(true);
+                    curt->blocking_on_prim = nullptr;
+                    *reinterpret_cast<int *>(r1) = 0;
+                    Yield();
+                }
+            }
+            break;
+
+        case __syscall_sleep_us:
+            {
+                auto tout = clock_cur() + kernel_time_from_us(*reinterpret_cast<uint64_t *>(r2));
+                auto curt = GetCurrentThreadForCore();
+                {
+                    CriticalGuard cg(curt->sl_blocking);
+                    curt->block_until = tout;
+                    curt->set_is_blocking(true);
+                    curt->blocking_on_prim = nullptr;
+                    *reinterpret_cast<int *>(r1) = 0;
+                    Yield();
+                }
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -574,36 +604,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                             *reinterpret_cast<int *>(r1) = -1;
                             break;
                     }
-                }
-            }
-            break;
-
-        case __syscall_sleep_ms:
-            {
-                auto tout = kernel_time::from_ms(clock_cur_ms() + *reinterpret_cast<unsigned long *>(r2));
-                auto curt = GetCurrentThreadForCore();
-                {
-                    CriticalGuard cg(curt->sl);
-                    curt->block_until = tout;
-                    curt->set_is_blocking(true);
-                    curt->blocking_on = nullptr;
-                    *reinterpret_cast<int *>(r1) = 0;
-                    Yield();
-                }
-            }
-            break;
-
-        case __syscall_sleep_us:
-            {
-                auto tout = kernel_time::from_us(clock_cur_us() + *reinterpret_cast<uint64_t *>(r2));
-                auto curt = GetCurrentThreadForCore();
-                {
-                    CriticalGuard cg(curt->sl);
-                    curt->block_until = tout;
-                    curt->set_is_blocking(true);
-                    curt->blocking_on = nullptr;
-                    *reinterpret_cast<int *>(r1) = 0;
-                    Yield();
                 }
             }
             break;
