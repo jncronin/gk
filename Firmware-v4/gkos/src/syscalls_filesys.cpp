@@ -385,6 +385,20 @@ int syscall_close2(int file, int *_errno)
     return ret;
 }
 
+int syscall_readdir(int file, dirent *de, int *_errno)
+{
+    auto p = GetCurrentThreadForCore()->p;
+    CriticalGuard(p->open_files.sl);
+    if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+    ADDR_CHECK_STRUCT_W(de);
+
+    return p->open_files.f[file]->ReadDir(de, _errno);
+}
+
 #if 0
 int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
 {
@@ -420,20 +434,6 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
         *_errno = ENOMEM;
         return -1;
     }
-}
-
-int syscall_readdir(int file, dirent *de, int *_errno)
-{
-    auto p = GetCurrentThreadForCore()->p;
-    CriticalGuard(p->open_files.sl);
-    if(file < 0 || file >= (size_t)p->open_files->f.size() || !p->open_files.f[file])
-    {
-        *_errno = EBADF;
-        return -1;
-    }
-    ADDR_CHECK_STRUCT_W(de);
-
-    return p->open_files.f[file]->ReadDir(de, _errno);
 }
 
 int syscall_unlink(const char *pathname, int *_errno)

@@ -490,6 +490,20 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_opendir:
+            {
+                auto path = reinterpret_cast<const char *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_opendir(path, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_readdir:
+            {
+                auto p = reinterpret_cast<__syscall_readdir_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_readdir(p->fd, p->de, reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -725,20 +739,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 if(p->pf) *p->pf = proc.screen_pf;
                 if(p->refresh) *p->pf = proc.screen_refresh;
                 *reinterpret_cast<int *>(r1) = 0;
-            }
-            break;
-
-        case __syscall_opendir:
-            {
-                auto path = reinterpret_cast<const char *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_opendir(path, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_readdir:
-            {
-                auto p = reinterpret_cast<__syscall_readdir_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_readdir(p->fd, p->de, reinterpret_cast<int *>(r3));
             }
             break;
 
