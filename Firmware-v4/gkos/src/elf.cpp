@@ -140,8 +140,10 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
                         return -1;
                     }
 
+#if DEBUG_ELF
                     klog("elf_load_fildes: mapping v %llx to p %llx within ttbr0: %llx\n",
                         cur_vblock.base, cur_ppage.base, p->user_mem->ttbr0);
+#endif
                     vmem_map(cur_vblock, cur_ppage, p->user_mem->ttbr0);
 
                     dest_page = PMEM_TO_VMEM(cur_ppage.base);
