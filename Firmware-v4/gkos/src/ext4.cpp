@@ -81,7 +81,7 @@ extern "C" void *ext4_user_buf_alloc(size_t n)
     {
 #if EXT4_DEBUG
         {
-            klog("ext4: user_buf_alloc %x bytes @%x\n", n, vb.base);
+            klog("ext4: user_buf_alloc %llx bytes @%llx\n", n, vb.base);
         }
 #endif
         return (void *)vb.base;
@@ -118,7 +118,7 @@ extern "C" void ext4_user_buf_free(void *ptr, size_t n)
 
 #if EXT4_DEBUG
     {
-        klog("ext4: user_buf_free %x bytes @%x\n", n, reg.base);
+        klog("ext4: user_buf_free %llx bytes @%llx\n", n, reg.base);
     }
 #endif
 }

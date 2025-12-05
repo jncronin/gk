@@ -168,10 +168,21 @@ int Thread::assume_user_thread_lower_half(PThread user_thread)
     
     tss.ttbr0 = user_thread->tss.ttbr0;
     lower_half_user_thread = user_thread;
+    uint64_t tcr_el1;
     __asm__ volatile(
         "msr ttbr0_el1, %[ttbr0]\n"
+        "mrs %[tcr_el1], tcr_el1\n"
+        "bfc %[tcr_el1], #7, #1\n"
+        "msr tcr_el1, %[tcr_el1]\n"
         "isb\n"
-        ::
+#if GK_TLBI_AFTER_TTBR_CHANGE
+        "tlbi vmalle1is\n"
+        "dsb ish\n"
+        "isb\n"
+#endif
+        :
+        [tcr_el1] "=r" (tcr_el1)
+        :
         [ttbr0] "r" (tss.ttbr0)
         :
         "memory");
@@ -192,10 +203,23 @@ int Thread::release_user_thread_lower_half()
     tss.ttbr0 = 0;
     lower_half_user_thread = nullptr;
 
+    uint64_t tcr_el1;
+
     __asm__ volatile(
         "msr ttbr0_el1, xzr\n"
+        "mrs %[tcr_el1], tcr_el1\n"
+        "orr %[tcr_el1], %[tcr_el1], #(0x1 << 7)\n"
+        "msr tcr_el1, %[tcr_el1]\n"
         "isb\n"
-        :::
+
+#if GK_TLBI_AFTER_TTBR_CHANGE
+        "tlbi vmalle1is\n"
+        "dsb ish\n"
+        "isb\n"
+#endif
+        :
+        [tcr_el1] "=r" (tcr_el1)
+        ::
         "memory"
     );
 

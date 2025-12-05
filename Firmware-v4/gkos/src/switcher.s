@@ -1,3 +1,5 @@
+#include "gk_conf.h"
+
 .section .text.TaskSwitch
 .global TaskSwitch
 .type TaskSwitch,%function
@@ -77,6 +79,13 @@ TaskSwitch:
     bfc x3, #7, #1
 3:
     msr tcr_el1, x3
+
+#if GK_TLBI_AFTER_TTBR_CHANGE
+    isb
+    tlbi vmalle1is
+    dsb ish
+    isb
+#endif
 
     // restore fpu
     ldp q8, q9, [x0, #128]

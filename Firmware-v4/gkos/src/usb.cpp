@@ -21,6 +21,8 @@
 
 bool usb_israwsd = false;
 
+extern unsigned int reboot_flags;
+
 PProcess p_usb;
 
 // some/all of these need cache_line_size alignment

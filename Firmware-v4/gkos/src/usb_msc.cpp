@@ -2,6 +2,7 @@
 #include "usb_device.h"
 
 #include "cache.h"
+#include "logger.h"
 #include <cstring>
 
 struct scsi_header_6

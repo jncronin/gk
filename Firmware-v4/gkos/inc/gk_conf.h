@@ -1,8 +1,6 @@
 #ifndef GK_CONF_H
 #define GK_CONF_H
 
-#include "logger.h"
-
 #define GK_NUM_CORES                1
 
 #define GK_ENABLE_NETWORK           0
@@ -32,6 +30,8 @@
 #define GK_SCREEN_WIDTH             800
 #define GK_SCREEN_HEIGHT            480
 
+#define GK_TLBI_AFTER_TTBR_CHANGE   0
+
 #define GK_LOG_PERSISTENT           0
 #define GK_LOG_RTT                  1
 #define GK_LOG_USB                  0
@@ -53,7 +53,6 @@
 
 #define GK_MAX_WINDOW_TITLE 32
 
-extern unsigned int reboot_flags;
 #define GK_REBOOTFLAG_RAWSD         1
 #define GK_REBOOTFLAG_AUDIOTEST     2
 #define GK_REBOOTFLAG_VIDEOTEST     4

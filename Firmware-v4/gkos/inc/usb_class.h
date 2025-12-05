@@ -3,6 +3,7 @@
 
 #include "gk_conf.h"
 #include <stdint.h>
+#include <stddef.h>
 #include "usb_device.h"
 
 class usb_class_status
