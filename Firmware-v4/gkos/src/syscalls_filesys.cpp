@@ -330,7 +330,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 
     cg.unlock();
     auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
-        p, fd, t->ss, t->ss_p);
+        fd, t->ss, t->ss_p);
     if(ext4_send_message(msg))
     {
         return deferred_return(_errno);

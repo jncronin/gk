@@ -151,3 +151,53 @@ bool Thread::addr_is_valid(const void *buf, size_t len, bool for_write) const
 
     return false;
 }
+
+int Thread::assume_user_thread_lower_half(PThread user_thread)
+{
+    CriticalGuard cg(sl_blocking);
+    if(is_privileged == false)
+        return -1;
+    if(user_thread == nullptr)
+        return -2;
+    if(user_thread->is_privileged == true)
+        return -3;
+    if(tss.ttbr0 != 0)
+        return -4;
+    if(lower_half_user_thread != nullptr)
+        return -5;
+    
+    tss.ttbr0 = user_thread->tss.ttbr0;
+    lower_half_user_thread = user_thread;
+    __asm__ volatile(
+        "msr ttbr0_el1, %[ttbr0]\n"
+        "isb\n"
+        ::
+        [ttbr0] "r" (tss.ttbr0)
+        :
+        "memory");
+
+    return 0;
+}
+
+int Thread::release_user_thread_lower_half()
+{
+    CriticalGuard cg(sl_blocking);
+    if(is_privileged == false)
+        return -1;
+    if(lower_half_user_thread == nullptr)
+        return -2;
+    if(tss.ttbr0 == 0)
+        return -3;
+
+    tss.ttbr0 = 0;
+    lower_half_user_thread = nullptr;
+
+    __asm__ volatile(
+        "msr ttbr0_el1, xzr\n"
+        "isb\n"
+        :::
+        "memory"
+    );
+
+    return 0;
+}

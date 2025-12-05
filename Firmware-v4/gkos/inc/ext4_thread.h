@@ -8,6 +8,7 @@
 #include "ext4.h"
 #include "_sys_dirent.h"
 #include "process.h"
+#include "ostypes.h"
 
 void init_ext4();
 
@@ -29,7 +30,7 @@ struct ext4_message
     };
 
     msg_type type;
-    WPProcess p{};
+    id_t tid;
 
     union params_t
     {
@@ -87,7 +88,7 @@ bool ext4_send_message(ext4_message &msg);
 ext4_message ext4_mkdir_message(const char *pathname, int mode,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p);
 ext4_message ext4_open_message(const char *pathname, int flags, int mode,
-    PProcess p, int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p);
+    int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p);
 ext4_message ext4_read_message(ext4_file &e4f, char *buf, int nbytes,
     SimpleSignal &ss, WaitSimpleSignal_params &ss_p);
 ext4_message ext4_write_message(ext4_file &e4f, char *buf, int nbytes,

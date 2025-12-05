@@ -73,6 +73,9 @@ class Thread
         /* cleanup stuff */
         bool for_deletion = false;
 
+        /* Stores the thread to which we are temporarily assuming the lower half */
+        PThread lower_half_user_thread = nullptr;
+
         typedef void *(*threadstart_t)(void *p);
         static std::shared_ptr<Thread> Create(const std::string &name,
             threadstart_t func,
@@ -83,6 +86,12 @@ class Thread
         /* determine if a given address range is within the memory accessible by
             this thread */
         bool addr_is_valid(const void *buf, size_t len, bool for_write = false) const;
+
+        /* If privileged thread, assume the same lower half as the specified user thread */
+        int assume_user_thread_lower_half(PThread user_thread);
+
+        /* If privileged thread, release user thread lower half */
+        int release_user_thread_lower_half();
 };
 
 static inline Thread *GetCurrentKernelThreadForCore()

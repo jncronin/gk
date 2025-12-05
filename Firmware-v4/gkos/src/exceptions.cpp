@@ -78,15 +78,25 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     return 0;
 }
 
+static void DumpThreadFault()
+{
+    klog("Process: %s, Thread: %s @ %p\n",
+        GetCurrentProcessForCore()->name.c_str(),
+        GetCurrentThreadForCore()->name.c_str(),
+        GetCurrentThreadForCore());
+}
+
 static uint64_t UserThreadFault()
 {
     klog("User thread fault\n");
+    DumpThreadFault();
     while(true);
 }
 
 static uint64_t SupervisorThreadFault()
 {
     klog("Supervisor thread fault\n");
+    DumpThreadFault();
     while(true);
 }
 
@@ -135,8 +145,16 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
         auto umem = GetCurrentThreadForCore()->p->user_mem.get();
         if(umem == nullptr)
         {
-            klog("pf: lower half without a valid lower half vblock\n");
-            return user ? UserThreadFault() : SupervisorThreadFault();
+            // we may be instead using a temporary lower half - try this
+            if(GetCurrentThreadForCore()->lower_half_user_thread != nullptr)
+            {
+                umem = GetCurrentThreadForCore()->lower_half_user_thread->p->user_mem.get();
+            }
+            if(umem == nullptr)
+            {
+                klog("pf: lower half without a valid lower half vblock\n");
+                return user ? UserThreadFault() : SupervisorThreadFault();
+            }
         }
 
         VMemBlock be = InvalidVMemBlock();

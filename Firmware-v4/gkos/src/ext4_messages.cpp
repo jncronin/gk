@@ -22,7 +22,7 @@ ext4_message ext4_mkdir_message(const char *pathname, int mode,
 }
 
 ext4_message ext4_open_message(const char *pathname, int flags, int mode,
-    PProcess p, int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
+    int f, SimpleSignal &ss, WaitSimpleSignal_params &ss_p)
 {
     ext4_message::params_t::open_params_t _p {
         .pathname = pathname,
@@ -37,7 +37,6 @@ ext4_message ext4_open_message(const char *pathname, int flags, int mode,
 
     ext4_message ret {
         .type = ext4_message::msg_type::Open,
-        .p = p,
         .params = __p,
         .ss = &ss,
         .ss_p = &ss_p };

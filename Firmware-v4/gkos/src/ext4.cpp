@@ -234,12 +234,12 @@ static void handle_open_message(ext4_message &msg)
     ext4_file f;
     ext4_dir d;
 
-    auto p = msg.p.lock();
-    if(!p)
+    auto call_t = ThreadList.Get(msg.tid);
+    if(!call_t)
     {
         // message from zombie process - ignore it
-        return;
     }
+    auto p = call_t->p;
 
     // convert newlib flags to lwext4 flags
     bool is_opendir = (msg.params.open_params.mode == S_IFDIR) && (msg.params.open_params.f == O_RDONLY);
@@ -645,6 +645,21 @@ void *ext4_thread(void *_p)
 
         if(unmounted)
             continue;
+
+        // if message from a user thread then map its lower half here
+        auto call_t = ThreadList.Get(msg.tid);
+        if(!call_t)
+            continue;
+
+        if(call_t->is_privileged == false)
+        {
+            auto ret = GetCurrentThreadForCore()->assume_user_thread_lower_half(call_t);
+            if(ret != 0)
+            {
+                klog("ext4: assume_user_thread_lower_half failed: %d\n", ret);
+                continue;
+            }
+        }
         
         switch(msg.type)
         {
@@ -691,6 +706,16 @@ void *ext4_thread(void *_p)
             case ext4_message::msg_type::Unmount:
                 handle_unmount_message(msg);
                 break;
+        }
+
+        // release lower half thread
+        if(call_t->is_privileged == false)
+        {
+            auto ret = GetCurrentThreadForCore()->release_user_thread_lower_half();
+            if(ret != 0)
+            {
+                klog("ext4: release_user_thread_lower_half failed: %d\n", ret);
+            }
         }
     }
 }
@@ -767,5 +792,6 @@ int sd_close(struct ext4_blockdev *bdev)
 
 bool ext4_send_message(ext4_message &msg)
 {
+    msg.tid = GetCurrentThreadForCore()->id;
     return ext4_queue.Push(msg);
 }
