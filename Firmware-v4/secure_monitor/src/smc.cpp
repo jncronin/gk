@@ -27,7 +27,10 @@ void smc_handler(SMC_Call smc_id, exception_regs *regs)
                 aps[coreid].el1_stack = (uintptr_t)regs->x4;
                 aps[coreid].ttbr1 = (uintptr_t)regs->x5;
                 aps[coreid].vbar = (uintptr_t)regs->x6;
+                __asm__ volatile("dmb ish\n" ::: "memory");
                 aps[coreid].ready = true;
+
+                __asm__ volatile("isb\n" ::: "memory");
 
                 // ping core
                 *(volatile uint32_t *)(GIC_DISTRIBUTOR_BASE + 0xf00) = (0x8ULL) |
