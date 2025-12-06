@@ -6,7 +6,6 @@ int syscall_getscreenmodeex(int *width, int *height, int *pf, int *refresh, int 
 {
     auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->screen.sl);
-    p->_init_screen();
     if(width) *width = p->screen.screen_w;
     if(height) *height = p->screen.screen_h;
     if(pf) *pf = p->screen.screen_pf;
@@ -50,7 +49,6 @@ int syscall_setscreenmode(int *width, int *height, int *pf, int *refresh, int *_
 {
     auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->screen.sl);
-    p->_init_screen();
 
     // only update if all provided parameters are valid
     auto new_width = p->screen.screen_w;

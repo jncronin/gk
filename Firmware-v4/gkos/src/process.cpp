@@ -3,6 +3,7 @@
 #include "vmem.h"
 #include "thread.h"
 #include "screen.h"
+#include "process_interface.h"
 
 PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
 {
@@ -25,6 +26,8 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
             while(true);
         }
         quick_clear_64((void *)PMEM_TO_VMEM(ttbr0_reg.base));
+        ((volatile uint64_t *)PMEM_TO_VMEM(ttbr0_reg.base))[8191] = process_highest_pt.base |
+            PAGE_ACCESS | DT_PT;
 
         {
             CriticalGuard cg(ret->owned_pages.sl);
@@ -35,7 +38,7 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
         {
             CriticalGuard cg(ret->user_mem->sl);
             ret->user_mem->ttbr0 = ttbr0_reg.base | ((uint64_t)ret->id << 48);
-            ret->user_mem->blocks.init(0);
+            ret->user_mem->blocks.init(0, 8191);    // use last entry for fixed space e.g. frame buffers, clock_cur etc
 
             // allocate the first page to catch null pointer references - not actually used except
             //  to prevent other regions being allocated there - the main logic is in TranslationFault_Handler
@@ -58,25 +61,6 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
     }
 
     return ret;
-}
-
-void Process::_init_screen()
-{
-    // screen setup
-    if(screen.bufs[0].valid)
-        return;
-    
-    screen.screen_layer = is_privileged ? 1 : 0;
-
-    for(unsigned int buf = 0; buf < 3; buf++)
-    {
-        screen.bufs[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes),
-            !is_privileged, true,
-            false, 0, 0, is_privileged ? vblock : user_mem->blocks);
-        screen.bufs[buf].memory_type = MT_NORMAL_WT;
-        screen_map_for_process(screen.bufs[buf], screen.screen_layer, buf,
-            is_privileged ? 0U : user_mem->ttbr0);
-    }
 }
 
 void Process::owned_pages_t::add(const PMemBlock &b)

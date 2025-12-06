@@ -22,7 +22,7 @@ uintptr_t _clocks_cur_s_address()
 void clock_takeover()
 {
     auto cb_vaddr = vmem_alloc(GRANULARITY);
-    clock_block_paddr = pmem_vaddr_to_paddr(cb_vaddr, true, true, 3);
+    clock_block_paddr = pmem_vaddr_to_paddr(cb_vaddr, true, true, 3, MT_DEVICE);
 
     *(volatile uint64_t *)(cb_vaddr) = *(volatile uint64_t *)(0x0e0bfe00);
     *(volatile uint64_t *)(cb_vaddr + 8) = *(volatile uint64_t *)(0x0e0bfe00 + 8);

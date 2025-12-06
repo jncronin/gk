@@ -24,7 +24,8 @@ const uint64_t mair = 0x04004499ff;
 
 #define GRANULARITY 65536ULL
 #define PTS_BASE    0xffffffff00000000ULL
-#define UH_START    0xfffffc0000000000ULL
+#define UH_START            0xfffffc0000000000ULL
+#define UH_DEVICE_START     0xfffffd0000000000ULL
 #define LH_END      0x40000000000ULL
 
 #define DT_BLOCK    0x1ULL

@@ -9,8 +9,8 @@ volatile uint64_t * _tim_precision_ns;
 
 void init_clocks(const gkos_boot_interface *gbi)
 {
-    _cur_s = (volatile uint64_t *)(PMEM_TO_VMEM((uint64_t)gbi->cur_s));
-    _tim_precision_ns = (volatile uint64_t *)(PMEM_TO_VMEM((uint64_t)gbi->tim_ns_precision));
+    _cur_s = (volatile uint64_t *)(PMEM_TO_VMEM_DEVICE((uint64_t)gbi->cur_s));
+    _tim_precision_ns = (volatile uint64_t *)(PMEM_TO_VMEM_DEVICE((uint64_t)gbi->tim_ns_precision));
 }
 
 timespec clock_cur()

@@ -5,7 +5,7 @@
 #include "util.h"
 #include "vmem.h"
 #include "process.h"
-
+#include "process_interface.h"
 class TripleBufferScreenLayer
 {
     protected:
@@ -18,12 +18,12 @@ class TripleBufferScreenLayer
     public:
         unsigned int update();
 
-        int map_for_process(const VMemBlock &vmem, unsigned int buf, uintptr_t ttbr0);
-
         friend void init_screen();
+        friend PMemBlock screen_get_buf(unsigned int, unsigned int);
 };
 
 static TripleBufferScreenLayer scrs[2] = { TripleBufferScreenLayer{}, TripleBufferScreenLayer{} };
+VMemBlock l1_priv[3] = { InvalidVMemBlock(), InvalidVMemBlock(), InvalidVMemBlock() };
 
 void init_screen()
 {
@@ -38,6 +38,24 @@ void init_screen()
             // clear to zero
             if(scrs[layer].pm[buf].valid)
                 memset((void *)PMEM_TO_VMEM(scrs[layer].pm[buf].base), 0, scr_layer_size_bytes);
+
+            if(layer == 1)
+            {
+                // map for kernel
+                l1_priv[buf] = vblock_alloc(vblock_size_for(scr_layer_size_bytes),
+                    false, true, false);
+                if(l1_priv[buf].valid == false)
+                {
+                    klog("screen: l1 unable to allocate kernel buffer\n");
+                    while(true);
+                }
+                for(uintptr_t offset = 0; offset < scr_layer_size_bytes; offset += VBLOCK_64k)
+                {
+                    vmem_map(l1_priv[buf].data_start() + offset,
+                        scrs[layer].pm[buf].base + offset, false, true, false, ~0ULL, ~0ULL,
+                        nullptr, MT_NORMAL_WT);
+                }
+            }
         }
     }
 }
@@ -46,36 +64,36 @@ uintptr_t screen_update()
 {
     auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->screen.sl);
-    p->_init_screen();
     auto layer = p->screen.screen_layer;
-    if(layer >= 2)
-        return 0;
     auto buf = scrs[layer].update();
     if(buf >= 3)
         return 0;
-    auto vb = p->screen.bufs[buf];
-    if(vb.valid)
-        return vb.data_start();
+    if(layer == 0)
+    {
+        // userspace mapping
+        switch(buf)
+        {
+            case 0:
+                return GK_SCR_L1_B0;
+            case 1:
+                return GK_SCR_L1_B1;
+            case 2:
+                return GK_SCR_L1_B2;
+        }
+    }
+    else
+    {
+        return l1_priv[buf].data_start();
+    }
     return 0;
 }
 
-int screen_map_for_process(const VMemBlock &vmem, unsigned int layer, unsigned int buf,
-    uintptr_t ttbr0)
+PMemBlock screen_get_buf(unsigned int layer, unsigned int buf)
 {
-    if(layer >= 2)
-        return -1;
-    return scrs[layer].map_for_process(vmem, buf, ttbr0);
-}
-
-int TripleBufferScreenLayer::map_for_process(const VMemBlock &vmem, unsigned int buf,
-    uintptr_t ttbr0)
-{
-    if(buf >= 3)
-        return -1;
-    if(!vmem.valid || vmem.data_length() < scr_layer_size_bytes)
-        return -2;
-    CriticalGuard cg(sl);
-    return vmem_map(vmem, pm[buf], ttbr0);
+    if(layer >= 2 || buf >= 3)
+        return InvalidPMemBlock();
+    CriticalGuard cg(scrs[layer].sl);
+    return scrs[layer].pm[buf];
 }
 
 unsigned int TripleBufferScreenLayer::update()

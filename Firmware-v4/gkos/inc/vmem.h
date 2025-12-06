@@ -7,6 +7,7 @@
 #include <cstddef>
 
 #define PMEM_TO_VMEM(a) (((uintptr_t)(a) + UH_START))
+#define PMEM_TO_VMEM_DEVICE(a) (((uintptr_t)(a) + UH_DEVICE_START))
 #define VMEM_TO_PMEM(a) (((uintptr_t)(a) - UH_START))
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr0 = ~0ULL,

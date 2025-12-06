@@ -8,8 +8,7 @@
 
 void init_screen();
 uintptr_t screen_update();
-int screen_map_for_process(const VMemBlock &vmem, unsigned int layer, unsigned int buf,
-    uintptr_t ttbr0);
+PMemBlock screen_get_buf(unsigned int layer, unsigned int buf);
 
 constexpr size_t scr_layer_size_bytes = align_power_2(GK_SCREEN_WIDTH * GK_SCREEN_HEIGHT * 4);
 constexpr unsigned int scr_n_layers = 2;

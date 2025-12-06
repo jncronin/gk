@@ -31,7 +31,7 @@ uint64_t pmem_alloc(uint64_t size = GRANULARITY, bool clear = true)
     return ret;
 }
 
-uint64_t pmem_vaddr_to_paddr_el3(uint64_t vaddr, bool writeable, bool xn)
+uint64_t pmem_vaddr_to_paddr_el3(uint64_t vaddr, bool writeable, bool xn, uint64_t mt = MT_NORMAL)
 {
     if(vaddr < 0x20000000 || vaddr >= 0x40000000)
     {
@@ -57,7 +57,7 @@ uint64_t pmem_vaddr_to_paddr_el3(uint64_t vaddr, bool writeable, bool xn)
         uint64_t attrs = DT_PAGE |
             PAGE_ACCESS |
             PAGE_INNER_SHAREABLE |
-            PAGE_ATTR(MT_NORMAL);
+            PAGE_ATTR(mt);
         if(xn)
             attrs |= PAGE_XN;
         if(writeable)
@@ -71,12 +71,12 @@ uint64_t pmem_vaddr_to_paddr_el3(uint64_t vaddr, bool writeable, bool xn)
     return (pt_entries[pt_idx] & PAGE_ADDR_MASK) | (vaddr & 0xffffULL);
 }
 
-uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el)
+uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el, uint64_t mt)
 {
     switch(el)
     {
         case 3:
-            return pmem_vaddr_to_paddr_el3(vaddr, writeable, xn);
+            return pmem_vaddr_to_paddr_el3(vaddr, writeable, xn, mt);
 
         case 1:
             uint64_t pmem_vaddr_to_paddr1(uint64_t vaddr, bool writeable, bool xn);
