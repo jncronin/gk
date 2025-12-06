@@ -95,6 +95,7 @@ _vtor_tbl_entry _lower32_serror
 .endm
 
 .macro restore_regs
+    msr daifset, #0b0010
     ldp x0, x1, [sp, #160]
     msr elr_el1, x1
     msr spsr_el1, x0
