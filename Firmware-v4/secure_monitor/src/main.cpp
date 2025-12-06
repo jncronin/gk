@@ -84,8 +84,8 @@ extern "C" void mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     gbi_for_el1.ddr_end = ddr_end;
     ddr_end = gbi_for_el1.ddr_start;    // adjust our allocator
     extern uint64_t clock_block_paddr;
-    gbi_for_el1.cur_s = (volatile uint64_t *)(clock_block_paddr);
-    gbi_for_el1.tim_ns_precision = (volatile uint64_t *)(clock_block_paddr + 8ULL);
+    gbi_for_el1.cur_s = (volatile uint64_t *)(clock_block_paddr + 0xfe00ULL);
+    gbi_for_el1.tim_ns_precision = (volatile uint64_t *)(clock_block_paddr + 0xfe00ULL + 8ULL);
 
     auto gbi_vaddr_el1 = pmem_vaddr_to_paddr((uint64_t)&gbi_for_el1, false, false, 3) + UH_START;
 

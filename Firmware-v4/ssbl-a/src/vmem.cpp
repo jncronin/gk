@@ -97,7 +97,8 @@ void init_vmem(int el)
     }
 }
 
-uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el)
+uint64_t pmem_vaddr_to_paddr(uint64_t vaddr, bool writeable, bool xn, int el, uint64_t mt,
+    uintptr_t paddr)
 {
     if(vaddr < 0x20000000 || vaddr >= 0x40000000)
     {

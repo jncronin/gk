@@ -97,8 +97,11 @@ int main(uint32_t bootrom_val)
     RCC->C2RSTCSETR = RCC_C2RSTCSETR_C2RST;
     while(RCC->C2RSTCSETR & RCC_C2RSTCSETR_C2RST);
 
-    /* Start CPU2 */
-    RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
+    /* Start CPU2
+        - comment out for now as current cm33 firmware overwrites the _cur_s etc data
+            at the end of VDERAM
+    */
+    //RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
 
     klog("SSBL: CPU2 started\n");
 
