@@ -13,10 +13,26 @@ UARTFile::UARTFile(bool for_read, bool for_write)
 
 ssize_t UARTFile::Write(const char *buf, size_t count, int *_errno)
 {
+    auto ret = count;
+    sl_line_buf.lock();
     auto t = GetCurrentThreadForCore();
-    klog("%s:%s: %.*s", t->name.c_str(), t->p->name.c_str(),
-        buf, count);
-    return count;
+    while(count)
+    {
+        if(*buf == '\n' || line_buf.size() >= 1024)
+        {
+            klog("%s:%s: %.*s\n", t->name.c_str(), t->p->name.c_str(),
+                line_buf.data(), line_buf.size());
+            line_buf.clear();
+        }
+        else
+        {
+            line_buf.push_back(*buf);
+        }
+        buf++;
+        count--;
+    }
+    sl_line_buf.unlock();
+    return ret;
 }
 
 ssize_t UARTFile::Read(char *buf, size_t count, int *_errno)

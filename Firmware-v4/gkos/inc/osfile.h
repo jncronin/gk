@@ -7,6 +7,8 @@
 #include <memory>
 //#include "ff.h"
 #include "_sys_dirent.h"
+#include <vector>
+#include "osmutex.h"
 
 enum FileType
 {
@@ -69,6 +71,8 @@ class UARTFile : public File
     protected:
         bool can_read;
         bool can_write;
+        std::vector<char> line_buf;
+        Mutex sl_line_buf;
 };
 
 #if 0
