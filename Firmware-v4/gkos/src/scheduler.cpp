@@ -75,7 +75,7 @@ inline void Scheduler::set_timeout(const PThread new_t)
     {
         if(kernel_time_is_valid(earliest_blockers[i]))
         {
-            if(kernel_time_is_valid(earliest_blocker) || earliest_blockers[i] < earliest_blocker)
+            if(!kernel_time_is_valid(earliest_blocker) || earliest_blockers[i] < earliest_blocker)
             {
                 earliest_blocker = earliest_blockers[i];
             }
