@@ -504,6 +504,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_peekevent:
+            {
+                auto ev = reinterpret_cast<Event *>(r2);
+                int ret = syscall_peekevent(ev, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -699,14 +707,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto p = reinterpret_cast<__syscall_mkdir_params *>(r2);
                 int ret = syscall_mkdir(p->pathname, p->mode, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_peekevent:
-            {
-                auto ev = reinterpret_cast<Event *>(r2);
-                int ret = syscall_peekevent(ev, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;

@@ -12,6 +12,8 @@
 #include <map>
 #include "sync_primitive_locks.h"
 #include "gk_conf.h"
+#include "_gk_event.h"
+#include "osqueue.h"
 
 class Thread;
 class Process;
@@ -116,8 +118,11 @@ class Process
         VMemBlock vb_tls = InvalidVMemBlock();
         size_t vb_tls_data_size;        // actual size of TLS data to copy
 
+        /* Current directory */
         std::string cwd = "";
 
+        /* Events */
+        FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
 
         /* create a process */
         static PProcess Create(const std::string &name, bool is_privileged = false,
