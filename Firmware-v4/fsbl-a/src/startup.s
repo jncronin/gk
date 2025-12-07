@@ -58,6 +58,11 @@ Infinite_Loop:
 .type Reset_Handler, %function
 
 Reset_Handler:
+    // set smpen for ca35, both cores
+    mrs x2, S3_1_C15_C2_1           // CPUECTRL_EL1
+    orr x2, x2, #(0x1 << 6)         // SMPEN
+    msr S3_1_C15_C2_1, x2
+
     // keep APs in WFI
     mrs x2, mpidr_el1
     and x2, x2, #0xff
