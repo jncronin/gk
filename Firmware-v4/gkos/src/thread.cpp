@@ -154,7 +154,7 @@ bool Thread::addr_is_valid(const void *buf, size_t len, bool for_write) const
 
 int Thread::assume_user_thread_lower_half(PThread user_thread)
 {
-    CriticalGuard cg(sl_blocking);
+    CriticalGuard cg(sl_lower_half_user_thread);
     if(is_privileged == false)
         return -1;
     if(user_thread == nullptr)
@@ -192,7 +192,7 @@ int Thread::assume_user_thread_lower_half(PThread user_thread)
 
 int Thread::release_user_thread_lower_half()
 {
-    CriticalGuard cg(sl_blocking);
+    CriticalGuard cg(sl_lower_half_user_thread);
     if(is_privileged == false)
         return -1;
     if(lower_half_user_thread == nullptr)

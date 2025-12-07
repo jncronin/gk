@@ -9,6 +9,7 @@
 #include "kernel_time.h"
 #include "syscalls.h"
 #include "sync_primitive_locks.h"
+#include "gk_conf.h"
 
 static constexpr uint32_t thread_signal_lwext = 0x1;
 
@@ -19,20 +20,40 @@ class Thread
     public:
         thread_saved_state tss;
 
-        Spinlock sl_blocking;
-        bool is_blocking = false;
-        WPThread blocking_on_thread;
-        void *blocking_on_prim = nullptr;
-        kernel_time block_until;
-
-        inline bool get_is_blocking() const { return is_blocking; }
-        inline void set_is_blocking(bool val, bool = false)
+        class blocking_t
         {
-            is_blocking = val;
-            blocking_on_prim = nullptr;
-            blocking_on_thread = WPThread{};
-            block_until = kernel_time_invalid();
-        }
+            public:
+                Spinlock sl{};
+                bool b_indefinite = false;
+                kernel_time b_until = kernel_time_invalid();
+                WPThread b_thread{};
+#if GK_DEBUG_BLOCKING
+                Condition *b_condition = nullptr;
+                SimpleSignal *b_ss = nullptr;
+                UserspaceSemaphore *b_uss = nullptr;
+                RwLock *b_rwl = nullptr;
+                void *b_queue = nullptr;
+#else
+                bool b_prim = false;
+#endif
+
+                bool is_blocking(kernel_time *tout = nullptr,
+                    PThread *t = nullptr);
+                void unblock();
+                void block(PThread t, kernel_time tout = kernel_time_invalid());
+                void block(Condition *c, kernel_time tout = kernel_time_invalid());
+                void block(SimpleSignal *ss, kernel_time tout = kernel_time_invalid());
+                void block(UserspaceSemaphore *uss, kernel_time tout = kernel_time_invalid());
+                void block(RwLock *uss, kernel_time tout = kernel_time_invalid());
+                void block(void *q, kernel_time tout = kernel_time_invalid());
+                void block(kernel_time tout);
+                void block_indefinite();
+        };
+
+        blocking_t blocking;
+
+        // Generic spinlock for everything else (name, for_deletion etc)
+        Spinlock sl{};
 
         std::shared_ptr<Process> p;
         std::string name;
@@ -75,6 +96,7 @@ class Thread
         bool for_deletion = false;
 
         /* Stores the thread to which we are temporarily assuming the lower half */
+        Spinlock sl_lower_half_user_thread{};
         PThread lower_half_user_thread = nullptr;
 
         typedef void *(*threadstart_t)(void *p);

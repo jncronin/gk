@@ -32,6 +32,8 @@
 
 #define GK_TLBI_AFTER_TTBR_CHANGE   0
 
+#define GK_DEBUG_BLOCKING           1
+
 #define GK_LOG_PERSISTENT           0
 #define GK_LOG_RTT                  1
 #define GK_LOG_USB                  0

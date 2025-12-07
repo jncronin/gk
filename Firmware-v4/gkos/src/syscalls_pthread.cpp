@@ -613,7 +613,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
 
     // At this point the thread exists, check if it has already been destroyed
     {
-        CriticalGuard cg_t(tthread->sl_blocking);
+        CriticalGuard cg_t(tthread->sl);
         if(tthread->for_deletion)
         {
             *retval = tthread->retval;
@@ -642,20 +642,19 @@ int syscall_pthread_exit(void **retval, int *_errno)
 
     auto t = GetCurrentThreadForCore();
     {
-        CriticalGuard cg(t->sl_blocking);
+        CriticalGuard cg(t->sl);
 
         t->retval = *retval;
 
         auto jt = t->join_thread.lock();
         if(jt)
         {
-            CriticalGuard cg2(jt->sl_blocking);
+            CriticalGuard cg2(jt->sl);
             if(t->join_thread_retval)
             {
                 *t->join_thread_retval = *retval;
             }
-            jt->blocking_on_thread = WPThread{};
-            jt->set_is_blocking(false);
+            jt->blocking.unblock();
             signal_thread_woken(jt);
             t->join_thread = WPThread{};
         }
@@ -690,7 +689,7 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
         return -1;
     }
 
-    CriticalGuard cg(treq->sl_blocking);
+    CriticalGuard cg(treq->sl);
     treq->name = std::string(name);
     return 0;
 }

@@ -44,11 +44,7 @@ template <typename T> class BaseQueue
                 auto btp = ThreadList.Get(bt);
                 if(btp)
                 {
-                    CriticalGuard cg(btp->sl_blocking);
-                    btp->set_is_blocking(false);
-                    btp->block_until = kernel_time_invalid();
-                    btp->blocking_on_prim = nullptr;
-                    btp->blocking_on_thread.reset();
+                    btp->blocking.unblock();
                     signal_thread_woken(btp);
                 }
             }
@@ -195,10 +191,7 @@ template <typename T> class BaseQueue
                     {
                         auto t = GetCurrentPThreadForCore();
                         waiting_threads.insert(t->id);
-                        t->set_is_blocking(true);
-                        t->blocking_on_prim = this;
-                        if(kernel_time_is_valid(timeout))
-                            t->block_until = timeout;
+                        t->blocking.block(this, timeout);
                         Yield();
                     }
                     else

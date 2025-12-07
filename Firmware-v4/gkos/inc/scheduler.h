@@ -30,9 +30,6 @@ class Scheduler
         /* Follows the chain of 'blocking_on' to allow priority escalation */
         std::pair<PThread, bool> get_blocker(PThread unlocked_t);
 
-        /* Unblocks threads waiting on a certain delay */
-        void unblock_delayer(Thread *locked_t);
-
         /* Report chosen thread */
         void report_chosen(PThread old_t, PThread new_t);
 

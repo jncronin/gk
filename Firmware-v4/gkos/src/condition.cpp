@@ -9,10 +9,7 @@ void Condition::Wait(kernel_time tout, int *signalled_ret)
     auto t = GetCurrentThreadForCore();
     timeout to { tout, signalled_ret };
     waiting_threads.insert_or_assign(t->id, to);
-    t->set_is_blocking(true);
-    t->blocking_on_prim = this;
-    if(kernel_time_is_valid(tout))
-        t->block_until = tout;
+    t->blocking.block(this, tout);
     Yield();
 }
 
@@ -26,7 +23,7 @@ Condition::~Condition()
         auto pwt = ThreadList._get(bt.first);
         if(pwt)
         {
-            pwt->set_is_blocking(false);
+            pwt->blocking.unblock();
             signal_thread_woken(pwt);
         }
     }
@@ -56,7 +53,7 @@ void Condition::Signal(bool signal_all)
                 auto pwt = ThreadList._get(bt.first);
                 if(pwt)
                 {
-                    pwt->set_is_blocking(false);
+                    pwt->blocking.unblock();
                     signal_thread_woken(pwt);
                 }
             }
@@ -85,7 +82,7 @@ void Condition::Signal(bool signal_all)
                 auto pwt = ThreadList._get(iter->first);
                 if(pwt)
                 {
-                    pwt->set_is_blocking(false);
+                    pwt->blocking.unblock();
                     signal_thread_woken(pwt);
                     break;
                 }

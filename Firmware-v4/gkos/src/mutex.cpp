@@ -52,8 +52,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
         else
         {
             // non-error checking non-recursive mutex already owned - deadlock
-            t->set_is_blocking(true);
-            t->blocking_on_prim = nullptr;
+            t->blocking.block_indefinite();
             Yield();
             return false;
         }
@@ -64,12 +63,8 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 
         if(block)
         {
-            t->set_is_blocking(true);
-            t->blocking_on_thread = towner;
+            t->blocking.block(towner, tout);
             waiting_threads.insert(t->id);
-
-            if(kernel_time_is_valid(tout))
-                t->block_until = tout;
             Yield();
         }
         return false;
@@ -99,10 +94,7 @@ bool Mutex::unlock(int *reason, bool force)
             auto pwt = ThreadList._get(wt);
             if(pwt)
             {
-                pwt->set_is_blocking(false);
-                pwt->block_until = kernel_time_invalid();
-                pwt->blocking_on_prim = nullptr;
-
+                pwt->blocking.unblock();
                 signal_thread_woken(pwt);
             }
         }
@@ -127,9 +119,7 @@ bool Mutex::try_delete(int *reason)
             auto pwt = ThreadList._get(wt);
             if(pwt)
             {
-                pwt->set_is_blocking(false);
-                pwt->block_until = kernel_time_invalid();
-                pwt->blocking_on_prim = nullptr;
+                pwt->blocking.unblock();
                 signal_thread_woken(pwt);
             }
         }

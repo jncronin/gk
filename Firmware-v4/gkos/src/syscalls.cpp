@@ -320,10 +320,10 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
         case __syscall_thread_cleanup:
             {
                 auto t = GetCurrentThreadForCore();
-                CriticalGuard cg(t->sl_blocking);
+                CriticalGuard cg(t->sl);
                 t->retval = r1;
                 t->for_deletion = true;
-                t->set_is_blocking(true);
+                t->blocking.block_indefinite();
                 CleanupQueue.Push({ .is_thread = true, .t = GetCurrentPThreadForCore() });
                 Yield();
             }
@@ -445,9 +445,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 CriticalGuard cg(p->sl);
                 for(auto pt : p->threads)
                 {
-                    CriticalGuard cg2(pt->sl_blocking);
+                    CriticalGuard cg2(pt->sl);
                     pt->for_deletion = true;
-                    pt->set_is_blocking(true);
+                    pt->blocking.block_indefinite();
                 }
 
                 p->rc = rc;
@@ -465,10 +465,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto tout = clock_cur() + kernel_time_from_ms(*reinterpret_cast<unsigned int *>(r2));
                 auto curt = GetCurrentThreadForCore();
                 {
-                    CriticalGuard cg(curt->sl_blocking);
-                    curt->block_until = tout;
-                    curt->set_is_blocking(true);
-                    curt->blocking_on_prim = nullptr;
+                    curt->blocking.block(tout);
                     *reinterpret_cast<int *>(r1) = 0;
                     Yield();
                 }
@@ -480,10 +477,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto tout = clock_cur() + kernel_time_from_us(*reinterpret_cast<uint64_t *>(r2));
                 auto curt = GetCurrentThreadForCore();
                 {
-                    CriticalGuard cg(curt->sl_blocking);
-                    curt->block_until = tout;
-                    curt->set_is_blocking(true);
-                    curt->blocking_on_prim = nullptr;
+                    curt->blocking.block(tout);
                     *reinterpret_cast<int *>(r1) = 0;
                     Yield();
                 }

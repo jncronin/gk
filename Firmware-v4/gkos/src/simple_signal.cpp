@@ -24,10 +24,7 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
         return ret;
     }
     waiting_thread = t;
-    t->set_is_blocking(true);
-    t->blocking_on_prim = this;   
-    if(kernel_time_is_valid(tout))
-        t->block_until = tout;
+    t->blocking.block(this, tout);
     Yield();
     if(signal_value)
     {
@@ -58,9 +55,7 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
     auto pwt = waiting_thread.lock();
     if(pwt)
     {
-        CriticalGuard cg2(pwt->sl_blocking);
-        pwt->set_is_blocking(false);
-        pwt->blocking_on_prim = nullptr;
+        pwt->blocking.unblock();
         signal_thread_woken(pwt);
     }
 }

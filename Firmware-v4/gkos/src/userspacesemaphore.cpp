@@ -17,12 +17,8 @@ bool UserspaceSemaphore::try_wait(int *reason, bool block, kernel_time tout)
         if(reason) *reason = EBUSY;
         if(block)
         {
-            t->set_is_blocking(true);
-            t->blocking_on_prim = this;
+            t->blocking.block(this, tout);
             waiting_threads.insert(t->id);
-
-            if(kernel_time_is_valid(tout))
-                t->block_until = tout;
             Yield();
         }
         return false;
@@ -39,7 +35,7 @@ void UserspaceSemaphore::post(int n, bool add)
             auto pwt = ThreadList._get(wt);
             if(pwt)
             {
-                pwt->set_is_blocking(false);
+                pwt->blocking.unblock();
                 signal_thread_woken(pwt);
             }
         }

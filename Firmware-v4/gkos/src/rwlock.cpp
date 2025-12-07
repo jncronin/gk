@@ -19,12 +19,8 @@ bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
             if(reason) *reason = EBUSY;
             if(block)
             {
-                t->set_is_blocking(true);
-                t->blocking_on_thread = twrowner;
+                t->blocking.block(this, tout);
                 waiting_threads.insert(t->id);
-
-                if(kernel_time_is_valid(tout))
-                    t->block_until = tout;
                 Yield();
             }
             return false;
@@ -52,12 +48,8 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
             if(reason) *reason = EBUSY;
             if(block)
             {
-                t->set_is_blocking(true);
-                t->blocking_on_thread = twrowner;
+                t->blocking.block(twrowner, tout);
                 waiting_threads.insert(t->id);
-
-                if(kernel_time_is_valid(tout))
-                    t->block_until = tout;
                 Yield();
             }
             return false;
@@ -73,39 +65,27 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
         else
         {
             if(reason) *reason = EBUSY;
-            if(block)
+            for(auto rdowner : rdowners)
             {
-                t->set_is_blocking(true);
-
-                bool found_rdthread = false;
-                for(auto rdowner : rdowners)
+                auto trdowner = ThreadList._get(rdowner);
+                if(trdowner)
                 {
-                    auto trdowner = ThreadList._get(rdowner);
-                    if(trdowner)
+                    if(block)
                     {
-                        found_rdthread = true;
-                        t->blocking_on_thread = trdowner;
-                        break;
+                        t->blocking.block(trdowner, tout);
+                        waiting_threads.insert(t->id);
+                        Yield();
                     }
+                    return false;
                 }
-
-                if(!found_rdthread)
-                {
-                    // there are threads listed as the rdthread but they have since been deleted
-                    // therefore, we can acquire the wrlock
-                    rdowners.clear();
-                    wrowner = GetCurrentPThreadForCore();
-                    t->locked_rwlocks.Add(id);
-                    return true;
-                }
-
-                waiting_threads.insert(t->id);
-
-                if(kernel_time_is_valid(tout))
-                    t->block_until = tout;
-                Yield();
             }
-            return false;
+
+            // there are threads listed as the rdthread but they have since been deleted
+            // therefore, we can acquire the wrlock
+            rdowners.clear();
+            wrowner = GetCurrentPThreadForCore();
+            t->locked_rwlocks.Add(id);
+            return true;
         }
     }
     wrowner = GetCurrentPThreadForCore();
@@ -127,10 +107,7 @@ bool RwLock::unlock(int *reason)
                 auto pwt = ThreadList._get(wt);
                 if(pwt)
                 {
-                    pwt->set_is_blocking(false);
-                    pwt->block_until = kernel_time_invalid();
-                    pwt->blocking_on_thread = WPThread{};
-
+                    pwt->blocking.unblock();
                     signal_thread_woken(pwt);
                 }
             }
@@ -167,10 +144,7 @@ bool RwLock::unlock(int *reason)
             auto pwt = ThreadList._get(wt);
             if(pwt)
             {
-                pwt->set_is_blocking(false);
-                pwt->block_until = kernel_time_invalid();
-                pwt->blocking_on_thread = WPThread{};
-
+                pwt->blocking.unblock();
                 signal_thread_woken(pwt);
             }
         }

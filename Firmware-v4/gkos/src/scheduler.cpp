@@ -142,8 +142,8 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     {
         CriticalGuard cg(sl_cur_next);
         cur_t = current_thread[ncore];
-        cur_prio = (cur_t == nullptr || cur_t->is_blocking) ? 0 : cur_t->base_priority;
-        cur_blocking = (cur_t == nullptr) ? true : cur_t->is_blocking;
+        cur_blocking = (cur_t == nullptr) ? true : cur_t->blocking.is_blocking();
+        cur_prio = cur_blocking ? 0 : cur_t->base_priority;
     }
 
 #if GK_DYNAMIC_SYSTICK
@@ -155,23 +155,16 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
 
         for(auto tthread : tlist[i].v)
         {
-            CriticalGuard cg2(tthread->sl_blocking);
-            if(tthread->get_is_blocking() && kernel_time_is_valid(tthread->block_until))
+            kernel_time tthread_tout;
+            if(tthread->blocking.is_blocking(&tthread_tout))
             {
-                if(tthread->block_until <= clock_cur())
+                if(kernel_time_is_valid(tthread_tout))
                 {
-#if DEBUG_SCHEDULER
-                    klog("sched: unblock %s due to timeout (%llu >= %llu)\n",
-                        tthread->name.c_str(),
-                        clock_cur_us(),
-                        kernel_time_to_us(tthread->block_until));
-#endif
-                    tthread->is_blocking = false;
-                    tthread->block_until = kernel_time();
-                }
-                else if(!kernel_time_is_valid(cur_earliest_blocker) || tthread->block_until < cur_earliest_blocker)
-                {
-                    cur_earliest_blocker = tthread->block_until;
+                    if(!kernel_time_is_valid(cur_earliest_blocker) ||
+                        tthread_tout < cur_earliest_blocker)
+                    {
+                        cur_earliest_blocker = tthread_tout;
+                    }                
                 }
             }
         }
@@ -307,53 +300,32 @@ std::pair<PThread, bool> Scheduler::get_blocker(PThread t)
 
     while(true)
     {
+        PThread next_t;
+        auto is_b = t->blocking.is_blocking(nullptr, &next_t);
+        if(!is_b)
         {
-            CriticalGuard cg(t->sl_blocking);
-            unblock_delayer(t.get());
-            auto next_t = t->blocking_on_thread.lock();
-            if(next_t == nullptr)
-                return std::make_pair(t, t->is_blocking);
-            t = next_t;
+            return std::make_pair(t, false);
         }
+        else
+        {
+            // is blocking.  Is there a thread chain to follow?
+            if(next_t)
+            {
+                // continue
+                t = next_t;
+            }
+            else
+            {
+                // blocking on something else - fail
+                return std::make_pair(t, true);
+            }
+        }
+        
         if(iter++ > 256)
         {
             __asm__ volatile ("brk #255\n" ::: "memory");
         }
     }
-}
-
-void Scheduler::unblock_delayer(Thread *t)
-{
-    if(t->get_is_blocking() && kernel_time_is_valid(t->block_until) && clock_cur() >= t->block_until)
-    {
-#if DEBUG_SCHEDULER
-        {
-            klog("sched: awaken sleeping thread %s (%llu -> %llu)\n",
-                t->name.c_str(),
-                clock_cur_us(),
-                kernel_time_to_us(t->block_until)
-            );
-        }
-#endif
-        t->is_blocking = false;
-        t->block_until = kernel_time_invalid();
-        t->blocking_on_thread.reset();
-        t->blocking_on_prim = nullptr;
-    }
-
-#if 0
-    if(t->get_is_blocking() && (((uint32_t)(uintptr_t)t->blocking_on) & 0x3U) == 0x1U &&
-        ((SimpleSignal *)(((uint32_t)(uintptr_t)t->blocking_on) & ~0x3U))->waiting_thread != t)
-    {
-        {
-            klog("scheduler: spurious blocking on already triggered SimpleSignal for thread %s\n",
-                t->name.c_str());
-        }
-        t->set_is_blocking(false, true);
-        t->block_until.invalidate();
-        t->blocking_on = nullptr;
-    }
-#endif
 }
 
 #if 0
@@ -369,13 +341,18 @@ void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 
 void Block(kernel_time until, PThread block_on)
 {
-    UninterruptibleGuard ug;
     auto t = GetCurrentThreadForCore();
+    if(kernel_time_is_valid(until) == false && !block_on)
     {
-        CriticalGuard cg(t->sl_blocking);
-        t->is_blocking = true;
-        t->blocking_on_thread = block_on;
-        t->block_until = until;
+        t->blocking.block_indefinite();
+    }
+    else if(block_on)
+    {
+        t->blocking.block(block_on, until);
+    }
+    else
+    {
+        t->blocking.block(until);
     }
     Yield();
 }
