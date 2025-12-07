@@ -22,15 +22,21 @@ _ZN8Spinlock4lockEv:
     and x1, x1, #0xff
     add x1, x1, #1
 
+    // we use wfe in the loop to save power, this sevl sends an event to self to
+    //  skip the first wfe.  Any unlock stxr will automatically send an event to wakeup.
+    sevl
+
 1:
+    wfe
+
     // atomic semantics
-    ldxr w2, [x0]
-    cbnz w2, 1b         // already taken.  No need to release exclusive monitor here
-                        // because other core will only do a non-exclusive store of zero to release
+2:
+    ldaxr w2, [x0]
+    cbnz w2, 1b         // already taken.
 
     // try to update
     stxr w2, w1, [x0]
-    cbnz w2, 1b         // failed to update.  try again
+    cbnz w2, 2b         // failed to update.  try again
 
     mov x0, #1
 
@@ -72,9 +78,10 @@ _ZN8Spinlock8try_lockEv:
     ret
 #else
     mrs x1, mpidr_el1
+    and x1, x1, #0xff
     add x1, x1, #1
 
-    ldxr w2, [x0]
+    ldaxr w2, [x0]
     cbnz w2, 1f             // fail
 
     stxr w2, w1, [x0]
