@@ -54,6 +54,8 @@ target_compile_definitions(${PROJECT_NAME}
         _UNIX98_THREAD_MUTEX_ATTRIBUTES
         _POSIX_THREAD_PRIO_PROTECT
         _POSIX_THREAD_PROCESS_SHARED
+        _GLIBCXX_HAVE_ATOMIC_LOCK_POLICY=1
+        __GTHREADS=1
 )
 
 target_sources(${PROJECT_NAME}
@@ -119,6 +121,7 @@ target_link_options(${PROJECT_NAME}
         -Wl,--wrap=reallocarray
         -Wl,-z,max-page-size=65536
         -Wl,-z,common-page-size=65536
+        -nostdlib++
         ${CMAKE_CURRENT_SOURCE_DIR}/../test.bin.o
 )
 
@@ -126,6 +129,13 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         lwext4
         zlib
+        #${CMAKE_CURRENT_SOURCE_DIR}/libgcc.a
+        ${CMAKE_CURRENT_SOURCE_DIR}/libstdc++.a 
+        ${CMAKE_CURRENT_SOURCE_DIR}/libsupc++.a       
+        #${CMAKE_CURRENT_SOURCE_DIR}/libgcc.a
+        ${CMAKE_CURRENT_SOURCE_DIR}/libstdc++.a 
+        ${CMAKE_CURRENT_SOURCE_DIR}/libsupc++.a
+        #${CMAKE_CURRENT_SOURCE_DIR}/libc.a
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}

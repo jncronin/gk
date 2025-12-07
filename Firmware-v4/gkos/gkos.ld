@@ -10,6 +10,7 @@ PHDRS
   rodata PT_LOAD ;
   data PT_LOAD ;
   bss PT_LOAD ;
+  tls PT_TLS ;
 }
 
 SECTIONS
@@ -108,4 +109,10 @@ SECTIONS
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } :bss
+
+  .tdata          :
+   {
+     *(.tdata .tdata.* .gnu.linkonce.td.*)
+   } :data :tls
+  .tbss           : { *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon) } :tls
 }
