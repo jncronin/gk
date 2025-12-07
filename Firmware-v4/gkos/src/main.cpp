@@ -163,6 +163,7 @@ void *task_b(void *)
 
 static void ap_epoint()
 {
+    
     // GIC - enable IRQ 30 (physical timer) + IPIs
     gic_set_enable(30);
     gic_set_enable(GIC_SGI_YIELD);

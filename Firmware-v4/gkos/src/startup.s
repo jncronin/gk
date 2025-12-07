@@ -12,6 +12,11 @@ _kstart:
     // startup parameters are passed via sp
     mov x24, sp
 
+    // set thread pointers and ttbr0 to zero
+    msr tpidr_el0, xzr
+    msr tpidr_el1, xzr
+    msr ttbr0_el1, xzr
+
     // get actual stack
     ldr x1, =_estack
     mov sp, x1

@@ -7,7 +7,7 @@
 /* We get to define our own memory types for the MMU.
 
     Slot    0       =   write back inner/outer shareable normal memory  = 0xff
-    Slot    1       =   write through inner/outer shareable normal mem  = 0x99
+    Slot    1       =   write through inner/outer shareable normal mem  = 0xbb
     Slot    2       =   non cacheable normal memory                     = 0x44
     Slot    3       =   nGnRnE device memory                            = 0x00
     Slot    4       =   nGnRE device memory                             = 0x04
@@ -20,7 +20,7 @@
 #define MT_DEVICE           3
 #define MT_DEVICE_NGNRE     4
 
-const uint64_t mair = 0x04004499ff;
+const uint64_t mair = 0x040044bbbff;
 
 #define GRANULARITY 65536ULL
 #define PTS_BASE    0xffffffff00000000ULL

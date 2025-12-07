@@ -4,7 +4,8 @@
 #include "kernel_time.h"
 #include "cpu.h"
 
-#define DEBUG_SCHEDULER 0
+#define DEBUG_SCHEDULER     0
+#define DEBUG_TASK_SWITCH   1
 
 Scheduler sched;
 
@@ -442,11 +443,17 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
 
 Thread *GetNextThreadForCore(uint32_t iar, void *, uint32_t irq)
 {
+#if DEBUG_TASK_SWITCH
+    auto curt = GetCurrentPThreadForCore();
+#endif
     auto ret = sched.GetNextThread(GetCoreID());
 #if DEBUG_SCHEDULER
     klog("sched: get_next_thread_for_core(%u): switch due to %x returning thread: %llx (%s), sp_el1: %llx\n, tss: %llx\n",
         GetCoreID(), iar,
         (uint64_t)ret, ret->name.c_str(), ret->tss.sp_el1, (uint64_t)&ret->tss);
+#endif
+#if DEBUG_TASK_SWITCH
+    klog("sched: %s -> %s\n", curt ? curt->name.c_str() : "<none>", ret->name.c_str());
 #endif
     return ret;
 }

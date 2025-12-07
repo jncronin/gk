@@ -90,4 +90,5 @@
         "xloctime": "cpp",
         "queue": "cpp"
     },
+    "cortex-debug.variableUseNaturalFormat": false,
 }

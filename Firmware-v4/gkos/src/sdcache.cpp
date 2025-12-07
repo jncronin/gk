@@ -22,7 +22,7 @@ static unsigned int next_entry = 0;
 static const constexpr uint64_t block_size = 512;
 static const constexpr uint64_t b_per_bb = VBLOCK_64k / block_size;
 
-static Spinlock m_cache;        // TODO: use mutex
+PMutex m_cache;
 
 using sdc_idx = uint64_t;
 using lru_list = std::list<sdc_idx>;
@@ -42,7 +42,7 @@ static map_type sdc_map;
 int sd_cache_init()
 {
     vb_cache = vblock_alloc(VBLOCK_512M, false, true, false);
-    next_entry = 0;
+    m_cache = MutexList.Create();
     return vb_cache.valid ? 0 : -1;
 }
 
@@ -144,15 +144,11 @@ static int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_a
 int sd_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read)
 {
-    Guard cg(m_cache);
-    if(is_read)
-    {
-        return sdc_read(block_start, block_count, mem_address);
-    }
-    else
-    {
-        return sdc_write(block_start, block_count, mem_address);
-    }
+    m_cache->lock();
+    auto ret = is_read ? sdc_read(block_start, block_count, mem_address) :
+        sdc_write(block_start, block_count, mem_address);
+    m_cache->unlock();
+    return ret;
 }
 
 int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)

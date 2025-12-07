@@ -16,7 +16,7 @@ template <class T, class MemberType = std::weak_ptr<T>> class IDList
 
     protected:
         std::map<id_t, MemberType> list;
-        id_t next_id = 0;
+        id_t next_id = 1;
 
     public:
         Spinlock sl;

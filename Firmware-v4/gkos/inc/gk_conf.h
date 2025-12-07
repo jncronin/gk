@@ -30,7 +30,7 @@
 #define GK_SCREEN_WIDTH             800
 #define GK_SCREEN_HEIGHT            480
 
-#define GK_TLBI_AFTER_TTBR_CHANGE   0
+#define GK_TLBI_AFTER_TTBR_CHANGE   1
 
 #define GK_DEBUG_BLOCKING           1
 
