@@ -14,7 +14,7 @@ void *init_thread(void *)
     // Provision FS prior to usb start
     fs_provision();
     
-    //usb_process_start();
+    usb_process_start();
 
 
     // start gkmenu
