@@ -49,6 +49,8 @@ static uint32_t scr[2];
 static bool is_4bit = false;
 volatile bool sd_ready = false;
 static bool is_hc = false;
+static bool is_1v8 = false;
+static bool vswitch_failed = false;
 static volatile bool tfer_inprogress = false;
 static volatile bool dma_ready = false;
 static volatile uint32_t sd_status = 0;
@@ -289,7 +291,7 @@ static int sd_issue_command(uint32_t command, resp_type rt, uint32_t arg = 0, ui
     return CTIMEOUT;
 }
 
-static void SDMMC_set_clock(int freq)
+static void SDMMC_set_clock(int freq, bool ddr = false)
 {
     auto div = SDCLK / freq;
     auto rem = SDCLK - (freq * div);
@@ -315,6 +317,11 @@ static void SDMMC_set_clock(int freq)
     auto clkcr = SDMMC1_VMEM->CLKCR;
     clkcr &= ~SDMMC_CLKCR_CLKDIV_Msk;
     clkcr |= div;
+
+    if(ddr)
+        clkcr |= SDMMC_CLKCR_DDR;
+    else
+        clkcr &= ~SDMMC_CLKCR_DDR;
     SDMMC1_VMEM->CLKCR = clkcr;
 
     clock_speed = (div == 0) ? SDCLK : (SDCLK / (div * 2));
@@ -409,6 +416,7 @@ void sd_reset()
         klog("SD: failed to switch off card %d\n", mv);
         return;
     }
+    PWR_VMEM->CR8 &= ~PWR_CR8_VDDIO1VRSEL;
     delay_ms(10);
     mv = smc_set_power(SMC_Power_Target::SDCard_IO, 3300);
     if(mv != 3300)
@@ -498,9 +506,13 @@ void sd_reset()
     bool is_ready = false;
     is_hc = false;
 
+    if(vswitch_failed)
+        is_1v8 = false;
+
     while(!is_ready)
     {
-        uint32_t ocr = 0xff8000 | (is_v2 ? (1UL << 30) : 0);
+        uint32_t ocr = 0xff8000 | (is_v2 ? ((1UL << 30) | 
+            (vswitch_failed ? 0UL : (1UL << 24))): 0);
         ret = sd_issue_command(55, resp_type::R1, 0, resp);
         if(ret != 0)
             return;
@@ -516,19 +528,98 @@ void sd_reset()
                 is_hc = true;
             }
 
+            if(resp[0] & (1UL << 24))
+            {
+                if(!vswitch_failed)
+                    is_1v8 = true;
+            }
+
             {
                 klog("init_sd: %s capacity card ready\n", is_hc ? "high" : "normal");
+                if(is_1v8)
+                {
+                    klog("init_sd: 1.8v signalling support\n");
+                }
             }
             is_ready = true;
         }
 
         // TODO: timeout
     }
+    
+    if(is_1v8)
+    {
+        // send CMD11 to begin voltage switch sequence
+
+        // PLSS p.47 and RM p.2186
+        SDMMC1_VMEM->POWER |= SDMMC_POWER_VSWITCHEN;
+        
+        ret = sd_issue_command(11, resp_type::R1, 0);
+        if(ret != 0)
+        {
+            is_ready = false;
+            vswitch_failed = true;
+            return;
+        }
+
+        klog("init_sd: CMD11 returned successfully\n");
+
+        // wait for CK_STOP
+        while(!(SDMMC1_VMEM->STA & SDMMC_STA_CKSTOP));
+        SDMMC1_VMEM->ICR = SDMMC_ICR_CKSTOPC;
+
+        // sample BUSYD0
+        auto busyd0 = SDMMC1_VMEM->STA & SDMMC_STA_BUSYD0;
+        if(!busyd0)
+        {
+            klog("init_sd: D0 high, aborting voltage switch\n");
+            is_ready = false;
+            vswitch_failed = true;
+            return;
+        }
+
+        klog("init_sd: D0 low - proceeding with vswitch\n");
+        mv = smc_set_power(SMC_Power_Target::SDCard_IO, 1800);
+        if(mv != 1800)
+        {
+            klog("init_sd: voltage regulator change failed: %u\n", mv);
+            is_ready = false;
+            vswitch_failed = true;
+            return;
+        }
+
+        delay_ms(10);
+        PWR_VMEM->CR8 |= ~PWR_CR8_VDDIO1VRSEL;
+
+        // continue vswitch sequence
+        SDMMC1_VMEM->POWER |= SDMMC_POWER_VSWITCH;
+
+        // wait for finish
+        while(!(SDMMC1_VMEM->STA & SDMMC_STA_VSWEND));
+        SDMMC1_VMEM->ICR = SDMMC_ICR_VSWENDC | SDMMC_ICR_CKSTOPC;
+
+        busyd0 = SDMMC1_VMEM->STA & SDMMC_STA_BUSYD0;
+
+        if(busyd0)
+        {
+            klog("init_sd: D0 low after voltage switch - failing\n");
+            is_ready = false;
+            vswitch_failed = true;
+            return;
+        }
+
+        klog("init_sd: voltage switch succeeded\n");
+
+        SDMMC1_VMEM->POWER &= ~(SDMMC_POWER_VSWITCH | SDMMC_POWER_VSWITCHEN);
+    }
 
     // CMD2  - ALL_SEND_CID
     ret = sd_issue_command(2, resp_type::R2, 0, cid);
     if(ret != 0)
+    {
+        klog("init_sd: CMD2 failed\n");
         return;
+    }
 
     // CMD3 - SEND_RELATIVE_ADDR
     uint32_t cmd3_ret;
@@ -713,17 +804,30 @@ void sd_reset()
             
             klog("init_sd: cmd6: fg1_support: %lx\n", fg1_support);
         }
-
-        if(fg1_support & 0x2)
+        auto fg4_support = (cmd6_buf[14]) & 0xffffUL;
+        klog("init_sd: cmd6: fg4_support: %lx\n", fg4_support);
+        uint32_t mode_set = 0;
+        if(is_1v8 && (fg1_support & 0x10) && (fg4_support & 0x2))
         {
-            // try and switch to high speed mode
+            klog("init_sd: supports ddr50 mode at 1.44W\n");
+            mode_set = 0x80ff1ff4;
+        }
+        else if(fg1_support & 0x2)
+        {
+            klog("init_sd: supports hs/sdr25 mode at 0.72W\n");
+            mode_set = 0x80fffff1;
+        }
+
+        if(mode_set)
+        {
+            // try and switch to higher speed mode
             SDMMC1_VMEM->DCTRL = 0;
             SDMMC1_VMEM->DLEN = 64;
             SDMMC1_VMEM->DCTRL = 
                 SDMMC_DCTRL_DTDIR |
                 (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
             
-            ret = sd_issue_command(6, resp_type::R1, 0x80000001, nullptr, true);
+            ret = sd_issue_command(6, resp_type::R1, mode_set, nullptr, true);
             if(ret != 0)
                 return;
             
@@ -757,9 +861,11 @@ void sd_reset()
             SDMMC1_VMEM->ICR = DBCKEND | DATAEND;
 
             auto fg1_setting = (cmd6_buf[11] >> 24) & 0xfUL;
+            auto fg4_setting = (cmd6_buf[12] >> 4) & 0xfUL;
             {
                 
-                klog("init_sd: cmd6: fg1_setting: %lx\n", fg1_setting);
+                klog("init_sd: cmd6: fg1_setting: %lx, fg4_setting: %lx\n", fg1_setting,
+                    fg4_setting);
             }
 
 #if GK_SD_USE_HS_MODE
@@ -768,8 +874,15 @@ void sd_reset()
                 SDMMC_set_clock(SDCLK_HS);
                 SDMMC1_VMEM->DTIMER = timeout_ns / clock_period_ns;
                 {
-                    
                     klog("init_sd: set to high speed mode\n");
+                }
+            }
+            else if(fg1_setting == 4)
+            {
+                SDMMC_set_clock(SDCLK_HS, true);
+                SDMMC1_VMEM->DTIMER = timeout_ns / clock_period_ns;
+                {
+                    klog("init_sd: set to DDR50 mode\n");
                 }
             }
 #endif
