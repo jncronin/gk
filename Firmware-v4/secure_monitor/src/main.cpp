@@ -110,7 +110,7 @@ extern "C" void mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
         "dsb ish\n"
         "isb\n"
 
-        "mov x0, xzr\n"
+        "mrs x0, sctlr_el1\n"
         "orr x0, x0, #(0x1 << 0)\n"     // M
         "orr x0, x0, #(0x1 << 2)\n"     // C
         "orr x0, x0, #(0x1 << 12)\n"    // I
@@ -191,7 +191,7 @@ extern "C" void ap_kmain(uint64_t magic)
                 "dsb ish\n"
                 "isb\n"
 
-                "mov x0, xzr\n"
+                "mrs x0, sctlr_el1\n"
                 "orr x0, x0, #(0x1 << 0)\n"     // M
                 "orr x0, x0, #(0x1 << 2)\n"     // C
                 "orr x0, x0, #(0x1 << 12)\n"    // I
