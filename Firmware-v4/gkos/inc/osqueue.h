@@ -139,7 +139,16 @@ template <typename T> class BaseQueue
             if(empty())
                 return false;
 
-            *v = _b[_rptr];
+            if constexpr(std::is_same_v<T, unknown_queue_type>)
+            {
+                auto b = (char *)_b;
+                memcpy(v, &b[_rptr * sz], sz);
+            }
+            else
+            {
+                *v = _b[_rptr];
+            }
+
             return true;
         }
 
@@ -228,7 +237,7 @@ template <typename T, int _nitems> class FixedQueue : public BaseQueue<T>
 
         size_t Push(const T* v, size_t n)
         {
-            CriticalGuard cg;
+            CriticalGuard cg(this->sl);
             for(unsigned int i = 0; i < n; i++)
             {
                 if(!_Push(&v[i]))

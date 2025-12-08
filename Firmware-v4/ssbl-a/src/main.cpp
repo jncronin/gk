@@ -127,14 +127,14 @@ int main(uint32_t bootrom_val)
         klog("elf: AP entry point found at %llx\n", ap_entry);
     }
 
-    // bring AP online
-    AP_Target = (uintptr_t)ap_main;
-
     gbi.ddr_start = pmem_get_cur_brk();
     gbi.ddr_end = 0x80000000ULL + ddr_get_size();
 
     void (*sm_ep)(const gkos_boot_interface *, uint64_t) =
         (void (*)(const gkos_boot_interface *, uint64_t))el3_ept;
+
+    // bring AP online
+    AP_Target = (uintptr_t)ap_main;
     
     // disable irqs/fiqs, enable paging
     __asm__ volatile (
@@ -144,8 +144,10 @@ int main(uint32_t bootrom_val)
         "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
         "msr S3_1_C15_C2_1, x0\n"
 
+        "bl invcache\n"
+
         "isb\n"
-        "tlbi alle3is\n"
+        "tlbi alle3\n"
         "dsb ish\n"
         "isb\n"
         
@@ -154,7 +156,7 @@ int main(uint32_t bootrom_val)
         "orr x0, x0, #(0x1 << 2)\n"     // C
         "orr x0, x0, #(0x1 << 12)\n"    // I
         "msr sctlr_el3, x0\n"
-    : : : "memory", "x0");
+    : : : "memory", "x0", "x1", "x2", "x3", "x4", "x5", "x6");
 
     sm_ep(&gbi, gkos_ssbl_magic);
     while(true);
@@ -184,8 +186,10 @@ void ap_main()
         "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
         "msr S3_1_C15_C2_1, x0\n"
 
+        "bl invcache\n"
+
         "isb\n"
-        "tlbi alle3is\n"
+        "tlbi alle3\n"
         "dsb ish\n"
         "isb\n"
         
@@ -194,7 +198,7 @@ void ap_main()
         "orr x0, x0, #(0x1 << 2)\n"     // C
         "orr x0, x0, #(0x1 << 12)\n"    // I
         "msr sctlr_el3, x0\n"
-    : : : "memory", "x0");
+    : : : "memory", "x0", "x1", "x2", "x3", "x4", "x5", "x6");
 
     klog("AP: running sm entry point\n");
     auto sm_ap_ep = (void (*)(uint64_t))ap_entry;

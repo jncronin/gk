@@ -53,14 +53,23 @@ concept all_same =
             std::is_same<std::tuple_element_t<0, std::tuple<Ts...>>, Ts>...
         >;
 
-template <Spinlock_c... Spinlock_t> requires all_same<Spinlock_t...>
-class CriticalGuard
+template <class T> class CriticalGuard
 {
     private:
-        using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
+        T* sl;
+        T* slb;
+        uint64_t cpsr;
+
+        bool is_locked;
+        bool has_disabled_ints;
 
     public:
-        CriticalGuard(Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false)
+        CriticalGuard(T &_sl1, T &_sl2) : sl(&_sl1), slb(&_sl2), is_locked(false), has_disabled_ints(false)
+        {
+            relock();
+        }
+
+        CriticalGuard(T &_sl1) : sl(&_sl1), slb(nullptr), is_locked(false), has_disabled_ints(false)
         {
             relock();
         }
@@ -71,26 +80,31 @@ class CriticalGuard
             {
                 klog("CriticalGuard: nested lock() - potential bug\n");
             }
-            constexpr std::size_t size = sizeof...(Spinlock_t);
+
             while(true)
             {
-                std::array<bool, size> locked = {};
-                size_t i = 0U;
                 disable_interrupts();
-                if(std::apply([&](Spinlock_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
+                if(sl->try_lock())
                 {
-                    is_locked = true;
-                    return;
+                    if(!slb || slb->try_lock())
+                    {
+                        is_locked = true;
+                        return;
+                    }
+                    else
+                    {
+                        sl->unlock();
+                    }
                 }
-
-                i = 0U;
-                std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
                 restore_interrupts();
             }
         }
 
         void unlock(bool lock_test = true)
         {
+            // typically we guard some sort of data access - ensure this is complete prior to
+            //  re-enabling the lock
+            __asm__ volatile("dmb ish\n" ::: "memory");
             if(!is_locked)
             {
                 if(lock_test)
@@ -103,7 +117,9 @@ class CriticalGuard
                 }
                 return;
             }
-            std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+            sl->unlock();
+            if(slb)
+                slb->unlock();
             is_locked = false;
             restore_interrupts();
         }
@@ -135,34 +151,51 @@ class CriticalGuard
         {
             unlock(false);
         }
-
-    private:
-        std::tuple<Spinlock_t &...> sl;
-        uint64_t cpsr;
-        bool is_locked;
-        bool has_disabled_ints;
 };
 
-template <Spinlock_c... Spinlock_t> requires all_same<Spinlock_t...>
-class Guard
+template <class T> class Guard
 {
     private:
-        using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
+        T* sl;
+        uint64_t cpsr;
+
+        bool is_locked;
 
     public:
-        Guard(Spinlock_t &... args) : sl(args...)
+        Guard(T &_sl) : sl(&_sl), is_locked(false)
         {
-            constexpr std::size_t size = sizeof...(args);
+            relock();
+        }
+
+        void relock()
+        {
+            if(is_locked)
+            {
+                klog("CriticalGuard: nested lock() - potential bug\n");
+            }
+
             while(true)
             {
-                std::array<bool, size> locked = {};
-                size_t i = 0U;
-                if(std::apply([&](Spinlock_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
+                if(sl->try_lock())
+                {
+                    is_locked = true;
                     return;
-
-                i = 0U;
-                std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
+                }
             }
+        }
+
+        void unlock(bool lock_test = true)
+        {
+            if(!is_locked)
+            {
+                if(lock_test)
+                {
+                    klog("CriticalGuard: mismatched lock/unlock - potential bug\n");
+                }
+                return;
+            }
+            sl->unlock();
+            is_locked = false;
         }
 
         Guard() = delete;
@@ -170,11 +203,8 @@ class Guard
 
         ~Guard()
         {
-            std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+            unlock(false);
         }
-
-    private:
-        std::tuple<Spinlock_t &...> sl;
 };
 
 class UninterruptibleGuard

@@ -274,11 +274,13 @@ int logger_int(int64_t ival, uint64_t uval, bool is_signed, unsigned int base, i
 
     char *ptr = &buf[sizeof(buf) - 1];
 
+    auto start_width = width;
+
     while(uval != 0 || width > 0)
     {
         if(uval == 0)
         {
-            if(zeropad)
+            if(zeropad || width == start_width)
             {
                 *--ptr = '0';
             }

@@ -74,6 +74,12 @@ void init_vmem(int el)
     tcr_el1 |= (0x3ULL << 28);                      // shareable page tables
     tcr_el1 |= 3ULL << 30;                  // 64 kiB granule
     tcr_el1 |= 2ULL << 32;                  // intermediate physical address 40 bits
+    tcr_el1 |= (0x1ULL << 3) | (0x1ULL << 10);
+    tcr_el1 |= (0x3ULL << 12);
+    tcr_el1 |= (0x1ULL << 36);
+    tcr_el1 |= (0x1ULL << 14);
+    tcr_el1 |= (0x1ULL << 7);
+
     __asm__ volatile("msr tcr_el1, %[tcr_el1] \n" : : [tcr_el1] "r" (tcr_el1) : "memory");
 
     /* identity map, include standard 32-bit device map as RW, secure, XN */

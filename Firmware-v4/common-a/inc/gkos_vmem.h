@@ -20,7 +20,7 @@
 #define MT_DEVICE           3
 #define MT_DEVICE_NGNRE     4
 
-const uint64_t mair = 0x040044bbbff;
+const uint64_t mair = 0x040044bbff;
 
 #define GRANULARITY 65536ULL
 #define PTS_BASE    0xffffffff00000000ULL

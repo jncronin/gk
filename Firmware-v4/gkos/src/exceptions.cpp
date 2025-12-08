@@ -79,6 +79,23 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     auto t = GetCurrentKernelThreadForCore();
     klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", t->p->name.c_str(), t->name.c_str(), (uintptr_t)t);
 
+    // backtrace
+    uint64_t fp = regs->fp;
+    int level = 1;
+    klog("EXCEPTION: backtrace %3d: %16llx\n", 0, lr);
+    while(true)
+    {
+        if(!vmem_vaddr_to_paddr_quick(fp) || !vmem_vaddr_to_paddr_quick(fp + 15))
+            break;  // cannot read from fp/fp+8
+        if(!vmem_vaddr_to_paddr_quick(*(uintptr_t *)(fp + 8)) || !vmem_vaddr_to_paddr_quick(*(uintptr_t *)(fp + 8) + 3))
+            break;  // cannot read from lr
+        klog("EXCEPTION: backtrace %3d: %16llx\n", level, *(uint64_t *)(fp + 8));
+        auto new_fp = *(uint64_t *)fp;
+        if(new_fp == fp) break;
+        fp = new_fp;
+        level++;
+    }
+
     while(true);
 
     // we can change the address to return to by returning anything other than 0 here

@@ -5,7 +5,7 @@
 #include "cpu.h"
 
 #define DEBUG_SCHEDULER     0
-#define DEBUG_TASK_SWITCH   1
+#define DEBUG_TASK_SWITCH   0
 
 Scheduler sched;
 

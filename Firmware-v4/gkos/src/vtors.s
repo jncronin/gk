@@ -92,6 +92,7 @@ _vtor_tbl_entry _lower32_serror
     // aarch64 stack frame
     stp x29, x30, [sp, #320]
     mov x29, sp
+    add x29, x29, #320
 .endm
 
 .macro restore_regs

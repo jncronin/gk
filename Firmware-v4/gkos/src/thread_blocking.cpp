@@ -1,5 +1,6 @@
 #include "thread.h"
 #include "clocks.h"
+#include "process.h"
 
 bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
 {
@@ -148,7 +149,9 @@ void Thread::blocking_t::block(void *q, kernel_time tout)
 
 void Thread::blocking_t::block_indefinite()
 {
-    klog("block: block_indefinite called\n");
+    klog("block: block_indefinite called: %s:%s\n",
+        GetCurrentProcessForCore()->name.c_str(),
+        GetCurrentThreadForCore()->name.c_str());
 
     CriticalGuard cg(sl);
     b_until = kernel_time_invalid();

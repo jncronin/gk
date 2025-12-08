@@ -92,10 +92,43 @@ int pthread_mutex_init(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
     return 0;
 }
 
-int pthread_once(void *, void *)
+#define PTHREAD_ONCE_RUNNING        1
+#define PTHREAD_ONCE_COMPLETED      2
+extern int pthread_once(pthread_once_t *once_control,
+    void (*init_routine)(void))
 {
-    klog("priv_pthread: pthread_once not implemented\n");
-    while(true);
+    /* we are required to execute init_routine only once, and additionally only return if
+        it has been run.
+
+        *once_control should have been initialised to PTHREAD_ONCE_INIT otherwise UB */
+    
+    while(true)
+    {
+        /* first check if already run, if so then just return */
+        if(once_control->init_executed == PTHREAD_ONCE_COMPLETED)
+        {
+            return 0;
+        }
+
+        /* if not run, then try and atomically set to running and then execute */
+        if(once_control->init_executed == 0)
+        {
+            int oldval = 0;
+
+            oldval = __sync_val_compare_and_swap(&once_control->init_executed,
+                oldval, PTHREAD_ONCE_RUNNING);
+
+            if(oldval == 0)
+            {
+                init_routine();
+
+                once_control->init_executed = PTHREAD_ONCE_COMPLETED;
+                return 0;
+            }
+        }
+
+        // else we are currently running, so just loop until complete
+    }
 }
 
 int pthread_cond_wait(void *, pthread_mutex_t *)
