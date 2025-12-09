@@ -193,3 +193,6 @@ trace.txt
 jlink-log.txt
 *.jdebug.user
 **/production_file-*/*
+!Firmware-v4/gkos/libgcc.a
+!Firmware-v4/gkos/libstdc++.a
+!Firmware-v4/gkos/libsupc++.a
