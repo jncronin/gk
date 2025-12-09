@@ -96,6 +96,12 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         level++;
     }
 
+    if(!t->is_privileged)
+    {
+        t->p->Kill();
+        return 0;
+    }
+
     while(true);
 
     // we can change the address to return to by returning anything other than 0 here

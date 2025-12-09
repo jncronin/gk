@@ -128,6 +128,9 @@ class Process
         static PProcess Create(const std::string &name, bool is_privileged = false,
             PProcess parent = nullptr);
 
+        /* Kill this process */
+        void Kill();
+
         Process() = default;
 };
 

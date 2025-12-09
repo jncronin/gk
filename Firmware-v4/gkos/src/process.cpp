@@ -3,6 +3,7 @@
 #include "vmem.h"
 #include "thread.h"
 #include "screen.h"
+#include "ipi.h"
 #include "process_interface.h"
 
 PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
@@ -76,4 +77,20 @@ void Process::owned_pages_t::add(const PMemBlock &b)
         p.insert(val);
         start += VBLOCK_64k;
     }
+}
+
+void Process::Kill()
+{
+    /* For now, just make all threads zombies */
+
+    CriticalGuard cg(sl);
+    for(auto t : threads)
+    {
+        CriticalGuard cg2(t->sl);
+        t->for_deletion = true;
+        t->blocking.block_indefinite();
+    }
+
+    /* yield all cores */
+    gic_send_sgi(GIC_SGI_YIELD, GIC_TARGET_ALL);
 }
