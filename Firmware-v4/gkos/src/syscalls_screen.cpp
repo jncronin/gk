@@ -127,8 +127,24 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
             case gpu_message_type::SignalThread:
                 break;
 
+            case gpu_message_type::SetScreenMode:
+                {
+                    int new_w = (int)cur_msg.w;
+                    int new_h = (int)cur_msg.h;
+                    int new_pf = (int)cur_msg.dest_pf;
+                    int new_refr = (int)cur_msg.sx;
+
+                    syscall_setscreenmode(new_w ? &new_w : nullptr,
+                        new_h ? &new_h : nullptr,
+                        new_pf ? &new_pf : nullptr,
+                        new_refr ? &new_refr : nullptr,
+                        _errno);
+                }
+                break;
+
             default:
                 klog("gpu: unhandled message type %d\n", (int)cur_msg.type);
+                break;
         }
     }
 

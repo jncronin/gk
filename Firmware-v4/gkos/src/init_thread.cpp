@@ -16,9 +16,9 @@ void *init_thread(void *)
     
     usb_process_start();
 
-
     // start gkmenu
-    auto proc_fd = syscall_open("/gkmenu-0.1.1-gkv4/bin/gkmenu", O_RDONLY, 0, &errno);
+    //auto proc_fd = syscall_open("/gkmenu-0.1.1-gkv4/bin/gkmenu", O_RDONLY, 0, &errno);
+    auto proc_fd = syscall_open("/glgears-0.1.1-gkv4/bin/glgears", O_RDONLY, 0, &errno);
     if(proc_fd < 0)
     {
         klog("init: failed to open test process\n");
