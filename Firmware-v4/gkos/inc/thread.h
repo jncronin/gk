@@ -99,6 +99,9 @@ class Thread
         Spinlock sl_lower_half_user_thread{};
         PThread lower_half_user_thread = nullptr;
 
+        /* privileged code errno etc to support basic libc environment */
+        int thread_errno = 0;
+
         typedef void *(*threadstart_t)(void *p);
         static std::shared_ptr<Thread> Create(const std::string &name,
             threadstart_t func,

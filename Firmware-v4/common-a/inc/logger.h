@@ -6,6 +6,14 @@ typedef signed long int ssize_t;
 typedef unsigned long int size_t;
 
 #ifdef __cplusplus
+class logger_printf_outputter
+{
+    public:
+        virtual ssize_t output(const void *buf, size_t count) = 0;
+};
+
+#include <stdarg.h>
+int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va);
 extern "C" {
 #endif
 
