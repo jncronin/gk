@@ -47,7 +47,7 @@ static int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_i
 static int sd_close(struct ext4_blockdev *bdev);
 
 // override the definition from lwext4 here
-#define static __attribute__((aligned(32))) static
+#define static __attribute__((aligned(64))) static
 EXT4_BLOCKDEV_STATIC_INSTANCE(sd, 512, 0, sd_open, sd_bread, sd_bwrite, sd_close, nullptr, nullptr);
 #undef static
 

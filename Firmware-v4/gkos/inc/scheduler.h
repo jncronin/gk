@@ -82,8 +82,6 @@ static inline unsigned int GetCoreID()
 }
 
 inline bool &scheduler_running() { return s().scheduler_running[GetCoreID()]; }
-inline PThread current_thread() { return s().current_thread[GetCoreID()]; }
-inline PThread current_thread(int coreid) { return sched.current_thread[coreid]; }
 
 static inline void Yield()
 {

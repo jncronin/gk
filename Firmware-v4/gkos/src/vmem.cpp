@@ -175,6 +175,9 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
     if(paddr_out)
         *paddr_out = paddr;
 
+//    klog("vmem: map vaddr %llx to paddr %llx %s%s%s%s\n",
+//        vaddr, paddr, user ? "U" : " ", write ? "W" : " ", exec ? "X" : " ", is_global ? "G" : " ");
+
     return 0;
 }
 
@@ -300,7 +303,7 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
                 auto act_vpage = vaddr + vaddr_adjust;
 
                 klog("vmem_unmap: unmap page vaddr %llx paddr %llx\n", act_vpage, page);
-                
+
                 vmem_invlpg(act_vpage, ttbr);
 
                 PMemBlock pb;
