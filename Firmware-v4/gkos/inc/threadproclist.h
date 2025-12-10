@@ -6,16 +6,13 @@
 #include <map>
 #include "ostypes.h"
 
-template <class T, class MemberType = std::weak_ptr<T>> class IDList
+template <class T> class IDList
 {
     public:
         using PT = std::shared_ptr<T>;
 
-        template<typename U> struct is_shared_ptr : std::false_type {};
-        template<typename U> struct is_shared_ptr<std::shared_ptr<U>> : std::true_type {};
-
-    protected:
-        std::map<id_t, MemberType> list;
+        protected:
+        std::map<id_t, PT> list;
         id_t next_id = 1;
 
     public:
@@ -42,19 +39,20 @@ template <class T, class MemberType = std::weak_ptr<T>> class IDList
 
         PT _get(id_t id)
         {
+            if(!id)
+                return nullptr;
             auto iter = list.find(id);
             if(iter == list.end())
             {
                 return nullptr;
             }
-            if constexpr(is_shared_ptr<MemberType>::value)
-                return iter->second;
-            else
-                return iter->second.lock();
+            return iter->second;
         }
 
         PT Get(id_t id)
         {
+            if(!id)
+                return nullptr;
             CriticalGuard cg(sl);
             return _get(id);
         }
@@ -76,12 +74,16 @@ template <class T, class MemberType = std::weak_ptr<T>> class IDList
 
         bool _exists(id_t id)
         {
+            if(!id)
+                return false;
             auto iter = list.find(id);
             return iter != list.end();
         }
 
         bool Exists(id_t id)
         {
+            if(!id)
+                return false;
             CriticalGuard cg(sl);
             return _exists(id);
         }
@@ -96,10 +98,10 @@ class UserspaceSemaphore;
 
 using ThreadList_t = IDList<Thread>;
 using ProcessList_t = IDList<Process>;
-using MutexList_t = IDList<Mutex, std::shared_ptr<Mutex>>;
-using CondList_t = IDList<Condition, std::shared_ptr<Condition>>;
-using RwLockList_t = IDList<RwLock, std::shared_ptr<RwLock>>;
-using UserspaceSemaphoreList_t = IDList<UserspaceSemaphore, std::shared_ptr<UserspaceSemaphore>>;
+using MutexList_t = IDList<Mutex>;
+using CondList_t = IDList<Condition>;
+using RwLockList_t = IDList<RwLock>;
+using UserspaceSemaphoreList_t = IDList<UserspaceSemaphore>;
 
 extern ThreadList_t ThreadList;
 extern ProcessList_t ProcessList;

@@ -9,12 +9,11 @@
 #include "threadproclist.h"
 
 class Thread;
-using WPThread = std::weak_ptr<Thread>;
 
 class Mutex
 {
     protected:
-        WPThread owner{};
+        id_t owner = 0;
         std::unordered_set<id_t> waiting_threads;
         bool is_recursive = false;
         bool echeck = false;
@@ -33,7 +32,7 @@ class Mutex
 class RwLock
 {
     protected:
-        WPThread wrowner{};
+        id_t wrowner = 0;
         std::unordered_set<id_t> rdowners;
         std::unordered_set<id_t> waiting_threads;
         Spinlock sl;
@@ -84,7 +83,7 @@ class SimpleSignal
         Spinlock sl;
 
     public:
-        WPThread waiting_thread{};
+        id_t waiting_thread = 0;
         enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
         uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
         uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());

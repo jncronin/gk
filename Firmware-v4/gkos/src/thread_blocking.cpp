@@ -5,7 +5,7 @@
 bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
 {
     CriticalGuard cg(sl);
-    auto bt_locked = b_thread.lock();
+    auto bt_locked = ThreadList.Get(b_thread);
     if(kernel_time_is_valid(b_until) && b_until <= clock_cur())
         b_until = kernel_time_invalid();
     auto isb = b_indefinite ||
@@ -33,7 +33,7 @@ void Thread::blocking_t::unblock()
     CriticalGuard cg(sl);
     b_until = kernel_time_invalid();
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;
@@ -50,7 +50,7 @@ void Thread::blocking_t::block(PThread t, kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = t;
+    b_thread = t->id;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;
@@ -67,7 +67,7 @@ void Thread::blocking_t::block(Condition *c, kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = c;
     b_ss = nullptr;
@@ -84,7 +84,7 @@ void Thread::blocking_t::block(SimpleSignal *ss, kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = ss;
@@ -101,7 +101,7 @@ void Thread::blocking_t::block(UserspaceSemaphore *uss, kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;
@@ -118,7 +118,7 @@ void Thread::blocking_t::block(RwLock *rwl, kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;
@@ -135,7 +135,7 @@ void Thread::blocking_t::block(void *q, kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;
@@ -156,7 +156,7 @@ void Thread::blocking_t::block_indefinite()
     CriticalGuard cg(sl);
     b_until = kernel_time_invalid();
     b_indefinite = true;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;
@@ -179,7 +179,7 @@ void Thread::blocking_t::block(kernel_time tout)
     CriticalGuard cg(sl);
     b_until = tout;
     b_indefinite = false;
-    b_thread = WPThread{};
+    b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
     b_ss = nullptr;

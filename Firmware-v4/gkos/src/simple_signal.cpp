@@ -9,10 +9,10 @@ SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 
 uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentPThreadForCore();
     {
-        auto pwt = waiting_thread.lock();
+        auto pwt = ThreadList._get(waiting_thread);
         if(pwt && t != pwt)
             return false;
     }
@@ -20,17 +20,17 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
     {
         auto ret = signal_value;
         do_op(op, vop);
-        waiting_thread.reset();
+        waiting_thread = 0;
         return ret;
     }
-    waiting_thread = t;
+    waiting_thread = t->id;
     t->blocking.block(this, tout);
     Yield();
     if(signal_value)
     {
         auto ret = signal_value;
         do_op(op, vop);
-        waiting_thread.reset();
+        waiting_thread = 0;
         return ret;
     }
     return signal_value;    
@@ -50,9 +50,9 @@ uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
 
 void SimpleSignal::Signal(SignalOperation op, uint32_t val)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg(sl, ThreadList.sl);
     do_op(op, val);
-    auto pwt = waiting_thread.lock();
+    auto pwt = ThreadList._get(waiting_thread);
     if(pwt)
     {
         pwt->blocking.unblock();

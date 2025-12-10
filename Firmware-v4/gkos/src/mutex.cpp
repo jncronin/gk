@@ -5,7 +5,7 @@
 #include "threadproclist.h"
 
 Mutex::Mutex(bool recursive, bool error_check) : 
-    owner(WPThread{}),
+    owner(0),
     is_recursive(recursive),
     echeck(error_check),
     lockcount(0)
@@ -33,10 +33,10 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 {
     auto t = GetCurrentPThreadForCore();
     CriticalGuard cg(sl, t->locked_mutexes.sl);
-    auto towner = owner.lock();
+    auto towner = ThreadList.Get(owner);
     if(towner == nullptr || (is_recursive && towner == t))
     {
-        owner = t;
+        owner = t->id;
         if(is_recursive)
             lockcount++;
         t->locked_mutexes.pset.insert(id);
@@ -74,7 +74,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 bool Mutex::unlock(int *reason, bool force)
 {
     CriticalGuard cg(sl, ThreadList.sl);
-    auto towner = owner.lock();
+    auto towner = ThreadList._get(owner);
     if(!towner)
     {
         if(reason) *reason = EPERM;
@@ -99,7 +99,7 @@ bool Mutex::unlock(int *reason, bool force)
             }
         }
         waiting_threads.clear();
-        owner = WPThread{};
+        owner = 0;
     }
 
     t->locked_mutexes.Delete(id);
@@ -111,7 +111,7 @@ bool Mutex::try_delete(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);
 
-    auto towner = owner.lock();
+    auto towner = ThreadList._get(owner);
     if(towner == nullptr || towner.get() == GetCurrentThreadForCore())
     {
         for(auto wt : waiting_threads)

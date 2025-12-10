@@ -26,7 +26,7 @@ class Thread
                 Spinlock sl{};
                 bool b_indefinite = false;
                 kernel_time b_until = kernel_time_invalid();
-                WPThread b_thread{};
+                id_t b_thread = 0;
 #if GK_DEBUG_BLOCKING
                 Condition *b_condition = nullptr;
                 SimpleSignal *b_ss = nullptr;
@@ -89,7 +89,7 @@ class Thread
 
         /* return value, or pointers to a waiting thread and where it wants the retval placed */
         void *retval;
-        WPThread join_thread{};
+        id_t join_thread = 0;
         void **join_thread_retval;
 
         /* cleanup stuff */

@@ -12,7 +12,6 @@ using id_t = unsigned int;
 
 using PProcess = std::shared_ptr<Process>;
 using PThread = std::shared_ptr<Thread>;
-using WPThread = std::weak_ptr<Thread>;
 
 struct MemRegion
 {

@@ -4,9 +4,9 @@
 
 bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
-    auto twrowner = wrowner.lock();
+    auto twrowner = ThreadList._get(wrowner);
     if(twrowner)
     {
         if(twrowner.get() == t)
@@ -35,7 +35,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
-    auto twrowner = wrowner.lock();
+    auto twrowner = ThreadList._get(wrowner);
     if(twrowner)
     {
         if(twrowner.get() == t)
@@ -83,12 +83,12 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
             // there are threads listed as the rdthread but they have since been deleted
             // therefore, we can acquire the wrlock
             rdowners.clear();
-            wrowner = GetCurrentPThreadForCore();
+            wrowner = t->id;
             t->locked_rwlocks.Add(id);
             return true;
         }
     }
-    wrowner = GetCurrentPThreadForCore();
+    wrowner = t->id;
     t->locked_rwlocks.Add(id);
     return true;
 }
@@ -97,7 +97,7 @@ bool RwLock::unlock(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
-    auto twrowner = wrowner.lock();
+    auto twrowner = ThreadList._get(wrowner);
     if(twrowner)
     {
         if(twrowner.get() == t)
@@ -112,7 +112,7 @@ bool RwLock::unlock(int *reason)
                 }
             }
             waiting_threads.clear();
-            wrowner = WPThread{};
+            wrowner = 0;
 
             t->locked_rwlocks.Delete(id);
 
@@ -157,7 +157,7 @@ bool RwLock::unlock(int *reason)
 bool RwLock::try_delete(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);
-    auto twrowner = wrowner.lock();
+    auto twrowner = ThreadList._get(wrowner);
     if(twrowner)
     {
         if(reason) *reason = EBUSY;

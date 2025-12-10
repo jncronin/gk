@@ -613,7 +613,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
 
     // At this point the thread exists, check if it has already been destroyed
     {
-        CriticalGuard cg_t(tthread->sl);
+        CriticalGuard cg_t(tthread->sl, ThreadList.sl);
         if(tthread->for_deletion)
         {
             *retval = tthread->retval;
@@ -621,7 +621,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         }
 
         // is anything else waiting?
-        auto other_wait_thread = tthread->join_thread.lock();
+        auto other_wait_thread = ThreadList._get(tthread->join_thread);
         if(other_wait_thread && other_wait_thread.get() != t)
         {
             *_errno = EDEADLK;
@@ -629,7 +629,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         }
 
         // else, tell the thread we are waiting for it to be destroyed
-        tthread->join_thread = GetCurrentPThreadForCore();
+        tthread->join_thread = t->id;
         tthread->join_thread_retval = retval;
 
         return -2;
@@ -642,11 +642,11 @@ int syscall_pthread_exit(void **retval, int *_errno)
 
     auto t = GetCurrentThreadForCore();
     {
-        CriticalGuard cg(t->sl);
+        CriticalGuard cg(t->sl, ThreadList.sl);
 
         t->retval = *retval;
 
-        auto jt = t->join_thread.lock();
+        auto jt = ThreadList._get(t->join_thread);
         if(jt)
         {
             CriticalGuard cg2(jt->sl);
@@ -656,7 +656,7 @@ int syscall_pthread_exit(void **retval, int *_errno)
             }
             jt->blocking.unblock();
             signal_thread_woken(jt);
-            t->join_thread = WPThread{};
+            t->join_thread = 0;
         }
 
         t->for_deletion = true;
