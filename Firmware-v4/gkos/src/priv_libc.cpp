@@ -8,12 +8,12 @@
 #include <unistd.h>
 
 extern "C" {
-int open(const char *pathname, int flags, mode_t mode)
+int _open(const char *pathname, int flags, mode_t mode)
 {
     return -1;
 }
 
-int close(int file)
+int _close(int file)
 {
     int ret = syscall_close1(file, &errno);
     if(ret != 0)
@@ -21,37 +21,37 @@ int close(int file)
     return syscall_close2(file, &errno);
 }
 
-int fstat(int file, struct stat *st)
+int _fstat(int file, struct stat *st)
 {
     return -1;
 }
 
-int getpid()
+int _getpid()
 {
     return -1;
 }
 
-int isatty(int file)
+int _isatty(int file)
 {
     return -1;
 }
 
-int kill(int pid, int sig)
+int _kill(int pid, int sig)
 {
     return -1;
 }
 
-off_t lseek(int file, off_t offset, int whence)
+off_t _lseek(int file, off_t offset, int whence)
 {
     return syscall_lseek(file, offset, whence, &errno);
 }
 
-int read(int file, void *ptr, size_t len)
+int _read(int file, void *ptr, size_t len)
 {
     return syscall_read(file, (char *)ptr, (int)len, &errno);
 }
 
-int write(int file, const void *buf, size_t nbytes)
+int _write(int file, const void *buf, size_t nbytes)
 {
     if(file == STDERR_FILENO)
     {

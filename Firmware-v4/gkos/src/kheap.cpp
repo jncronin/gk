@@ -24,7 +24,7 @@ void init_kheap()
 extern "C"
 {
 
-void *sbrk(intptr_t increment)
+void *_sbrk(intptr_t increment)
 {
     // should already have lock from surrounding malloc call
 

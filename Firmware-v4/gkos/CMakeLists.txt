@@ -128,7 +128,6 @@ target_link_options(${PROJECT_NAME}
         -Wl,--wrap=reallocarray
         -Wl,-z,max-page-size=65536
         -Wl,-z,common-page-size=65536
-        -nostdlib
         ${CMAKE_CURRENT_SOURCE_DIR}/../test.bin.o
 )
 
@@ -136,9 +135,6 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         lwext4
         zlib
-        ${CMAKE_CURRENT_SOURCE_DIR}/libstdc++.a 
-        ${CMAKE_CURRENT_SOURCE_DIR}/libsupc++.a       
-        ${CMAKE_CURRENT_SOURCE_DIR}/libgcc.a
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}
