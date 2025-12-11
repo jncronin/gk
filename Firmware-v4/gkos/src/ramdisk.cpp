@@ -6,6 +6,7 @@ int ramdisk_open(const std::string &fname, PFile *f,
     bool is_read, bool is_write)
 {
     // for testing, support a single file
+#if 0
     if(fname == "test.bin")
     {
         extern int _binary_test_strip_elf_start;
@@ -16,6 +17,7 @@ int ramdisk_open(const std::string &fname, PFile *f,
         *f = std::make_shared<RamdiskFile>(test_addr, test_size, is_read, is_write);
         return 0;
     }
+#endif
 
     return -1;
 }
