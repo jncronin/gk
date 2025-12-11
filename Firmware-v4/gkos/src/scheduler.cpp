@@ -3,9 +3,16 @@
 #include "gk_conf.h"
 #include "kernel_time.h"
 #include "cpu.h"
+#include <type_traits>
 
 #define DEBUG_SCHEDULER     0
 #define DEBUG_TASK_SWITCH   0
+
+static_assert(__gnu_cxx::__default_lock_policy == __gnu_cxx::_S_atomic);
+static_assert(std::is_base_of_v<
+    std::__shared_ptr<Thread, __gnu_cxx::_S_atomic>,
+    PThread>
+);
 
 Scheduler sched;
 
@@ -295,9 +302,10 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
     while(true);
 }
 
-std::pair<PThread, bool> Scheduler::get_blocker(PThread t)
+std::pair<PThread, bool> Scheduler::get_blocker(PThread _t)
 {
     int iter = 0;
+    auto t = _t;
 
     while(true)
     {
@@ -437,8 +445,8 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
         __asm__ ("brk #254\n" ::: "memory");
         return;
     }
-    current_thread[ncore] = next_thread[ncore];
-    next_thread[ncore] = nullptr;
+    std::swap(current_thread[ncore], next_thread[ncore]);
+    next_thread[ncore].reset();
 }
 
 Thread *GetNextThreadForCore(uint32_t iar, void *, uint32_t irq)

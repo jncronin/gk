@@ -10,7 +10,7 @@ using pthread_mutex_t = id_t;
 
 extern "C"
 {
-int pthread_mutex_init(pthread_mutex_t *mutex, pthread_mutexattr_t *attr);
+int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
 
 int pthread_mutex_lock(pthread_mutex_t *mutex)
 {
@@ -67,7 +67,7 @@ int pthread_mutexattr_destroy(pthread_mutexattr_t *attr)
     return 0;
 }
 
-int pthread_mutex_init(pthread_mutex_t *mutex, pthread_mutexattr_t *attr)
+int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
 {
     pthread_mutexattr_t defattr;
     if(!attr || *mutex == _PTHREAD_MUTEX_INITIALIZER)
@@ -131,13 +131,13 @@ extern int pthread_once(pthread_once_t *once_control,
     }
 }
 
-int pthread_cond_wait(void *, pthread_mutex_t *)
+int pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *)
 {
     klog("priv_pthread: pthread_cond_wait not implemented\n");
     while(true);
 }
 
-int pthread_cond_broadcast(void *)
+int pthread_cond_broadcast(pthread_cond_t *)
 {
     klog("priv_pthread: pthread_cond_broadcast not implemented\n");
     while(true);

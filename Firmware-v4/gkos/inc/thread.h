@@ -119,10 +119,7 @@ class Thread
         /* If privileged thread, release user thread lower half */
         int release_user_thread_lower_half();
 
-        ~Thread()
-        {
-            klog("THREAD DESTRUCTOR %s @ %p\n", name.c_str(), this);
-        }
+        ~Thread();
 };
 
 static inline Thread *GetCurrentKernelThreadForCore()

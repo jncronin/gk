@@ -225,3 +225,8 @@ int Thread::release_user_thread_lower_half()
 
     return 0;
 }
+
+Thread::~Thread()
+{
+    klog("THREAD DESTRUCTOR %s @ %p\n", name.c_str(), this);
+}

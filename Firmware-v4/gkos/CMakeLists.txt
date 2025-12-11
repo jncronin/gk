@@ -50,6 +50,7 @@ target_compile_definitions(${PROJECT_NAME}
         CORE_CM33
         ETH_MODE
         PINS_DONT_RCC_ENABLE
+        _POSIX_THREADS
         _POSIX_READER_WRITER_LOCKS
         _UNIX98_THREAD_MUTEX_ATTRIBUTES
         _POSIX_THREAD_PRIO_PROTECT
@@ -58,6 +59,7 @@ target_compile_definitions(${PROJECT_NAME}
         __GTHREADS=1
 #        _GLIBCXX_ATOMIC_BUILTINS=1
         #_GLIBCXX_HAS_GTHREADS=1
+        _GLIBCXX_GCC_GTHR_SINGLE_H
 )
 
 target_sources(${PROJECT_NAME}
@@ -112,6 +114,9 @@ target_compile_options(${PROJECT_NAME}
     PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:
             -Wno-register
+            --include=pthread.h
+            --include=bits/gthr-posix.h
+
         >)
 
 target_link_options(${PROJECT_NAME}
