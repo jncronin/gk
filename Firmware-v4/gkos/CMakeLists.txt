@@ -57,8 +57,7 @@ target_compile_definitions(${PROJECT_NAME}
         _POSIX_THREAD_PROCESS_SHARED
         _GLIBCXX_HAVE_ATOMIC_LOCK_POLICY=1
         __GTHREADS=1
-#        _GLIBCXX_ATOMIC_BUILTINS=1
-        #_GLIBCXX_HAS_GTHREADS=1
+# ensure single threaded gthr is removed
         _GLIBCXX_GCC_GTHR_SINGLE_H
 )
 
@@ -114,6 +113,7 @@ target_compile_options(${PROJECT_NAME}
     PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:
             -Wno-register
+# insist on using thread-aware versions of gthr
             --include=pthread.h
             --include=bits/gthr-posix.h
         >)
