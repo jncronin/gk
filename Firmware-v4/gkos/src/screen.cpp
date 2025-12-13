@@ -30,7 +30,7 @@ class FPSCounter
             if(tdiff >= kernel_time_from_ms(1000))
             {
                 auto fps = (nframes * 10000000ULL) /  kernel_time_to_us(tdiff);
-                klog("screen: layer %d: FPS: %lu, nframes: %u\n", layer, fps, nframes);
+                klog("screen: layer %d: FPS: %lu\n", layer, fps);
 
                 nframes = 0;
                 last_dump = now;
