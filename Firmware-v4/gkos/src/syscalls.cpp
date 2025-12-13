@@ -68,6 +68,27 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_get_arg_count:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_get_arg_count(reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_get_iarg_size:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_get_iarg_size((unsigned int)(uintptr_t)r2,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_get_iarg:
+            {
+                auto p = reinterpret_cast<__syscall_get_ienv_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_get_iarg(p->outbuf, p->outbuf_size, p->i,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         case __syscall_pthread_create:
             {
                 auto p = reinterpret_cast<__syscall_pthread_create_params *>(r2);

@@ -124,6 +124,9 @@ int syscall_setsupervisorvisible(int visible, int screen, int *_errno);
 int syscall_get_env_count(int *_errno);
 int syscall_get_ienv_size(unsigned int idx, int *_errno);
 int syscall_get_ienv(char *bufout, size_t buflen, unsigned int idx, int *_errno);
+int syscall_get_arg_count(int *_errno);
+int syscall_get_iarg_size(unsigned int idx, int *_errno);
+int syscall_get_iarg(char *bufout, size_t buflen, unsigned int idx, int *_errno);
 
 // nema gpu
 int syscall_nemaenable(pthread_mutex_t *nema_mutexes, size_t nmutexes,

@@ -17,8 +17,8 @@ void *init_thread(void *)
     usb_process_start();
 
     // start gkmenu
-    //auto proc_fd = syscall_open("/gkmenu-0.1.1-gkv4/bin/gkmenu", O_RDONLY, 0, &errno);
-    auto proc_fd = syscall_open("/glgears-0.1.1-gkv4/bin/glgears", O_RDONLY, 0, &errno);
+    auto proc_fd = syscall_open("/gkmenu-0.1.1-gk/bin/gkmenu", O_RDONLY, 0, &errno);
+    //auto proc_fd = syscall_open("/glgears-0.1.1-gkv4/bin/glgears", O_RDONLY, 0, &errno);
     if(proc_fd < 0)
     {
         klog("init: failed to open test process\n");
@@ -32,6 +32,8 @@ void *init_thread(void *)
     klog("init: elf_load_fildes: ret: %d, ep: %llx\n", ret, test_ep);
 
     p_test->cwd = "/gkmenu-0.1.1-gk";
+    p_test->env.args.clear();
+    p_test->env.args.push_back("Doom");
 
     if(ret == 0)
     {

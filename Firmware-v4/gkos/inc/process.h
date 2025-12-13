@@ -57,6 +57,7 @@ class Process
             public:
                 Spinlock sl;
                 std::vector<std::string> envs;
+                std::vector<std::string> args;
         };
 
         class pthread_tls_t
