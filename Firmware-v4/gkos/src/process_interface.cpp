@@ -9,6 +9,7 @@
 
 static_assert(GK_PROCESS_INTERFACE_START == 0x20000000ULL * 8191);
 PMemBlock process_highest_pt;
+PMemBlock process_kernel_info_page;
 
 /* Set up a page table that will be mapped into the highest part of each process lower-half
     memory space.
@@ -55,8 +56,27 @@ void init_process_interface()
     process_interface_map(pt, GK_TIM3, TIM3_BASE_NS, VBLOCK_64k,
         PAGE_INNER_SHAREABLE | PAGE_ATTR(MT_DEVICE) | PAGE_USER_RO | PAGE_XN);
 
+    // ROINFO page is device memory as it can potentially be written to by M33
     process_interface_map(pt, GK_ROINFO_PAGE, 0xe0b0000ULL, VBLOCK_64k,
         PAGE_INNER_SHAREABLE | PAGE_ATTR(MT_DEVICE) | PAGE_USER_RO | PAGE_XN);
+
+    // The rest is pure CA35 stuff so is cached
+    process_kernel_info_page = Pmem.acquire(VBLOCK_64k);
+    if(!process_kernel_info_page.valid)
+    {
+        klog("process_interface: couldn't allocate kernel_info_page\n");
+        while(true);
+    }
+
+    auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
+    kinfo->max_screen_width = GK_SCREEN_WIDTH;
+    kinfo->max_screen_height = GK_SCREEN_HEIGHT;
+    kinfo->ncores = GK_NUM_CORES;
+    kinfo->page_size = VBLOCK_64k;
+    kinfo->gk_ver = 0x0400;
+
+    process_interface_map(pt, GK_KERNEL_INFO_PAGE, process_kernel_info_page.base, VBLOCK_64k,
+        PAGE_INNER_SHAREABLE | PAGE_ATTR(MT_NORMAL) | PAGE_USER_RO | PAGE_XN);
 }
 
 int process_interface_map(volatile uint64_t *pt,
