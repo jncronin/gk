@@ -6,6 +6,46 @@
 #include "vmem.h"
 #include "process.h"
 #include "process_interface.h"
+
+#if GK_GPU_SHOW_FPS
+class FPSCounter
+{
+    protected:
+        Spinlock sl;
+        kernel_time last_dump;
+        unsigned int nframes = 0;
+        int layer;
+
+    public:
+        FPSCounter(int _layer) : layer(_layer) {}
+
+        void Tick()
+        {
+            CriticalGuard cg(sl);
+            auto now = clock_cur();
+            nframes++;
+
+            auto tdiff = now - last_dump;
+
+            if(tdiff >= kernel_time_from_ms(1000))
+            {
+                auto fps = (nframes * 10000000ULL) /  kernel_time_to_us(tdiff);
+                klog("screen: layer %d: FPS: %lu, nframes: %u\n", layer, fps, nframes);
+
+                nframes = 0;
+                last_dump = now;
+            }
+        }
+};
+
+static FPSCounter fpsc[scr_n_layers]
+{
+    FPSCounter(0),
+    FPSCounter(1)
+};
+
+#endif
+
 class TripleBufferScreenLayer
 {
     protected:
@@ -93,6 +133,12 @@ std::pair<uintptr_t, uintptr_t> screen_current()
 {
     auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->screen.sl);
+    return _screen_current();
+}
+
+std::pair<uintptr_t, uintptr_t> _screen_current()
+{
+    auto p = GetCurrentProcessForCore();
     auto layer = p->screen.screen_layer;
     auto buf = scrs[layer].current();
     if(buf.first >= 3)
@@ -108,6 +154,9 @@ uintptr_t screen_update()
     CriticalGuard cg(p->screen.sl);
     auto layer = p->screen.screen_layer;
     auto buf = scrs[layer].update();
+#if GK_GPU_SHOW_FPS
+    fpsc[layer].Tick();
+#endif
     return screen_buf_to_vaddr(layer, buf);
 }
 

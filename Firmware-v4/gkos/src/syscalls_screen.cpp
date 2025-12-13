@@ -330,7 +330,7 @@ static inline size_t get_bpp(int pf)
 
 static int fill_missing(gpu_message &msg, bool fill_src, Process::screen_t &cs)
 {
-    auto bufs = screen_current();
+    auto bufs = _screen_current();
 
     if(msg.dest_addr == 0)
     {
