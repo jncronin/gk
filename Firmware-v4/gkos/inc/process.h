@@ -90,6 +90,9 @@ class Process
                 unsigned int screen_refresh = 60;
 
                 unsigned int screen_layer = 0;
+
+                bool new_clut = false;
+                std::vector<uint32_t> clut;
         };
 
         std::string name;

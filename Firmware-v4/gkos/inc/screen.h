@@ -8,6 +8,7 @@
 
 void init_screen();
 uintptr_t screen_update();
+std::pair<uintptr_t, uintptr_t> screen_current();
 PMemBlock screen_get_buf(unsigned int layer, unsigned int buf);
 
 constexpr size_t scr_layer_size_bytes = align_power_2(GK_MAX_SCREEN_WIDTH * GK_MAX_SCREEN_HEIGHT * 4);

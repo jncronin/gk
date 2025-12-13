@@ -17,6 +17,7 @@ class TripleBufferScreenLayer
 
     public:
         unsigned int update();
+        std::pair<unsigned int, unsigned int> current();
 
         friend void init_screen();
         friend PMemBlock screen_get_buf(unsigned int, unsigned int);
@@ -60,14 +61,13 @@ void init_screen()
     }
 }
 
-uintptr_t screen_update()
+static uintptr_t screen_buf_to_vaddr(unsigned int layer, unsigned int buf)
 {
-    auto p = GetCurrentProcessForCore();
-    CriticalGuard cg(p->screen.sl);
-    auto layer = p->screen.screen_layer;
-    auto buf = scrs[layer].update();
-    if(buf >= 3)
+    if(layer > 1)
         return 0;
+    if(buf > 3)
+        return 0;
+
     if(layer == 0)
     {
         // userspace mapping
@@ -85,7 +85,30 @@ uintptr_t screen_update()
     {
         return l1_priv[buf].data_start();
     }
+
     return 0;
+}
+
+std::pair<uintptr_t, uintptr_t> screen_current()
+{
+    auto p = GetCurrentProcessForCore();
+    CriticalGuard cg(p->screen.sl);
+    auto layer = p->screen.screen_layer;
+    auto buf = scrs[layer].current();
+    if(buf.first >= 3)
+        return std::make_pair(0, 0);
+
+    return std::make_pair(screen_buf_to_vaddr(layer, buf.first),
+        screen_buf_to_vaddr(layer, buf.second));
+}
+
+uintptr_t screen_update()
+{
+    auto p = GetCurrentProcessForCore();
+    CriticalGuard cg(p->screen.sl);
+    auto layer = p->screen.screen_layer;
+    auto buf = scrs[layer].update();
+    return screen_buf_to_vaddr(layer, buf);
 }
 
 PMemBlock screen_get_buf(unsigned int layer, unsigned int buf)
@@ -107,4 +130,10 @@ unsigned int TripleBufferScreenLayer::update()
         cur_update++;
 
     return cur_update;
+}
+
+std::pair<unsigned int, unsigned int> TripleBufferScreenLayer::current()
+{
+    CriticalGuard cg(sl);
+    return std::make_pair(cur_update, last_updated);
 }

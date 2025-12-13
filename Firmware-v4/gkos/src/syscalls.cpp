@@ -325,6 +325,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_setpalette:
+            {
+                auto p = reinterpret_cast<__syscall_setpalette_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setpalette(p->ncols, p->cols,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
         case __syscall_gpuenqueue:
             {
                 auto p = reinterpret_cast<__syscall_gpuenqueue_params *>(r2);

@@ -136,6 +136,7 @@ int syscall_icacheinvalidate(int *_errno);
 
 int syscall_getscreenmodeex(int *width, int *height, int *pf, int *refresh, int *_errno);
 int syscall_setscreenmode(int *width, int *height, int *pf, int *refresh, int *_errno);
+int syscall_setpalette(unsigned int ncols, const uint32_t *cols, int *_errno);
 
 static inline int deferred_return(int *_errno = nullptr, kernel_time until = kernel_time_invalid())
 {
