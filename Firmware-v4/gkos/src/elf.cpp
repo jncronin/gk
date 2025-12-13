@@ -8,6 +8,9 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
 {
     if(fd < 0)
         return -1;
+
+    // we use syscall_read to write to kernel heap structures here
+    ThreadPrivilegeEscalationGuard tpeg;
         
     // check header for sanity
     Elf64_Ehdr hdr;

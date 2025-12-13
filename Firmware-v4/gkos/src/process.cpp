@@ -94,3 +94,8 @@ void Process::Kill()
     /* yield all cores */
     gic_send_sgi(GIC_SGI_YIELD, GIC_TARGET_ALL);
 }
+
+Process::~Process()
+{
+    klog("process: %s destructor called\n", name.c_str());
+}

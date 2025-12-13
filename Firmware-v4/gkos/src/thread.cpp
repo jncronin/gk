@@ -230,3 +230,14 @@ Thread::~Thread()
 {
     klog("THREAD DESTRUCTOR %s @ %p\n", name.c_str(), this);
 }
+
+ThreadPrivilegeEscalationGuard::ThreadPrivilegeEscalationGuard()
+{
+    old_priv = GetCurrentThreadForCore()->is_privileged;
+    GetCurrentThreadForCore()->is_privileged = true;
+}
+
+ThreadPrivilegeEscalationGuard::~ThreadPrivilegeEscalationGuard()
+{
+    GetCurrentThreadForCore()->is_privileged = old_priv;
+}

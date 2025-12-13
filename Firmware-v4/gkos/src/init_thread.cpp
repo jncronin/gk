@@ -31,7 +31,7 @@ void *init_thread(void *)
     auto ret = elf_load_fildes(proc_fd, p_test, &test_ep);
     klog("init: elf_load_fildes: ret: %d, ep: %llx\n", ret, test_ep);
 
-    p_test->cwd = "/gkmenu-0.1.1-gk";
+    p_test->env.cwd = "/gkmenu-0.1.1-gk";
     p_test->env.args.clear();
     p_test->env.args.push_back("Doom");
 

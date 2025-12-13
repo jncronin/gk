@@ -527,6 +527,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_proccreate:
+            {
+                auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
+                int ret = syscall_proccreate(p->fname, p->proc_info, p->pid, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -588,14 +596,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto p = reinterpret_cast<__syscall_recvfrom_params *>(r2);
                 int ret = syscall_recvfrom(p->sockfd, p->buf, p->len, p->flags, p->src_addr, p->addrlen,
                     reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_proccreate:
-            {
-                auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
-                int ret = syscall_proccreate(p->fname, p->proc_info, p->pid, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;

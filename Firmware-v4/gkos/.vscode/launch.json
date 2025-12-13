@@ -1,5 +1,6 @@
 {
     "configurations": [
+
         {
             "cwd": "${workspaceFolder}",
             "executable": "./build/gkos.elf",
@@ -26,6 +27,21 @@
                     }
                 ]
             }
+        },
+        {
+            "cwd": "${workspaceFolder}",
+            "executable": "./build/gkos.elf",
+            "name": "Debug-C0",
+            "request": "attach",
+            "type": "cortex-debug",
+            "device": "STM32MP257F_A35_0",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "none",
+            "servertype": "jlink",
+            "serverpath": "/program files/segger/jlink/JLinkGDBServerCL.exe",
+            "numberOfProcessors": 2,
+            "targetProcessor": 0,
+            "svdFile": "/program files/segger/ozone/config/cpu/cortex-a35_aarch64.svd"
         },
         {
             "cwd": "${workspaceFolder}",

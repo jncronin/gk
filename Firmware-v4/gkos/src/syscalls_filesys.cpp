@@ -14,6 +14,8 @@
 #include "ext4_thread.h"
 #include "vmem.h"
 
+#define DEBUG_SYSCALL_FILESYS       0
+
 int syscall_fstat(int file, struct stat *st, int *_errno)
 {
     auto p = GetCurrentThreadForCore()->p;
@@ -57,6 +59,9 @@ int syscall_write(int file, char *buf, int nbytes, int *_errno)
 int syscall_read(int file, char *buf, int nbytes, int *_errno)
 {
     auto p = GetCurrentThreadForCore()->p;
+#if DEBUG_SYSCALL_FILESYS
+    klog("syscall_read: %s.%u\n", p->name.c_str(), file);
+#endif
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -99,6 +104,9 @@ int syscall_isatty(int file, int *_errno)
 off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
 {
     auto p = GetCurrentThreadForCore()->p;
+#if DEBUG_SYSCALL_FILESYS
+    klog("syscall_lseek: %s.%u\n", p->name.c_str(), file);
+#endif
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -202,7 +210,12 @@ static std::string parse_fname(const std::string &pname)
     if(!starts_with(pname, '/') && !starts_with(pname, '~'))
     {
         // add cwd
-        auto cwd = GetCurrentThreadForCore()->p->cwd;
+        std::string cwd;
+        {
+            auto p = GetCurrentProcessForCore();
+            CriticalGuard cg(p->env.sl);
+            cwd = p->env.cwd;
+        }
         add_parts(pnames, cwd);
     }
     add_parts(pnames, pname);
@@ -327,7 +340,9 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     ext4_file _f = { 0 };
     auto lwf = std::make_shared<LwextFile>(_f, act_name);
     p->open_files.f[fd] = lwf;
-
+#if DEBUG_SYSCALL_FILESYS
+    klog("syscall_open: %s.%u is LwextFile\n", p->name.c_str(), fd);
+#endif
     cg.unlock();
     auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
         fd, t->ss, t->ss_p);
@@ -354,6 +369,9 @@ int syscall_opendir(const char *pathname, int *_errno)
 int syscall_close1(int file, int *_errno)
 {
     auto p = GetCurrentThreadForCore()->p;
+#if DEBUG_SYSCALL_FILESYS
+    klog("syscall_close1: %s.%u\n", p->name.c_str(), file);
+#endif
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -370,6 +388,9 @@ int syscall_close1(int file, int *_errno)
 int syscall_close2(int file, int *_errno)
 {
     auto p = GetCurrentThreadForCore()->p;
+#if DEBUG_SYSCALL_FILESYS
+    klog("syscall_close2: %s.%u\n", p->name.c_str(), file);
+#endif
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {

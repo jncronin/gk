@@ -58,6 +58,9 @@ class Process
                 Spinlock sl;
                 std::vector<std::string> envs;
                 std::vector<std::string> args;
+
+                /* Current directory */
+                std::string cwd = "";
         };
 
         class pthread_tls_t
@@ -119,9 +122,6 @@ class Process
         VMemBlock vb_tls = InvalidVMemBlock();
         size_t vb_tls_data_size;        // actual size of TLS data to copy
 
-        /* Current directory */
-        std::string cwd = "";
-
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
 
@@ -133,6 +133,7 @@ class Process
         void Kill();
 
         Process() = default;
+        ~Process();
 };
 
 extern PProcess p_kernel;

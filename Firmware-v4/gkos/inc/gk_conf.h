@@ -1,7 +1,7 @@
 #ifndef GK_CONF_H
 #define GK_CONF_H
 
-#define GK_NUM_CORES                2
+#define GK_NUM_CORES                1
 
 #define GK_ENABLE_NETWORK           0
 #define GK_ENABLE_WIFI              0
@@ -30,6 +30,9 @@
 #define GK_SCREEN_HEIGHT            480
 #define GK_MAX_SCREEN_WIDTH         1024
 #define GK_MAX_SCREEN_HEIGHT        768
+#define GK_SCREEN_REFRESH           60
+#define GK_MAX_SCREEN_REFRESH       60
+#define GK_MIN_SCREEN_REFRESH       24
 
 #define GK_TLBI_AFTER_TTBR_CHANGE   1
 

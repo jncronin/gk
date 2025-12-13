@@ -138,4 +138,17 @@ static inline Thread *GetCurrentThreadForCore()
     return GetCurrentKernelThreadForCore();
 }
 
+/* Grants the current thread escalated privileges for the duration of the guards existance */
+class ThreadPrivilegeEscalationGuard
+{
+    protected:
+        bool old_priv;
+
+    public:
+        ThreadPrivilegeEscalationGuard();
+        ~ThreadPrivilegeEscalationGuard();
+
+        ThreadPrivilegeEscalationGuard(const ThreadPrivilegeEscalationGuard &) = delete;
+};
+
 #endif

@@ -238,6 +238,8 @@ static void handle_open_message(ext4_message &msg)
     if(!call_t)
     {
         // message from zombie process - ignore it
+        klog("ext4: open without tid\n");
+        return;
     }
     auto p = call_t->p;
 
@@ -262,6 +264,9 @@ static void handle_open_message(ext4_message &msg)
                 p->open_files.f[msg.params.open_params.f].get());
             lwfile->f = f;
             msg.ss_p->ival1 = msg.params.open_params.f;
+#if EXT4_DEBUG
+            klog("ext4: opened %s\n", msg.params.open_params.pathname);
+#endif
             msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
         }
         else
@@ -281,6 +286,9 @@ static void handle_open_message(ext4_message &msg)
                     lwfile->d = d;
                     lwfile->is_dir = true;
                     msg.ss_p->ival1 = msg.params.open_params.f;
+#if EXT4_DEBUG
+                    klog("ext4: opened %s as directory\n", msg.params.open_params.pathname);
+#endif
                     msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
                 }
                 else
@@ -309,7 +317,7 @@ static void handle_read_message(ext4_message &msg)
 
 #if EXT4_DEBUG
     {
-        klog("ext4: read(%x, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
+        klog("ext4: read(%p, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
             msg.params.rw_params.nbytes);
     }
 
