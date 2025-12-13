@@ -69,8 +69,8 @@ void init_process_interface()
     }
 
     auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
-    kinfo->max_screen_width = GK_SCREEN_WIDTH;
-    kinfo->max_screen_height = GK_SCREEN_HEIGHT;
+    kinfo->max_screen_width = GK_MAX_SCREEN_WIDTH;
+    kinfo->max_screen_height = GK_MAX_SCREEN_HEIGHT;
     kinfo->ncores = GK_NUM_CORES;
     kinfo->page_size = VBLOCK_64k;
     kinfo->gk_ver = 0x0400;
