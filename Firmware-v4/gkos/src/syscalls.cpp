@@ -583,6 +583,59 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_audiosetfreq:
+            {
+                auto freq = (int)(intptr_t)r2;
+                *reinterpret_cast<int *>(r1) = syscall_audiosetfreq(freq,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_getcwd:
+            {
+                auto buf = reinterpret_cast<char *>(r1);
+                auto bufsize = reinterpret_cast<size_t>(r2);
+                syscall_getcwd(buf, bufsize, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_mkdir:
+            {
+                auto p = reinterpret_cast<__syscall_mkdir_params *>(r2);
+                int ret = syscall_mkdir(p->pathname, p->mode, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_unlink:
+            {
+                auto p = reinterpret_cast<char *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_unlink(p, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_ftruncate:
+            {
+                auto p = reinterpret_cast<__syscall_ftruncate_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_ftruncate(p->fd, p->length, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_chdir:
+            {
+                auto p = reinterpret_cast<const char *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_chdir(p, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_realpath:
+            {
+                auto p = reinterpret_cast<__syscall_realpath_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_realpath(p->path, p->resolved_path, p->len,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -749,59 +802,11 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
-        case __syscall_getcwd:
-            {
-                auto buf = reinterpret_cast<char *>(r1);
-                auto bufsize = reinterpret_cast<size_t>(r2);
-                auto &p = GetCurrentThreadForCore()->p;
-                if(p.cwd.length() > (bufsize - 1U))
-                {
-                    *reinterpret_cast<int *>(r3) = ERANGE;
-                }
-                else
-                {
-                    strcpy(buf, p.cwd.c_str());
-                    *reinterpret_cast<int *>(r3) = 0;
-                }
-            }
-            break;
-
-        case __syscall_mkdir:
-            {
-                auto p = reinterpret_cast<__syscall_mkdir_params *>(r2);
-                int ret = syscall_mkdir(p->pathname, p->mode, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
         case __syscall_newlibinithook:
             {
                 auto lr = reinterpret_cast<uint32_t>(r1);
                 auto retaddr = reinterpret_cast<uint32_t *>(r2);
                 handle_newlibinithook(lr, retaddr);
-            }
-            break;
-
-        case __syscall_getscreenmode:
-            {
-                auto p = reinterpret_cast<__syscall_getscreenmode_params *>(r2);
-                auto &proc = GetCurrentThreadForCore()->p;
-                if(p->x) *p->x = proc.screen_w;
-                if(p->y) *p->y = proc.screen_h;
-                if(p->pf) *p->pf = proc.screen_pf;
-                *reinterpret_cast<int *>(r1) = 0;
-            }
-            break;
-
-        case __syscall_getscreenmodeex:
-            {
-                auto p = reinterpret_cast<__syscall_getscreenmodeex_params *>(r2);
-                auto &proc = GetCurrentThreadForCore()->p;
-                if(p->x) *p->x = proc.screen_w;
-                if(p->y) *p->y = proc.screen_h;
-                if(p->pf) *p->pf = proc.screen_pf;
-                if(p->refresh) *p->pf = proc.screen_refresh;
-                *reinterpret_cast<int *>(r1) = 0;
             }
             break;
 
@@ -816,27 +821,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto p = reinterpret_cast<__syscall_cacheflush_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_cacheflush(p->addr, p->len, p->is_exec, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_unlink:
-            {
-                auto p = reinterpret_cast<char *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_unlink(p, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_ftruncate:
-            {
-                auto p = reinterpret_cast<__syscall_ftruncate_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_ftruncate(p->fd, p->length, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_chdir:
-            {
-                auto p = reinterpret_cast<const char *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_chdir(p, reinterpret_cast<int *>(r3));
             }
             break;
 
@@ -878,14 +862,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
-        case __syscall_audiosetfreq:
-            {
-                auto freq = reinterpret_cast<int>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audiosetfreq(freq,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
         case __syscall_nemaenable:
             {
                 auto p = reinterpret_cast<__syscall_nemaenable_params *>(r2);
@@ -920,14 +896,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto p = reinterpret_cast<__syscall_setsupervisorvisible_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_setsupervisorvisible(p->visible, p->screen,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_realpath:
-            {
-                auto p = reinterpret_cast<__syscall_realpath_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_realpath(p->path, p->resolved_path, p->len,
                     reinterpret_cast<int *>(r3));
             }
             break;

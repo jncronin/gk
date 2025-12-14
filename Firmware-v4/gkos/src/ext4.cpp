@@ -567,7 +567,6 @@ void handle_close_message(ext4_message &msg)
 void handle_mkdir_message(ext4_message &msg)
 {
     auto extret = ext4_dir_mk(msg.params.open_params.pathname);
-    free((void *)msg.params.open_params.pathname);
     if(extret == EOK)
     {
         msg.ss_p->ival1 = 0;
@@ -607,7 +606,6 @@ void handle_readdir_message(ext4_message &msg)
 void handle_unlink_message(ext4_message &msg)
 {
     auto extret = ext4_fremove(msg.params.unlink_params.pathname);
-    free((void *)msg.params.unlink_params.pathname);
     if(extret == EOK)
     {
         msg.ss_p->ival1 = 0;

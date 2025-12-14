@@ -420,7 +420,6 @@ int syscall_readdir(int file, dirent *de, int *_errno)
     return p->open_files.f[file]->ReadDir(de, _errno);
 }
 
-#if 0
 int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
 {
     if(!pathname)
@@ -430,26 +429,15 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
     }
     ADDR_CHECK_BUFFER_R(pathname, 1);
 
-    // check len as malloc'ing in sram4
-    auto pnlen = strlen(pathname);
-    if(pnlen > 4096)
-    {
-        *_errno = ENAMETOOLONG;
-        return -1;
-    }
-
-    auto npname = (char *)malloc(pnlen + 1);
-    if(!npname)
-    {
-        *_errno = ENAMETOOLONG;
-        return -1;
-    }
-    strcpy(npname, pathname);
+    auto act_name = parse_fname(pathname);
 
     auto t = GetCurrentThreadForCore();
-    auto msg = ext4_mkdir_message(npname, mode, t->ss, t->ss_p);
+    auto msg = ext4_mkdir_message(act_name.c_str(), mode, t->ss, t->ss_p);
     if(ext4_send_message(msg))
-        return -2;  // deferred return
+    {
+        while(!t->ss.Wait(SimpleSignal::Set, 0));
+        return t->ss_p.ival1;
+    }
     else
     {
         *_errno = ENOMEM;
@@ -468,25 +456,13 @@ int syscall_unlink(const char *pathname, int *_errno)
 
     auto act_name = parse_fname(pathname);
 
-    // check len as malloc'ing in sram4
-    if(act_name.length() > 4096)
-    {
-        *_errno = ENAMETOOLONG;
-        return -1;
-    }
-
-    auto npname = (char *)malloc(act_name.length() + 1);
-    if(!npname)
-    {
-        *_errno = ENAMETOOLONG;
-        return -1;
-    }
-    strcpy(npname, act_name.c_str());
-
     auto t = GetCurrentThreadForCore();
-    auto msg = ext4_unlink_message(npname, t->ss, t->ss_p);
+    auto msg = ext4_unlink_message(act_name.c_str(), t->ss, t->ss_p);
     if(ext4_send_message(msg))
-        return -2;  // deferred return
+    {
+        while(!t->ss.Wait(SimpleSignal::Set, 0));
+        return t->ss_p.ival1;
+    }
     else
     {
         *_errno = ENOMEM;
@@ -503,9 +479,11 @@ int syscall_chdir(const char *pathname, int *_errno)
     }
     ADDR_CHECK_BUFFER_R(pathname, 1);
 
+    auto act_name = parse_fname(pathname);
+
     auto p = GetCurrentThreadForCore()->p;
-    CriticalGuard cg(p->open_files.sl);
-    p->cwd = parse_fname(std::string(pathname));
+    CriticalGuard cg(p->env.sl);
+    p->env.cwd = act_name;
     return 0;
 }
 
@@ -525,4 +503,21 @@ int syscall_realpath(const char *path, char *resolved_path, size_t len, int *_er
     return 0;
 }
 
-#endif
+int syscall_getcwd(char *path, size_t bufsize, int *_errno)
+{
+    ADDR_CHECK_BUFFER_W(path, bufsize);
+
+    auto p = GetCurrentProcessForCore();
+    CriticalGuard cg(p->env.sl);
+    if(p->env.cwd.length() > (bufsize - 1U))
+    {
+        *_errno = ERANGE;
+        return -1;
+    }
+    else
+    {
+        strcpy(path, p->env.cwd.c_str());
+        *_errno = 0;
+        return 0;
+    }
+}
