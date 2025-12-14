@@ -2,6 +2,8 @@
 #include "syscalls_int.h"
 #include "screen.h"
 
+#define DEBUG_GPU 0
+
 int syscall_getscreenmodeex(int *width, int *height, int *pf, int *refresh, int *_errno)
 {
     auto p = GetCurrentProcessForCore();
@@ -207,6 +209,11 @@ int handle_blitcolor(gpu_message &m)
     auto c = color_convert(GK_PIXELFORMAT_ARGB8888, m.src_addr_color, m.dest_pf, cs);
     auto bpp = get_bpp(m.dest_pf);
 
+#if DEBUG_GPU
+    klog("gpu: blitcolor: dest_addr: %llx, dx: %u, dy: %u, dw: %u, dh: %u, dp: %u, c: %x, bpp: %u\n",
+        m.dest_addr, m.dx, m.dy, m.dw, m.dh, m.dp, c, bpp);
+#endif
+
     for(auto y = 0U; y < m.dh; y++)
     {
         auto line_addr = m.dest_addr + (y + m.dy) * m.dp +
@@ -247,6 +254,11 @@ int handle_blitnoblend(gpu_message &m)
     CriticalGuard cg(p->screen.sl);
     auto &cs = p->screen;
     fill_missing(m, true, cs);
+
+#if DEBUG_GPU
+    klog("gpu: blitnoblend: dest_addr: %llx, dx: %u, dy: %u, dw: %u, dh: %u, dp: %u, src_addr: %llx, sx: %u, sy: %u, sw: %u, sh: %u, sp: %u\n",
+        m.dest_addr, m.dx, m.dy, m.dw, m.dh, m.dp, m.src_addr_color, m.sx, m.sy, m.w, m.h, m.sp);
+#endif
 
     if(m.dest_pf == m.src_pf)
     {

@@ -3,6 +3,7 @@
 #include "scheduler.h"
 #include "ipi.h"
 #include "threadproclist.h"
+#include "logger.h"
 
 Mutex::Mutex(bool recursive, bool error_check) : 
     owner(0),
@@ -31,10 +32,10 @@ void Mutex::lock(bool allow_deadlk)
 
 bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 {
-    auto t = GetCurrentPThreadForCore();
+    auto t = GetCurrentThreadForCore();
     CriticalGuard cg(sl, t->locked_mutexes.sl);
     auto towner = ThreadList.Get(owner);
-    if(towner == nullptr || (is_recursive && towner == t))
+    if(towner == nullptr || (is_recursive && towner.get() == t))
     {
         owner = t->id;
         if(is_recursive)
@@ -42,7 +43,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
         t->locked_mutexes.pset.insert(id);
         return true;
     }
-    else if(towner == t)
+    else if(towner.get() == t)
     {
         if(reason) *reason = EDEADLK;
         if(echeck)
@@ -63,6 +64,10 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 
         if(block)
         {
+#if DEBUG_MUTEX
+            klog("mutex: %s blocking on %p owned by %s\n",
+                t->name.c_str(), this, towner->name.c_str());
+#endif
             t->blocking.block(towner, tout);
             waiting_threads.insert(t->id);
             Yield();

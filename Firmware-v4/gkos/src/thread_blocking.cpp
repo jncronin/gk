@@ -4,8 +4,8 @@
 
 bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
 {
-    CriticalGuard cg(sl);
-    auto bt_locked = ThreadList.Get(b_thread);
+    CriticalGuard cg(sl, ThreadList.sl);
+    auto bt_locked = ThreadList._get(b_thread);
     if(kernel_time_is_valid(b_until) && b_until <= clock_cur())
         b_until = kernel_time_invalid();
     auto isb = b_indefinite ||

@@ -10,10 +10,10 @@ SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time tout)
 {
     CriticalGuard cg(sl, ThreadList.sl);
-    auto t = GetCurrentPThreadForCore();
+    auto t = GetCurrentThreadForCore();
     {
         auto pwt = ThreadList._get(waiting_thread);
-        if(pwt && t != pwt)
+        if(pwt && t != pwt.get())
             return false;
     }
     if(signal_value)

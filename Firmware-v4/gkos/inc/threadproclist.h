@@ -6,6 +6,13 @@
 #include <map>
 #include "ostypes.h"
 
+class Thread;
+class Process;
+class Mutex;
+class Condition;
+class RwLock;
+class UserspaceSemaphore;
+
 template <class T> class IDList
 {
     public:
@@ -88,13 +95,6 @@ template <class T> class IDList
             return _exists(id);
         }
 };
-
-class Thread;
-class Process;
-class Mutex;
-class Condition;
-class RwLock;
-class UserspaceSemaphore;
 
 using ThreadList_t = IDList<Thread>;
 using ProcessList_t = IDList<Process>;

@@ -79,7 +79,8 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     : : "memory");
     klog("EXCEPTION: ttbr0: %llx, ttbr1: %llx, tcr: %llx\n", ttbr0, ttbr1, tcr);
     auto t = GetCurrentKernelThreadForCore();
-    klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", t->p->name.c_str(), t->name.c_str(), (uintptr_t)t);
+    if(t)
+        klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", t->p->name.c_str(), t->name.c_str(), (uintptr_t)t);
 
     // backtrace
     uint64_t fp = regs->fp;
@@ -96,6 +97,11 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         if(new_fp == fp) break;
         fp = new_fp;
         level++;
+    }
+
+    if(!t)
+    {
+        while(true);
     }
 
     if(!t->is_privileged)

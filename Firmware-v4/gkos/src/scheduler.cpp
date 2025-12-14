@@ -150,9 +150,9 @@ Thread *Scheduler::GetNextThread(uint32_t ncore)
     {
         CriticalGuard cg(sl_cur_next);
         cur_t = current_thread[ncore];
-        cur_blocking = (cur_t == nullptr) ? true : cur_t->blocking.is_blocking();
-        cur_prio = cur_blocking ? 0 : cur_t->base_priority;
     }
+    cur_blocking = (cur_t == nullptr) ? true : cur_t->blocking.is_blocking();
+    cur_prio = cur_blocking ? 0 : cur_t->base_priority;
 
 #if GK_DYNAMIC_SYSTICK
     // Get earliest blocker at each priority level
