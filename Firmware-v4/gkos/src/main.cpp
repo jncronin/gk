@@ -16,6 +16,7 @@
 #include "threadproclist.h"
 #include "screen.h"
 #include "process_interface.h"
+#include "sound.h"
 #include <memory>
 
 // test threads
@@ -96,6 +97,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     init_sd();
     init_ext4();
     init_screen();
+    init_sound();
 
     init_process_interface();
 

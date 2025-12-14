@@ -10,7 +10,7 @@
 #include <cstring>
 #include "elf.h"
 #include "cleanup.h"
-//#include "sound.h"
+#include "sound.h"
 //#include "btnled.h"
 #include "util.h"
 #include "screen.h"
@@ -536,6 +536,53 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_audioenable:
+            {
+                auto p = (int)(intptr_t)r2;
+                *reinterpret_cast<int *>(r1) = syscall_audioenable(p, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audioqueuebuffer:
+            {
+                auto p = reinterpret_cast<__syscall_audioqueuebuffer_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audioqueuebuffer(p->buffer, p->next_buffer,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+        
+        case __syscall_audiosetmode:
+            {
+                auto p = reinterpret_cast<__syscall_audiosetmode_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audiosetmode(p->nchan, p->nbits, p->freq, p->buf_size_bytes,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audiosetmodeex:
+            {
+                auto p = reinterpret_cast<__syscall_audiosetmodeex_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audiosetmodeex(p->nchan, p->nbits, p->freq,
+                    p->buf_size_bytes, p->nbufs,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audiogetbufferpos:
+            {
+                auto p = reinterpret_cast<__syscall_audiogetbufferpos_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_audiogetbufferpos(p->nbufs, p->curbuf,
+                    p->buflen, p->bufpos, p->nchan, p->nbits, p->freq,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_audiowaitfree:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_audiowaitfree(reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -804,53 +851,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto p = reinterpret_cast<__syscall_waitpid_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_waitpid(p->pid, p->stat_loc, p->options,
                     reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audioenable:
-            {
-                auto p = reinterpret_cast<int>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audioenable(p, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audioqueuebuffer:
-            {
-                auto p = reinterpret_cast<__syscall_audioqueuebuffer_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audioqueuebuffer(p->buffer, p->next_buffer,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-        
-        case __syscall_audiosetmode:
-            {
-                auto p = reinterpret_cast<__syscall_audiosetmode_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audiosetmode(p->nchan, p->nbits, p->freq, p->buf_size_bytes,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audiosetmodeex:
-            {
-                auto p = reinterpret_cast<__syscall_audiosetmodeex_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audiosetmodeex(p->nchan, p->nbits, p->freq,
-                    p->buf_size_bytes, p->nbufs,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audiogetbufferpos:
-            {
-                auto p = reinterpret_cast<__syscall_audiogetbufferpos_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_audiogetbufferpos(p->nbufs, p->curbuf,
-                    p->buflen, p->bufpos, p->nchan, p->nbits, p->freq,
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_audiowaitfree:
-            {
-                *reinterpret_cast<int *>(r1) = syscall_audiowaitfree(reinterpret_cast<int *>(r3));
             }
             break;
 

@@ -8,6 +8,7 @@
 #include "osfile.h"
 #include "vblock.h"
 #include "ostypes.h"
+#include "osmutex.h"
 #include <unordered_set>
 #include <map>
 #include "sync_primitive_locks.h"
@@ -95,6 +96,25 @@ class Process
                 std::vector<uint32_t> clut;
         };
 
+        struct audio_conf_t
+        {
+            unsigned int nbuffers = 0;
+            unsigned int buf_size_bytes;
+            unsigned int buf_ndtr;
+            unsigned int wr_ptr;
+            unsigned int rd_ptr;
+            unsigned int rd_ready_ptr;
+            uintptr_t silence_paddr;
+            Condition waiting_threads;
+            bool enabled = false;
+            unsigned int freq, nbits, nchan;
+            unsigned int audio_max_buffer_size = 0;
+
+            VMemBlock mr_sound = InvalidVMemBlock();
+            PMemBlock p_sound = InvalidPMemBlock();
+            Spinlock sl_sound;
+        };
+
         std::string name;
         std::vector<std::shared_ptr<Thread>> threads;
         id_t id, ppid;
@@ -108,6 +128,7 @@ class Process
         environ_t env{};
         heap_t heap{};
         screen_t screen{};
+        audio_conf_t audio{};
 
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);
@@ -137,5 +158,8 @@ class Process
 };
 
 extern PProcess p_kernel;
+
+PProcess GetFocusProcess();
+int SetFocusProcess(PProcess p);
 
 #endif
