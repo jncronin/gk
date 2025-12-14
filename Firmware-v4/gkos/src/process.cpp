@@ -4,7 +4,9 @@
 #include "thread.h"
 #include "screen.h"
 #include "ipi.h"
+#include "cleanup.h"
 #include "process_interface.h"
+#include "completion_list.h"
 
 PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
 {
@@ -79,20 +81,23 @@ void Process::owned_pages_t::add(const PMemBlock &b)
     }
 }
 
-void Process::Kill()
+void Process::Kill(void *rc)
 {
-    /* For now, just make all threads zombies */
-
-    CriticalGuard cg(sl);
+    CriticalGuard cg(sl, ProcessExitCodes.sl);
     for(auto t : threads)
     {
         CriticalGuard cg2(t->sl);
-        t->for_deletion = true;
         t->blocking.block_indefinite();
+        CleanupQueue.Push({ .is_thread = true, .t = t });
     }
+
+    ProcessExitCodes._set(id, rc);
+
+    CleanupQueue.Push({ .is_thread = false, .p = ProcessList.Get(id) });
 
     /* yield all cores */
     gic_send_sgi(GIC_SGI_YIELD, GIC_TARGET_ALL);
+
 }
 
 Process::~Process()

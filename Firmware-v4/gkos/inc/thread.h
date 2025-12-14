@@ -87,13 +87,9 @@ class Thread
         };
         std::vector<cleanup_handler> cleanup_list;
 
-        /* return value, or pointers to a waiting thread and where it wants the retval placed */
-        void *retval;
+        /*pointers to a waiting thread and where it wants the retval placed */
         id_t join_thread = 0;
         void **join_thread_retval;
-
-        /* cleanup stuff */
-        bool for_deletion = false;
 
         /* Stores the thread to which we are temporarily assuming the lower half */
         Spinlock sl_lower_half_user_thread{};

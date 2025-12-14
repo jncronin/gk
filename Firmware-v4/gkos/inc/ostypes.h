@@ -10,6 +10,11 @@ class Thread;
 
 using id_t = unsigned int;
 
+struct pidtid
+{
+    id_t pid, tid;
+};
+
 using PProcess = std::shared_ptr<Process>;
 using PThread = std::shared_ptr<Thread>;
 

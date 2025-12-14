@@ -24,6 +24,8 @@ static uint64_t TranslationFault_Handler(bool user, bool write, uint64_t address
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
 {
+    int userspace_fault_code = 0;
+
     if(etype == 0x401 && (esr == 0x46000000 || esr == 0x56000000))
     {
         // syscalls run with interrupts enabled
@@ -56,9 +58,9 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
                     etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
 #endif
 
-                auto ret = TranslationFault_Handler(user, write, far, lr);
-                if(ret == 0)
-                    return ret;
+                userspace_fault_code = TranslationFault_Handler(user, write, far, lr);
+                if(userspace_fault_code == 0)
+                    return userspace_fault_code;
             }
         }
     }
@@ -98,7 +100,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
     if(!t->is_privileged)
     {
-        t->p->Kill();
+        t->p->Kill((void *)(128 + userspace_fault_code));
         return 0;
     }
 
@@ -116,14 +118,14 @@ static void DumpThreadFault()
         GetCurrentThreadForCore());
 }
 
-static uint64_t UserThreadFault()
+static uint64_t UserThreadFault(int sig = SIGSEGV)
 {
     klog("User thread fault\n");
     DumpThreadFault();
-    return ~0ULL;
+    return sig;
 }
 
-static uint64_t SupervisorThreadFault()
+static uint64_t SupervisorThreadFault(int sig = SIGSEGV)
 {
     klog("Supervisor thread fault\n");
     DumpThreadFault();

@@ -25,6 +25,11 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
     void *dr1 = r1;
     void *dr2 = r2;
     void *dr3 = r3;
+
+    if((int)sno != 50 && (int)sno != 51)
+    {
+        klog("syscalls: start: %d (%p, %p, %p)\n", (int)sno, dr1, dr2, dr3);
+    }
 #endif
     [[maybe_unused]] auto syscall_start = clock_cur_ms();
     switch(sno)
@@ -351,8 +356,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto t = GetCurrentThreadForCore();
                 CriticalGuard cg(t->sl);
-                t->retval = r1;
-                t->for_deletion = true;
+                //t->retval = r1;
                 t->blocking.block_indefinite();
                 CleanupQueue.Push({ .is_thread = true, .t = GetCurrentPThreadForCore() });
                 Yield();
@@ -472,19 +476,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto t = GetCurrentThreadForCore();
                 auto p = t->p;
 
-                CriticalGuard cg(p->sl);
-                for(auto pt : p->threads)
-                {
-                    CriticalGuard cg2(pt->sl);
-                    pt->for_deletion = true;
-                    pt->blocking.block_indefinite();
-                }
-
-                p->rc = rc;
-
-                //proc_list.DeleteProcess(p.pid, rc);
-
-                CleanupQueue.Push({ .is_thread = false, .p = p });
+                p->Kill((void *)rc);
 
                 Yield();
             }
@@ -1012,8 +1004,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
 #endif
 
 #if DEBUG_SYSCALLS
+    if((int)sno != 50 && (int)sno != 51)
     {
-        klog("syscalls: %d (%p, %p, %p)\n", (int)sno, dr1, dr2, dr3);
+        klog("syscalls: end  : %d (%p, %p, %p)\n", (int)sno, dr1, dr2, dr3);
     }
 #endif
 }
