@@ -104,7 +104,8 @@ class Thread
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
-            std::shared_ptr<Process> owning_process);
+            std::shared_ptr<Process> owning_process,
+            void *p2 = nullptr);
 
         /* determine if a given address range is within the memory accessible by
             this thread */

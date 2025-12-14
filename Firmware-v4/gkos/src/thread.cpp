@@ -21,7 +21,8 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
             threadstart_t func,
             void *p,
             bool is_priv, int priority,
-            std::shared_ptr<Process> owning_process)
+            std::shared_ptr<Process> owning_process,
+            void *p2)
 {
     auto t = std::make_shared<Thread>();
 
@@ -73,7 +74,7 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     {
         *--kthread_ptr = 0U;    // GPRs
     }
-    *--kthread_ptr = (uint64_t)(is_priv ? p : nullptr);             // X1
+    *--kthread_ptr = (uint64_t)(is_priv ? p : p2);             // X1
     *--kthread_ptr = (is_priv ? (uint64_t)func : (uint64_t)p);      // X0
 
     // set up task structure

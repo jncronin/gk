@@ -15,7 +15,7 @@
 #define DEBUG_SYNC 0
 
 int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
-    void *(*start_func)(void *), void *arg, int *_errno)
+    void *(*start_func)(void *), void *arg, void *arg2, int *_errno)
 {
     if(!thread)
     {
@@ -40,7 +40,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     auto p = curt->p;
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
-        curt->base_priority, p);
+        curt->base_priority, p, arg2);
     if(!t)
     {
         *_errno = EAGAIN;
