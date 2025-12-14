@@ -16,7 +16,19 @@ project(gkos C CXX ASM)
 
 set(LIB_ONLY ON)
 add_subdirectory(../../Firmware/lwext4 lwext4)
+
+# hack lwext4 build system a bit to allow us to use our own defines
 set(LWEXT4_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/lwext4/include")
+file(REMOVE ${LWEXT4_GENERATED_DIR}/generated/ext4_config.h)
+target_include_directories(lwext4
+PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/inc"
+)
+target_include_directories(blockdev
+PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/inc"
+)
+
 
 set(ZLIB_BUILD_EXAMPLES OFF)
 add_subdirectory(../../Firmware/zlib-1.3.1 zlib)
@@ -41,7 +53,6 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/lwext4/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source"
-        "${LWEXT4_GENERATED_DIR}"
 )
 
 target_compile_definitions(${PROJECT_NAME}
