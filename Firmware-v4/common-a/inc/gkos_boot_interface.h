@@ -9,6 +9,14 @@ struct gkos_boot_interface
     uint64_t ddr_end;
     volatile uint64_t *cur_s;
     volatile uint64_t *tim_ns_precision;
+
+    enum board_type
+    {
+        EV1,
+        GKV4
+    };
+
+    board_type btype;
 };
 
 constexpr uint64_t gkos_ssbl_magic = (uint64_t)'G' |

@@ -10,6 +10,7 @@
 #include "elf.h"
 #include "gic.h"
 #include "ap.h"
+#include "pmic.h"
 
 #define STACK_SIZE  65536
 
@@ -22,6 +23,8 @@ uint64_t ddr_end;
 uint64_t vaddr_ptr;
 
 gkos_boot_interface gbi_for_el1;
+
+gkos_boot_interface::board_type btype;
 
 AP_Data aps[ncores] = { 0 };
 
@@ -65,6 +68,23 @@ extern "C" void mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
 
     clock_takeover();
 
+    // determine board type
+    auto pmic_prod_id = pmic_read_register(0);
+
+    if(pmic_prod_id == 0x22)
+    {
+        btype = gkos_boot_interface::board_type::GKV4;
+    }
+    else if(pmic_prod_id == 0x20)
+    {
+        btype = gkos_boot_interface::board_type::EV1;
+    }
+    else
+    {
+        klog("SM: unknown product id: %x\n", pmic_prod_id);
+        while(true);
+    }
+
     // init el1 vmem
     init_vmem(1);
     epoint ept_el1;
@@ -86,6 +106,7 @@ extern "C" void mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
     extern uint64_t clock_block_paddr;
     gbi_for_el1.cur_s = (volatile uint64_t *)(clock_block_paddr + 0xfe00ULL);
     gbi_for_el1.tim_ns_precision = (volatile uint64_t *)(clock_block_paddr + 0xfe00ULL + 8ULL);
+    gbi_for_el1.btype = btype;
 
     auto gbi_vaddr_el1 = pmem_vaddr_to_paddr((uint64_t)&gbi_for_el1, false, false, 3) + UH_START;
 
