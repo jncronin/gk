@@ -17,7 +17,7 @@ int syscall_getscreenmodeex(int *width, int *height, int *pf, int *refresh, int 
 
 static bool scr_width_valid(int w)
 {
-    if(w < 160 || w > 800)
+    if(w < 160 || w > GK_MAX_SCREEN_WIDTH)
         return false;
     if(w & 0x3)
         return false;
@@ -26,7 +26,7 @@ static bool scr_width_valid(int w)
 
 static bool scr_height_valid(int h)
 {
-    if(h < 120 || h > 480)
+    if(h < 120 || h > GK_MAX_SCREEN_HEIGHT)
         return false;
     if(h & 0x3)
         return false;
@@ -42,7 +42,7 @@ static bool scr_pf_valid(int pf)
 
 static bool scr_refresh_valid(int refresh)
 {
-    if(refresh < 24 || refresh > 60)
+    if(refresh < GK_MIN_SCREEN_REFRESH || refresh > GK_MAX_SCREEN_REFRESH)
         return false;
     return true;
 }
@@ -100,6 +100,8 @@ int syscall_setscreenmode(int *width, int *height, int *pf, int *refresh, int *_
     p->screen.screen_pf = new_pf;
     p->screen.screen_refresh = new_refresh;
 
+    klog("screen: set %ux%u, pf: %u, rr: %u\n", new_width, new_height, new_pf, new_refresh);
+
     return 0;
 }
 
@@ -154,6 +156,7 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
                 break;
 
             case gpu_message_type::CleanCache:
+            case gpu_message_type::BlitImageNoBlendIf:
                 break;
 
             case gpu_message_type::BlitColor:
@@ -161,7 +164,6 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
                 break;
 
             case gpu_message_type::BlitImageNoBlend:
-            case gpu_message_type::BlitImageNoBlendIf:
                 handle_blitnoblend(cur_msg);
                 break;
 

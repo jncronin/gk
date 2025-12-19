@@ -17,6 +17,7 @@
 #include "screen.h"
 #include "process_interface.h"
 #include "sound.h"
+#include "bootinfo.h"
 #include <memory>
 
 // test threads
@@ -32,19 +33,23 @@ unsigned int reboot_flags = 0;
 
 void *init_thread(void *);
 
-extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)
+// saved copy of the boot interface
+constinit gkos_boot_interface gbi;
+
+extern "C" int mp_kpremain(const gkos_boot_interface *_gbi, uint64_t magic)
 {
     // These need to happen before __libc_init_array, which may call malloc
+    gbi = *_gbi;
 
-    init_clocks(gbi);
+    init_clocks(_gbi);
     
     klog("gkos: startup\n");
 
     uint64_t magic_str[2] = { magic, 0 };
 
-    klog("gkos: magic: %s, ddr: %llx - %llx\n", (const char *)(&magic_str[0]), gbi->ddr_start, gbi->ddr_end);
+    klog("gkos: magic: %s, ddr: %llx - %llx\n", (const char *)(&magic_str[0]), _gbi->ddr_start, _gbi->ddr_end);
     
-    init_pmem(gbi->ddr_start, gbi->ddr_end);
+    init_pmem(_gbi->ddr_start, _gbi->ddr_end);
 
     // Initialize a upper half block manager in the space between the mapped physical memory and the kernel
     init_vblock();
@@ -52,8 +57,18 @@ extern "C" int mp_kpremain(const gkos_boot_interface *gbi, uint64_t magic)
     return 0;
 }
 
-extern "C" int mp_kmain(const gkos_boot_interface *gbi, uint64_t magic)
+extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
 {
+    switch(gbi.btype)
+    {
+        case gkos_boot_interface::board_type::GKV4:
+            klog("gkos: booting on GKV4 board\n");
+            break;
+        case gkos_boot_interface::board_type::EV1:
+            klog("gkos: booting on EV1 board\n");
+            break;
+    }
+    
     // allocate some space to test page faults
     auto pf_test = vblock_alloc(VBLOCK_64k, false, true, false);
     *(uint64_t *)pf_test.base = 0xdeadbeef;

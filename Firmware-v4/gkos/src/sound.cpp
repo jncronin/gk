@@ -10,6 +10,8 @@
 #include "cache.h"
 #include "vmem.h"
 #include "pmem.h"
+#include "smc.h"
+#include "bootinfo.h"
 
 static constexpr const pin SAI2_SD_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 12, 3 };
 static constexpr const pin SAI2_SCK_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 11, 3 };
@@ -20,8 +22,9 @@ static constexpr const pin SPKR_NSD { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOB), 7 }; 
 #define SAI2_VMEM ((SAI_TypeDef *)PMEM_TO_VMEM(SAI2_BASE))
 #define SAI2_Block_A_VMEM ((SAI_Block_TypeDef *)PMEM_TO_VMEM(SAI2_Block_A_BASE))
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
+#define HPDMA1_VMEM ((DMA_TypeDef *)PMEM_TO_VMEM(HPDMA1_BASE))
 
-#define dma_irq 77
+#define dma_irq 73
 
 using audio_conf = Process::audio_conf_t;
 
@@ -101,27 +104,148 @@ void init_sound()
     RCC_VMEM->GPIOGCFGR |= RCC_GPIOGCFGR_GPIOxEN;
     RCC_VMEM->GPIOJCFGR |= RCC_GPIOJCFGR_GPIOxEN;
     __asm__ volatile("dmb sy\n" ::: "memory");
-    SAI2_SCK_A.set_as_af();
-    SAI2_SD_A.set_as_af();
-    SAI2_FS_A.set_as_af();
 
-    SPKR_NSD.clear();
-    SPKR_NSD.set_as_output();
+    if(gbi.btype == gkos_boot_interface::board_type::GKV4)
+    {
+        SAI2_SCK_A.set_as_af();
+        SAI2_SD_A.set_as_af();
+        SAI2_FS_A.set_as_af();
+
+        SPKR_NSD.clear();
+        SPKR_NSD.set_as_output();
+    }
+
+    // bring up VDD_AUDIO (TODO: could be selectively disabled)
+    smc_set_power(SMC_Power_Target::Audio, 3300);
 
     // Enable clock to SAI2_VMEM
-    //sound_set_extfreq(44100.0 * 1024.0);
+    sound_set_extfreq(44100.0 * 1024.0);
     RCC_VMEM->SAI2CFGR |= RCC_SAI2CFGR_SAI2EN;
     RCC_VMEM->SAI2CFGR &= ~RCC_SAI2CFGR_SAI2RST;
 
     RCC_VMEM->HPDMA1CFGR |= RCC_HPDMA1CFGR_HPDMA1EN;
     RCC_VMEM->HPDMA1CFGR &= ~RCC_HPDMA1CFGR_HPDMA1RST;
 
+    HPDMA1_VMEM->SECCFGR |= (1U << 8);
+    HPDMA1_VMEM->PRIVCFGR |= (1U << 8);
+
     //sound_set_volume(50);
+}
+
+int sound_set_extfreq(double freq)
+{
+    /* We use PLL7 which has a fractional divider with 24-bit precision
+        Input is 40 MHz HSE/2 = 20 MHz
+        VCO output frequency is between 800 and 3200 MHz
+
+        The postdivider is two /1 to /7 dividers so various steps up to /49
+
+        We first aim for somewhere in the middle of the VCO output range with
+         integer post-dividers (aim 2000 MHz)
+        
+        Note input frequencies of < 16000 kHz are too low to generate an
+         appropriate divider with min VCO of 800 MHz, so we need to do more
+         scaling in the flexbar
+
+        For a flexbar scale of /4, and a PLL postdiv of /24, we can
+         achieve FS frequencies of 8.1 to 32.5 kHz, so this is a reasonable
+         ballpark if we then adjust PLL postdiv - this gives < 4kHz through 781 kHz
+    */
+    
+    int sai_prescale = 4;
+    freq = freq * (double)sai_prescale;
+
+    const double targ_vcoout = 2000000000.0;
+    double postdiv = targ_vcoout / freq;
+
+    struct unique_postdivs
+    {
+        int div1, div2;
+    };
+
+    // valid postdivs = 1  2  3  4  5  6  7  8 10 12 14  9 15 18 21 16 20 24 28 25 30 35 36 42 49
+    const unique_postdivs upds[] =
+    {
+        { 1, 1 }, { 1, 2 }, { 3, 1 }, { 2, 2 }, { 5, 1 }, { 3, 2 }, { 7, 1 },
+        { 2, 4 }, { 5, 2 }, { 6, 2 }, { 7, 2 }, { 3, 3 }, { 3, 5 }, { 3, 6 },
+        { 3, 7 }, { 4, 4 }, { 5, 4 }, { 6, 4 }, { 7, 4 }, { 5, 5 }, { 5, 6 },
+        { 7, 5 }, { 6, 6 }, { 7, 6 }, { 7, 7 }
+    };
+
+    // get the multiplier larger than or equal to target
+    unique_postdivs pd = { 0, 0 };
+    for(const auto &upd : upds)
+    {
+        double test = (double)upd.div1 * (double)upd.div2;
+        if(test >= postdiv)
+        {
+            pd = upd;
+            break;
+        }
+    }
+    if(pd.div1 == 0)
+    {
+        klog("audio: failed to calculate postdiv\n");
+        return -1;
+    }
+
+    // now use those postdivs to get the actual vco output
+    double vcoout = freq * (double)pd.div1 * (double)pd.div2;
+    if(vcoout < 800000000.0 || vcoout > 3200000000.0)
+    {
+        klog("audio: incorrect vcoout freq\n");
+        return -1;
+    }
+
+    // split vcoout to integer and fractional parts
+    const double vcoin = 40000000.0 / 2.0;
+    double vcomult = vcoout / vcoin;
+    int intpart = (int)(vcomult);
+    int fract_part = (int)((vcomult - (double)intpart) * 16777216.0);
+
+    klog("audio: pll settings: frefdiv: 2, fbdiv: %d, frac: %d, postdiv1: %d, postdiv2: %d, sai_div: %d\n",
+        intpart, fract_part, pd.div1, pd.div2, sai_prescale);
+    
+    // Now program the PLL7
+    RCC_VMEM->PLL7CFGR1 &= ~RCC_PLL7CFGR1_PLLEN;
+    __asm__ volatile("dmb sy\n" ::: "memory");
+
+    // run off HSE
+    RCC_VMEM->MUXSELCFGR = (RCC_VMEM->MUXSELCFGR & ~RCC_MUXSELCFGR_MUXSEL3_Msk) |
+        (1U << RCC_MUXSELCFGR_MUXSEL3_Pos);
+
+    RCC_VMEM->PLL7CFGR2 = (2U << RCC_PLL7CFGR2_FREFDIV_Pos) |
+        ((unsigned int)intpart << RCC_PLL7CFGR2_FBDIV_Pos);
+    RCC_VMEM->PLL7CFGR3 = (RCC_VMEM->PLL7CFGR3 & ~RCC_PLL7CFGR3_FRACIN_Msk) |
+        ((unsigned int)fract_part << RCC_PLL7CFGR3_FRACIN_Pos);
+    RCC_VMEM->PLL7CFGR4 = RCC_PLL7CFGR4_FOUTPOSTDIVEN |
+        (((fract_part == 0) ? 0U : 1U) << RCC_PLL7CFGR4_DSMEN_Pos);
+    RCC_VMEM->PLL7CFGR6 = (unsigned int)pd.div1 << RCC_PLL7CFGR6_POSTDIV1_Pos;
+    RCC_VMEM->PLL7CFGR7 = (unsigned int)pd.div2 << RCC_PLL7CFGR7_POSTDIV2_Pos;
+    __asm__ volatile("dmb sy\n" ::: "memory");
+    RCC_VMEM->PLL7CFGR1 |= RCC_PLL7CFGR1_PLLEN;
+
+    while(!(RCC_VMEM->PLL7CFGR1 & RCC_PLL7CFGR1_PLLRDY));
+
+    // Set up FLEXBAR[24] to use PLL7 / 4
+    RCC_VMEM->FINDIVxCFGR[24] = 0;       // disable
+    RCC_VMEM->PREDIVxCFGR[24] = 3;       // div 4
+    RCC_VMEM->XBARxCFGR[24] = 0x43;      // enabled, pll7
+    RCC_VMEM->FINDIVxCFGR[24] = 0x40;    // enabled, div 1
+
+    // Finally, output a test signal (FLEXBAR[24] output) on PF11 if on EV1
+    if(gbi.btype == gkos_boot_interface::board_type::EV1)
+    {
+        RCC_VMEM->FCALCOBS0CFGR = RCC_FCALCOBS0CFGR_CKOBSEN |
+            ((24U + 0xc0U) << RCC_FCALCOBS0CFGR_CKINTSEL_Pos);
+    }
+
+    return 0;
 }
 
 int syscall_audiosetfreq(int freq, int *_errno)
 {
-    //sound_set_extfreq(1024.0 * (double)freq);
+    sound_set_extfreq(1024.0 * (double)freq);
     return 0;
 }
 
@@ -150,15 +274,17 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     dma->CCR = 0;
 
     /* Calculate PLL divisors */
-    //sound_set_extfreq(1024.0 * (double)freq);
-    klog("sound: TODO: set frequency to %d\n", freq);
+    sound_set_extfreq(1024.0 * (double)freq);
 
-    /* SAI2_VMEM is connected to PCM1754 
+    /* SAI2_VMEM is connected to TAD5112
 
-        This expects 32 bits/channel (we only use 16 of them) 
+        We program fixed 32 bits/channel
             thus 64 bits for an entire left/right sample
 
-        To produce accurate MCLK, we need SAI clock of 1024 * Fs (where Fs = e.g. 48kHz)
+        It produces its own internal MCLK based upon FS and BCLK
+
+        We provide a SAI clock of 1024 * FS then subdivide in SAI by 16 to get
+         a BCLK/FS ratio of 64.
 
 
         I2S frame is left then right, left has FS low
@@ -206,7 +332,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     }
 
     SAI2_Block_A_VMEM->CR1 =
-        SAI_xCR1_MCKEN |
+//        SAI_xCR1_MCKEN |
         SAI_xCR1_OSR |
         (2UL << SAI_xCR1_MCKDIV_Pos) |
         (dsize << SAI_xCR1_DS_Pos) |
@@ -315,7 +441,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
         {
             CriticalGuard cg2(p->user_mem->sl);
             vmem_map(ac.mr_sound.base, ac.p_sound.base, true, true, false,
-                p->user_mem->ttbr0, ~0ULL, nullptr, MT_NORMAL_WT);
+                p->user_mem->ttbr0 & 0xffffffff0000ULL, ~0ULL, nullptr, MT_NORMAL_WT);
         }
     }
 
@@ -331,23 +457,25 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     CleanA35Cache((uintptr_t)ll, sizeof(ll), CacheType_t::Data, true);
 
     /* Prepare DMA for running */
-    dma->CCR = DMA_CCR_LAP |
+    dma->CCR = 
         DMA_CCR_TCIE;
     dma->CTR1 = DMA_CTR1_DAP |
+        DMA_CTR1_DSEC |
         (0U << DMA_CTR1_DBL_1_Pos) |
         (dw_log2 << DMA_CTR1_DDW_LOG2_Pos) |
+        DMA_CTR1_SSEC |
         (0U << DMA_CTR1_SBL_1_Pos) |
         DMA_CTR1_SINC |
         (dw_log2 << DMA_CTR1_SDW_LOG2_Pos);
     dma->CTR2 = (2U << DMA_CTR2_TCEM_Pos) |
         DMA_CTR2_DREQ |
-        (63U << DMA_CTR2_REQSEL_Pos);
+        (75U << DMA_CTR2_REQSEL_Pos);           // SAI2_A_DMA
     dma->CTR3 = 0U;
     dma->CBR1 = ac.buf_size_bytes;
     dma->CBR2 = 0;
     dma->CSAR = (uint32_t)(uintptr_t)ll[0].sar;
     dma->CDAR = (uint32_t)(uintptr_t)&SAI2_Block_A->DR;
-    dma->CLBAR = (uint32_t)vmem_vaddr_to_paddr_quick(((uintptr_t)&ll[0]) & 0xffff0000U);
+    dma->CLBAR = (uint32_t)(vmem_vaddr_to_paddr_quick((uintptr_t)&ll[0]) & 0xffff0000U);
     dma->CLLR = ll[0].next_ll;
 
     gic_set_enable(dma_irq);
@@ -375,8 +503,22 @@ int syscall_audioenable(int enable, int *_errno)
     if(enable && !ac.enabled)
     {
         //_queue_if_possible();
-        dma->CCR |= DMA_CCR_EN;
+        //dma->CCR |= DMA_CCR_EN;
         SAI2_Block_A_VMEM->CR1 |= SAI_xCR1_SAIEN;
+        {
+            DisableInterrupts();
+
+            int nsent = 0;
+            while(true)
+            {
+                while(((SAI2_Block_A_VMEM->SR & SAI_xSR_FLVL_Msk) >> SAI_xSR_FLVL_Pos) == 5U);
+                SAI2_Block_A_VMEM->DR = nsent;
+                nsent++;
+
+                if(nsent % 5)
+                    klog("sound: sent: %d\n", nsent);
+            }
+        }
         pcm_mute_set(false);
         SPKR_NSD.set();
 

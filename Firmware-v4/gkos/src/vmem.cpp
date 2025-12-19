@@ -257,15 +257,19 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
             CriticalGuard cg(p->user_mem->sl);
             ttbr0 = p->user_mem->ttbr0 & 0xffffffffffffULL;
             auto paddr = vmem_vaddr_to_paddr_int(vaddr, ttbr0);
+#if 0
             klog("vaddr_to_paddr: for %llx, ours returned %llx, quick %llx\n",
                 vaddr, paddr, vmem_vaddr_to_paddr_quick(vaddr));
+#endif
             return paddr;
         }
         else
         {
             auto paddr = vmem_vaddr_to_paddr_int(vaddr, ttbr0 & 0xffffffffffffULL);
+#if 0
             klog("vaddr_to_paddr: for %llx, ours returned %llx, quick %llx\n",
                 vaddr, paddr, vmem_vaddr_to_paddr_quick(vaddr ));
+#endif
             return paddr;
         }
     }
@@ -302,7 +306,9 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
 
                 auto act_vpage = vaddr + vaddr_adjust;
 
+#if DEBUG_VMEM
                 klog("vmem_unmap: unmap page vaddr %llx paddr %llx\n", act_vpage, page);
+#endif
 
                 vmem_invlpg(act_vpage, ttbr);
 
