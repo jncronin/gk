@@ -119,7 +119,7 @@ void init_sound()
     smc_set_power(SMC_Power_Target::Audio, 3300);
 
     // Enable clock to SAI2_VMEM
-    sound_set_extfreq(44100.0 * 1024.0);
+    sound_set_extfreq(44100.0);
     RCC_VMEM->SAI2CFGR |= RCC_SAI2CFGR_SAI2EN;
     RCC_VMEM->SAI2CFGR &= ~RCC_SAI2CFGR_SAI2RST;
 
@@ -150,6 +150,9 @@ int sound_set_extfreq(double freq)
         For a flexbar scale of /4, and a PLL postdiv of /24, we can
          achieve FS frequencies of 8.1 to 32.5 kHz, so this is a reasonable
          ballpark if we then adjust PLL postdiv - this gives < 4kHz through 781 kHz
+
+        Finally, divide /64 in the flexbar to generate an actual SCK frequency (64x FS) 
+         use NODIV in the SAI
     */
     
     int sai_prescale = 4;
@@ -229,9 +232,9 @@ int sound_set_extfreq(double freq)
 
     // Set up FLEXBAR[24] to use PLL7 / 4
     RCC_VMEM->FINDIVxCFGR[24] = 0;       // disable
-    RCC_VMEM->PREDIVxCFGR[24] = 3;       // div 4
+    RCC_VMEM->PREDIVxCFGR[24] = 0;       // div 1
     RCC_VMEM->XBARxCFGR[24] = 0x43;      // enabled, pll7
-    RCC_VMEM->FINDIVxCFGR[24] = 0x40;    // enabled, div 1
+    RCC_VMEM->FINDIVxCFGR[24] = 0x7f;    // enabled, div 64
 
     // Finally, output a test signal (FLEXBAR[24] output) on PF11 if on EV1
     if(gbi.btype == gkos_boot_interface::board_type::EV1)
@@ -245,7 +248,7 @@ int sound_set_extfreq(double freq)
 
 int syscall_audiosetfreq(int freq, int *_errno)
 {
-    sound_set_extfreq(1024.0 * (double)freq);
+    sound_set_extfreq((double)freq);
     return 0;
 }
 
@@ -274,7 +277,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     dma->CCR = 0;
 
     /* Calculate PLL divisors */
-    sound_set_extfreq(1024.0 * (double)freq);
+    sound_set_extfreq((double)freq);
 
     /* SAI2_VMEM is connected to TAD5112
 
@@ -333,13 +336,14 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
 
     SAI2_Block_A_VMEM->CR1 =
 //        SAI_xCR1_MCKEN |
-        SAI_xCR1_OSR |
-        (2UL << SAI_xCR1_MCKDIV_Pos) |
+//        SAI_xCR1_OSR |
+        (0UL << SAI_xCR1_MCKDIV_Pos) |
+        SAI_xCR1_NODIV |
         (dsize << SAI_xCR1_DS_Pos) |
         mono |
         SAI_xCR1_DMAEN;
     SAI2_Block_A_VMEM->CR2 =
-        (0UL << SAI_xCR2_FTH_Pos);
+        (3UL << SAI_xCR2_FTH_Pos);
     SAI2_Block_A_VMEM->FRCR =
         SAI_xFRCR_FSOFF |
         SAI_xFRCR_FSDEF |
