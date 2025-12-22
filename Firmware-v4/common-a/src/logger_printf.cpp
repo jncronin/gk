@@ -3,9 +3,12 @@
 #include <ctime>
 #include <cstdint>
 #include <cstring>
+#include <limits>
+
+const constexpr auto size_t_max = std::numeric_limits<size_t>::max();
 
 /* Simple printf implementation that does not use floating point registers or malloc (newlib's does) */
-static int logger_string(logger_printf_outputter &oput, const char *str, size_t len = ~0ULL);
+static int logger_string(logger_printf_outputter &oput, const char *str, size_t len = size_t_max);
 static int logger_int(logger_printf_outputter &oput, int64_t ival, uint64_t uval, bool is_signed, unsigned int base, int width, int precision, int length, bool zeropad,
     bool capitals);
 
@@ -210,7 +213,11 @@ int logger_string(logger_printf_outputter &oput, const char *str, size_t len)
 {
     if(len == ~0ULL)
         len = strlen(str);
+#if GK_FLASH_LOADER
+    return log_fwrite(str, len);
+#else
     return oput.output(str, len);
+#endif
 }
 
 int logger_int(logger_printf_outputter &oput, 

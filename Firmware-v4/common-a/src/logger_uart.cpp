@@ -10,7 +10,9 @@ int logger_printf(const timespec &now, const char *format, va_list va);
 
 #define USART6_VMEM PMEM_TO_VMEM(USART6)
 
+#ifndef GK_NO_UART_LOCK
 Spinlock s_log;
+#endif
 
 static void uart_log(char c)
 {
@@ -44,7 +46,9 @@ ssize_t log_fwrite(const void *buf, size_t count)
 
 int klog(const char *format, ...)
 {
+#ifndef GK_NO_UART_LOCK
     CriticalGuard cg(s_log);
+#endif
     auto cur = clock_cur();
 
     va_list args;
