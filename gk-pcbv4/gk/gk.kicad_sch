@@ -225,6 +225,17 @@
 		)
 		(uuid "1a3a5a23-936f-418d-aef3-bef04e914360")
 	)
+	(text "Errata:\n\nU14 (TPS2051C) IN pin should decouple to ground rather than EN\nQSPI flash needs 100k pullup on IO3/#RESET and IO2/#WP"
+		(exclude_from_sim no)
+		(at 104.648 80.01 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "c27bfe56-11df-428d-9fe7-821d0d59a846")
+	)
 	(symbol
 		(lib_id "power:GND")
 		(at 199.39 49.53 270)
