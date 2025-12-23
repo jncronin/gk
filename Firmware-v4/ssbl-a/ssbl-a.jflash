@@ -39,18 +39,20 @@
   UseAutoSpeed = 0x00000001
   ClockSpeed = 0x00000000
   EndianMode = 0
-  ChipName = "ST STM32MP257F_A35_0"
+  ChipName = "ST STM32MP257F_A35_0_GK_Loader"
 [FLASH]
-  BankName = "External QSPI flash"
+  aRangeSel[1] = 0-1023
+  BankName = "OSPI1"
+  BankSelMode = 1
   BaseAddr = 0x60000000
-  LoaderName = "CLK@PD0_nCS@PD3_D0@PD4_D1@PD5_D2@PD6_D3@PD7_D42NA_D5@NA_D6@NA_D7@NA"
+  LoaderName = "JC Loader"
   NumBanks = 1
 [PRODUCTION]
   AutoPerformsDisconnect = 1
   AutoPerformsErase = 1
   AutoPerformsProgram = 1
   AutoPerformsSecure = 0
-  AutoPerformsStartApp = 1
+  AutoPerformsStartApp = 0
   AutoPerformsVerify = 1
   EnableFixedVTref = 0
   EnableTargetPower = 0

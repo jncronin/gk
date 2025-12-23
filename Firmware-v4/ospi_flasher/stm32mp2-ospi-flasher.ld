@@ -53,6 +53,35 @@ SECTIONS
     KEEP (*(.init))
     KEEP (*(.fini))
 
+    KEEP(*(.rdata))
+    KEEP(*(.rdata*))
+    KEEP(*(.rodata))         /* .rodata sections (constants, strings, etc.) */
+    KEEP(*(.rodata*))        /* .rodata* sections (constants, strings, etc.) */
+
+    . = ALIGN(4);
+    *(.ARM.extab* .gnu.linkonce.armextab.*)
+    . = ALIGN(4);
+    __exidx_start = .;
+    *(.ARM.exidx*)
+    __exidx_end = .;
+
+    . = ALIGN(4);
+    PROVIDE_HIDDEN (__preinit_array_start = .);
+    KEEP (*(.preinit_array*))
+    PROVIDE_HIDDEN (__preinit_array_end = .);
+
+    . = ALIGN(4);
+    PROVIDE_HIDDEN (__init_array_start = .);
+    KEEP (*(SORT(.init_array.*)))
+    KEEP (*(.init_array*))
+    PROVIDE_HIDDEN (__init_array_end = .);
+
+    . = ALIGN(4);
+    PROVIDE_HIDDEN (__fini_array_start = .);
+    KEEP (*(SORT(.fini_array.*)))
+    KEEP (*(.fini_array*))
+    PROVIDE_HIDDEN (__fini_array_end = .);
+
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
   } >PIC
@@ -60,8 +89,8 @@ SECTIONS
   PrgData :
   {
     . = ALIGN(4);
-    KEEP(*(.rodata))         /* .rodata sections (constants, strings, etc.) */
-    KEEP(*(.rodata*))        /* .rodata* sections (constants, strings, etc.) */
+    KEEP(*(.data))
+    KEEP(*(.data*))
     . = ALIGN(4);
   } >PIC
 
@@ -70,35 +99,5 @@ SECTIONS
     . = ALIGN(4);
     KEEP(*(.desc))
   } >PIC
-
-  .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >PIC
-  .ARM : {
-    __exidx_start = .;
-    *(.ARM.exidx*)
-    __exidx_end = .;
-  } >PIC
-
-  .preinit_array     :
-  {
-    PROVIDE_HIDDEN (__preinit_array_start = .);
-    KEEP (*(.preinit_array*))
-    PROVIDE_HIDDEN (__preinit_array_end = .);
-  } >PIC
-  .init_array :
-  {
-    PROVIDE_HIDDEN (__init_array_start = .);
-    KEEP (*(SORT(.init_array.*)))
-    KEEP (*(.init_array*))
-    PROVIDE_HIDDEN (__init_array_end = .);
-  } >PIC
-  .fini_array :
-  {
-    PROVIDE_HIDDEN (__fini_array_start = .);
-    KEEP (*(SORT(.fini_array.*)))
-    KEEP (*(.fini_array*))
-    PROVIDE_HIDDEN (__fini_array_end = .);
-  } >PIC
-
-  .ARM.attributes 0 : { *(.ARM.attributes) }
 }
 

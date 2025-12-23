@@ -49,11 +49,11 @@ struct FlashDevice const FlashDevice  =  {
   EXTSPI,                     // Device Type
   0x60000000,                 // Device Start Address
   4*1024*1024,                  // Device Size in Bytes (4MiB)
-  512,                        // Programming Page Size
+  256,                        // Programming Page Size
   0,                          // Reserved, must be 0
   0xFF,                       // Initial Content of Erased Memory
-  10,                        // Program Page Timeout tPP = 3 ms + a bit
-  1000,                        // Erase Sector Timeout tSE = 400 ms + a bit
+  100,                        // Program Page Timeout tPP = 3 ms + a bit
+  4000,                        // Erase Sector Timeout tSE = 400 ms + a bit
   // Specify Size and Address of Sectors  - all are 4 kiB
   4*1024, 0x000000,          // Sector Size, sector address
   SECTOR_END

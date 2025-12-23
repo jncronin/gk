@@ -50,29 +50,69 @@
 
 static const constexpr pin USART6_TX { GPIOJ, 5, 6 };
 
-#if 0
-template <typename T> static int xspi_ind_write(XSPI_TypeDef *instance, size_t nbytes, size_t addr, const T *d)
+// some standard ccr values
+static const constexpr uint32_t ccr_spi_no_ab_no_addr =
+    (1U << OCTOSPI_CCR_DMODE_Pos) |
+    (1U << OCTOSPI_CCR_IMODE_Pos);
+static const constexpr uint32_t ccr_spi_no_ab_no_data =
+    (1U << OCTOSPI_CCR_ADMODE_Pos) |
+    (2U << OCTOSPI_CCR_ADSIZE_Pos) |
+    (1U << OCTOSPI_CCR_IMODE_Pos);
+static const constexpr uint32_t ccr_spi_no_ab =
+    (1U << OCTOSPI_CCR_DMODE_Pos) |
+    (1U << OCTOSPI_CCR_ADMODE_Pos) |
+    (2U << OCTOSPI_CCR_ADSIZE_Pos) |
+    (1U << OCTOSPI_CCR_IMODE_Pos);
+static const constexpr uint32_t ccr_spi_no_ab_no_addr_no_data =
+    (1U << OCTOSPI_CCR_IMODE_Pos);
+
+template <typename T> static int ospi_ind_write(OCTOSPI_TypeDef *instance, size_t nbytes,
+    uint32_t inst, uint32_t addr, uint32_t ab, uint32_t ccr, uint32_t ndummy,
+    const T* d)
 {
     static_assert(sizeof(T) <= 4);
 
-    if(!d)
+    if(nbytes && !d)
         return -1;
-    
-    // set indirect write mode
-    while(instance->SR & XSPI_SR_BUSY);
-    instance->CR = (instance->CR & ~XSPI_CR_FMODE_Msk & ~XSPI_CR_FTHRES_Msk) |
-        (0UL << XSPI_CR_FMODE_Pos) |
-        ((sizeof(T) - 1) << XSPI_CR_FTHRES_Pos);
 
-    // write data
-    instance->DLR = nbytes-1;
-    instance->AR = addr;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    instance->CR |= OCTOSPI_CR_ABORT;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    // set indirect write mode
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->CR = (instance->CR & ~OCTOSPI_CR_FMODE_Msk & ~OCTOSPI_CR_FTHRES_Msk) |
+        (0UL << OCTOSPI_CR_FMODE_Pos) |
+        ((sizeof(T) - 1) << OCTOSPI_CR_FTHRES_Pos);
+
+    if(nbytes)
+    {
+        while(instance->SR & OCTOSPI_SR_BUSY);
+        instance->DLR = nbytes - 1;
+    }
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->TCR = (instance->TCR & ~OCTOSPI_TCR_DCYC_Msk) |
+        (ndummy << OCTOSPI_TCR_DCYC_Pos);
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->CCR = ccr;
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->IR = inst;
+    if(ccr & OCTOSPI_CCR_ABMODE_Msk)
+    {
+        while(instance->SR & OCTOSPI_SR_BUSY);
+        instance->ABR = ab;
+    }
+    if(ccr & OCTOSPI_CCR_ADMODE_Msk)
+    {
+        while(instance->SR & OCTOSPI_SR_BUSY);
+        instance->AR = addr;
+    }
 
     size_t ret = 0;
     
     while(nbytes)
     {
-        while(!(instance->SR & XSPI_SR_FTF));
+        while(!(instance->SR & OCTOSPI_SR_FTF));
         *(volatile T *)&instance->DR = *d++;
         ret += sizeof(T);
 
@@ -82,40 +122,62 @@ template <typename T> static int xspi_ind_write(XSPI_TypeDef *instance, size_t n
             nbytes -= sizeof(T);
     }
 
-    while(!(instance->SR & XSPI_SR_TCF));
-    instance->FCR = XSPI_FCR_CTCF;
+    if(d)
+    {
+        while(!(instance->SR & OCTOSPI_SR_TCF));
+        instance->FCR = OCTOSPI_FCR_CTCF;
+    }
 
     return (int)ret;
 }
 
-template <typename T> static int xspi_ind_read(XSPI_TypeDef *instance, size_t nbytes, size_t addr, T *d)
+template <typename T> static int ospi_ind_read(OCTOSPI_TypeDef *instance, size_t nbytes,
+    uint32_t inst, uint32_t addr, uint32_t ab, uint32_t ccr, uint32_t ndummy,
+    T* d)
 {
     static_assert(sizeof(T) <= 4);
 
-    if(!d)
+    if(nbytes && !d)
         return -1;
+
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    instance->CR |= OCTOSPI_CR_ABORT;
+    __asm__ volatile("dsb sy\n" ::: "memory");
     
     // set indirect read mode
-    while(instance->SR & XSPI_SR_BUSY);
-    instance->CR = (instance->CR & ~XSPI_CR_FMODE_Msk & ~XSPI_CR_FTHRES_Msk) |
-        (1UL << XSPI_CR_FMODE_Pos) |
-        ((sizeof(T) - 1) << XSPI_CR_FTHRES_Pos);
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->CR = (instance->CR & ~OCTOSPI_CR_FMODE_Msk & ~OCTOSPI_CR_FTHRES_Msk) |
+        (1UL << OCTOSPI_CR_FMODE_Pos) |
+        ((sizeof(T) - 1) << OCTOSPI_CR_FTHRES_Pos);
 
-    // ADMODE needs to be != 0
-    while(instance->SR & XSPI_SR_BUSY);
-    instance->CCR = (instance->CCR & ~XSPI_CCR_ADMODE_Msk) |
-        (4UL << XSPI_CCR_ADMODE_Pos);
-
-    // read data
-    while(instance->SR & XSPI_SR_BUSY);
-    instance->DLR = nbytes-1;
-    instance->AR = addr;
+    if(nbytes)
+    {
+        while(instance->SR & OCTOSPI_SR_BUSY);
+        instance->DLR = nbytes - 1;
+    }
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->TCR = (instance->TCR & ~OCTOSPI_TCR_DCYC_Msk) |
+        (ndummy << OCTOSPI_TCR_DCYC_Pos);
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->CCR = ccr;
+    while(instance->SR & OCTOSPI_SR_BUSY);
+    instance->IR = inst;
+    if(ccr & OCTOSPI_CCR_ABMODE_Msk)
+    {
+        while(instance->SR & OCTOSPI_SR_BUSY);
+        instance->ABR = ab;
+    }
+    if(ccr & OCTOSPI_CCR_ADMODE_Msk)
+    {
+        while(instance->SR & OCTOSPI_SR_BUSY);
+        instance->AR = addr;
+    }
 
     size_t ret = 0;
     
     while(nbytes)
     {
-        while(!(instance->SR & XSPI_SR_FTF));
+        while(!(instance->SR & OCTOSPI_SR_FTF));
         *d++ = *(volatile T *)&instance->DR;
         ret += sizeof(T);
 
@@ -125,26 +187,32 @@ template <typename T> static int xspi_ind_read(XSPI_TypeDef *instance, size_t nb
             nbytes -= sizeof(T);
     }
 
-    while(!(instance->SR & XSPI_SR_TCF));
-    instance->FCR = XSPI_FCR_CTCF;
+    if(d)
+    {
+        while(!(instance->SR & OCTOSPI_SR_TCF));
+        instance->FCR = OCTOSPI_FCR_CTCF;
+    }
 
     return (int)ret;
 }
 
-static uint16_t xspi_ind_read16(XSPI_TypeDef *instance, size_t addr)
+static int set_memmap()
 {
-    uint16_t ret;
-    if(xspi_ind_read(instance, 2, addr, &ret) != 2)
-        return 0xffff;
-    else
-        return ret;
-}
+    // set memory mapped mode
+    OCTOSPI1->CCR = (1U << OCTOSPI_CCR_DMODE_Pos) |
+        (0U << OCTOSPI_CCR_ABMODE_Pos) |
+        (2U << OCTOSPI_CCR_ADSIZE_Pos) |
+        (1U << OCTOSPI_CCR_ADMODE_Pos) |
+        (1U << OCTOSPI_CCR_IMODE_Pos);
+    OCTOSPI1->TCR = 0U;
+    OCTOSPI1->IR = 0x03U;
 
-static int xspi_ind_write16(XSPI_TypeDef *instance, size_t addr, uint16_t v)
-{
-    return xspi_ind_write(instance, 2, addr, &v);
+    OCTOSPI1->CR = (3U << OCTOSPI_CR_FMODE_Pos) |
+        OCTOSPI_CR_EN;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    return 0;
 }
-#endif
 
 extern "C"
 int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
@@ -155,6 +223,16 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
     (void)RCC->GPIOJCFGR;
     RCC->GPIODCFGR |= RCC_GPIODCFGR_GPIOxEN;
     (void)RCC->GPIODCFGR;
+    RCC->OSPI1CFGR |= RCC_OSPI1CFGR_OSPI1RST;
+    (void)RCC->OSPI1CFGR;
+    RCC->OSPI1CFGR = (RCC->OSPI1CFGR & ~RCC_OSPI1CFGR_OSPI1RST) |
+        RCC_OSPI1CFGR_OSPI1EN;
+    (void)RCC->OSPI1CFGR;
+    RCC->OSPIIOMCFGR |= RCC_OSPIIOMCFGR_OSPIIOMRST;
+    (void)RCC->OSPIIOMCFGR;
+    RCC->OSPIIOMCFGR = (RCC->OSPIIOMCFGR & ~RCC_OSPIIOMCFGR_OSPIIOMRST) |
+        RCC_OSPIIOMCFGR_OSPIIOMEN;
+
 
     // Set up USART6 as TX only
     USART6_TX.set_as_af();
@@ -170,6 +248,55 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
     // say hi
     klog("FlashPrg: INIT\n");
 
+    // Enable VDDIO3 power
+    PWR->CR1 |= PWR_CR1_VDDIO3VMEN;
+    while(!(PWR->CR1 & PWR_CR1_VDDIO3RDY));
+    PWR->CR1 |= PWR_CR1_VDDIO3SV;
+    klog("FlashPrg: VDDIO3 ready\n");
+
+    // Enable OSPI1 pins
+    const constexpr pin OSPI_PINS[] = {
+        { GPIOD, 0, 10 },
+        { GPIOD, 3, 10 },
+        { GPIOD, 4, 10 },
+        { GPIOD, 5, 10 }, 
+        { GPIOD, 6, 10 },
+        { GPIOD, 7, 10 },
+    };
+    for(const auto &p : OSPI_PINS)
+    {
+        p.set_as_af();
+    }
+
+    RCC->OSPIIOMCFGR |= RCC_OSPIIOMCFGR_OSPIIOMEN;
+    RCC->OSPI1CFGR |= RCC_OSPI1CFGR_OSPI1EN;
+    (void)RCC->OSPI1CFGR;
+
+    OCTOSPIM->CR = 0;
+    OCTOSPI1->CR = 0;
+
+    OCTOSPI1->DCR1 = (2U << OCTOSPI_DCR1_MTYP_Pos) |
+        (21U << OCTOSPI_DCR1_DEVSIZE_Pos) |     // 4 MBytes/32 Mb - we use W25Q32JV in production
+        (0x3fU << OCTOSPI_DCR1_CSHT_Pos) |
+        OCTOSPI_DCR1_DLYBYP;
+    OCTOSPI1->DCR2 = (1U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz/2 => 50 MHz
+    OCTOSPI1->DCR3 = 0;
+    OCTOSPI1->DCR4 = 0;
+    OCTOSPI1->FCR = 0xdU;
+
+    OCTOSPI1->CR |= OCTOSPI_CR_EN;
+
+    // read jedec id
+    uint8_t jedec_id[3];
+    auto nb = ospi_ind_read(OCTOSPI1, 3, 0x9f, 0, 0, ccr_spi_no_ab_no_addr, 0, jedec_id);
+    klog("FlashPrg: jedec_read: %u, [ %x, %x, %x ]\n",
+        nb, jedec_id[0], jedec_id[1], jedec_id[2]);
+    if(nb != 3 || jedec_id[0] != 0xef || (jedec_id[1] != 0x40 && jedec_id[1] != 0x70) || jedec_id[2] != 0x16)
+        return -1;
+
+    klog("FlashPrg: Init success\n");
+
+    set_memmap();
 
     return 0;
 }
@@ -177,6 +304,8 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
 extern "C"
 int UnInit(uint32_t fnc)
 {
+    klog("FlashPrg: Uninit(%u)\n", fnc);
+    set_memmap();
 #if 0
     RCC->AHB5ENR &= ~RCC_AHB5ENR_XSPI2EN;
     (void)RCC->AHB5ENR;
@@ -196,118 +325,97 @@ static uint32_t qspi_read_status()
 }
 #endif
 
+static uint32_t ospi_read_status()
+{
+    uint8_t sr1;
+    auto ret = ospi_ind_read(OCTOSPI1, 1, 0x05, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr1);
+    if(ret == 1)
+        return (uint32_t)sr1;
+    else
+        return 0;
+}
+
+static int ospi_write_enable()
+{
+    return (ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x06, 0, 0, ccr_spi_no_ab_no_addr_no_data, 0, nullptr) == 0) ? 0 : -1;
+}
+
+static uint32_t ospi_wait_not_busy()
+{
+    while(true)
+    {
+        auto sr = ospi_read_status();
+        if(!(sr & 0x1))
+            return sr;
+    }
+}
+
 int EraseSector(uint32_t addr)
 {
-#if 0
-    addr -= 0x70000000;
-    if(addr > 64*1024*1024)
-        return 1;
+    klog("FlashPrg: EraseSector(%x)\n", addr);
 
-    IWDG->KR = 0xAAAA;                                  // Reload IWDG
-  
-    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
-    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
-    xspi_ind_write16(XSPI2, 0x555*2, 0x80);
-    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
-    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
-    xspi_ind_write16(XSPI2, addr, 0x30);
+    addr -= 0x60000000;
 
-    // poll status until ready
-    uint16_t sr = 0xffff;
-    do
-        IWDG->KR = 0xAAAA;                              // Reload IWDG
-    while (((sr = qspi_read_status()) & (1U << 7)) == 0);
-
-    // clear status register
-    xspi_ind_write16(XSPI2, 0x555*2, 0x71);
-
-    // Return to memory mapped mode
-    //while(XSPI2->SR & XSPI_SR_BUSY);
-    //XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
-    //    (3U << XSPI_CR_FMODE_Pos);
-
-    // check for error
-    if(sr == 0xffff)
-        return 1;
-    if(sr & (1UL << 5))
+    auto weret = ospi_write_enable();
+    if(weret != 0)
     {
-        if(sr & (1UL << 1))
-            return 1;
+        klog("FlashPrg: EraseSector: ospi_write_enable() failed: %d\n");
+        set_memmap();
         return 1;
     }
-#endif
 
+    // wait ready
+    auto sr = ospi_wait_not_busy();
+    if(!(sr & 0x2U))
+    {
+        klog("FlashPrg: EraseSector: WEL not set: %x\n", sr);
+        set_memmap();
+        return 1;
+    }
+
+    ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x20, addr, 0, ccr_spi_no_ab_no_data, 0, nullptr);
+
+    sr = ospi_wait_not_busy();
+    klog("FlashPrg: EraseSector: complete (%x)\n", sr);
+
+    set_memmap();
+
+    if(sr & 0x3)
+        return 1;
     return 0;
 }
 
-#if 0
 static int pp_int(uint32_t devaddr, size_t n, const unsigned char *buf)
 {
-    // program a single 512 byte/256 word page
-    IWDG->KR = 0xAAAA;                                  // Reload IWDG
-
-    // Write to Buffer, sector address
-    xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
-    xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);
-    xspi_ind_write16(XSPI2, /*sector address*/ devaddr, 0x25);
-
-    // 16-bit Word count - 1, sector address
-    xspi_ind_write16(XSPI2, /*sector address*/ devaddr, 255);
-
-    // Address/Data pair, *256
-    for(int idx = 0; idx < 256; idx++)
+    auto weret = ospi_write_enable();
+    if(weret != 0)
     {
-        uint16_t data;
-        if((idx * 2) <= (n-2))
-            data = *(uint16_t *)(buf + idx*2);
-        else if((idx * 2) <= (n - 1))
-            data = 0xff00U | (uint16_t)*(uint8_t *)(buf + idx*2);
-        else
-            data = 0xffffU;
-        xspi_ind_write16(XSPI2, /*data address*/ devaddr+idx*2, data);
-    }
-
-    // Program buffer to flash confirm, sector address
-    xspi_ind_write16(XSPI2, /*sector address*/ devaddr, 0x29);
-
-    // poll status until ready
-    uint16_t sr = 0xffff;
-    do
-        IWDG->KR = 0xAAAA;                              // Reload IWDG
-    while (((sr = qspi_read_status()) & (1U << 7)) == 0);
-
-    // clear status register
-    xspi_ind_write16(XSPI2, 0x555*2, 0x71);
-
-    // Return to memory mapped mode
-    //while(XSPI2->SR & XSPI_SR_BUSY);
-    //XSPI2->CR = (XSPI2->CR & ~XSPI_CR_FMODE_Msk) |
-    //    (3U << XSPI_CR_FMODE_Pos);
-
-    // check for error
-    if(sr == 0xffff)
+        klog("FlashPrg: pp_int: ospi_write_enable() failed: %d\n");
         return -1;
-    if(sr & (1UL << 4))
-    {
-        if(sr & (1UL << 3))
-            return -2;
-        else if(sr & (1UL << 1))
-            return -3;
-        return -4;
     }
 
-    return 0;
+    // wait ready
+    auto sr = ospi_wait_not_busy();
+    if(!(sr & 0x2U))
+    {
+        klog("FlashPrg: pp_int: WEL not set: %x\n", sr);
+        return -1;
+    }
+
+    n = (n < 256) ? n : 256;
+
+    auto bw = ospi_ind_write(OCTOSPI1, n, 0x02, devaddr, 0, ccr_spi_no_ab, 0, buf);
+    
+    ospi_wait_not_busy();
+
+    return (bw == (int)n) ? 0 : 1;
 }
-#endif
 
 int ProgramPage (uint32_t addr, uint32_t sz, unsigned char *buf)
 {
-#if 0
-    addr -= 0x70000000;
-    if(addr > 64*1024*1024)
-        return 1;
+    klog("FlashPrg: ProgramPage(%x, %u, %p)\n", addr, sz, buf);
 
-    IWDG->KR = 0xAAAA;                                  // Reload IWDG
+    addr -= 0x0000000;
 
     while(sz)
     {
@@ -315,6 +423,7 @@ int ProgramPage (uint32_t addr, uint32_t sz, unsigned char *buf)
         auto ret = pp_int(addr, cur_sz, buf);
         if(ret < 0)
         {
+            set_memmap();
             return 1;
         }
 
@@ -322,14 +431,17 @@ int ProgramPage (uint32_t addr, uint32_t sz, unsigned char *buf)
         addr += cur_sz;
         buf += cur_sz;
     }
-#endif
 
+    set_memmap();
     return 0;
 }
 
 uint32_t Verify(uint32_t addr, uint32_t size, unsigned char *buf)
 {
-#if 0
+    klog("FlashPrg: Verify(%x, %u, %p)\n", addr, size, buf);
+
+    set_memmap();
+
     uint32_t i = 0;
     for(; i < (size & ~0x3U); i += 4)
     {
@@ -347,12 +459,12 @@ uint32_t Verify(uint32_t addr, uint32_t size, unsigned char *buf)
             return addr + i;
     }
     return addr + size;
-#endif
-    return 0;
 }
 
 int EraseChip()
 {
+    klog("FlashPrg: EraseChip()\n");
+    return 1;
 #if 0
     xspi_ind_write16(XSPI2, 0x555*2, 0xaa);
     xspi_ind_write16(XSPI2, 0x2aa*2, 0x55);

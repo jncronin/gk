@@ -13,6 +13,7 @@ target_sources(ospi_flasher
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/strlen.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/memcpy.cpp"
 )
 
 set_target_properties(ospi_flasher
