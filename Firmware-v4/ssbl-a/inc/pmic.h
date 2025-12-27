@@ -21,6 +21,7 @@ pmic_vreg pmic_get_ldo(int id, bool alt = false);
 pmic_vreg pmic_get_refddr(bool alt = false);
 void pmic_dump(const pmic_vreg &v);
 void pmic_dump();
+void pmic_dump_status();
 void pmic_set(const pmic_vreg &v);
 
 #endif

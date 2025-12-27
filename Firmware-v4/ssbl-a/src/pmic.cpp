@@ -1,6 +1,7 @@
 #include "i2c_poll.h"
 #include "pmic.h"
 #include <cstdio>
+#include "logger.h"
 
 #define I2C_ADDR 0x33
 
@@ -15,6 +16,23 @@ uint8_t pmic_read_register(uint8_t addr)
 void pmic_write_register(uint8_t addr, uint8_t val)
 {
     i2c_poll_register_write(I2C_ADDR, addr, &val, 1);
+}
+
+void pmic_dump_status()
+{
+    uint8_t en_sr1, en_sr2, pending_r1, pending_r2, pending_r3, pending_r4;
+    i2c_poll_register_read(I2C_ADDR, (uint8_t)0x07, &en_sr1, 1);
+    i2c_poll_register_read(I2C_ADDR, (uint8_t)0x08, &en_sr2, 1);
+
+    i2c_poll_register_read(I2C_ADDR, (uint8_t)0x70, &pending_r1, 1);
+    i2c_poll_register_read(I2C_ADDR, (uint8_t)0x71, &pending_r2, 1);
+    i2c_poll_register_read(I2C_ADDR, (uint8_t)0x72, &pending_r3, 1);
+    i2c_poll_register_read(I2C_ADDR, (uint8_t)0x73, &pending_r4, 1);
+
+    klog("PMIC: EN_SR1: %02x, EN_SR2: %02x, PENDING: %02x %02x %02x %02x\n",
+        en_sr1, en_sr2,
+        pending_r1, pending_r2, pending_r3, pending_r4);
+
 }
 
 void pmic_dump()
@@ -38,59 +56,59 @@ void pmic_dump(const pmic_vreg &v)
     switch(v.type)
     {
         case pmic_vreg::Buck:
-            printf("BUCK%d  ", v.id);
+            klog("BUCK%d  ", v.id);
             break;
         case pmic_vreg::LDO:
-            printf("LDO%d   ", v.id);
+            klog("LDO%d   ", v.id);
             break;
         case pmic_vreg::RefDDR:
-            printf("REFDDR ");
+            klog("REFDDR ");
             break;
     }
 
     if(v.is_alt)
     {
-        printf("ALT:  ");
+        klog("ALT:  ");
     }
     else
     {
-        printf("MAIN: ");
+        klog("MAIN: ");
     }
 
     if(v.is_enabled)
-        printf("ENABLED,  ");
+        klog("ENABLED,  ");
     else
-        printf("disabled, ");
+        klog("disabled, ");
 
     if(v.mode == pmic_vreg::Bypass)
-        printf("        ");
+        klog("        ");
     else
-        printf("%4d mV ", v.mv);
+        klog("%4d mV ", v.mv);
     
     switch(v.mode)
     {
         case pmic_vreg::HP:
-            printf("HP");
+            klog("HP");
             break;
         case pmic_vreg::LP:
-            printf("LP");
+            klog("LP");
             break;
         case pmic_vreg::CCM:
-            printf("CCM");
+            klog("CCM");
             break;
         case pmic_vreg::SinkSource:
-            printf("SinkSource");
+            klog("SinkSource");
             break;
         case pmic_vreg::Bypass:
-            printf("BYPASS");
+            klog("BYPASS");
             break;
         case pmic_vreg::Normal:
-            printf("NORMAL");
+            klog("NORMAL");
         default:
             break;
     }
 
-    printf("\n");
+    klog("\n");
 }
 
 pmic_vreg pmic_get_buck(int id, bool alt)
