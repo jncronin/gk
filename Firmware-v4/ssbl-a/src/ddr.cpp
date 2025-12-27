@@ -48,8 +48,11 @@ enum ddr_type {
 };
 
 // TODO: select appropriate DDR driver here.  These come from CubeMX projects renamed from stm32mp25-mx.dtsi
-#define STM32MP_DDR4_TYPE 1
-#include "ddr_configs/stm32mp255f-ev1-ddr.h"
+//#define STM32MP_DDR4_TYPE 1
+#define STM32MP_LPDDR4_TYPE 1
+//#include "ddr_configs/stm32mp255f-ev1-ddr.h"
+#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4.h"
+//#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4-RP1_5.h"
 
 #if STM32MP_DDR3_TYPE
 extern int _binary_ddr3_pmu_train_bin;
@@ -189,7 +192,8 @@ void ddr_set_clocks()
     (void)RCC->MUXSELCFGR;
 
     // Set up PLL2
-    ddr_set_mt(1600);
+    ddr_set_mt(DDR_MEM_SPEED * 2 / 1000);
+    //ddr_set_mt(200);
 }
 
 void ddr_set_mt(uint32_t mt)
@@ -200,12 +204,12 @@ void ddr_set_mt(uint32_t mt)
     if(mt < 667)
     {
         bypass = true;
-        pll2_freq = mt * 500000;    // ddr freq in MHz
+        pll2_freq = mt * 1000000;    // ddr data rate in Hz
     }
     else
     {
         bypass = false;
-        pll2_freq = mt * 125000;    // ddr freq / 4 in MHz (multiplied by 4 again in PHY block)
+        pll2_freq = mt * 250000;    // ddr data rate / 4 in Hz
     }
 
     // Dump all RCC registers
@@ -230,24 +234,68 @@ void ddr_set_mt(uint32_t mt)
     RCC->PLL2CFGR1 &= ~RCC_PLL2CFGR1_PLLEN;
 
     // Aim for 8x target and post divide to give a reasonable VCO value.
-    uint32_t vco_val = pll2_freq * 8;
-    if(vco_val < 800000000) vco_val = 800000000;
-    if(vco_val > 3200000000) vco_val = 3200000000;
+    uint32_t divider = 8;
+    uint32_t vco_val = 0;
+    while(divider > 0 && divider <= 16)
+    {
+        vco_val = pll2_freq * divider;
+        if(vco_val < 800000000)
+        {
+            divider /= 2;
+            continue;
+        }
+        if(vco_val > 3200000000)
+        {
+            divider *= 2;
+            continue;
+        }
+        break;
+    }
+    if(divider == 0 || divider > 16)
+    {
+        klog("ddr: failed to set pll2 for %u MT\n", mt);
+        while(true);
+    }
+    uint32_t div1 = 1;
+    uint32_t div2 = 1;
+    switch(divider)
+    {
+        case 1:
+            div1 = 1;
+            div2 = 1;
+            break;
+        case 2:
+            div1 = 1;
+            div2 = 2;
+            break;
+        case 4:
+            div1 = 2;
+            div2 = 2;
+            break;
+        case 8:
+            div1 = 2;
+            div2 = 4;
+            break;
+        case 16:
+            div1 = 4;
+            div2 = 4;
+            break;
+    }
 
     uint32_t fb_div = vco_val / 32000000;
 
     RCC->PLL2CFGR2 = (2U << RCC_PLL2CFGR2_FREFDIV_Pos) |
         (fb_div << RCC_PLL2CFGR2_FBDIV_Pos);
     RCC->PLL2CFGR4 = RCC_PLL2CFGR4_FOUTPOSTDIVEN;
-    RCC->PLL2CFGR6 = 2U;
-    RCC->PLL2CFGR7 = 4U;
+    RCC->PLL2CFGR6 = div1;
+    RCC->PLL2CFGR7 = div2;
     RCC->PLL2CFGR1 |= RCC_PLL2CFGR1_PLLEN;
 
     while(!(RCC->PLL2CFGR1 & RCC_PLL2CFGR1_PLLRDY));
 
     klog("DDR: PLL2 frequency set to %u MHz, %s=%u MT/s\n",
-        vco_val / 8 / 1000000, bypass ? "bypass mode" : "",
-        vco_val / 4 * (bypass ? 1 : 4) / 1000000);
+        vco_val / divider / 1000000, bypass ? "bypass mode" : "",
+        vco_val / divider * (bypass ? 1 : 4) / 1000000);
 }
 
 #if 0
@@ -668,6 +716,24 @@ int stm32mp_board_ddr_power_init(ddr_type type)
         pmic_set(vr_ldo3);
         pmic_set(vr_ldo5);
     
+        return 0;
+    }
+    else if(type == STM32MP_LPDDR4)
+    {
+        if(pmic_read_register(0) != 0x22)
+        {
+            klog("DDR: LPDDR4 memory requested but device is not STPMIC25B.  Halting");
+            while(true);
+        }
+
+        // VDD1 (1.8V from LDO3 in bypass mode) ramps up first within 0.5 - 2ms,
+        //  then 2ms after it is valid, VDD2 (1.1V from BUCK6) ramps up
+        pmic_vreg vr_ldo3 { pmic_vreg::LDO, 3, true, 1800, pmic_vreg::Bypass };
+        pmic_vreg vr_buck6 { pmic_vreg::Buck, 6, true, 1100, pmic_vreg::HP };
+        pmic_set(vr_ldo3);
+        udelay(4000);
+        pmic_set(vr_buck6);
+
         return 0;
     }
     return -1;
