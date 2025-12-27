@@ -8848,6 +8848,17 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "VDDGPU"
+		(exclude_from_sim no)
+		(at 187.452 85.598 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "7ca6ec55-ee69-49d2-9677-ab0154b4c113")
+	)
 	(junction
 		(at 148.59 27.94)
 		(diameter 0)
@@ -10087,6 +10098,16 @@
 			(type default)
 		)
 		(uuid "aefbe8dc-b6a0-45a4-bcdc-d57b2c7b7587")
+	)
+	(polyline
+		(pts
+			(xy 189.23 76.835) (xy 189.23 86.36)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bb81514d-21af-4ae2-8207-04b762d19ce6")
 	)
 	(wire
 		(pts
