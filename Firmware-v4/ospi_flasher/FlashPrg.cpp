@@ -47,6 +47,7 @@
 #include "pins.h"
 #include "clocks.h"
 #include "logger.h"
+#include "w25.h"
 
 static const constexpr pin USART6_TX { GPIOJ, 5, 6 };
 
@@ -302,6 +303,12 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
 }
 
 extern "C"
+int SEGGER_FL_Prepare(uint32_t, uint32_t, uint32_t)
+{
+    return Init(0, 0, 0);
+}
+
+extern "C"
 int UnInit(uint32_t fnc)
 {
     klog("FlashPrg: Uninit(%u)\n", fnc);
@@ -315,6 +322,13 @@ int UnInit(uint32_t fnc)
     (void)RCC->AHB5RSTR;
 #endif
     return 0;
+}
+
+extern "C"
+int SEGGER_FL_Restore(uint32_t, uint32_t, uint32_t)
+{
+    klog("FlashPrg: SEGGER_FL_Restore\n");
+    return UnInit(0);
 }
 
 #if 0
@@ -352,7 +366,7 @@ static uint32_t ospi_wait_not_busy()
 
 int EraseSector(uint32_t addr)
 {
-    klog("FlashPrg: EraseSector(%x)\n", addr);
+//    klog("FlashPrg: EraseSector(%x)\n", addr);
 
     addr -= 0x60000000;
 
@@ -376,12 +390,103 @@ int EraseSector(uint32_t addr)
     ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x20, addr, 0, ccr_spi_no_ab_no_data, 0, nullptr);
 
     sr = ospi_wait_not_busy();
-    klog("FlashPrg: EraseSector: complete (%x)\n", sr);
+    //klog("FlashPrg: EraseSector: complete (%x)\n", sr);
 
     set_memmap();
 
     if(sr & 0x3)
         return 1;
+    return 0;
+}
+
+int EraseBlock(uint32_t addr, uint32_t size)
+{
+//    klog("FlashPrg: EraseBlock(%x, %u)\n", addr, size);
+
+    addr -= 0x60000000;
+
+    auto weret = ospi_write_enable();
+    if(weret != 0)
+    {
+        klog("FlashPrg: EraseBlock: ospi_write_enable() failed: %d\n");
+        set_memmap();
+        return 1;
+    }
+
+    // wait ready
+    auto sr = ospi_wait_not_busy();
+    if(!(sr & 0x2U))
+    {
+        klog("FlashPrg: EraseBlock: WEL not set: %x\n", sr);
+        set_memmap();
+        return 1;
+    }
+
+    uint8_t cmd;
+    switch(size)
+    {
+        case 65536:
+            cmd = 0xd8;
+            break;
+        case 32768:
+            cmd = 0x52;
+            break;
+        default:
+            klog("FlashPrg: EraseBlock: invalid block size: %u\n", size);
+            return 1;
+    }
+
+    ospi_ind_write<uint8_t>(OCTOSPI1, 0, cmd, addr, 0, ccr_spi_no_ab_no_data, 0, nullptr);
+
+    sr = ospi_wait_not_busy();
+    //klog("FlashPrg: EraseBlock: complete (%x)\n", sr);
+
+    set_memmap();
+
+    if(sr & 0x3)
+        return 1;
+    return 0;
+}
+
+extern "C"
+int SEGGER_FL_Erase(uint32_t sector_addr, uint32_t sector_idx, uint32_t nsects)
+{
+    klog("FlashPrg: SEGGER_FL_Erase(%x, %u, %u)\n", sector_addr, sector_idx, nsects);
+    if(((sector_addr - OSPIADDR) / ERASE_SECTOR_SIZE) != sector_idx)
+    {
+        klog("FlashPrg: SEGGER_FL_Erase: addr/idx mismatch\n");
+        return 1;
+    }
+
+    while(nsects)
+    {
+        // use 64 kiB block if possible
+        if(((sector_addr % 65536) == 0) && (nsects >= (65536 / ERASE_SECTOR_SIZE)))
+        {
+            auto ret = EraseBlock(sector_addr, 65536);
+            if(ret != 0)
+                return ret;
+            sector_addr += 65536;
+            nsects -= (65536 / ERASE_SECTOR_SIZE);
+        }
+        else if(((sector_addr % 32768) == 0) && (nsects >= (32768 / ERASE_SECTOR_SIZE)))
+        {
+            auto ret = EraseBlock(sector_addr, 32768);
+            if(ret != 0)
+                return ret;
+            sector_addr += 32768;
+            nsects -= (32768 / ERASE_SECTOR_SIZE);
+        }
+        else
+        {
+            auto ret = EraseSector(sector_addr);
+            if(ret != 0)
+                return ret;
+            sector_addr += ERASE_SECTOR_SIZE;
+            nsects--;
+        }
+    }
+
     return 0;
 }
 
@@ -402,7 +507,7 @@ static int pp_int(uint32_t devaddr, size_t n, const unsigned char *buf)
         return -1;
     }
 
-    n = (n < 256) ? n : 256;
+    n = (n < PROGRAM_PAGE_SIZE) ? n : PROGRAM_PAGE_SIZE;
 
     auto bw = ospi_ind_write(OCTOSPI1, n, 0x02, devaddr, 0, ccr_spi_no_ab, 0, buf);
     
@@ -413,13 +518,13 @@ static int pp_int(uint32_t devaddr, size_t n, const unsigned char *buf)
 
 int ProgramPage (uint32_t addr, uint32_t sz, unsigned char *buf)
 {
-    klog("FlashPrg: ProgramPage(%x, %u, %p)\n", addr, sz, buf);
+//    klog("FlashPrg: ProgramPage(%x, %u, %p)\n", addr, sz, buf);
 
-    addr -= 0x0000000;
+    addr -= OSPIADDR;
 
     while(sz)
     {
-        auto cur_sz = (sz < 512) ? sz : 512;
+        auto cur_sz = (sz < PROGRAM_PAGE_SIZE) ? sz : PROGRAM_PAGE_SIZE;
         auto ret = pp_int(addr, cur_sz, buf);
         if(ret < 0)
         {
@@ -436,9 +541,27 @@ int ProgramPage (uint32_t addr, uint32_t sz, unsigned char *buf)
     return 0;
 }
 
+extern "C"
+int SEGGER_FL_Program(uint32_t daddr, uint32_t numbytes, uint8_t *src)
+{
+//    klog("FlashPrg: SEGGER_FL_Program(%x, %u, %p)\n", daddr, numbytes, src);
+
+    while(numbytes)
+    {
+        auto ret = ProgramPage(daddr, PROGRAM_PAGE_SIZE, src);
+        if(ret != 0)
+            return ret;
+        daddr += PROGRAM_PAGE_SIZE;
+        src += PROGRAM_PAGE_SIZE;
+        numbytes -= PROGRAM_PAGE_SIZE;
+    }
+
+    return 0;
+}
+
 uint32_t Verify(uint32_t addr, uint32_t size, unsigned char *buf)
 {
-    klog("FlashPrg: Verify(%x, %u, %p)\n", addr, size, buf);
+//    klog("FlashPrg: Verify(%x, %u, %p)\n", addr, size, buf);
 
     set_memmap();
 

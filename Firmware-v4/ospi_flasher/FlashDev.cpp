@@ -40,6 +40,7 @@
  */
 
 #include "FlashOS.h"        // FlashOS Structures
+#include "w25.h"
 
 extern "C" 
 __attribute__((section(".desc")))
@@ -47,14 +48,14 @@ struct FlashDevice const FlashDevice  =  {
   FLASH_DRV_VERS,             // Driver Version, do not modify!
   "STM32MP2 W25Q32JVSN OSPI1",  // Device Name
   EXTSPI,                     // Device Type
-  0x60000000,                 // Device Start Address
-  4*1024*1024,                  // Device Size in Bytes (4MiB)
-  256,                        // Programming Page Size
+  OSPIADDR,                 // Device Start Address
+  DEVICE_SIZE,                  // Device Size in Bytes (4MiB)
+  PROGRAM_PAGE_SIZE,                        // Programming Page Size
   0,                          // Reserved, must be 0
   0xFF,                       // Initial Content of Erased Memory
-  100,                        // Program Page Timeout tPP = 3 ms + a bit
-  4000,                        // Erase Sector Timeout tSE = 400 ms + a bit
+  100,                        // Program Page Timeout
+  8000,                        // Erase Sector Timeout
   // Specify Size and Address of Sectors  - all are 4 kiB
-  4*1024, 0x000000,          // Sector Size, sector address
+  ERASE_SECTOR_SIZE, 0x000000,          // Sector Size, sector address
   SECTOR_END
 };
