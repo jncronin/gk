@@ -76,6 +76,11 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
     }
 }
 
+bool Mutex::unlock(bool do_unlock)
+{
+    return do_unlock ? unlock() : false;
+}
+
 bool Mutex::unlock(int *reason, bool force)
 {
     CriticalGuard cg(sl, ThreadList.sl);

@@ -12,6 +12,7 @@
         "stm32mp_ddrctrl_regs.h": "c",
         "errno.h": "c",
         "cstddef": "cpp",
-        "cstring": "cpp"
+        "cstring": "cpp",
+        "ddrphy_phyinit_usercustom_custompretrain.c": "cpp"
     },
 }

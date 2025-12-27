@@ -26,6 +26,7 @@ class Mutex
         void lock(bool allow_deadlk = false);
         bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool unlock(int *reason = nullptr, bool force = false);
+        bool unlock(bool do_unlock);
         bool try_delete(int *reason = nullptr);
 };
 
@@ -119,6 +120,68 @@ class CountingSemaphore
         void Signal();
         unsigned int Value();
         CountingSemaphore(unsigned int value = 0) : ss(value) {};
+};
+
+template <typename... Mutex_t> requires all_same<Mutex_t...>
+class MutexGuard
+{
+    private:
+        using sl_t = std::tuple_element_t<0, std::tuple<Mutex_t...>>;
+
+    public:
+        MutexGuard(Mutex_t &... args) : sl(args...), is_locked(false)
+        {
+            relock();
+        }
+
+        void relock()
+        {
+            if(is_locked)
+            {
+                klog("MutexGuard: nested lock() - potential bug\n");
+            }
+            constexpr std::size_t size = sizeof...(Mutex_t);
+            while(true)
+            {
+                std::array<bool, size> locked = {};
+                size_t i = 0U;
+                if(std::apply([&](Mutex_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
+                {
+                    is_locked = true;
+                    return;
+                }
+
+                i = 0U;
+                std::apply([&](Mutex_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
+            }
+        }
+
+        void unlock(bool lock_test = true)
+        {
+            if(!is_locked)
+            {
+                if(lock_test)
+                {
+                    klog("CriticalGuard: mismatched lock/unlock - potential bug\n");
+                }
+                return;
+            }
+            std::apply([](Mutex_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+            is_locked = false;
+        }
+
+        MutexGuard() = delete;
+        MutexGuard(const MutexGuard &) = delete;
+
+        ~MutexGuard()
+        {
+            unlock(false);
+        }
+
+    private:
+        std::tuple<Mutex_t &...> sl;
+        uint64_t cpsr;
+        bool is_locked;
 };
 
 

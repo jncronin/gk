@@ -18,6 +18,8 @@
 #include "process_interface.h"
 #include "sound.h"
 #include "bootinfo.h"
+#include "i2c.h"
+#include "pwr.h"
 #include <memory>
 
 // test threads
@@ -68,7 +70,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
             klog("gkos: booting on EV1 board\n");
             break;
     }
-    
+
     // allocate some space to test page faults
     auto pf_test = vblock_alloc(VBLOCK_64k, false, true, false);
     *(uint64_t *)pf_test.base = 0xdeadbeef;
@@ -113,6 +115,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_ext4();
     init_screen();
     init_sound();
+    init_i2c();
+    init_pwr();
 
     init_process_interface();
 
