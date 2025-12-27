@@ -109,6 +109,12 @@ int main(uint32_t bootrom_val)
     klog("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",
         pmic_read_register(0), pmic_read_register(1));
 
+    // start buck 7 if not already on
+    pmic_vreg buck7 { pmic_vreg::Buck, 7, true, 3300, pmic_vreg::HP };
+    pmic_set(buck7);
+    
+    pmic_dump_status();
+
     init_ddr();
     init_vmem();
 
