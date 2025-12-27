@@ -509,20 +509,7 @@ int syscall_audioenable(int enable, int *_errno)
         //_queue_if_possible();
         //dma->CCR |= DMA_CCR_EN;
         SAI2_Block_A_VMEM->CR1 |= SAI_xCR1_SAIEN;
-        {
-            DisableInterrupts();
 
-            int nsent = 0;
-            while(true)
-            {
-                while(((SAI2_Block_A_VMEM->SR & SAI_xSR_FLVL_Msk) >> SAI_xSR_FLVL_Pos) == 5U);
-                SAI2_Block_A_VMEM->DR = nsent;
-                nsent++;
-
-                if(nsent % 5)
-                    klog("sound: sent: %d\n", nsent);
-            }
-        }
         pcm_mute_set(false);
         SPKR_NSD.set();
 
