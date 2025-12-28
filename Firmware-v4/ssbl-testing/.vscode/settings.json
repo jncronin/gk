@@ -1,0 +1,18 @@
+{
+    "cmake.configureSettings": {
+        "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35.cmake",
+    },
+    "files.associations": {
+        "compare": "cpp",
+        "cstdint": "cpp",
+        "ddrphy_phyinit_sequence.c": "cpp",
+        "ddrphy_phyinit_calcmb.c": "cpp",
+        "assert.h": "c",
+        "ddrphy_phyinit.h": "c",
+        "stm32mp_ddrctrl_regs.h": "c",
+        "errno.h": "c",
+        "cstddef": "cpp",
+        "cstring": "cpp",
+        "ddrphy_phyinit_usercustom_custompretrain.c": "cpp"
+    },
+}
