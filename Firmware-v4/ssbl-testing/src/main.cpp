@@ -111,6 +111,10 @@ int main(uint32_t bootrom_val)
     // start buck 7 if not already on
     pmic_vreg buck7 { pmic_vreg::Buck, 7, true, 3300, pmic_vreg::HP };
     pmic_set(buck7);
+
+    // start vddaudio for testing
+    pmic_vreg ldo6 { pmic_vreg::LDO, 6, true, 3300, pmic_vreg::Normal };
+    pmic_set(ldo6);
     
     pmic_dump_status();
 
@@ -122,6 +126,19 @@ int main(uint32_t bootrom_val)
 
         pwr_poll();
         pmic_dump_status();
+
+        // check tad5112 on 0x50 - register 0x6 should be reset to 0x35
+        auto &i2c2 = i2c(2);
+        uint8_t dac_cfg_a0 = 0;
+        i2c2.RegisterRead(0x50, (uint8_t)0x06, &dac_cfg_a0, 1);
+        klog("dac: reg 0x6 = %x\n", dac_cfg_a0);
+
+        // check max17048 on 0x36 - register 0xc should be reset to 0x971c
+        uint16_t max_reg = 0;
+        i2c2.RegisterRead(0x36, (uint8_t)0x0c, &max_reg, 2);
+        max_reg = __builtin_bswap16(max_reg);
+        klog("max: reg 0xc = %x\n", max_reg);
+
 
         udelay(1000000);
     }
