@@ -13,6 +13,7 @@
 #include "elf_get_symbol.h"
 #include "clocks.h"
 #include "i2c.h"
+#include "screen.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -120,10 +121,14 @@ int main(uint32_t bootrom_val)
 
     init_i2c();
 
+    init_screen();
+
     while(true)
     {
         void pwr_poll();
+        void screen_poll();
 
+        screen_poll();
         pwr_poll();
         pmic_dump_status();
 
@@ -138,6 +143,7 @@ int main(uint32_t bootrom_val)
         i2c2.RegisterRead(0x36, (uint8_t)0x0c, &max_reg, 2);
         max_reg = __builtin_bswap16(max_reg);
         klog("max: reg 0xc = %x\n", max_reg);
+
 
 
         udelay(1000000);
