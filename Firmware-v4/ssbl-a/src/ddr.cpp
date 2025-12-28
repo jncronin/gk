@@ -53,6 +53,7 @@ enum ddr_type {
 //#include "ddr_configs/stm32mp255f-ev1-ddr.h"
 #include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4.h"
 //#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4-RP1_5.h"
+//#include "ddr_configs/stm32mp255f-test3.h"
 
 #if STM32MP_DDR3_TYPE
 extern int _binary_ddr3_pmu_train_bin;
@@ -715,6 +716,9 @@ int stm32mp_board_ddr_power_init(ddr_type type)
         pmic_set(vr_refddr);
         pmic_set(vr_ldo3);
         pmic_set(vr_ldo5);
+
+        udelay(5000);
+        pmic_dump_status();
     
         return 0;
     }
@@ -733,6 +737,9 @@ int stm32mp_board_ddr_power_init(ddr_type type)
         pmic_set(vr_ldo3);
         udelay(4000);
         pmic_set(vr_buck6);
+
+        udelay(5000);
+        pmic_dump_status();
 
         return 0;
     }

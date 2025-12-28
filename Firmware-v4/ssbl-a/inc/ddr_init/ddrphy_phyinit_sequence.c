@@ -80,6 +80,17 @@ int ddrphy_phyinit_sequence(struct stm32mp_ddr_config *config, bool skip_trainin
 		/* (G) Execute the Training Firmware */
 		ret = ddrphy_phyinit_g_execfw();
 		if (ret != 0) {
+			ret = ddrphy_phyinit_g_execfw();
+		}
+		if (ret != 0) {
+			ret = ddrphy_phyinit_g_execfw();
+		}
+
+		if (ret != 0) {
+			ret = ddrphy_phyinit_g_execfw();
+		}
+
+		if (ret != 0) {
 			return ret;
 		}
 
