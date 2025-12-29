@@ -25,6 +25,11 @@ static const constexpr pin PWM_BACKLIGHT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BA
 static const constexpr pin LS_OE_N { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE), 0 };
 static const constexpr pin CTP_WAKE { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 2 };
 
+static const unsigned int test_w = 160;
+static const unsigned int test_h = 120;
+static void l1_test();
+static uint16_t scr_buf[test_w * test_h];
+
 void init_screen()
 {
     RCC_VMEM->GPIOICFGR |= RCC_GPIOICFGR_GPIOxEN;
@@ -52,7 +57,7 @@ void init_screen()
     RCC_VMEM->LTDCCFGR |= RCC_LTDCCFGR_LTDCEN;
     __asm__ volatile("dsb sy\n" ::: "memory");
 
-#if 0
+#if 1
     /* Give LTDC access to DDR via RIFSC.  Use same CID as CA35/secure/priv for the master interface ID 1 */
     *(volatile uint32_t *)(RIFSC_VMEM + 0xc10 + 11 * 0x4) =
         (1UL << 2) |                // use cid specified here
@@ -187,6 +192,9 @@ void init_screen()
     LTDC_VMEM->LIPCR = 511UL;
     LTDC_VMEM->IER = LTDC_IER_LIE | LTDC_IER_RRIE;
     LTDC_VMEM->GCR |= LTDC_GCR_LTDCEN;
+
+    // layer 1 test pattern
+    l1_test();
 }
 
 void screen_poll()
@@ -197,10 +205,46 @@ void screen_poll()
     i2c4.RegisterRead(0x40, (uint8_t)0, &reg0, 1);
     klog("ctp: reg0: %x\n", reg0);
 
-    static unsigned int bit = 0;
+    static unsigned int bit = 6;
     LTDC_VMEM->BCCR = 1U << bit;
 
     bit++;
     if(bit >= 24) bit = 0;
 
+}
+
+void l1_test()
+{
+    for(unsigned int y = 0; y < test_h; y++)
+    {
+        for(unsigned int x = 0; x < test_w; x++)
+        {
+            auto col = ((x / 8) % 2) ^ ((y / 8) % 2);
+            if(col) col = 0xffffU;
+            scr_buf[y * test_w + x] = col;
+        }
+    }
+
+    auto hstart = (((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
+    auto vstart = (((LTDC->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
+
+    LTDC_Layer1_VMEM->WHPCR = (hstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
+        ((hstart + test_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
+    LTDC_Layer1_VMEM->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
+        ((vstart + test_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+    LTDC_Layer1_VMEM->PFCR = 4U;    // RGB565
+    LTDC_Layer1_VMEM->CACR = 0xffUL;
+    LTDC_Layer1_VMEM->DCCR = 0UL;
+    LTDC_Layer1_VMEM->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
+        (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now
+    LTDC_Layer1_VMEM->CFBAR = 0;
+    LTDC_Layer1_VMEM->CFBLR = ((test_w * 2) << LTDC_LxCFBLR_CFBP_Pos) |
+        ((test_w * 2 + 7) << LTDC_LxCFBLR_CFBLL_Pos);
+    LTDC_Layer1_VMEM->CFBLNR = test_h;
+    LTDC_Layer1_VMEM->CFBAR = (uint32_t)(uintptr_t)scr_buf;
+    LTDC_Layer1_VMEM->CR = 0;
+
+    LTDC_Layer1_VMEM->CR |= LTDC_LxCR_LEN;
+
+    LTDC_VMEM->SRCR = LTDC_SRCR_VBR;
 }
