@@ -124,7 +124,7 @@ int main(uint32_t bootrom_val)
         screen_poll();
         pwr_poll();
         pmic_dump_status();
-        //lsm_poll();
+        lsm_poll();
 
         // check tad5112 on 0x50 - register 0x6 should be reset to 0x35
         auto &i2c2 = i2c(2);

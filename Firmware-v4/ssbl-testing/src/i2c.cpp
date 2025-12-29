@@ -2,6 +2,7 @@
 #include "pins.h"
 #include "vmem.h"
 #include "clocks.h"
+#include "kernel_time.h"
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
@@ -113,6 +114,7 @@ int I2C::Init()
     *rcc_reg = RCC_I2C1CFGR_I2C1RST;
     __asm__ ("dsb sy\n" ::: "memory");
     
+#if 0
     SDA.set_as_output(pin::OpenDrain);
     SCL.set_as_output(pin::OpenDrain);
     SDA.clear();
@@ -121,6 +123,7 @@ int I2C::Init()
     SDA.set();
     SCL.set();
     udelay(500);
+#endif
     SDA.set_as_af(pin::OpenDrain);
     SCL.set_as_af(pin::OpenDrain);
 
@@ -262,7 +265,17 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
     inst->CR2 = cr2 | I2C_CR2_START;
 
     unsigned int wait_flag = is_read ? I2C_ISR_RXNE : I2C_ISR_TXIS;
-    while(!(inst->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)));
+    // TODO: Block() with deferred irq handling (disable GIC in handler, re-enable here)
+    auto tout = clock_cur() + kernel_time_from_ms(5);
+    while(!(inst->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)))
+    {
+        if(clock_cur() > tout)
+        {
+            klog("i2c: ACK timeout\n");
+            init = false;
+            return -1;
+        }
+    }
     if(inst->ISR & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO))
     {
         // fail

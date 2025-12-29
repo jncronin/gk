@@ -12,4 +12,6 @@ uint64_t clock_cur_us();
 uint64_t clock_cur_ms();
 void udelay(unsigned int);
 
+#include_next "clocks.h"
+
 #endif
