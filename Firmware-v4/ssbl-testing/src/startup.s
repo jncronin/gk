@@ -111,8 +111,11 @@ AP_Hold:
     ldr x2, =0x442d0018
     str xzr, [x0]
 
+    sevl
+
 1:
     isb // (similar to x86 pause here)
+    wfe
     mov w3, #(1U << 6)
     str w3, [x2]
     mov w3, #(1U << (6 + 16))

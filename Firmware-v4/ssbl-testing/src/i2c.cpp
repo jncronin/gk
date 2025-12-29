@@ -1,6 +1,7 @@
 #include "i2c.h"
 #include "pins.h"
 #include "vmem.h"
+#include "clocks.h"
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
@@ -74,9 +75,24 @@ void init_i2c()
 
     // init each instance
     i2cs[0].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C1_BASE);
+    i2cs[0].SDA = i2c_pins[0];
+    i2cs[0].SCL = i2c_pins[1];
+    i2cs[0].rcc_reg = &RCC_VMEM->I2C1CFGR;
+
     i2cs[1].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C2_BASE);
+    i2cs[1].SDA = i2c_pins[2];
+    i2cs[1].SCL = i2c_pins[3];
+    i2cs[1].rcc_reg = &RCC_VMEM->I2C2CFGR;
+
     i2cs[3].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C4_BASE);
+    i2cs[3].SDA = i2c_pins[4];
+    i2cs[3].SCL = i2c_pins[5];
+    i2cs[3].rcc_reg = &RCC_VMEM->I2C4CFGR;
+
     i2cs[6].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C7_BASE);
+    i2cs[6].SDA = i2c_pins[6];
+    i2cs[6].SCL = i2c_pins[7];
+    i2cs[6].rcc_reg = &RCC_VMEM->I2C7CFGR;
 
     i2cs[0].Init();
     i2cs[1].Init();
@@ -91,6 +107,28 @@ I2C &i2c(unsigned int instance)
 
 int I2C::Init()
 {
+    // toggle pins to avoid any busy glitches
+    *rcc_reg = 0;
+    __asm__ ("dsb sy\n" ::: "memory");
+    *rcc_reg = RCC_I2C1CFGR_I2C1RST;
+    __asm__ ("dsb sy\n" ::: "memory");
+    
+    SDA.set_as_output(pin::OpenDrain);
+    SCL.set_as_output(pin::OpenDrain);
+    SDA.clear();
+    SCL.clear();
+    udelay(500);
+    SDA.set();
+    SCL.set();
+    udelay(500);
+    SDA.set_as_af(pin::OpenDrain);
+    SCL.set_as_af(pin::OpenDrain);
+
+    *rcc_reg |= RCC_I2C1CFGR_I2C1EN;
+    __asm__ ("dsb sy\n" ::: "memory");
+    *rcc_reg &= ~RCC_I2C1CFGR_I2C1RST;
+    __asm__ ("dsb sy\n" ::: "memory");
+
     const bool irqs = false;
 
     inst->CR1 = 0U;

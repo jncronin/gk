@@ -29,7 +29,7 @@ void pwr_poll()
         For shunt, depends on ADCRANGE
             ADCRANGE = 0, 1 LSB = 2.5 uV
             ADCRANGE = 1, 1 LSB = 625 nV
-        We have 40 mOhm?? as shunt
+        We have 10 mOhm as shunt
         */
 
     int vbus_uv = (int)vbus * 1600;
@@ -40,7 +40,7 @@ void pwr_poll()
     // ultimately want microamps here
     //  uI = nV * 1000 / uR
     int64_t vshunt_nv = (int64_t)vshunt * 2500;
-    int64_t ishunt_ua = (vshunt_nv * 1000) / 40000;
+    int64_t ishunt_ua = (vshunt_nv * 1000) / 10000;
     klog("pwr: ISHUNT: %d uA\n", (int)ishunt_ua);
 
     // P = V * I => uP = uV * uI * 10^-6

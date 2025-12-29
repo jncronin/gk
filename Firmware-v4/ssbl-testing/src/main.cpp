@@ -39,17 +39,6 @@ int main(uint32_t bootrom_val)
     init_gic();
     init_clocks();
     
-    EV_BLUE.set_as_output();
-
-    // say hi
-    for(int n = 0; n < 10; n++)
-    {
-        EV_BLUE.set();
-        for(int i = 0; i < 2500000; i++);
-        EV_BLUE.clear();
-        for(int i = 0; i < 2500000; i++);
-    }
-
     /* Give CM33 access to RISAF2 (OSPI) (already has secure access to the other RAMs except BKPSRAM)
         RISAF2->HWCFGR = 0x100c0505
         
@@ -119,6 +108,9 @@ int main(uint32_t bootrom_val)
     
     pmic_dump_status();
 
+    void init_lsm();
+    init_lsm();
+
     init_i2c();
 
     init_screen();
@@ -127,10 +119,12 @@ int main(uint32_t bootrom_val)
     {
         void pwr_poll();
         void screen_poll();
+        void lsm_poll();
 
         screen_poll();
         pwr_poll();
         pmic_dump_status();
+        //lsm_poll();
 
         // check tad5112 on 0x50 - register 0x6 should be reset to 0x35
         auto &i2c2 = i2c(2);
@@ -146,7 +140,8 @@ int main(uint32_t bootrom_val)
 
 
 
-        udelay(1000000);
+        //udelay(1000000);
+        __asm__ volatile("wfi \n" ::: "memory");
     }
 
     return 0;

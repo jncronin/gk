@@ -65,7 +65,8 @@ void init_clocks()
     RCC->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
 
     // Now, set up the internal CA35SS PLL1
-    clock_set_cpu(1200000000);
+    //clock_set_cpu(1200000000);
+    clock_set_cpu(64000000);
 
     // start the system timer
     clock_start_sys();

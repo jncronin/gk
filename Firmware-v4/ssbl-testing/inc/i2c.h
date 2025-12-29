@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <stm32mp2xx.h>
 #include "osspinlock.h"
+#include "pins.h"
 using Mutex = Spinlock;
 template <typename... T> using MutexGuard = CriticalGuard<T...>;
 
@@ -14,6 +15,8 @@ class I2C
 {
     protected:
         I2C_TypeDef *inst = nullptr;
+        pin SDA, SCL;
+        volatile uint32_t *rcc_reg;
         Mutex m{};
         int Transmit(unsigned int addr, void *buf, size_t nbytes, 
             void *buf2, size_t nbytes2,
