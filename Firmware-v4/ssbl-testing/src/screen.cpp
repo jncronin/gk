@@ -19,6 +19,7 @@
 #define LTDC_Layer1_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer1_BASE))
 #define LTDC_Layer2_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer2_BASE))
 #define LTDC_Layer3_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer3_BASE))
+#define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
 
 static const constexpr pin PWM_BACKLIGHT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 4 };
 static const constexpr pin LS_OE_N { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE), 0 };
@@ -51,6 +52,7 @@ void init_screen()
     RCC_VMEM->LTDCCFGR |= RCC_LTDCCFGR_LTDCEN;
     __asm__ volatile("dsb sy\n" ::: "memory");
 
+#if 0
     /* Give LTDC access to DDR via RIFSC.  Use same CID as CA35/secure/priv for the master interface ID 1 */
     *(volatile uint32_t *)(RIFSC_VMEM + 0xc10 + 11 * 0x4) =
         (1UL << 2) |                // use cid specified here
@@ -84,6 +86,7 @@ void init_screen()
         *risup_reg = old_val;
         __asm__ volatile("dmb sy\n" ::: "memory");
     }
+#endif
 
     /* LTDC pins */
     static const constexpr pin DISP { GPIOC_VMEM, 5 };         // DISP
@@ -152,16 +155,22 @@ void init_screen()
     RCC_VMEM->FINDIVxCFGR[27] = 0;
     RCC_VMEM->PREDIVxCFGR[27] = 0;
     RCC_VMEM->XBARxCFGR[27] = 0x41;
-    RCC_VMEM->FINDIVxCFGR[27] = 0x40U | 24U;
+    RCC_VMEM->FINDIVxCFGR[27] = 0x40U | 47U;
 
-    LTDC_VMEM->SSCR = (4UL << LTDC_SSCR_VSH_Pos) |
-        (24UL << LTDC_SSCR_HSW_Pos);
-    LTDC_VMEM->BPCR = (79UL << LTDC_BPCR_AVBP_Pos) |
-        (224UL << LTDC_BPCR_AHBP_Pos);
-    LTDC_VMEM->AWCR = (579UL << LTDC_AWCR_AAH_Pos) |
-        (1024UL << LTDC_AWCR_AAW_Pos);
-    LTDC_VMEM->TWCR = (639UL << LTDC_TWCR_TOTALH_Pos) |
-        (1249UL << LTDC_TWCR_TOTALW_Pos);
+    // LTDC clock from above
+    SYSCFG->DISPLAYCLKCR = 0x2U;
+
+    RCC_VMEM->LTDCCFGR &= ~RCC_LTDCCFGR_LTDCRST;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    LTDC_VMEM->SSCR = (3UL << LTDC_SSCR_VSH_Pos) |
+        (3UL << LTDC_SSCR_HSW_Pos);
+    LTDC_VMEM->BPCR = (19UL << LTDC_BPCR_AVBP_Pos) |
+        (11UL << LTDC_BPCR_AHBP_Pos);
+    LTDC_VMEM->AWCR = (499UL << LTDC_AWCR_AAH_Pos) |
+        (811UL << LTDC_AWCR_AAW_Pos);
+    LTDC_VMEM->TWCR = (511UL << LTDC_TWCR_TOTALH_Pos) |
+        (815UL << LTDC_TWCR_TOTALW_Pos);
     
     LTDC_VMEM->GCR = LTDC_GCR_HSPOL |
         LTDC_GCR_VSPOL |
@@ -175,7 +184,7 @@ void init_screen()
     LTDC_Layer3_VMEM->CR = 0;
 
     LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
-    LTDC_VMEM->LIPCR = 639UL;
+    LTDC_VMEM->LIPCR = 511UL;
     LTDC_VMEM->IER = LTDC_IER_LIE | LTDC_IER_RRIE;
     LTDC_VMEM->GCR |= LTDC_GCR_LTDCEN;
 }
@@ -187,5 +196,11 @@ void screen_poll()
     uint8_t reg0;
     i2c4.RegisterRead(0x40, (uint8_t)0, &reg0, 1);
     klog("ctp: reg0: %x\n", reg0);
+
+    static unsigned int bit = 0;
+    LTDC_VMEM->BCCR = 1U << bit;
+
+    bit++;
+    if(bit >= 24) bit = 0;
 
 }
