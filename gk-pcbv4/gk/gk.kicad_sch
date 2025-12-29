@@ -225,7 +225,7 @@
 		)
 		(uuid "1a3a5a23-936f-418d-aef3-bef04e914360")
 	)
-	(text "Errata:\n\nU14 (TPS2051C) needs VIN > 4V - we have 3.3V.  Use alternative IC.\nU14 (TPS2051C) IN pin should decouple to ground rather than EN\nQSPI flash needs 100k pullup on IO3/#RESET and IO2/#WP"
+	(text "Errata:\n\nU14 (TPS2051C) needs VIN > 4V - we have 3.3V.  Use alternative IC.\n - Can use, e.g. TPS2000EDBV or TPS2068EDBV with active low #EN.\n    Add pull-up to +3V3, set MPU output as open-drain prior to enabling +3V3.\nU14 (TPS2051C) IN pin should decouple to ground rather than EN\nQSPI flash needs 100k pullup on IO3/#RESET and IO2/#WP"
 		(exclude_from_sim no)
 		(at 104.648 80.01 0)
 		(effects
