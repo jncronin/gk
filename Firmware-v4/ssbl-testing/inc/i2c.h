@@ -21,6 +21,7 @@ class I2C
         int Transmit(unsigned int addr, void *buf, size_t nbytes, 
             void *buf2, size_t nbytes2,
             bool is_read, bool restart_after_write);
+        unsigned int WaitTimeout(unsigned int wait_flag, unsigned int timeout_ms = 5);
         int Init();
 
         bool init = false;
