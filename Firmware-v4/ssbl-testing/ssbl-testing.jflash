@@ -3,7 +3,7 @@
 [GENERAL]
   aATEModuleSel[24] = 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
   ConnectMode = 0
-  CurrentFile = "C:\Users\jncro\source\repos\gk\Firmware-v4\secure_monitor\build\gkos_sm.hex"
+  CurrentFile = "C:\Users\jncro\source\repos\gk\Firmware-v4\ssbl-testing\build\ssbl_testing.hex"
   DataFileSAddr = 0x00000000
   GUIMode = 0
   HostName = ""
@@ -28,7 +28,11 @@
   InitStep0_Value0 = 0x00000000
   InitStep0_Value1 = 0x00000000
   InitStep0_Comment = "Reset and halt target"
-  NumExitSteps = 0
+  NumExitSteps = 1
+  ExitStep0_Action = "Reset"
+  ExitStep0_Value0 = 0x00000000
+  ExitStep0_Value1 = 0x00000032
+  ExitStep0_Comment = ""
   UseScriptFile = 0
   ScriptFile = ""
   RAMAddr = 0x20000000
@@ -41,9 +45,7 @@
   EndianMode = 0
   ChipName = "ST STM32MP257F_A35_0_GK_Loader"
 [FLASH]
-  aRangeSel[1] = 0-1023
   BankName = "OSPI1"
-  BankSelMode = 1
   BaseAddr = 0x60000000
   LoaderName = "JC Loader"
   NumBanks = 1
