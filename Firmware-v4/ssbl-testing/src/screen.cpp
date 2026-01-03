@@ -2,6 +2,7 @@
 #include "pins.h"
 #include "vmem.h"
 #include "i2c.h"
+#include "clocks.h"
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define RIFSC_VMEM PMEM_TO_VMEM(RIFSC_BASE)
@@ -203,11 +204,19 @@ void init_screen()
 
 void screen_poll()
 {
-    auto &i2c4 = i2c(4);
+    CTP_WAKE.set();
+    udelay(50000);
+
+    auto &i2c4 = i2c(1);
     // check ctp responds
     uint8_t reg0;
     i2c4.RegisterRead(0x40, (uint8_t)0, &reg0, 1);
-    klog("ctp: reg0: %x\n", reg0);
+    klog("ctp: WAKE reg0: %x\n", reg0);
+
+    CTP_WAKE.clear();
+    udelay(50000);
+    i2c4.RegisterRead(0x40, (uint8_t)0, &reg0, 1);
+    klog("ctp: nWAKE reg0: %x\n", reg0);
 
     static unsigned int bit = 6;
     LTDC_VMEM->BCCR = 1U << bit;
