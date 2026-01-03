@@ -114,7 +114,7 @@ int I2C::Init()
     *rcc_reg = RCC_I2C1CFGR_I2C1RST;
     __asm__ ("dsb sy\n" ::: "memory");
     
-#if 0
+#if 1
     SDA.set_as_output(pin::OpenDrain);
     SCL.set_as_output(pin::OpenDrain);
     SDA.clear();
