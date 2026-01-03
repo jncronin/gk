@@ -25,13 +25,13 @@ static const constexpr pin PWM_BACKLIGHT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BA
 static const constexpr pin LS_OE_N { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE), 0 };
 static const constexpr pin CTP_WAKE { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 2 };
 
-static const unsigned int test_w = 120;
+static const unsigned int test_w = 160;
 static const unsigned int test_h = 120;
 static const unsigned int scr_w = 800;
 static const unsigned int scr_h = 480;
 static void l1_test();
 __attribute__ ((aligned(64)))
-static uint32_t scr_buf[test_w * test_h];
+static uint16_t scr_buf[test_w * test_h];
 
 void init_screen()
 {
@@ -223,19 +223,19 @@ void l1_test()
         for(unsigned int x = 0; x < test_w; x++)
         {
             auto col = 0U;
-            if((y / (test_h / 8)) % 2)
+            if((y / 16) % 2)
             {
-                if((x / (test_w / 8)) % 2)
-                    col = 0xffffffU;
+                if((x / 16) % 2)
+                    col = 0x1fU << 11;
                 else
                     col = 0x0000U;
             }
             else
             {
-                if((x / (test_w / 8)) % 2)
-                    col = 0xffU;
+                if((x / 16) % 2)
+                    col = 0x1fU;
                 else
-                    col = 0xffU << 8;
+                    col = 0x3fU << 5;
             }
             scr_buf[y * test_w + x] = col;
         }
@@ -244,18 +244,16 @@ void l1_test()
     auto hstart = (((LTDC->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
     auto vstart = (((LTDC->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
 
-    auto scen = LTDC_LxCR_SCEN;
-    //scen = 0;
-
-    unsigned int disp_w = 480;
+    // size of the output window - automatically centred on screen.  768x480 is 16:10
+    unsigned int disp_w = 768;
     unsigned int disp_h = 480;
-    if(scen == 0)
-    {
-        disp_w = test_w;
-        disp_h = test_h;
-    }
 
-    const auto bpp = 4U;
+    disp_w = std::min(disp_w, scr_w);
+    disp_h = std::min(disp_h, scr_h);
+
+    auto scen = ((disp_w > test_w) || (disp_h > test_h)) ? LTDC_LxCR_SCEN : 0;
+
+    const auto bpp = 2U;
 
     hstart += (scr_w - disp_w) / 2;
     vstart += (scr_h - disp_h) / 2;
@@ -264,44 +262,32 @@ void l1_test()
         ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
     LTDC_Layer1_VMEM->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
         ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
-    LTDC_Layer1_VMEM->PFCR = 0U;    // ARGB8888
+    LTDC_Layer1_VMEM->PFCR = 4U;    // RGB565
     LTDC_Layer1_VMEM->CACR = 0xffUL;
     LTDC_Layer1_VMEM->DCCR = 0UL;
     LTDC_Layer1_VMEM->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
-        (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now
+        (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now - change for Layer2
     LTDC_Layer1_VMEM->CFBLR = ((test_w * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
         ((test_w * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
     LTDC_Layer1_VMEM->CFBLNR = test_h;
     LTDC_Layer1_VMEM->CFBAR = (uint32_t)(uintptr_t)scr_buf;
     LTDC_Layer1_VMEM->CR = 0;
 
-    /* Scaling test (from RM):
-            Example:
-        To upscale from a 720p frame (1280x720 pixels) to a 1080p frame (1920x1080 pixels), the
-        following configuration is needed:
-        • SCEN in LTDC_LxCR = 1 enables the upscale.
-        • SIH in LTDC_LxSISR = 1280: input width
-        • SIV in LTDC_LxSISR = 720: input height
-        • SOH in LTDC_LxSOSR = 1920: output width
-        • SOV in LTDC_LxSOSR = 1080: output height
-        • SHF in LTDC_LxSHSFR = 65536 * 1280 / 1920 = 43691: horizontal scaling factor
-        • SVF in LTDC_LxSVSFR = 65536 * 720 / 1080 = 43691: vertical scaling factor
-        • SHP in LTDC_LxSHSPR: horizontal phase
-        • SVP in LTDC_LxSVSPR: vertical phase
-    */
+    if(scen)
+    {
+        LTDC_Layer1_VMEM->CR = 0 | scen;
 
-    LTDC_Layer1_VMEM->CR = 0 | scen;
-
-    LTDC_Layer1_VMEM->SISR = (test_w << LTDC_LxSISR_SIH_Pos) |
-        (test_h << LTDC_LxSISR_SIV_Pos);
-    LTDC_Layer1_VMEM->SOSR = (disp_w << LTDC_LxSOSR_SOH_Pos) |
-        (disp_h << LTDC_LxSOSR_SOV_Pos);
-    LTDC_Layer1_VMEM->SHSFR = ((test_w - 1) * 4096) / (disp_w - 1);
-    LTDC_Layer1_VMEM->SVSFR = ((test_h - 1) * 4096) / (disp_h - 1);
-    //LTDC_Layer1_VMEM->SHSPR = LTDC_Layer1_VMEM->SHSFR + 4096;
-    //LTDC_Layer1_VMEM->SVSPR = LTDC_Layer1_VMEM->SVSFR;
-    LTDC_Layer1_VMEM->SHSPR = 0;
-    LTDC_Layer1_VMEM->SVSPR = 0;
+        LTDC_Layer1_VMEM->SISR = (test_w << LTDC_LxSISR_SIH_Pos) |
+            (test_h << LTDC_LxSISR_SIV_Pos);
+        LTDC_Layer1_VMEM->SOSR = (disp_w << LTDC_LxSOSR_SOH_Pos) |
+            (disp_h << LTDC_LxSOSR_SOV_Pos);
+        LTDC_Layer1_VMEM->SHSFR = ((test_w - 1) * 4096) / (disp_w - 1);
+        LTDC_Layer1_VMEM->SVSFR = ((test_h - 1) * 4096) / (disp_h - 1);
+        LTDC_Layer1_VMEM->SHSPR = LTDC_Layer1_VMEM->SHSFR + 4096;
+        LTDC_Layer1_VMEM->SVSPR = LTDC_Layer1_VMEM->SVSFR;
+        //LTDC_Layer1_VMEM->SHSPR = 0;
+        //LTDC_Layer1_VMEM->SVSPR = 0;
+    }
 
     LTDC_Layer1_VMEM->CR = LTDC_LxCR_LEN | scen;
 
