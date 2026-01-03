@@ -111,6 +111,7 @@ int main(uint32_t bootrom_val)
     void (*ssbl)(uint32_t bootrom_val) = (void (*)(uint32_t))0x60020000;
     extern uint64_t AP_Target;
     AP_Target = 0x60020000;
+    __asm__ volatile("sev \n" ::: "memory");
     ssbl(bootrom_val);
 
     return 0;

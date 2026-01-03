@@ -147,8 +147,11 @@ AP_Reset_Handler:
     mov x3, #0
     str x3, [x2]
 
+    sevl
+
 1:
     isb // (similar to x86 pause here)
+    wfe
     ldr x2, =AP_Target
     ldr x2, [x2]
     cmp x2, #0
