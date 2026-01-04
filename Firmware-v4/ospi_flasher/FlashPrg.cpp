@@ -51,6 +51,8 @@
 
 static const constexpr pin USART6_TX { GPIOJ, 5, 6 };
 
+static void invalidate_cache(uintptr_t base, uintptr_t len);
+
 // some standard ccr values
 static const constexpr uint32_t ccr_spi_no_ab_no_addr =
     (1U << OCTOSPI_CCR_DMODE_Pos) |
@@ -392,6 +394,9 @@ int EraseSector(uint32_t addr)
     sr = ospi_wait_not_busy();
     //klog("FlashPrg: EraseSector: complete (%x)\n", sr);
 
+    // if cached, we need to invalidate the region
+    invalidate_cache((uintptr_t)addr + 0x60000000, ERASE_SECTOR_SIZE);
+
     set_memmap();
 
     if(sr & 0x3)
@@ -440,6 +445,7 @@ int EraseBlock(uint32_t addr, uint32_t size)
 
     sr = ospi_wait_not_busy();
     //klog("FlashPrg: EraseBlock: complete (%x)\n", sr);
+    invalidate_cache(addr + 0x60000000, size);
 
     set_memmap();
 
@@ -537,6 +543,7 @@ int ProgramPage (uint32_t addr, uint32_t sz, unsigned char *buf)
         buf += cur_sz;
     }
 
+    invalidate_cache(addr + OSPIADDR, sz);
     set_memmap();
     return 0;
 }
@@ -627,4 +634,24 @@ int EraseChip()
 timespec clock_cur()
 {
     return timespec{};
+}
+
+void invalidate_cache(uintptr_t addr, uintptr_t size)
+{
+    uint64_t sctlr_el3;
+    __asm__ volatile("mrs %[sctlr_el3], sctlr_el3\n" :
+        [sctlr_el3] "=r" (sctlr_el3) :: "memory");
+    if(!(sctlr_el3 & 0x4))
+        return;
+
+    const uintptr_t cache_line_size = 64;
+    auto end = addr + size;
+    addr &= ~(cache_line_size - 1);
+    end = (end + (cache_line_size - 1)) & ~(cache_line_size - 1);
+
+    while(addr < end)
+    {
+        __asm__ volatile("dc ivac, %[addr]\n" :: [addr] "r" (addr) : "memory");
+        addr += cache_line_size;
+    }
 }
