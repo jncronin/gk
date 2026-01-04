@@ -225,7 +225,7 @@
 		)
 		(uuid "1a3a5a23-936f-418d-aef3-bef04e914360")
 	)
-	(text "Errata:\n\nU14 (TPS2051C) needs VIN > 4V - we have 3.3V.  Use alternative IC.\n - Can use, e.g. TPS2000EDBV or TPS2068EDBV with active low #EN.\n    Add pull-up to +3V3, set MPU output as open-drain prior to enabling +3V3.\nU14 (TPS2051C) IN pin should decouple to ground rather than EN\nQSPI flash needs 100k pullup on IO3/#RESET and IO2/#WP\nAdd USART6_RX connection\nSeparate stencils for top/bottom\nMax 260mm wide stencil\nAdd test points for all power planes\nAdd I2C test points"
+	(text "Errata:\n\nU14 (TPS2051C) needs VIN > 4V - we have 3.3V.  Use alternative IC.\n - Can use, e.g. TPS2000EDBV or TPS2068EDBV with active low #EN.\n    Add pull-up to +3V3, set MPU output as open-drain prior to enabling +3V3.\nU14 (TPS2051C) IN pin should decouple to ground rather than EN\nQSPI flash needs 100k pullup on IO3/#RESET and IO2/#WP\nAdd USART6_RX connection\nSeparate stencils for top/bottom\nMax 260mm wide stencil\nAdd test points for all power planes\nAdd I2C test points\nRun CTP off a 1.8V I2C and remove I2C4"
 		(exclude_from_sim no)
 		(at 104.648 80.01 0)
 		(effects
