@@ -1,0 +1,10 @@
+{
+    "name": "IMU_EKF",
+    "description": "",
+    "keywords": "EKF, IMU, sensor fusion",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/hobbeshunter/IMU_EKF.git"
+    }
+}
