@@ -4,6 +4,13 @@
 #include "pins.h"
 #include "clocks.h"
 #include "vmem.h"
+#include "ESKF.h"
+#include "kernel_time.h"
+
+using filter_precision = float;
+static IMU_EKF::ESKF<filter_precision> filter;
+static bool filter_init = false;
+static kernel_time last_filter = kernel_time_invalid();
 
 // see https://github.com/stm32duino/LSM6DSL/blob/main/src/LSM6DSLSensor.cpp for an example
 
@@ -17,6 +24,7 @@ static const constexpr unsigned int addr = 0x6a;
 void init_lsm()
 {
     is_init = false;
+    filter_init = false;
     LSM6DSL_EN.clear();
     LSM6DSL_EN.set_as_output();
     LSM6DSL_EN.set();
@@ -43,24 +51,73 @@ void lsm_poll()
     {
         if(da == LSM6DSL_ACC_GYRO_XLDA_DATA_AVAIL)
         {
+            if(filter_init)
+            {
+                auto now = clock_cur();
+                auto dt = now - last_filter;
+                auto fdt = (filter_precision)kernel_time_to_us(dt) * (filter_precision)1000000.0;
+                filter.predict(fdt);
+                last_filter = now;
+            }
+
             int acc[3] = { 0 };
             if(LSM6DSL_ACC_Get_AngularRate(nullptr, acc, 0) == MEMS_SUCCESS)
             {
                 klog("lsm: gyr: %d, %d, %d\n", acc[0], acc[1], acc[2]);
+
+                if(filter_init)
+                {
+                    filter.correctGyr((filter_precision)acc[0] / (filter_precision)1000000.0,
+                        (filter_precision)acc[1] / (filter_precision)1000000.0,
+                        (filter_precision)acc[2] / (filter_precision)1000000.0);
+                }
             }
             else
             {
                 is_init = false;
+                filter_init = false;
                 return;
             }
             if(LSM6DSL_ACC_Get_Acceleration(nullptr, acc, 0) == MEMS_SUCCESS)
             {
                 klog("lsm: acc: %d, %d, %d\n", acc[0], acc[1], acc[2]);
+
+                if(filter_init)
+                {
+                    filter.correctAcc((filter_precision)acc[0] / (filter_precision)1000000.0,
+                        (filter_precision)acc[1] / (filter_precision)1000000.0,
+                        (filter_precision)acc[2] / (filter_precision)1000000.0);
+                }
+                else
+                {
+                    filter.initWithAcc((filter_precision)acc[0] / (filter_precision)1000000.0,
+                        (filter_precision)acc[1] / (filter_precision)1000000.0,
+                        (filter_precision)acc[2] / (filter_precision)1000000.0);
+                    filter_init = true;
+                }
             }
             else
             {
                 is_init = false;
+                filter_init = false;
                 return;
+            }
+
+            if(filter_init)
+            {
+                filter_precision out[3];
+                filter.getAttitude(out[0], out[1], out[2]);
+
+                // for want of klog("%f")...
+                int roll = (int)out[0];
+                int roll_frac = (int)(out[0] * (filter_precision)1000000.0) - (roll * 1000000);
+                int pitch = (int)out[1];
+                int pitch_frac = (int)(out[1] * (filter_precision)1000000.0) - (pitch * 1000000);
+                int yaw = (int)out[2];
+                int yaw_frac = (int)(out[2] * (filter_precision)1000000.0) - (yaw * 1000000);
+
+                klog("lsm: flt: %d.%06d, %d.%06d, %d.%06d\n",
+                    roll, roll_frac, pitch, pitch_frac, yaw, yaw_frac);
             }
         }
     }
@@ -138,6 +195,8 @@ extern "C" uint8_t LSM6DSL_IO_Read(void *handle, uint8_t ReadAddr, uint8_t *pBuf
 
 void lsm_reset()
 {
+    filter_init = false;
+
     LSM6DSL_EN.clear();
     udelay(5000);
     LSM6DSL_EN.set();

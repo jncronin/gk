@@ -31,3 +31,9 @@
 [submodule "Firmware-v4/arm-trusted-firmware"]
 	path = Firmware-v4/arm-trusted-firmware
 	url = https://github.com/ARM-software/arm-trusted-firmware.git
+[submodule "Firmware-v4/eigen"]
+	path = Firmware-v4/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "Firmware-v4/ssbl-testing/IMU_EKF"]
+	path = Firmware-v4/ssbl-testing/IMU_EKF
+	url = https://github.com/hobbeshunter/IMU_EKF.git

@@ -18,7 +18,7 @@ MEMORY
 {
     VDERAM          (xrw) : ORIGIN = 0x0e0a0000, LENGTH = 0x14000   /* stack space at end */
     VDERAM_SHARED   (rw)  : ORIGIN = 0x0e0bfe00, LENGTH = 512
-    FLASH           (xrw) : ORIGIN = 0x60020000, LENGTH = 0x40000
+    FLASH           (xrw) : ORIGIN = 0x60020000, LENGTH = 0x80000
 }
 
 SECTIONS

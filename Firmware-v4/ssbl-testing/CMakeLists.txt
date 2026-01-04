@@ -29,6 +29,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core_A/Include"
         ${CMAKE_CURRENT_SOURCE_DIR}/inc/ddr_init
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/../eigen/Eigen
+        ${CMAKE_CURRENT_SOURCE_DIR}/IMU_EKF/src
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -75,6 +77,7 @@ target_compile_options(${PROJECT_NAME}
         -Wno-psabi
         -Wno-missing-field-initializers
         -Wno-int-to-pointer-cast
+        -Wno-main
         -mstrict-align
 )
 
