@@ -58,9 +58,9 @@ void init_vmem(int el)
         else
             attr |= PAGE_ATTR(MT_NORMAL);
 
-        if(i == 3)
+        /* if(i == 3)
             attr |= PAGE_PRIV_RO;               // 0x60000000 - QSPI/FMC NOR flash
-        else
+        else */
             attr |= PAGE_PRIV_RW;
 
         pd_entries[i] = (0x20000000ULL * i) |
