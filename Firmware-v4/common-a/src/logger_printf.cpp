@@ -5,12 +5,20 @@
 #include <cstring>
 #include <limits>
 
+#if GKOS_FPU
+#include <cmath>
+#endif
+
 const constexpr auto size_t_max = std::numeric_limits<size_t>::max();
 
 /* Simple printf implementation that does not use floating point registers or malloc (newlib's does) */
 static int logger_string(logger_printf_outputter &oput, const char *str, size_t len = size_t_max);
 static int logger_int(logger_printf_outputter &oput, int64_t ival, uint64_t uval, bool is_signed, unsigned int base, int width, int precision, int length, bool zeropad,
     bool capitals);
+
+#if GKOS_FPU
+static int logger_float(logger_printf_outputter &oput, double dval, int precision);
+#endif
 
 // log_fwrite output class
 class log_fwrite_output : public logger_printf_outputter
@@ -198,6 +206,12 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
                 has_precision ? precision : -1,
                 length, zeropad, false);
         }
+#if GKOS_FPU
+        else if(*format == 'f')
+        {
+            ret += logger_float(oput, va_arg(va, double), has_precision ? precision : -1);
+        }
+#endif
         else
         {
             INVALID();
@@ -342,3 +356,29 @@ int logger_int(logger_printf_outputter &oput,
     
     return logger_string(oput, ptr);
 }
+
+#if GKOS_FPU
+int logger_float(logger_printf_outputter &oput, double v, int precision)
+{
+    if(std::isnan(v))
+    {
+        return logger_string(oput, "NaN");
+    }
+    else if(std::isinf(v))
+    {
+        return logger_string(oput, "Inf");
+    }
+
+    double int_part, frac_part;
+    frac_part = std::abs(std::modf(v, &int_part));
+
+    if(precision == -1)
+        precision = 6;  // default
+    
+    auto exp_part = std::pow(10.0, (double)precision);
+    auto ufrac_part = (uint64_t)std::round(frac_part * exp_part);
+    return logger_int(oput, (int64_t)int_part, 0, true, 10, -1, -1, 8, false, false) +
+        logger_string(oput, ".", 1) +
+        logger_int(oput, 0, ufrac_part, false, 10, precision, -1, 8, true, false);
+}
+#endif
