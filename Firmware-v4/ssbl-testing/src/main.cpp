@@ -113,35 +113,13 @@ int main(uint32_t bootrom_val)
 
     init_i2c();
 
-    init_screen();
-
     while(true)
     {
-        void pwr_poll();
-        void screen_poll();
         void lsm_poll();
 
-        screen_poll();
-        pwr_poll();
-        pmic_dump_status();
         lsm_poll();
 
-        // check tad5112 on 0x50 - register 0x6 should be reset to 0x35
-        auto &i2c2 = i2c(2);
-        uint8_t dac_cfg_a0 = 0;
-        i2c2.RegisterRead(0x50, (uint8_t)0x06, &dac_cfg_a0, 1);
-        klog("dac: reg 0x6 = %x\n", dac_cfg_a0);
-
-        // check max17048 on 0x36 - register 0xc should be reset to 0x971c
-        uint16_t max_reg = 0;
-        i2c2.RegisterRead(0x36, (uint8_t)0x0c, &max_reg, 2);
-        max_reg = __builtin_bswap16(max_reg);
-        klog("max: reg 0xc = %x\n", max_reg);
-
-
-
-        //udelay(1000000);
-        __asm__ volatile("wfi \n" ::: "memory");
+        udelay(40000);
     }
 
     return 0;

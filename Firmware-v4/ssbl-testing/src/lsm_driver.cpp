@@ -31,11 +31,9 @@ void lsm_poll()
 
     uint8_t who;
     LSM6DSL_ACC_GYRO_R_WHO_AM_I(nullptr, &who);
-    {
-        klog("lsm: whoami: %x\n", (uint32_t)who);
-    }
     if(who != 0x6a)
     {
+        klog("lsm: whoami: %x\n", (uint32_t)who);
         is_init = false;
         return;
     }
@@ -46,6 +44,15 @@ void lsm_poll()
         if(da == LSM6DSL_ACC_GYRO_XLDA_DATA_AVAIL)
         {
             int acc[3] = { 0 };
+            if(LSM6DSL_ACC_Get_AngularRate(nullptr, acc, 0) == MEMS_SUCCESS)
+            {
+                klog("lsm: gyr: %d, %d, %d\n", acc[0], acc[1], acc[2]);
+            }
+            else
+            {
+                is_init = false;
+                return;
+            }
             if(LSM6DSL_ACC_Get_Acceleration(nullptr, acc, 0) == MEMS_SUCCESS)
             {
                 klog("lsm: acc: %d, %d, %d\n", acc[0], acc[1], acc[2]);
@@ -202,6 +209,12 @@ void lsm_reset()
 
     /* Enable sampling */
     if(LSM6DSL_ACC_GYRO_W_ODR_XL(nullptr, LSM6DSL_ACC_GYRO_ODR_XL_26Hz) == MEMS_ERROR)
+    {
+        klog("lsm6dsl: init failed 7\n");
+        return;
+    }
+
+    if(LSM6DSL_ACC_GYRO_W_ODR_G(nullptr, LSM6DSL_ACC_GYRO_ODR_G_26Hz) == MEMS_ERROR)
     {
         klog("lsm6dsl: init failed 7\n");
         return;
