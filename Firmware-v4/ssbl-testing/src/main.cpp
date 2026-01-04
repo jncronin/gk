@@ -137,8 +137,10 @@ int main(uint32_t bootrom_val)
     while(true)
     {
         void lsm_poll();
+        void pwr_poll();
 
         lsm_poll();
+        pwr_poll();
 
         udelay(40000);
     }
