@@ -204,14 +204,18 @@ void init_screen()
 
 void screen_poll()
 {
+    void ctp_poll();
+    ctp_poll();
+
     //CTP_WAKE.set();
     //udelay(50000);
 
+    /*
     auto &i2c4 = i2c(1);
     // check ctp responds
     uint8_t reg0;
     i2c4.RegisterRead(0x40, (uint8_t)0, &reg0, 1);
-    klog("ctp: WAKE reg0: %x\n", reg0);
+    klog("ctp: WAKE reg0: %x\n", reg0); */
 
     /*
     CTP_WAKE.clear();
