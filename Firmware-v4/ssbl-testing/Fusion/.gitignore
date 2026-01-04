@@ -1,0 +1,8 @@
+.idea
+/cmake-build-debug
+/cmake-build-release
+
+__pycache__/
+build/
+dist/
+imufusion.egg-info/

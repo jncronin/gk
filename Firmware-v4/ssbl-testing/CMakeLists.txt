@@ -13,6 +13,8 @@ include(../cmake/utils.cmake)
 
 project(ssbl_testing C CXX ASM)
 
+add_subdirectory(Fusion/Fusion)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
@@ -40,6 +42,7 @@ target_compile_definitions(${PROJECT_NAME}
         ETH_MODE
         PMEM_OFFSET=0
         GKOS_UNCACHED=1
+        GKOS_FPU=1
 )
 
 target_sources(${PROJECT_NAME}
@@ -94,6 +97,11 @@ target_compile_options(${PROJECT_NAME}
         $<$<COMPILE_LANGUAGE:CXX>:
             -Wno-register
         >)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        Fusion
+)
 
 target_link_options(${PROJECT_NAME}
     PRIVATE

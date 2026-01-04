@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imufusion"
+version = "1.2.11"
+description = "Fusion Python package"
+readme = { text = "See [github](https://github.com/xioTechnologies/Fusion) for documentation and examples.", content-type = "text/markdown" }
+authors = [{ name = "x-io Technologies Limited", email = "info@x-io.co.uk" }]
+license = "MIT"
+license-files = ["LICENSE.md"]
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14"]  # versions shown by pyversions badge in README
+
+[project.urls]
+Repository = "https://github.com/xioTechnologies/Fusion"
+
+[tool.setuptools]
+py-modules = [] # fix cibuildwheel error: "Multiple top-level packages discovered in a flat-layout"
