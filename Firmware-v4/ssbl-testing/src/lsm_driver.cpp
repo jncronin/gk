@@ -55,7 +55,7 @@ void lsm_poll()
             {
                 auto now = clock_cur();
                 auto dt = now - last_filter;
-                auto fdt = (filter_precision)kernel_time_to_us(dt) * (filter_precision)1000000.0;
+                auto fdt = (filter_precision)kernel_time_to_us(dt) / (filter_precision)1000000.0;
                 filter.predict(fdt);
                 last_filter = now;
             }
@@ -67,9 +67,9 @@ void lsm_poll()
 
                 if(filter_init)
                 {
-                    filter.correctGyr((filter_precision)acc[0] / (filter_precision)1000000.0,
-                        (filter_precision)acc[1] / (filter_precision)1000000.0,
-                        (filter_precision)acc[2] / (filter_precision)1000000.0);
+                    filter.correctGyr((filter_precision)acc[0] / (filter_precision)1000.0,
+                        (filter_precision)acc[1] / (filter_precision)1000.0,
+                        (filter_precision)acc[2] / (filter_precision)1000.0);
                 }
             }
             else
@@ -84,15 +84,15 @@ void lsm_poll()
 
                 if(filter_init)
                 {
-                    filter.correctAcc((filter_precision)acc[0] / (filter_precision)1000000.0,
-                        (filter_precision)acc[1] / (filter_precision)1000000.0,
-                        (filter_precision)acc[2] / (filter_precision)1000000.0);
+                    filter.correctAcc((filter_precision)acc[0] / (filter_precision)1000.0,
+                        (filter_precision)acc[1] / (filter_precision)1000.0,
+                        (filter_precision)acc[2] / (filter_precision)1000.0);
                 }
                 else
                 {
-                    filter.initWithAcc((filter_precision)acc[0] / (filter_precision)1000000.0,
-                        (filter_precision)acc[1] / (filter_precision)1000000.0,
-                        (filter_precision)acc[2] / (filter_precision)1000000.0);
+                    filter.initWithAcc((filter_precision)acc[0] / (filter_precision)1000.0,
+                        (filter_precision)acc[1] / (filter_precision)1000.0,
+                        (filter_precision)acc[2] / (filter_precision)1000.0);
                     filter_init = true;
                 }
             }
