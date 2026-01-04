@@ -45,7 +45,9 @@
   EndianMode = 0
   ChipName = "ST STM32MP257F_A35_0_GK_Loader"
 [FLASH]
+  aRangeSel[1] = 0-1023
   BankName = "OSPI1"
+  BankSelMode = 1
   BaseAddr = 0x60000000
   LoaderName = "JC Loader"
   NumBanks = 1
@@ -54,7 +56,7 @@
   AutoPerformsErase = 1
   AutoPerformsProgram = 1
   AutoPerformsSecure = 0
-  AutoPerformsStartApp = 0
+  AutoPerformsStartApp = 1
   AutoPerformsVerify = 1
   EnableFixedVTref = 0
   EnableTargetPower = 0
@@ -71,7 +73,7 @@
   SNLen = 0x00000004
   SNListFile = ""
   SNValue = 0x00000001
-  StartAppType = 0
+  StartAppType = 1
   TargetPowerDelay = 0x00000014
   TimeoutErase = 0x00003A98
   TimeoutProgram = 0x00002710
