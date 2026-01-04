@@ -75,7 +75,6 @@ target_compile_options(${PROJECT_NAME}
         -Wno-psabi
         -Wno-missing-field-initializers
         -Wno-int-to-pointer-cast
-        -mgeneral-regs-only
         -mstrict-align
 )
 

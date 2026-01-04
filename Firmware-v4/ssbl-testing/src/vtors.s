@@ -60,12 +60,13 @@ _vtor_tbl_entry _lower32_serror
 // put the actual handlers in .text
 .section .text
 
-// save all registers
 .macro save_regs
     // stack frame needs x0-x18, x29-30
     // this is 21 registers which would leave an unaligned stack, therefore round up to multiple of 16
-    // ssbl does not use floating point registers so don't save
-    sub sp, sp, #176
+    // gkos uses newlib which uses fpu registers in, e.g. memcmp, so save these as well
+    // we also save spsr and elr in case we trigger another exception within the kernel (e.g. task switch)
+
+    sub sp, sp, #336
     stp x0, x1, [sp, #0]
     stp x2, x3, [sp, #16]
     stp x4, x5, [sp, #32]
@@ -75,11 +76,27 @@ _vtor_tbl_entry _lower32_serror
     stp x12, x13, [sp, #96]
     stp x14, x15, [sp, #112]
     stp x16, x17, [sp, #128]
-    stp x18, x29, [sp, #144]
-    stp x30, xzr, [sp, #160] // finish with a zero for alignment
+    stp x18, xzr, [sp, #144] // finish with a zero for alignment
+    mrs x0, spsr_el1
+    mrs x1, elr_el1
+    stp x0, x1, [sp, #160]
+    stp xzr, xzr, [sp, #176]
+    stp q0, q1, [sp, #192]
+    stp q2, q3, [sp, #224]
+    stp q4, q5, [sp, #256]
+    stp q6, q7, [sp, #288]
+
+    // aarch64 stack frame
+    stp x29, x30, [sp, #320]
+    mov x29, sp
+    add x29, x29, #320
 .endm
 
 .macro restore_regs
+    msr daifset, #0b0010
+    ldp x0, x1, [sp, #160]
+    msr elr_el1, x1
+    msr spsr_el1, x0
     ldp x0, x1, [sp, #0]
     ldp x2, x3, [sp, #16]
     ldp x4, x5, [sp, #32]
@@ -89,9 +106,13 @@ _vtor_tbl_entry _lower32_serror
     ldp x12, x13, [sp, #96]
     ldp x14, x15, [sp, #112]
     ldp x16, x17, [sp, #128]
-    ldp x18, x29, [sp, #144]
-    ldr x30, [sp, #160]
-    add sp, sp, #176
+    ldr x18, [sp, #144]
+    ldp q0, q1, [sp, #192]
+    ldp q2, q3, [sp, #224]
+    ldp q4, q5, [sp, #256]
+    ldp q6, q7, [sp, #288]
+    ldp x29, x30, [sp, #320]
+    add sp, sp, #336
 .endm
 
 .macro exception_stub code 
