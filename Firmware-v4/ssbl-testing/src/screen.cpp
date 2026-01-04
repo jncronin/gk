@@ -33,7 +33,7 @@ static const unsigned int scr_h = 480;
 static void l1_test();
 //__attribute__ ((aligned(64)))
 //static uint16_t scr_buf[test_w * test_h];
-static uint16_t *scr_buf = (uint16_t *)0x0e000000;
+static uint16_t *scr_buf = (uint16_t *)(0x0e000000 + 65536);
 
 void init_screen()
 {

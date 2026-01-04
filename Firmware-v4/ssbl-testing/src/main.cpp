@@ -38,6 +38,27 @@ int main(uint32_t bootrom_val)
     klog("SSBL: start\n");
     init_gic();
     init_clocks();
+    init_vmem();
+
+    // enable EL3 MMU
+    __asm__ volatile (
+        "msr daifset, #0x3\n"
+
+        "mrs x0, S3_1_C15_C2_1\n"       // CPUECTRL_EL1
+        "orr x0, x0, #(0x1 << 6)\n"     // SMPEN
+        "msr S3_1_C15_C2_1, x0\n"
+
+        "dsb sy\n"
+
+        "mrs x0, sctlr_el3\n"
+        "orr x0, x0, #(0x1 << 0)\n"     // M
+        "orr x0, x0, #(0x1 << 2)\n"     // C
+        "orr x0, x0, #(0x1 << 12)\n"    // I
+        "msr sctlr_el3, x0\n"
+
+        "msr daifclr, #0x3\n"
+    : : : "memory", "x0");
+
     
     /* Give CM33 access to RISAF2 (OSPI) (already has secure access to the other RAMs except BKPSRAM)
         RISAF2->HWCFGR = 0x100c0505
