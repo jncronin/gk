@@ -49,13 +49,6 @@ static constexpr pin sdmmc2_pins[] =
     { GPIOE_VMEM, 15, 12 }
 };
 
-#define GPIOC_VMEM (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE)
-static const constexpr pin WIFI_REG_ON { GPIOC_VMEM, 7 };
-static const constexpr pin BT_REG_ON { GPIOC_VMEM, 8 };
-
-#define GPIOI_VMEM (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOI_BASE)
-static const constexpr pin MCO1 { GPIOI_VMEM, 6, 1 };
-
 enum StatusFlags { CCRCFAIL = 1, DCRCFAIL = 2, CTIMEOUT = 4, DTIMEOUT = 8,
     TXUNDERR = 0x10, RXOVERR = 0x20, CMDREND = 0x40, CMDSENT = 0x80,
     DATAEND = 0x100, /* reserved */ DBCKEND = 0x400, DABORT = 0x800,
@@ -122,23 +115,10 @@ void init_sdmmc1()
 void init_sdmmc2()
 {
     RCC_VMEM->GPIOECFGR |= RCC_GPIOECFGR_GPIOxEN;
-    RCC_VMEM->GPIOCCFGR |= RCC_GPIOCCFGR_GPIOxEN;
-    RCC_VMEM->GPIOICFGR |= RCC_GPIOICFGR_GPIOxEN;
     __asm__ volatile("dsb sy\n" ::: "memory");
-
-    // Enable 32kHz sleep clock
-    RCC_VMEM->FCALCOBS0CFGR = RCC_FCALCOBS0CFGR_CKOBSEN |
-        (0x86U << RCC_FCALCOBS0CFGR_CKINTSEL_Pos);      // LSE
-    RCC_VMEM->MCO1CFGR = RCC_MCO1CFGR_MCO1ON | RCC_MCO1CFGR_MCO1SEL;
-    __asm__ volatile("dsb sy\n" ::: "memory");
-    MCO1.set_as_af();
 
     for(const auto &p : sdmmc2_pins)
         p.set_as_af();
-    WIFI_REG_ON.set_as_output();
-    WIFI_REG_ON.clear();
-    BT_REG_ON.set_as_output();
-    BT_REG_ON.set();
 
     // Clocks to SDMMC1/2 (crossbar 51 + 52)
     // Use PLL4 = 1200 MHz / 6 -> 200 MHz SDCLK
@@ -176,9 +156,8 @@ void init_sdmmc2()
     sdmmc[1].iface = SDMMC2_VMEM;
     sdmmc[1].iface_id = 2;
     sdmmc[1].default_io_voltage = 1800;
+    sdmmc[1].default_supply_current = 2500;
     // functions to set power
-    sdmmc[1].supply_off = []() { WIFI_REG_ON.clear(); udelay(10000); return 0; };
-    sdmmc[1].supply_on = []() { WIFI_REG_ON.set(); udelay(250000); return 0; };
     sdmmc[1].io_1v8 = []() { return smc_set_power(SMC_Power_Target::SDIO_IO, 1800) == 1800 ? 0 : -1; };
     sdmmc[1].io_3v3 = []() { return smc_set_power(SMC_Power_Target::SDIO_IO, 1800) == 1800 ? 0 : -1; };
     sdmmc[1].pwr_valid_reg = &PWR_VMEM->CR7;
@@ -307,8 +286,8 @@ int SDIF::reset()
             while(true)
             {
                 auto arg = 0xff8000U;
-                if(!vswitch_failed /* && default_io_voltage != 1800 */)
-                    arg |= (1U << 25);
+                if(!vswitch_failed)
+                    arg |= (1U << 24);
                 ret = sd_issue_command(5, resp_type::R4, arg, resp);
                 if(ret != 0)
                 {
@@ -322,7 +301,7 @@ int SDIF::reset()
                     sdio_n_extra_funcs = (resp[0] >> 28) & 0x7U;
                     is_mem = ((resp[0] >> 27) & 0x1) != 0;
                     is_sdio = true;
-                    cmd5_s18a = ((resp[0] >> 25) & 0x1) != 0;       // later OR'd with ACMD41 S18A, if relevant
+                    cmd5_s18a = ((resp[0] >> 24) & 0x1) != 0;       // later OR'd with ACMD41 S18A, if relevant
 
                     klog("sd%d: sdio with %u extra functions initialised\n", iface_id, sdio_n_extra_funcs);
                     break;
@@ -420,7 +399,7 @@ int SDIF::reset()
     }
 
     // Check logical OR of ACMD41 S18A and CMD5 S18A
-    if(!vswitch_failed /* && default_io_voltage != 1800 */ &&
+    if(!vswitch_failed &&
         (is_1v8 || cmd5_s18a) && io_1v8)
     {
         // proceed to voltage switch
@@ -645,7 +624,7 @@ int SDIF::reset()
     {
         if((cccr[8] & 0x40U) == 0 || (cccr[8] & 0x80U))
         {
-            if(write_cccr(7, (cccr[7] & ~0x3U) | 0x2U))
+            if(write_cccr(7, (cccr[7] & ~0x3U) | 0x2U | 0x80U))
             {
                 klog("sd%d: sdio: write_cccr failed\n", iface_id);
                 return -1;
@@ -804,6 +783,36 @@ int SDIF::reset()
         }
     }
 
+    // configure sdio parameters
+    if(is_sdio)
+    {        
+        // enable higher power mode
+        if((cccr[0x12] & 0x1) && default_supply_current > 200)
+        {
+            if(write_cccr(0x12, cccr[0x12] | 0x2) != 0)
+                return -1;
+        }
+
+        // TODO: UHS support
+        if(cccr[0x13] & 0x1)
+        {
+            // high speed support
+            if(write_cccr(0x13, (cccr[0x13] & ~0xeU) | 0x2U) != 0)
+                return -1;
+            
+            // wait 8 clock cycles
+            auto delay = clock_period_ns * 8;
+            udelay((delay + 999) / 1000);
+            if(read_cccr(0x13) != 0)
+                return -1;
+
+            if((cccr[0x13] & 0xeU) == 0x2U)
+                set_clock(SDCLK_HS);
+        }
+
+        read_cccr();
+    }
+
     // Hardware flow control - prevents buffer under/overruns
     iface->CLKCR |= SDMMC_CLKCR_HWFC_EN;
 
@@ -848,14 +857,14 @@ int SDIF::write_cccr(unsigned int reg, uint8_t v)
         return -1;
     }
     resp &= 0xffU;
-    klog("sd%d: CCCR[%2u] = %x\n", iface_id, reg, resp);
+    //klog("sd%d: CCCR[%2u] = %x\n", iface_id, reg, resp);
 
     if(reg < 0x16)
         cccr[reg] = (uint8_t)resp;
     return 0;
 }
 
-int SDIF::read_cccr(unsigned int reg)
+int SDIF::read_cccr(unsigned int reg, uint8_t *val_out)
 {
     if(!is_sdio)
         return -1;
@@ -874,10 +883,13 @@ int SDIF::read_cccr(unsigned int reg)
         return -1;
     }
     resp &= 0xffU;
-    klog("sd%d: CCCR[%2u] = %x\n", iface_id, reg, resp);
+    //klog("sd%d: CCCR[%2u] = %x\n", iface_id, reg, resp);
 
     if(reg < 0x16)
         cccr[reg] = (uint8_t)resp;
+    if(val_out)
+        *val_out = (uint8_t)resp;
+    
     return 0;
 }
 
@@ -1202,4 +1214,65 @@ int SDIF::set_clock(int freq, bool ddr)
     clock_period_ns = 1000000000 / clock_speed;
 
     return 0;
+}
+
+int SDIF::sdio_enable_function(unsigned int func, bool enable)
+{
+    if(!sd_ready)
+        return -1;
+    
+    if(!is_sdio)
+        return -1;
+
+    if(func == 0)
+        return 0;
+    
+    if(func > 7)
+        return -1;
+
+    auto wval = enable ? (cccr[0x2] | (1U << func)) :
+        (cccr[0x2] & ~(1U << func));
+    
+    return write_cccr(0x2, wval);
+}
+
+int SDIF::sdio_enable_func_int(unsigned int func, bool enable)
+{
+    if(!sd_ready)
+        return -1;
+    
+    if(!is_sdio)
+        return -1;
+
+    if(func > 7)
+        return -1;
+
+    auto wval = enable ? (cccr[0x4] | (1U << func) | 0x1U) :
+        (cccr[0x4] & ~(1U << func));
+
+    if(wval != 0)
+        wval |= 0x1;        // re-enable master interrupts if other functions have IF
+    
+    return write_cccr(0x4, wval);
+}
+
+int SDIF::sdio_set_func_block_size(unsigned int func, size_t block_size)
+{
+    if(!is_sdio)
+        return -1;
+    if(!sd_ready)
+        return -1;
+    if(func > 7)
+        return -1;
+    if(block_size > 2048)
+        return -1;
+    if(block_size == 0)
+        return -1;
+
+    unsigned int base_addr = (func * 0x100) + 0x10;
+    auto ret = write_cccr(base_addr, (uint8_t)(block_size & 0xffU));
+    if(ret != 0)
+        return ret;
+    ret = write_cccr(base_addr + 1, (uint8_t)((block_size >> 8) & 0xffU));
+    return ret;
 }

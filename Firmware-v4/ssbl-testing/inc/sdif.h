@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "osmutex.h"
 #include <stm32mp2xx.h>
+#include <array>
 
 #define SDCLK 200000000
 
@@ -24,6 +25,7 @@ class SDIF
         int (*io_0)() = nullptr;
 
         unsigned int default_io_voltage = 3300;
+        unsigned int default_supply_current = 200;
 
         unsigned int iface_id = 0;
 
@@ -65,8 +67,58 @@ class SDIF
         uint64_t get_size() const;
         uint32_t csd_extract(int startbit, int endbit) const;
         int read_cccr();
-        int read_cccr(unsigned int reg);
+        int read_cccr(unsigned int reg, uint8_t *val_out = nullptr);
         int write_cccr(unsigned int reg, uint8_t v);
+
+        int sdio_enable_function(unsigned int func, bool enable);
+        int sdio_enable_func_int(unsigned int func, bool enable);
+        int sdio_set_func_block_size(unsigned int func, size_t block_size);
+
+        template <unsigned int n_bytes> int sdio_read_tuple(unsigned int *addr,
+            uint8_t *tuple_id, size_t *len_out,
+            std::array<uint8_t, n_bytes> &d)
+        {
+            if(!addr)
+                return -1;
+            if(!is_sdio)
+                return -1;
+            if(!sd_ready)
+                return -1;
+            if(*addr < 0x1000 || *addr >= 0x18000)
+                return -1;
+            
+            uint8_t tid, len;
+            unsigned int cur_addr = *addr;
+            auto ret = read_cccr(cur_addr++, &tid);
+            if(ret != 0)
+                return ret;
+            if(tuple_id) *tuple_id = tid;
+            if(tid == 0xff)
+            {
+                // end of chain
+                *addr = 0;
+                if(len_out) *len_out = 0;
+                return 0;
+            }
+
+            ret = read_cccr(cur_addr++, &len);
+            if(ret != 0)
+                return ret;
+            if(len_out) *len_out = len;
+
+            for(unsigned int i = 0; i < len; i++)
+            {
+                uint8_t cb;
+                ret = read_cccr(cur_addr++, &cb);
+                if(ret != 0)
+                    return ret;
+                if(i < n_bytes)
+                    d[i] = cb;
+            }
+
+            *addr = cur_addr;
+            return 0;
+        }
 
         enum class resp_type { None, R1, R1b, R2, R3, R4, R4b, R5, R6, R7 };
         enum class data_dir { None, ReadBlock, WriteBlock, ReadStream, WriteStream };
