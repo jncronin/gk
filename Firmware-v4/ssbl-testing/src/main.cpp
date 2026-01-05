@@ -14,6 +14,7 @@
 #include "clocks.h"
 #include "i2c.h"
 #include "screen.h"
+#include "sdif.h"
 
 static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
@@ -134,13 +135,27 @@ int main(uint32_t bootrom_val)
 
     init_i2c();
 
+    init_screen();  // needed to enable level shifter
+
+    init_sdmmc2();
+
+    while(sdmmc[1].reset() != 0)
+    {
+        udelay(100000);
+    }
+
+    while(true);
+
+    //void init_wifi_airoc();
+    //init_wifi_airoc();
+
     while(true)
     {
         void lsm_poll();
         void pwr_poll();
 
         //lsm_poll();
-        //pwr_poll();
+        pwr_poll();
 
         udelay(40000);
     }

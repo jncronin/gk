@@ -9,6 +9,22 @@ void init_clocks()
     (void)RCC->OCENSETR;
     while((RCC->OCRDYR & RCC_OCRDYR_HSERDY) == 0);
 
+    // Enable LSE and LSI through backup supply - do not wait for LSE ready here as may break
+    // RM p.972
+    PWR->BDCR1 |= PWR_BDCR1_DBD3P;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    RCC->BDCR &= ~RCC_BDCR_LSEON;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    while(RCC->BDCR & RCC_BDCR_LSERDY);
+    RCC->BDCR &= ~RCC_BDCR_LSEBYP;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    RCC->BDCR |= RCC_BDCR_LSEON;
+    RCC->BDCR |= RCC_BDCR_LSION;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    while(!(RCC->BDCR & RCC_BDCR_LSIRDY));
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    PWR->BDCR1 &= ~PWR_BDCR1_DBD3P;
+
     // OSPI on XBAR 48 (see RM 21.4.9)
     // 0x44200000 (RCC) + 0x1018 + 4 * x
 

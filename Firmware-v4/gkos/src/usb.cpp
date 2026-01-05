@@ -138,8 +138,11 @@ void init_usb()
 
     /* We can observe the frequencies of various clocks here.  EV1 provides PF11/MCO1 on the
         GPIO expansion header.  It is NC on GK.
+
+        GK alternatively uses MCO1 through PI6 to clock the AIROC wifi, so don't change.
         
         Can use it to check the USB2PHY2 clock. */
+    /*
     RCC_VMEM->GPIOFCFGR |= RCC_GPIOFCFGR_GPIOxEN;
     (void)RCC_VMEM->GPIOFCFGR;
     pin PF11 { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOF_BASE), 11, 1 };
@@ -147,7 +150,7 @@ void init_usb()
     RCC_VMEM->FCALCOBS0CFGR = RCC_FCALCOBS0CFGR_CKOBSEN |
         RCC_FCALCOBS0CFGR_CKOBSEXTSEL |
         (4U << RCC_FCALCOBS0CFGR_CKEXTSEL_Pos);
-    RCC_VMEM->MCO1CFGR = RCC_MCO1CFGR_MCO1ON | RCC_MCO1CFGR_MCO1SEL;
+    RCC_VMEM->MCO1CFGR = RCC_MCO1CFGR_MCO1ON | RCC_MCO1CFGR_MCO1SEL; */
 }
 
 extern void USB3DR_IRQHandler()

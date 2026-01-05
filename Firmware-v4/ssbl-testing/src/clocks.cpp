@@ -231,3 +231,8 @@ void udelay(unsigned int d)
     auto until = clock_cur_us() + (uint64_t)d;
     while(clock_cur_us() < until);
 }
+
+void Block(kernel_time tout)
+{
+    while(clock_cur() < tout);
+}

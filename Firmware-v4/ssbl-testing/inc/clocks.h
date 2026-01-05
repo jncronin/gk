@@ -12,6 +12,9 @@ uint64_t clock_cur_us();
 uint64_t clock_cur_ms();
 void udelay(unsigned int);
 
+#include "kernel_time.h"
+void Block(kernel_time tout);
+
 #include_next "clocks.h"
 
 #endif
