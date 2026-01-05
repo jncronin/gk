@@ -23,6 +23,8 @@ class SDIF
         int (*io_1v8)() = nullptr;
         int (*io_0)() = nullptr;
 
+        unsigned int default_io_voltage = 3300;
+
         unsigned int iface_id = 0;
 
         SDMMC_TypeDef *iface;
@@ -56,9 +58,15 @@ class SDIF
         uint64_t sd_size = 0;
 
         uint32_t cmd6_buf[512/32];
+        uint8_t cccr[0x16];
 
         int reset();
         int set_clock(int freq, bool ddr = false);
+        uint64_t get_size() const;
+        uint32_t csd_extract(int startbit, int endbit) const;
+        int read_cccr();
+        int read_cccr(unsigned int reg);
+        int write_cccr(unsigned int reg, uint8_t v);
 
         enum class resp_type { None, R1, R1b, R2, R3, R4, R4b, R5, R6, R7 };
         enum class data_dir { None, ReadBlock, WriteBlock, ReadStream, WriteStream };

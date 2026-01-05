@@ -60,7 +60,9 @@ enum StatusFlags { CCRCFAIL = 1, DCRCFAIL = 2, CTIMEOUT = 4, DTIMEOUT = 8,
     TXUNDERR = 0x10, RXOVERR = 0x20, CMDREND = 0x40, CMDSENT = 0x80,
     DATAEND = 0x100, /* reserved */ DBCKEND = 0x400, DABORT = 0x800,
     DPSMACT = 0x1000, CPSMACT = 0x2000, TXFIFOHE = 0x4000, RXFIFOHF = 0x8000,
-    TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000 };
+    TXFIFOF = 0x10000, RXFIFOF = 0x20000, TXFIFOE = 0x40000, RXFIFOE = 0x80000,
+    SDIOIT = 0x400000
+};
 
 void init_sdmmc1()
 {
@@ -173,6 +175,7 @@ void init_sdmmc2()
 
     sdmmc[1].iface = SDMMC2_VMEM;
     sdmmc[1].iface_id = 2;
+    sdmmc[1].default_io_voltage = 1800;
     // functions to set power
     sdmmc[1].supply_off = []() { WIFI_REG_ON.clear(); udelay(10000); return 0; };
     sdmmc[1].supply_on = []() { WIFI_REG_ON.set(); udelay(250000); return 0; };
@@ -195,6 +198,7 @@ int SDIF::reset()
     is_sdio = false;
     sdio_n_extra_funcs = 0;
     cmd5_s18a = false;
+    is_1v8 = false;
 
     *rcc_reg |= RCC_SDMMC1CFGR_SDMMC1RST | RCC_SDMMC1CFGR_SDMMC1DLLRST;
     (void)*rcc_reg;
@@ -302,7 +306,10 @@ int SDIF::reset()
             int nretries = 0;
             while(true)
             {
-                ret = sd_issue_command(5, resp_type::R4, 0xff8000U, resp);
+                auto arg = 0xff8000U;
+                if(!vswitch_failed /* && default_io_voltage != 1800 */)
+                    arg |= (1U << 25);
+                ret = sd_issue_command(5, resp_type::R4, arg, resp);
                 if(ret != 0)
                 {
                     klog("sd%d: sdio: cmd5(%x) failed %d\n", iface_id, 0xff8000U, ret);
@@ -341,12 +348,69 @@ int SDIF::reset()
         klog("sd%d: CMD5 returned %x\n", iface_id, ret);
     }
     
-    (void)is_v2;
-
     if(!is_sdio || is_mem)
     {
         // proceed to memory init ACMD41
-        klog("sd%d: memory init\n", iface_id);
+        // Inquiry ACMD41 to get voltage window
+        ret = sd_issue_command(55, resp_type::R1, 0, resp);
+        if(ret != 0)
+            return -1;
+        
+        ret = sd_issue_command(41, resp_type::R3, 0, resp);
+        if(ret != 0)
+            return -1;
+
+        // We can promise ~3.1-3.4 V
+        if(!(resp[0] & 0x380000))
+        {
+            klog("sd%d: invalid voltage range\n", iface_id);
+            return -1;
+        }
+
+        // Send init ACMD41 repeatedly until ready
+        bool is_ready = false;
+        is_hc = false;
+
+        if(vswitch_failed)
+            is_1v8 = false;
+
+        while(!is_ready)
+        {
+            uint32_t ocr = 0xff8000 | (is_v2 ? ((1UL << 30) | 
+                (vswitch_failed ? 0UL : (1UL << 24))): 0);
+            ret = sd_issue_command(55, resp_type::R1, 0, resp);
+            if(ret != 0)
+                return -1;
+            
+            ret = sd_issue_command(41, resp_type::R3, ocr, resp);
+            if(ret != 0)
+                return -1;
+            
+            if(resp[0] & (1UL << 31))
+            {
+                if(resp[0] & (1UL << 30))
+                {
+                    is_hc = true;
+                }
+
+                if(resp[0] & (1UL << 24))
+                {
+                    if(!vswitch_failed)
+                        is_1v8 = true;
+                }
+
+                {
+                    klog("sd%d: %s capacity card ready\n", iface_id,
+                        is_hc ? "high" : "normal");
+                    if(is_1v8)
+                    {
+                        klog("sd%d: 1.8v signalling support\n", iface_id);
+                    }
+                }
+                is_ready = true;
+                is_mem = true;
+            }
+        }
     }
 
     if(!is_sdio && !is_mem)
@@ -356,9 +420,557 @@ int SDIF::reset()
     }
 
     // Check logical OR of ACMD41 S18A and CMD5 S18A
+    if(!vswitch_failed /* && default_io_voltage != 1800 */ &&
+        (is_1v8 || cmd5_s18a) && io_1v8)
+    {
+        // proceed to voltage switch
+        // send CMD11 to begin voltage switch sequence
 
+        // PLSS p.47 and RM p.2186
+        iface->POWER |= SDMMC_POWER_VSWITCHEN;
+        
+        ret = sd_issue_command(11, resp_type::R1, 0);
+        if(ret != 0)
+        {
+            vswitch_failed = true;
+            return -1;
+        }
+
+        klog("sd%d: CMD11 returned successfully\n", iface_id);
+
+        // wait for CK_STOP
+        while(!(iface->STA & SDMMC_STA_CKSTOP));
+        iface->ICR = SDMMC_ICR_CKSTOPC;
+
+        // sample BUSYD0
+        auto busyd0 = iface->STA & SDMMC_STA_BUSYD0;
+        if(!busyd0)
+        {
+            klog("sd%d: D0 high, aborting voltage switch\n", iface_id);
+            vswitch_failed = true;
+            return -1;
+        }
+
+        klog("sd%d: D0 low - proceeding with vswitch\n", iface_id);
+        if(io_1v8() != 0)
+        {
+            klog("sd%d: voltage regulator change failed\n", iface_id);
+            vswitch_failed = true;
+            return -1;
+        }
+
+        delay_ms(10);
+        *pwr_valid_reg |= PWR_CR8_VDDIO1VRSEL;
+
+        // continue vswitch sequence
+        iface->POWER |= SDMMC_POWER_VSWITCH;
+
+        // wait for finish
+        while(!(iface->STA & SDMMC_STA_VSWEND));
+        iface->ICR = SDMMC_ICR_VSWENDC | SDMMC_ICR_CKSTOPC;
+
+        busyd0 = iface->STA & SDMMC_STA_BUSYD0;
+
+        if(busyd0)
+        {
+            klog("sd%d: D0 low after voltage switch - failing\n", iface_id);
+            vswitch_failed = true;
+            return -1;
+        }
+
+        klog("sd%d: voltage switch succeeded\n", iface_id);
+
+        iface->POWER &= ~(SDMMC_POWER_VSWITCH | SDMMC_POWER_VSWITCHEN);
+    }
+
+    if(is_mem)
+    {
+        // CMD2  - ALL_SEND_CID
+        ret = sd_issue_command(2, resp_type::R2, 0, cid);
+        if(ret != 0)
+        {
+            klog("sd%d: CMD2 failed\n", iface_id);
+            return -1;
+        }
+    }
+
+    // CMD3 - SEND_RELATIVE_ADDR
+    uint32_t cmd3_ret;
+    ret = sd_issue_command(3, resp_type::R6, 0, &cmd3_ret);
+    if(ret != 0)
+        return -1;
+
+    if(cmd3_ret & (7UL << 13))
+    {
+        klog("sd%d: card error %lx\n", iface_id, cmd3_ret & 0xffff);
+        return -1;
+    }
+    if(is_mem && !(cmd3_ret & (1UL << 8)))
+    {
+        klog("sd%d: card not ready for data %x\n", iface_id, cmd3_ret);
+        return -1;
+    }
+    rca = cmd3_ret & 0xffff0000;
+
+    if(is_mem)
+    {
+        // memory cards definitely support 25 MHz
+        set_clock(SDCLK_DS);
+
+        // Get card status - should be in data transfer mode, standby state
+        ret = sd_issue_command(13, resp_type::R1, rca, resp);
+        if(ret != 0)
+            return -1;
+        
+        if(resp[0] != 0x700)
+        {
+            klog("sd%d: card not in standby state\n", iface_id);
+            return -1;
+        }
+
+        // Send CMD9 to get cards CSD (needed to calculate card size)
+        ret = sd_issue_command(9, resp_type::R2, rca, csd);
+        if(ret != 0)
+            return -1;
+
+        {
+            klog("sd%d: CSD: %lx, %lx, %lx, %lx\n", iface_id, csd[0], csd[1], csd[2], csd[3]);
+            klog("sd%d: sd card size %llu kB\n", iface_id, get_size() / 1024ULL);
+        }
+        sd_size = get_size();
+    }
+
+    // Select card to put it in transfer state
+    ret = sd_issue_command(7, resp_type::R1b, rca, resp);
+    if(ret != 0)
+        return -1;
+
+    if(is_sdio)
+    {
+        if(read_cccr() != 0)
+        {
+            klog("sd%d: read_cccr failed\n", iface_id);
+            return -1;
+        }
+        if((cccr[8] & (1U << 6)) == 0)
+        {
+            // not low speed - can speed up interface
+            set_clock(SDCLK_DS);
+        }
+    }
+
+    if(is_mem)
+    {
+        // Get card status again - should be in tranfer state
+        ret = sd_issue_command(13, resp_type::R1, rca, resp);
+        if(ret != 0)
+            return -1;
+        
+        if(resp[0] != 0x900)
+        {
+            klog("sd%d: card not in transfer state\n", iface_id);
+            return -1;
+        }
+
+        // If not SDHC ensure blocklen is 512 bytes
+        if(!is_hc)
+        {
+            ret = sd_issue_command(16, resp_type::R1, 512, resp);
+            if(ret != 0)
+                return -1;
+        }
+
+        // Read SCR register - 64 bits from card in transfer mode - ACMD51 with data
+        iface->DCTRL = 0;
+        int timeout_ns = 200000000;
+        iface->DTIMER = timeout_ns / clock_period_ns;
+        iface->DLEN = 8;
+        iface->DCTRL = 
+            SDMMC_DCTRL_DTDIR |
+            (3UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
+
+        ret = sd_issue_command(55, resp_type::R1, rca);
+        if(ret != 0)
+            return -1;
+        
+        ret = sd_issue_command(51, resp_type::R1, 0, resp, true);
+        if(ret != 0)
+            return -1;
+
+        int scr_idx = 0;
+        while(!(iface->STA & DBCKEND) && !(iface->STA & DATAEND) && !(iface->STA & DTIMEOUT))
+        {
+            if(iface->STA & DCRCFAIL)
+            {
+                klog("sd%d: dcrc fail\n", iface_id);
+                return -1;
+            }
+            if(iface->STA & DTIMEOUT)
+            {
+                klog("sd%d: dtimeout\n", iface_id);
+                return -1;
+            }
+            if(scr_idx < 2 && !(iface->STA & SDMMC_STA_RXFIFOE))
+            {
+                scr[1 - scr_idx] = __builtin_bswap32(iface->FIFO);
+                scr_idx++;
+            }
+        }
+        iface->ICR = DBCKEND | DATAEND;
+        
+        {
+            klog("sd%d: scr %lx %lx, dcount %lx, sta %lx\n", iface_id, scr[0], scr[1], iface->DCOUNT, iface->STA);
+        }
+    }
+
+    // set 4 bit mode via one or both of memory and io interfaces
+    bool bit4_set = false;
+    if(is_mem)
+    {
+        // can we use 4-bit signalling?
+        if((scr[1] & (0x5UL << (48-32))) == (0x5UL << (48-32)))
+        {
+            ret = sd_issue_command(55, resp_type::R1, rca);
+            if(ret != 0)
+                return -1;
+            ret = sd_issue_command(6, resp_type::R1, 2);
+            if(ret != 0)
+                return -1;
+
+            klog("sd%d: mem: card set to 4-bit mode\n", iface_id);
+            bit4_set = true;
+        }
+    }
+    if(is_sdio)
+    {
+        if((cccr[8] & 0x40U) == 0 || (cccr[8] & 0x80U))
+        {
+            if(write_cccr(7, (cccr[7] & ~0x3U) | 0x2U))
+            {
+                klog("sd%d: sdio: write_cccr failed\n", iface_id);
+                return -1;
+            }
+        }
+
+        if((cccr[7] & 0x3U) == 0x2U)
+        {
+            klog("sd%d: sdio: card set to 4-bit mode\n", iface_id);
+            bit4_set = true;
+        }
+    }
+
+    if(bit4_set)
+    {
+        iface->CLKCR |= SDMMC_CLKCR_WIDBUS_0;
+    }
+
+    if(is_mem)
+    {
+        // can we use 48 MHz interface?
+        if(((scr[1] >> (56 - 32)) & 0xfU) >= 1)
+        {
+            // supports CMD6
+
+            // send inquiry CMD6
+            iface->DLEN = 64;
+            iface->DCTRL = 
+                SDMMC_DCTRL_DTDIR |
+                (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
+
+            ret = sd_issue_command(6, resp_type::R1, 0, nullptr, true);
+            if(ret != 0)
+                return -1;
+            
+            // read response
+            int cmd6_buf_idx = 0;
+            while(!(iface->STA & DBCKEND) && !(iface->STA & DATAEND) && !(iface->STA & DTIMEOUT))
+            {
+                if(iface->STA & DCRCFAIL)
+                {
+                    
+                    klog("sd%d: dcrcfail\n", iface_id);
+                    return -1;
+                }
+                if(iface->STA & DTIMEOUT)
+                {
+                    
+                    klog("sd%d: dtimeout\n", iface_id);
+                    return -1;
+                }
+                if(iface->STA & SDMMC_STA_RXOVERR)
+                {
+                    
+                    klog("sd%d: rxoverr\n", iface_id);
+                    return -1;
+                }
+                if(cmd6_buf_idx < 16 && !(iface->STA & SDMMC_STA_RXFIFOE))
+                {
+                    cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(iface->FIFO);
+                    cmd6_buf_idx++;
+                }
+            }
+
+            iface->ICR = DBCKEND | DATAEND;
+
+            // can we enable high speed mode? - check bits 415:400
+            auto fg1_support = (cmd6_buf[12] >> 16) & 0xffffUL;
+            {
+                
+                klog("sd%d: cmd6: fg1_support: %lx\n", iface_id, fg1_support);
+            }
+            auto fg4_support = (cmd6_buf[14]) & 0xffffUL;
+            klog("sd%d: cmd6: fg4_support: %lx\n", iface_id, fg4_support);
+            uint32_t mode_set = 0;
+            if(is_1v8 && (fg1_support & 0x10) && (fg4_support & 0x2))
+            {
+                klog("sd%d: supports ddr50 mode at 1.44W\n", iface_id);
+                mode_set = 0x80ff1ff4;
+            }
+            else if(fg1_support & 0x2)
+            {
+                klog("sd%d: supports hs/sdr25 mode at 0.72W\n", iface_id);
+                mode_set = 0x80fffff1;
+            }
+
+            if(mode_set)
+            {
+                // try and switch to higher speed mode
+                iface->DCTRL = 0;
+                iface->DLEN = 64;
+                iface->DCTRL = 
+                    SDMMC_DCTRL_DTDIR |
+                    (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
+                
+                ret = sd_issue_command(6, resp_type::R1, mode_set, nullptr, true);
+                if(ret != 0)
+                    return -1;
+                
+                cmd6_buf_idx = 0;
+                while(!(iface->STA & DBCKEND) && !(iface->STA & DATAEND) && !(iface->STA & DTIMEOUT))
+                {
+                    if(iface->STA & DCRCFAIL)
+                    {
+                        
+                        klog("sd%d: dcrcfail\n", iface_id);
+                        return -1;
+                    }
+                    if(iface->STA & DTIMEOUT)
+                    {
+                        
+                        klog("sd%d: dtimeout\n", iface_id);
+                        return -1;
+                    }
+                    if(iface->STA & SDMMC_STA_RXOVERR)
+                    {
+                        
+                        klog("sd%d: rxoverr\n", iface_id);
+                        return -1;
+                    }
+                    if(cmd6_buf_idx < 16 && !(iface->STA & SDMMC_STA_RXFIFOE))
+                    {
+                        cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(iface->FIFO);
+                        cmd6_buf_idx++;
+                    }
+                }
+                iface->ICR = DBCKEND | DATAEND;
+
+                auto fg1_setting = (cmd6_buf[11] >> 24) & 0xfUL;
+                auto fg4_setting = (cmd6_buf[12] >> 4) & 0xfUL;
+                {
+                    
+                    klog("sd%d: cmd6: fg1_setting: %lx, fg4_setting: %lx\n", iface_id, fg1_setting,
+                        fg4_setting);
+                }
+
+#if GK_SD_USE_HS_MODE
+                if(fg1_setting == 1)
+                {
+                    set_clock(SDCLK_HS);
+                    iface->DTIMER = timeout_ns / clock_period_ns;
+                    {
+                        klog("sd%d: set to high speed mode\n", iface_id);
+                    }
+                }
+                else if(fg1_setting == 4)
+                {
+                    set_clock(SDCLK_HS, true);
+                    iface->DTIMER = timeout_ns / clock_period_ns;
+                    {
+                        klog("sd%d: set to DDR50 mode\n", iface_id);
+                    }
+                }
+#endif
+            }
+        }
+    }
+
+    // Hardware flow control - prevents buffer under/overruns
+    iface->CLKCR |= SDMMC_CLKCR_HWFC_EN;
+
+    // Enable interrupts
+    iface->MASK = DCRCFAIL | DTIMEOUT |
+        TXUNDERR | RXOVERR | DATAEND;
+    if(is_sdio)
+        iface->MASK |= SDIOIT;
+
+    // TODO
+    //gic_set_target(155, GIC_ENABLED_CORES);
+    //gic_set_enable(155);
+
+    klog("sd%d: init success\n", iface_id);
+    tfer_inprogress = false;
+    sd_ready = true;
 
     return (is_mem || is_sdio) ? 0 : -1;
+}
+
+int SDIF::write_cccr(unsigned int reg, uint8_t v)
+{
+    if(!is_sdio)
+        return -1;
+
+    uint32_t resp;
+    uint32_t arg = reg << 9;
+    arg |= (uint32_t)v;
+    arg |= 1U << 27;        // RAW
+    arg |= 1U << 31;        // write
+
+    auto ret = sd_issue_command(52, resp_type::R5,arg, &resp);
+    if(ret != 0)
+    {
+        klog("sd%d: write_cccr ret %d\n", ret);
+        return ret;
+    }
+    auto status = (resp >> 8) & 0xffU;
+    if(status & 0xcbU)
+    {
+        klog("sd%d: write_cccr status error: %x\n", resp);
+        return -1;
+    }
+    resp &= 0xffU;
+    klog("sd%d: CCCR[%2u] = %x\n", iface_id, reg, resp);
+
+    if(reg < 0x16)
+        cccr[reg] = (uint8_t)resp;
+    return 0;
+}
+
+int SDIF::read_cccr(unsigned int reg)
+{
+    if(!is_sdio)
+        return -1;
+
+    uint32_t resp;
+    auto ret = sd_issue_command(52, resp_type::R5, reg << 9, &resp);
+    if(ret != 0)
+    {
+        klog("sd%d: read_cccr ret %d\n", ret);
+        return ret;
+    }
+    auto status = (resp >> 8) & 0xffU;
+    if(status & 0xcbU)
+    {
+        klog("sd%d: read_cccr status error: %x\n", resp);
+        return -1;
+    }
+    resp &= 0xffU;
+    klog("sd%d: CCCR[%2u] = %x\n", iface_id, reg, resp);
+
+    if(reg < 0x16)
+        cccr[reg] = (uint8_t)resp;
+    return 0;
+}
+
+int SDIF::read_cccr()
+{
+    if(!is_sdio)
+        return -1;
+
+    for(unsigned int reg = 0; reg < 0x16; reg++)
+    {
+        auto ret = read_cccr(reg);
+        if(ret != 0)
+            return ret;
+    }
+
+    return 0;
+}
+
+uint32_t SDIF::csd_extract(int startbit, int endbit) const
+{   
+    uint32_t ret = 0;
+
+    int cur_ret_bit = 0;
+    int cur_byte = 0;
+    while(startbit > 31)
+    {
+        startbit -= 32;
+        endbit -= 32;
+        cur_byte++;
+    }
+
+    while(endbit > 0)
+    {
+        auto cur_part = csd[cur_byte] >> startbit;
+
+        if(endbit < 31)
+        {
+            // need to mask end bits
+            uint32_t mask = ~(0xFFFFFFFFUL << (endbit - startbit + 1));
+            cur_part &= mask;
+        }
+
+        ret += (cur_part << cur_ret_bit);
+
+        auto act_endbit = endbit > 31 ? 31 : endbit;
+
+        cur_ret_bit += (act_endbit - startbit + 1);
+        startbit -= 32;
+        if(startbit < 0)
+            startbit = 0;
+        endbit -= 32;
+        cur_byte++;
+    }
+
+    return ret;
+}
+
+uint64_t SDIF::get_size() const
+{
+    switch(csd[3] >> 30)
+    {
+        case 0:
+            // CSD v1.0
+            {
+                auto c_size = (uint64_t)csd_extract(62, 73);
+                auto c_size_mult = (uint64_t)csd_extract(47, 49);
+                auto read_bl_len = (uint64_t)csd_extract(80, 83);
+
+                auto mult = 1ULL << (c_size_mult + 2);
+                auto blocknr = (c_size + 1) * mult;
+                auto block_len = 1ULL << read_bl_len;
+
+                return blocknr * block_len;
+            }
+
+        case 1:
+            // CSD v2.0
+            {
+                auto c_size = (uint64_t)csd_extract(48, 69);
+
+                return (c_size + 1) * 512 * 1024;
+            }
+
+        case 2:
+            // CSD v3.0
+            {
+                auto c_size = (uint64_t)csd_extract(48, 75);
+
+                return (c_size + 1) * 512 * 1024;
+            }
+    }
+
+    return 0;
 }
 
 int SDIF::sd_issue_command(uint32_t command, resp_type rt, uint32_t arg, uint32_t *resp, 
@@ -584,655 +1196,10 @@ int SDIF::set_clock(int freq, bool ddr)
 
     clock_speed = (div == 0) ? SDCLK : (SDCLK / (div * 2));
     {
-        klog("SD%d: clock set to %d (div = %d)\n", iface_id, clock_speed, div);
+        klog("sd%d: clock set to %d (div = %d)\n", iface_id, clock_speed, div);
     }
 
     clock_period_ns = 1000000000 / clock_speed;
 
     return 0;
 }
-
-#if 0
-void sd_reset()
-{
-    sd_ready = false;
-    is_4bit = false;
-    is_hc = false;
-    tfer_inprogress = false;
-    dma_ready = false;
-    sd_multi = false;
-    sd_status = 0;
-
-    // Clocks to SDMMC1/2 (crossbar 51 + 52)
-    // Use PLL4 = 1200 MHz / 6 -> 200 MHz SDCLK
-    RCC_VMEM->PREDIVxCFGR[51] = 0;
-    RCC_VMEM->FINDIVxCFGR[51] = 0x45;
-    RCC_VMEM->XBARxCFGR[51] = 0x40;
-    RCC_VMEM->PREDIVxCFGR[52] = 0;
-    RCC_VMEM->FINDIVxCFGR[52] = 0x45;
-    RCC_VMEM->XBARxCFGR[52] = 0x40;
-  
-    
-    // Assume SD is already inserted, panic otherwise
-
-    // This follows RM 58.6.7
-
-    // Reset SDMMC
-    RCC_VMEM->SDMMC1CFGR |= RCC_SDMMC1CFGR_SDMMC1RST | RCC_SDMMC1CFGR_SDMMC1DLLRST;
-    (void)RCC_VMEM->SDMMC1CFGR;
-    RCC_VMEM->SDMMC1CFGR &= ~(RCC_SDMMC1CFGR_SDMMC1RST | RCC_SDMMC1CFGR_SDMMC1DLLRST);
-    (void)RCC_VMEM->SDMMC1CFGR;
-
-    // Clock SDMMC
-    RCC_VMEM->SDMMC1CFGR |= RCC_SDMMC1CFGR_SDMMC1EN;
-    (void)RCC_VMEM->SDMMC1CFGR;
-
-    RCC_VMEM->GPIOECFGR |= RCC_GPIOECFGR_GPIOxEN;;
-    (void)RCC_VMEM->GPIOFCFGR;
-
-    /* Pins */
-    for(const auto &p : sd_pins)
-    {
-        p.set_as_af();
-    }
-
-    /* Give SDMMC1 access to DDR via RIFSC.  Use same CID as CA35/secure/priv for the master interface ID 1 */
-    *(volatile uint32_t *)(RIFSC_VMEM + 0xc10 + 1 * 0x4) =
-        (1UL << 2) |                // use cid specified here
-        (1UL << 4) |                // CID 1
-        (1UL << 8) |                // secure
-        (1UL << 9);                 // priv
-    /* The IDMA is forced to non-secure if its RISUP (RISUP 76) is programmed as non-secure,
-        therefore set as secure here */
-    const uint32_t risup = 76;
-    const uint32_t risup_word = risup / 32;
-    const uint32_t risup_bit = risup % 32;
-    auto risup_reg = (volatile uint32_t *)(RIFSC_VMEM + 0x10 + 0x4 * risup_word);
-    auto old_val = *risup_reg;
-    old_val |= 1U << risup_bit;
-    *risup_reg = old_val;
-    __asm__ volatile("dmb sy\n" ::: "memory");
-
-    // Ensure clock is set-up for identification mode - other bits are zero after reset
-    SDMMC_set_clock(SDCLK_IDENT);
-
-    // Hardware flow control
-    SDMMC1_VMEM->CLKCR |= SDMMC_CLKCR_HWFC_EN;
-
-    // power-cycle card here
-    auto mv = smc_set_power(SMC_Power_Target::SDCard, 0);
-    if(mv != 0)
-    {
-        klog("SD: failed to switch off card %d\n", mv);
-        return;
-    }
-    PWR_VMEM->CR8 &= ~PWR_CR8_VDDIO1VRSEL;
-    delay_ms(10);
-    mv = smc_set_power(SMC_Power_Target::SDCard_IO, 3300);
-    if(mv != 3300)
-    {
-        klog("SD: failed to turn on SDMMC1 IO %d\n", mv);
-        return;
-    }
-    PWR_VMEM->CR8 |= PWR_CR8_VDDIO1SV;
-
-    // set SDMMC state to power cycle (no drive on any pins)
-    SDMMC1_VMEM->POWER = 2UL << SDMMC_POWER_PWRCTRL_Pos;
-
-    // wait 1 ms
-    delay_ms(1);
-
-    // enable card VCC and wait power ramp-up time
-    mv = smc_set_power(SMC_Power_Target::SDCard, 3300);
-    if(mv != 3300)
-    {
-        smc_set_power(SMC_Power_Target::SDCard_IO, 0);
-        PWR_VMEM->CR8 &= ~PWR_CR8_VDDIO1SV;
-        klog("SD: failed to turn on card %d\n", mv);
-        return;
-    }
-    delay_ms(10);
-
-    // disable SDMMC output
-    SDMMC1_VMEM->POWER = 0UL;
-
-    // wait 1 ms
-    delay_ms(1);
-
-    // Enable clock to card
-    SDMMC1_VMEM->POWER = 3UL << SDMMC_POWER_PWRCTRL_Pos;
-
-    // Wait 74 CK cycles = 0.37 ms at 200 kHz
-    delay_ms(1);
-    
-    // Issue CMD0 (go idle state)
-    auto ret = sd_issue_command(0, resp_type::None);
-    if(ret != 0)
-        return;
-    
-    // Issue CMD8 (bcr, argument = supply voltage, R7)
-    uint32_t resp[4];
-    ret = sd_issue_command(8, resp_type::R7, 0x1aa, resp);
-    bool is_v2 = false;
-    if(ret == CTIMEOUT)
-    {
-        is_v2 = false;
-        klog("init_sd: CMD8 timed out - assuming <v2 card\n");
-    }
-    else if(ret == 0)
-    {
-        if((resp[0] & 0x1ff) == 0x1aa)
-        {
-            is_v2 = true;
-        }
-        else
-        {
-            klog("init_sd: CMD8 invalid response %lx\n", resp[0]);
-            return;
-        }
-    }
-    else
-        return;
-    
-    (void)is_v2;
-
-    // Inquiry ACMD41 to get voltage window
-    ret = sd_issue_command(55, resp_type::R1, 0, resp);
-    if(ret != 0)
-        return;
-    
-    ret = sd_issue_command(41, resp_type::R3, 0, resp);
-    if(ret != 0)
-        return;
-
-    // We can promise ~3.1-3.4 V
-    if(!(resp[0] & 0x380000))
-    {
-        klog("init_sd: invalid voltage range\n");
-        return;
-    }
-
-    // Send init ACMD41 repeatedly until ready
-    bool is_ready = false;
-    is_hc = false;
-
-    if(vswitch_failed)
-        is_1v8 = false;
-
-    while(!is_ready)
-    {
-        uint32_t ocr = 0xff8000 | (is_v2 ? ((1UL << 30) | 
-            (vswitch_failed ? 0UL : (1UL << 24))): 0);
-        ret = sd_issue_command(55, resp_type::R1, 0, resp);
-        if(ret != 0)
-            return;
-        
-        ret = sd_issue_command(41, resp_type::R3, ocr, resp);
-        if(ret != 0)
-            return;
-        
-        if(resp[0] & (1UL << 31))
-        {
-            if(resp[0] & (1UL << 30))
-            {
-                is_hc = true;
-            }
-
-            if(resp[0] & (1UL << 24))
-            {
-                if(!vswitch_failed)
-                    is_1v8 = true;
-            }
-
-            {
-                klog("init_sd: %s capacity card ready\n", is_hc ? "high" : "normal");
-                if(is_1v8)
-                {
-                    klog("init_sd: 1.8v signalling support\n");
-                }
-            }
-            is_ready = true;
-        }
-
-        // TODO: timeout
-    }
-    
-    if(is_1v8)
-    {
-        // send CMD11 to begin voltage switch sequence
-
-        // PLSS p.47 and RM p.2186
-        SDMMC1_VMEM->POWER |= SDMMC_POWER_VSWITCHEN;
-        
-        ret = sd_issue_command(11, resp_type::R1, 0);
-        if(ret != 0)
-        {
-            is_ready = false;
-            vswitch_failed = true;
-            return;
-        }
-
-        klog("init_sd: CMD11 returned successfully\n");
-
-        // wait for CK_STOP
-        while(!(SDMMC1_VMEM->STA & SDMMC_STA_CKSTOP));
-        SDMMC1_VMEM->ICR = SDMMC_ICR_CKSTOPC;
-
-        // sample BUSYD0
-        auto busyd0 = SDMMC1_VMEM->STA & SDMMC_STA_BUSYD0;
-        if(!busyd0)
-        {
-            klog("init_sd: D0 high, aborting voltage switch\n");
-            is_ready = false;
-            vswitch_failed = true;
-            return;
-        }
-
-        klog("init_sd: D0 low - proceeding with vswitch\n");
-        mv = smc_set_power(SMC_Power_Target::SDCard_IO, 1800);
-        if(mv != 1800)
-        {
-            klog("init_sd: voltage regulator change failed: %u\n", mv);
-            is_ready = false;
-            vswitch_failed = true;
-            return;
-        }
-
-        delay_ms(10);
-        PWR_VMEM->CR8 |= ~PWR_CR8_VDDIO1VRSEL;
-
-        // continue vswitch sequence
-        SDMMC1_VMEM->POWER |= SDMMC_POWER_VSWITCH;
-
-        // wait for finish
-        while(!(SDMMC1_VMEM->STA & SDMMC_STA_VSWEND));
-        SDMMC1_VMEM->ICR = SDMMC_ICR_VSWENDC | SDMMC_ICR_CKSTOPC;
-
-        busyd0 = SDMMC1_VMEM->STA & SDMMC_STA_BUSYD0;
-
-        if(busyd0)
-        {
-            klog("init_sd: D0 low after voltage switch - failing\n");
-            is_ready = false;
-            vswitch_failed = true;
-            return;
-        }
-
-        klog("init_sd: voltage switch succeeded\n");
-
-        SDMMC1_VMEM->POWER &= ~(SDMMC_POWER_VSWITCH | SDMMC_POWER_VSWITCHEN);
-    }
-
-    // CMD2  - ALL_SEND_CID
-    ret = sd_issue_command(2, resp_type::R2, 0, cid);
-    if(ret != 0)
-    {
-        klog("init_sd: CMD2 failed\n");
-        return;
-    }
-
-    // CMD3 - SEND_RELATIVE_ADDR
-    uint32_t cmd3_ret;
-    ret = sd_issue_command(3, resp_type::R6, 0, &cmd3_ret);
-    if(ret != 0)
-        return;
-
-    if(cmd3_ret & (7UL << 13))
-    {
-        klog("init_sd: card error %lx\n", cmd3_ret & 0xffff);
-        return;
-    }
-    if(!(cmd3_ret & (1UL << 8)))
-    {
-        klog("init_sd: card not ready for data\n");
-        return;
-    }
-    rca = cmd3_ret & 0xffff0000;
-
-    // We know the card is an SD card so can cope with 25 MHz
-    SDMMC_set_clock(SDCLK_DS);
-
-    // Get card status - should be in data transfer mode, standby state
-    ret = sd_issue_command(13, resp_type::R1, rca, resp);
-    if(ret != 0)
-        return;
-    
-    if(resp[0] != 0x700)
-    {
-        klog("init_sd: card not in standby state\n");
-        return;
-    }
-
-    // Send CMD9 to get cards CSD (needed to calculate card size)
-    ret = sd_issue_command(9, resp_type::R2, rca, csd);
-    if(ret != 0)
-        return;
-
-    {
-        klog("init_sd: CSD: %lx, %lx, %lx, %lx\n", csd[0], csd[1], csd[2], csd[3]);
-        klog("init_sd: sd card size %llu kB\n", sd_get_size() / 1024ULL);
-    }
-    sd_size = sd_get_size();
-
-    // Select card to put it in transfer state
-    ret = sd_issue_command(7, resp_type::R1b, rca, resp);
-    if(ret != 0)
-        return;
-    
-    // Get card status again - should be in tranfer state
-    ret = sd_issue_command(13, resp_type::R1, rca, resp);
-    if(ret != 0)
-        return;
-    
-    if(resp[0] != 0x900)
-    {
-        klog("init_sd: card not in transfer state\n");
-        return;
-    }
-
-    // If not SDHC ensure blocklen is 512 bytes
-    if(!is_hc)
-    {
-        ret = sd_issue_command(16, resp_type::R1, 512, resp);
-        if(ret != 0)
-            return;
-    }
-
-    // Empty FIFO
-    //while(!(SDMMC1_VMEM->STA & RXFIFOE))
-    //    (void)SDMMC1_VMEM->FIFO;
-
-    // Read SCR register - 64 bits from card in transfer mode - ACMD51 with data
-    SDMMC1_VMEM->DCTRL = 0;
-    int timeout_ns = 200000000;
-    SDMMC1_VMEM->DTIMER = timeout_ns / clock_period_ns;
-    SDMMC1_VMEM->DLEN = 8;
-    SDMMC1_VMEM->DCTRL = 
-        SDMMC_DCTRL_DTDIR |
-        (3UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
-
-    ret = sd_issue_command(55, resp_type::R1, rca);
-    if(ret != 0)
-        return;
-    
-    ret = sd_issue_command(51, resp_type::R1, 0, resp, true);
-    if(ret != 0)
-        return;
-
-    int scr_idx = 0;
-    while(!(SDMMC1_VMEM->STA & DBCKEND) && !(SDMMC1_VMEM->STA & DATAEND) && !(SDMMC1_VMEM->STA & DTIMEOUT))
-    {
-        if(SDMMC1_VMEM->STA & DCRCFAIL)
-        {
-            klog("init_sd: dcrc fail\n");
-            return;
-        }
-        if(SDMMC1_VMEM->STA & DTIMEOUT)
-        {
-            klog("init_sd: dtimeout\n");
-            return;
-        }
-        if(scr_idx < 2 && !(SDMMC1_VMEM->STA & SDMMC_STA_RXFIFOE))
-        {
-            scr[1 - scr_idx] = __builtin_bswap32(SDMMC1_VMEM->FIFO);
-            scr_idx++;
-        }
-    }
-    SDMMC1_VMEM->ICR = DBCKEND | DATAEND;
-    
-    {
-        klog("init_sd: scr %lx %lx, dcount %lx, sta %lx\n", scr[0], scr[1], SDMMC1_VMEM->DCOUNT, SDMMC1_VMEM->STA);
-    }
-
-    // can we use 4-bit signalling?
-    if((scr[1] & (0x5UL << (48-32))) == (0x5UL << (48-32)))
-    {
-        ret = sd_issue_command(55, resp_type::R1, rca);
-        if(ret != 0)
-            return;
-        ret = sd_issue_command(6, resp_type::R1, 2);
-        if(ret != 0)
-            return;
-
-        {
-            
-            klog("init_sd: set to 4-bit mode\n");
-        }
-        is_4bit = true;
-        SDMMC1_VMEM->CLKCR |= SDMMC_CLKCR_WIDBUS_0;
-    }
-
-    // can we use 48 MHz interface?
-    if(((scr[1] >> (56 - 32)) & 0xfU) >= 1)
-    {
-        // supports CMD6
-
-        // send inquiry CMD6
-        SDMMC1_VMEM->DLEN = 64;
-        SDMMC1_VMEM->DCTRL = 
-            SDMMC_DCTRL_DTDIR |
-            (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
-
-        ret = sd_issue_command(6, resp_type::R1, 0, nullptr, true);
-        if(ret != 0)
-            return;
-        
-        // read response
-        int cmd6_buf_idx = 0;
-        while(!(SDMMC1_VMEM->STA & DBCKEND) && !(SDMMC1_VMEM->STA & DATAEND) && !(SDMMC1_VMEM->STA & DTIMEOUT))
-        {
-            if(SDMMC1_VMEM->STA & DCRCFAIL)
-            {
-                
-                klog("dcrcfail\n");
-                return;
-            }
-            if(SDMMC1_VMEM->STA & DTIMEOUT)
-            {
-                
-                klog("dtimeout\n");
-                return;
-            }
-            if(SDMMC1_VMEM->STA & SDMMC_STA_RXOVERR)
-            {
-                
-                klog("rxoverr\n");
-                return;
-            }
-            if(cmd6_buf_idx < 16 && !(SDMMC1_VMEM->STA & SDMMC_STA_RXFIFOE))
-            {
-                cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(SDMMC1_VMEM->FIFO);
-                cmd6_buf_idx++;
-            }
-        }
-
-        SDMMC1_VMEM->ICR = DBCKEND | DATAEND;
-
-        // can we enable high speed mode? - check bits 415:400
-        auto fg1_support = (cmd6_buf[12] >> 16) & 0xffffUL;
-        {
-            
-            klog("init_sd: cmd6: fg1_support: %lx\n", fg1_support);
-        }
-        auto fg4_support = (cmd6_buf[14]) & 0xffffUL;
-        klog("init_sd: cmd6: fg4_support: %lx\n", fg4_support);
-        uint32_t mode_set = 0;
-        if(is_1v8 && (fg1_support & 0x10) && (fg4_support & 0x2))
-        {
-            klog("init_sd: supports ddr50 mode at 1.44W\n");
-            mode_set = 0x80ff1ff4;
-        }
-        else if(fg1_support & 0x2)
-        {
-            klog("init_sd: supports hs/sdr25 mode at 0.72W\n");
-            mode_set = 0x80fffff1;
-        }
-
-        if(mode_set)
-        {
-            // try and switch to higher speed mode
-            SDMMC1_VMEM->DCTRL = 0;
-            SDMMC1_VMEM->DLEN = 64;
-            SDMMC1_VMEM->DCTRL = 
-                SDMMC_DCTRL_DTDIR |
-                (6UL << SDMMC_DCTRL_DBLOCKSIZE_Pos);
-            
-            ret = sd_issue_command(6, resp_type::R1, mode_set, nullptr, true);
-            if(ret != 0)
-                return;
-            
-            cmd6_buf_idx = 0;
-            while(!(SDMMC1_VMEM->STA & DBCKEND) && !(SDMMC1_VMEM->STA & DATAEND) && !(SDMMC1_VMEM->STA & DTIMEOUT))
-            {
-                if(SDMMC1_VMEM->STA & DCRCFAIL)
-                {
-                    
-                    klog("dcrcfail\n");
-                    return;
-                }
-                if(SDMMC1_VMEM->STA & DTIMEOUT)
-                {
-                    
-                    klog("dtimeout\n");
-                    return;
-                }
-                if(SDMMC1_VMEM->STA & SDMMC_STA_RXOVERR)
-                {
-                    
-                    klog("rxoverr\n");
-                    return;
-                }
-                if(cmd6_buf_idx < 16 && !(SDMMC1_VMEM->STA & SDMMC_STA_RXFIFOE))
-                {
-                    cmd6_buf[16 - 1 - cmd6_buf_idx] = __builtin_bswap32(SDMMC1_VMEM->FIFO);
-                    cmd6_buf_idx++;
-                }
-            }
-            SDMMC1_VMEM->ICR = DBCKEND | DATAEND;
-
-            auto fg1_setting = (cmd6_buf[11] >> 24) & 0xfUL;
-            auto fg4_setting = (cmd6_buf[12] >> 4) & 0xfUL;
-            {
-                
-                klog("init_sd: cmd6: fg1_setting: %lx, fg4_setting: %lx\n", fg1_setting,
-                    fg4_setting);
-            }
-
-#if GK_SD_USE_HS_MODE
-            if(fg1_setting == 1)
-            {
-                SDMMC_set_clock(SDCLK_HS);
-                SDMMC1_VMEM->DTIMER = timeout_ns / clock_period_ns;
-                {
-                    klog("init_sd: set to high speed mode\n");
-                }
-            }
-            else if(fg1_setting == 4)
-            {
-                SDMMC_set_clock(SDCLK_HS, true);
-                SDMMC1_VMEM->DTIMER = timeout_ns / clock_period_ns;
-                {
-                    klog("init_sd: set to DDR50 mode\n");
-                }
-            }
-#endif
-        }
-    }
-
-    // Hardware flow control - prevents buffer under/overruns
-    SDMMC1_VMEM->CLKCR |= SDMMC_CLKCR_HWFC_EN;
-
-    // Enable interrupts
-    SDMMC1_VMEM->MASK = DCRCFAIL | DTIMEOUT |
-        TXUNDERR | RXOVERR | DATAEND;
-    gic_set_target(155, GIC_ENABLED_CORES);
-    gic_set_enable(155);
-    
-    {
-        
-        klog("init_sd: success\n");
-    }
-    tfer_inprogress = false;
-    sd_ready = true;
-}
-
-#endif
-
-#if 0
-static uint32_t csd_extract(int startbit, int endbit)
-{   
-    uint32_t ret = 0;
-
-    int cur_ret_bit = 0;
-    int cur_byte = 0;
-    while(startbit > 31)
-    {
-        startbit -= 32;
-        endbit -= 32;
-        cur_byte++;
-    }
-
-    while(endbit > 0)
-    {
-        auto cur_part = csd[cur_byte] >> startbit;
-
-        if(endbit < 31)
-        {
-            // need to mask end bits
-            uint32_t mask = ~(0xFFFFFFFFUL << (endbit - startbit + 1));
-            cur_part &= mask;
-        }
-
-        ret += (cur_part << cur_ret_bit);
-
-        auto act_endbit = endbit > 31 ? 31 : endbit;
-
-        cur_ret_bit += (act_endbit - startbit + 1);
-        startbit -= 32;
-        if(startbit < 0)
-            startbit = 0;
-        endbit -= 32;
-        cur_byte++;
-    }
-
-    return ret;
-}
-
-uint64_t sd_get_size()
-{
-    switch(csd[3] >> 30)
-    {
-        case 0:
-            // CSD v1.0
-            {
-                auto c_size = (uint64_t)csd_extract(62, 73);
-                auto c_size_mult = (uint64_t)csd_extract(47, 49);
-                auto read_bl_len = (uint64_t)csd_extract(80, 83);
-
-                auto mult = 1ULL << (c_size_mult + 2);
-                auto blocknr = (c_size + 1) * mult;
-                auto block_len = 1ULL << read_bl_len;
-
-                return blocknr * block_len;
-            }
-
-        case 1:
-            // CSD v2.0
-            {
-                auto c_size = (uint64_t)csd_extract(48, 69);
-
-                return (c_size + 1) * 512 * 1024;
-            }
-
-        case 2:
-            // CSD v3.0
-            {
-                auto c_size = (uint64_t)csd_extract(48, 75);
-
-                return (c_size + 1) * 512 * 1024;
-            }
-    }
-
-    return 0;
-}
-#endif

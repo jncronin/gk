@@ -137,7 +137,10 @@ int main(uint32_t bootrom_val)
 
     init_screen();  // needed to enable level shifter
 
+    init_sdmmc1();
     init_sdmmc2();
+
+    sdmmc[0].reset();
 
     while(sdmmc[1].reset() != 0)
     {
