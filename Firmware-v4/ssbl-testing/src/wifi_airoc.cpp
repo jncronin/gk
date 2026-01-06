@@ -145,5 +145,14 @@ void wifi_airoc_reset()
     // These bits should be performed by the wifi connection manager module - for testing run them separately here
     whd_init(&whd_drv, &init_config_default, &resource_ops, &buffer_if_default,
         &netif_if_default);
+
+    whd_sdio_config_t whd_sdio_config =
+    {
+        .sdio_1bit_mode        = WHD_FALSE,
+        .high_speed_sdio_clock = WHD_FALSE,
+        .oob_config            = {}
+    };
+    whd_bus_sdio_attach(whd_drv, &whd_sdio_config, nullptr);
+
     whd_wifi_on(whd_drv, &whd_iface);
 }

@@ -127,3 +127,9 @@ cy_rslt_t cy_rtos_delay_milliseconds(cy_time_t num_ms)
     udelay(num_ms * 1000);
     return CY_RSLT_SUCCESS;
 }
+
+cy_rslt_t cy_rtos_time_get(cy_time_t* tval)
+{
+    *tval = kernel_time_to_ms(clock_cur());
+    return CY_RSLT_SUCCESS;
+}
