@@ -71,7 +71,8 @@ extern "C"
 #if defined(WHD_LOGGING_BUFFER_ENABLE)
 #define WPRINT_MACRO(args) do { whd_buffer_printf args; } while (0 == 1)
 #else
-#define WPRINT_MACRO(args) do { printf args;} while (0 == 1)
+int klog(const char *format, ...);
+#define WPRINT_MACRO(args) do { klog args;} while (0 == 1)
 #endif
 #endif
 

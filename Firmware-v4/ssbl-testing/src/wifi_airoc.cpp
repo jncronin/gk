@@ -149,8 +149,15 @@ void wifi_airoc_reset()
     whd_sdio_config_t whd_sdio_config =
     {
         .sdio_1bit_mode        = WHD_FALSE,
-        .high_speed_sdio_clock = WHD_FALSE,
-        .oob_config            = {}
+        .high_speed_sdio_clock = WHD_TRUE,
+        .oob_config            = { 
+            .host_oob_pin = 0x6,        // GPIOA6
+            .drive_mode = CYHAL_GPIO_DRIVE_NONE,
+            .init_drive_state = WHD_FALSE,
+            .dev_gpio_sel = 0,
+            .is_falling_edge = WHD_TRUE,
+            .intr_priority = 0
+        }
     };
     whd_bus_sdio_attach(whd_drv, &whd_sdio_config, nullptr);
 

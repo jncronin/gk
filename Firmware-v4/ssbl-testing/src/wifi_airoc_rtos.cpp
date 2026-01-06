@@ -11,7 +11,7 @@ cy_rslt_t cy_rtos_thread_create(cy_thread_t* thread, cy_thread_entry_fn_t entry_
                                 cy_thread_priority_t priority, cy_thread_arg_t arg)
 {
     klog("cy_rtos_thread_create\n");
-    return CY_FAIL;
+    return CY_RSLT_SUCCESS;
 }
 
 cy_rslt_t cy_rtos_thread_exit(void)
@@ -92,20 +92,45 @@ cy_rslt_t cy_rtos_mutex_deinit(cy_mutex_t* mutex)
     return CY_FAIL;
 }
 
+const size_t max_sems = 64;
+[[maybe_unused]] static unsigned int sems[max_sems] = { 0 };
+static unsigned int next_sem = 0;
+
 cy_rslt_t cy_rtos_semaphore_init(cy_semaphore_t* semaphore, uint32_t maxcount, uint32_t initcount)
 {
+    if(next_sem < max_sems)
+    {
+        *semaphore = next_sem++;
+        return CY_RSLT_SUCCESS;
+    }
     klog("cy_rtos_semaphore_init\n");
     return CY_FAIL;
 }
 
 cy_rslt_t cy_rtos_semaphore_get(cy_semaphore_t* semaphore, cy_time_t timeout_ms)
 {
+    if(*semaphore < max_sems && sems[*semaphore])
+    {
+        sems[*semaphore]--;
+        return CY_RSLT_SUCCESS;
+    }
+    else if(*semaphore < max_sems)
+    {
+        // for now return because otherwise it never will
+        klog("cy_rtos_semaphore_get - sem == 0\n");
+        return CY_RSLT_SUCCESS;
+    }
     klog("cy_rtos_semaphore_get\n");
     return CY_FAIL;
 }
 
 cy_rslt_t cy_rtos_semaphore_set(cy_semaphore_t* semaphore)
 {
+    if(*semaphore < max_sems)
+    {
+        sems[*semaphore]++;
+        return CY_RSLT_SUCCESS;
+    }
     klog("cy_rtos_semaphore_set\n");
     return CY_FAIL;
 }

@@ -86,8 +86,8 @@ extern "C"
         whd_result_t check_res = (expr); \
         if (check_res != WHD_SUCCESS) \
         { \
-            WPRINT_WHD_ERROR( ("Function %s failed at line %d checkres = %u \n", \
-                               __func__, __LINE__, \
+            WPRINT_WHD_ERROR( ("Function %s failed at line %s:%d checkres = %u \n", \
+                               __func__, __FILE__, __LINE__, \
                                (unsigned int)check_res) ); \
             return check_res; \
         } \
