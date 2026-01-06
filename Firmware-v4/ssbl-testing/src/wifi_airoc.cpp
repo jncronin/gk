@@ -5,6 +5,13 @@
 #include "sdif.h"
 #include "logger.h"
 
+#include "cybsp.h"
+#include "cybsp_wifi.h"
+#include "cy_network_buffer.h"
+#include "cyabs_rtos.h"
+#include "whd_types.h"
+#include "cyhal.h"
+
 static void wifi_airoc_reset();
 
 static bool wifi_airoc_init = false;
@@ -17,6 +24,35 @@ static const constexpr pin BT_REG_ON { GPIOC_VMEM, 8 };
 static const constexpr pin MCO1 { GPIOI_VMEM, 6, 1 };
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
+
+
+static whd_init_config_t init_config_default =
+{
+    .thread_stack_start = NULL,
+    .thread_stack_size  = 65536,
+    .thread_priority    = (uint32_t)2,
+    .country            = CY_WIFI_COUNTRY
+};
+
+static whd_buffer_funcs_t buffer_if_default =
+{
+    .whd_host_buffer_get                       = cy_host_buffer_get,
+    .whd_buffer_release                        = cy_buffer_release,
+    .whd_buffer_get_current_piece_data_pointer = cy_buffer_get_current_piece_data_pointer,
+    .whd_buffer_get_current_piece_size         = cy_buffer_get_current_piece_size,
+    .whd_buffer_set_size                       = cy_buffer_set_size,
+    .whd_buffer_add_remove_at_front            = cy_buffer_add_remove_at_front,
+};
+
+static whd_netif_funcs_t netif_if_default =
+{
+    .whd_network_process_ethernet_data = cy_network_process_ethernet_data,
+};
+
+extern whd_resource_source_t resource_ops;
+
+static whd_driver_t whd_drv;
+static whd_interface_t whd_iface;
 
 void init_wifi_airoc()
 {
@@ -106,5 +142,8 @@ void wifi_airoc_reset()
     sdmmc[1].sdio_set_func_block_size(1, 64);
     sdmmc[1].sdio_set_func_block_size(2, 64);
 
-
+    // These bits should be performed by the wifi connection manager module - for testing run them separately here
+    whd_init(&whd_drv, &init_config_default, &resource_ops, &buffer_if_default,
+        &netif_if_default);
+    whd_wifi_on(whd_drv, &whd_iface);
 }
