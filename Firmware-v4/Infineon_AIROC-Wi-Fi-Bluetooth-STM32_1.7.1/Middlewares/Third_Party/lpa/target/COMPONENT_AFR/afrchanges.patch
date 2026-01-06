@@ -1,0 +1,209 @@
+diff --git a/libraries/abstractions/secure_sockets/include/iot_secure_sockets.h b/libraries/abstractions/secure_sockets/include/iot_secure_sockets.h
+index 60b976303..6a7147c7f 100644
+--- a/libraries/abstractions/secure_sockets/include/iot_secure_sockets.h
++++ b/libraries/abstractions/secure_sockets/include/iot_secure_sockets.h
+@@ -168,6 +168,10 @@ typedef struct xSOCKET * Socket_t; /**< @brief Socket handle data type. */
+ #define SOCKETS_SO_NONBLOCK                      ( 9 )  /**< Socket is nonblocking. */
+ #define SOCKETS_SO_ALPN_PROTOCOLS                ( 10 ) /**< Application protocol list to be included in TLS ClientHello. */
+ #define SOCKETS_SO_WAKEUP_CALLBACK               ( 17 ) /**< Set the callback to be called whenever there is data available on the socket for reading. */
++#define SOCKETS_SO_TCPKEEPALIVE                  ( 18 ) /**< Enable/Disable TCP keep-alive. */
++#define SOCKETS_SO_TCPKEEPALIVE_INTERVAL         ( 19 ) /**< Set the interval in seconds between TCP keep-alive probes. */
++#define SOCKETS_SO_TCPKEEPALIVE_COUNT            ( 20 ) /**< Set the maximum number of TCP keep-alive probes to be sent */
++#define SOCKETS_SO_TCPKEEPALIVE_IDLE_TIME        ( 21 ) /**< Set the duration in seconds for which the connection needs to be idle before TCP sends out keep-alive probes. */
+ 
+ /**@} */
+ 
+@@ -253,6 +257,33 @@ Socket_t SOCKETS_Socket( int32_t lDomain,
+                          int32_t lProtocol );
+ /* @[declare_secure_sockets_socket] */
+ 
++/**
++ * @brief Bind a TCP socket.
++ *
++ * See the [FreeRTOS+TCP networking tutorial]
++ * (https://freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_TCP/TCP_Networking_Tutorial.html)
++ * for more information on TCP sockets.
++ *
++ * See the [Berkeley Sockets API]
++ * (https://en.wikipedia.org/wiki/Berkeley_sockets#Socket_API_functions)
++ * in wikipedia
++ *
++ * @sa SOCKETS_Bind()
++ *
++ * @param[in] xSocket The handle of the socket to which specified address to be bound.
++ * @param[in] pxAddress A pointer to a SocketsSockaddr_t structure that contains
++ * the address and port to be bound to the socket.
++ * @param[in] xAddressLength Should be set to sizeof( @ref SocketsSockaddr_t ).
++ *
++ * @return
++ * * If the bind was successful then SOCKETS_ERROR_NONE is returned.
++ * * If an error occurred, a negative value is returned. @ref SocketsErrors
++ */
++/* @[declare_secure_sockets_bind] */
++int32_t SOCKETS_Bind( Socket_t xSocket,
++                      SocketsSockaddr_t *pxAddress,
++                      Socklen_t xAddressLength );
++/* @[declare_secure_sockets_bind] */
+ 
+ /**
+  * @brief Connects the socket to the specified IP address and port.
+@@ -472,6 +503,21 @@ int32_t SOCKETS_Close( Socket_t xSocket );
+  *      - The ALPN list is expressed as an array of NULL-terminated ANSI
+  *        strings.
+  *      - xOptionLength is the number of items in the array.
++ *    - @ref SOCKETS_SO_TCPKEEPALIVE
++ *      - Enable or disable the Keepalive functionality for specific
++ *        socket.
++ *      - pvOptionValue is the value to enable/disable Keepalive.
++ *    - @ref SOCKETS_SO_TCPKEEPALIVE_INTERVAL
++ *      - Set the time between each probe request to check socket
++ *        connection status.
++ *      - pvOptionValue is the time in seconds.
++ *    - @ref SOCKETS_SO_TCPKEEPALIVE_COUNT
++ *      - Set number of probe requests to be sent between each idle time.
++ *      - pvOptionValue is the number of probe requests.
++ *    - @ref SOCKETS_SO_TCPKEEPALIVE_IDLE_TIME
++ *      - Set the time for connection to remain idle before initiating keep alive
++ *        packets.
++ *      - pvOptionValue is the time in seconds.
+  *
+  * @return
+  * * On success, 0 is returned.
+diff --git a/libraries/abstractions/secure_sockets/lwip/iot_secure_sockets.c b/libraries/abstractions/secure_sockets/lwip/iot_secure_sockets.c
+index b448fe998..d0e0b8f83 100644
+--- a/libraries/abstractions/secure_sockets/lwip/iot_secure_sockets.c
++++ b/libraries/abstractions/secure_sockets/lwip/iot_secure_sockets.c
+@@ -306,6 +306,63 @@ Socket_t SOCKETS_Socket( int32_t lDomain,
+ 
+ /*-----------------------------------------------------------*/
+ 
++int32_t SOCKETS_Bind( Socket_t xSocket,
++                      SocketsSockaddr_t *pxAddress,
++                      Socklen_t xAddressLength )
++{
++    ss_ctx_t * ctx;
++    int32_t ret;
++    struct sockaddr_in sa_addr = { 0 };
++
++    if( SOCKETS_INVALID_SOCKET == xSocket )
++    {
++        configPRINTF( ( "TCP socket Invalid\n" ) );
++        return SOCKETS_EINVAL;
++    }
++
++    if( pxAddress == NULL )
++    {
++        return SOCKETS_EINVAL;
++    }
++
++    ctx = ( ss_ctx_t * ) xSocket;
++
++    if( 0 > ctx->ip_socket )
++    {
++        configPRINTF( ( "TCP socket Invalid index\n" ) );
++        return SOCKETS_EINVAL;
++    }
++
++    /*
++     * Setting SO_REUSEADDR socket option in order to be able to bind to the same ip:port again
++     * without netconn_bind failing.
++     */
++#if SO_REUSE
++    ret = lwip_setsockopt( ctx->ip_socket, SOL_SOCKET, SO_REUSEADDR, &(uint32_t){1}, sizeof(uint32_t));
++
++    if( 0 > ret )
++    {
++        return SOCKETS_SOCKET_ERROR;
++    }
++#endif /* SO_REUSE */
++
++    sa_addr.sin_family = pxAddress->ucSocketDomain ? pxAddress->ucSocketDomain : AF_INET;
++    sa_addr.sin_addr.s_addr = pxAddress->ulAddress;
++    sa_addr.sin_port = pxAddress->usPort;
++
++    ret = lwip_bind(ctx->ip_socket, ( struct sockaddr * ) &sa_addr, sizeof( sa_addr ));
++    if( 0 > ret )
++    {
++        configPRINTF(( "lwip_bind fail :%d\n",ret ) );
++        return SOCKETS_SOCKET_ERROR;
++    }
++
++    return SOCKETS_ERROR_NONE;
++
++}
++
++/*-----------------------------------------------------------*/
++
+ int32_t SOCKETS_Connect( Socket_t xSocket,
+                          SocketsSockaddr_t * pxAddress,
+                          Socklen_t xAddressLength )
+@@ -780,6 +837,69 @@ int32_t SOCKETS_SetSockOpt( Socket_t xSocket,
+ 
+             break;
+ 
++        case SOCKETS_SO_TCPKEEPALIVE:
++        {
++            int keep_alive = *((int *)pvOptionValue);
++
++            if( keep_alive == 0 || keep_alive == 1 )
++            {
++                ret = lwip_setsockopt( ctx->ip_socket,
++                                       SOL_SOCKET,
++                                       SO_KEEPALIVE,
++                                       &keep_alive,
++                                       sizeof( keep_alive ) );
++                if( 0 > ret )
++                {
++                    return SOCKETS_SOCKET_ERROR;
++                }
++            }
++            else
++            {
++                return SOCKETS_EINVAL;
++            }
++            break;
++        }
++
++#if LWIP_TCP_KEEPALIVE
++        case SOCKETS_SO_TCPKEEPALIVE_INTERVAL:
++
++            ret = lwip_setsockopt( ctx->ip_socket,
++                                   IPPROTO_TCP,
++                                   TCP_KEEPINTVL,
++                                   pvOptionValue,
++                                   sizeof( int ) );
++            if( 0 > ret )
++            {
++                return SOCKETS_SOCKET_ERROR;
++            }
++            break;
++
++        case SOCKETS_SO_TCPKEEPALIVE_COUNT:
++
++            ret = lwip_setsockopt( ctx->ip_socket,
++                                   IPPROTO_TCP,
++                                   TCP_KEEPCNT,
++                                   pvOptionValue,
++                                   sizeof( int ) );
++            if( 0 > ret )
++            {
++                return SOCKETS_SOCKET_ERROR;
++            }
++            break;
++
++        case SOCKETS_SO_TCPKEEPALIVE_IDLE_TIME:
++
++            ret = lwip_setsockopt( ctx->ip_socket,
++                                   IPPROTO_TCP,
++                                   TCP_KEEPIDLE,
++                                   pvOptionValue,
++                                   sizeof( int ) );
++            if( 0 > ret )
++            {
++                return SOCKETS_SOCKET_ERROR;
++            }
++            break;
++#endif
+         default:
+             return SOCKETS_ENOPROTOOPT;
+     }

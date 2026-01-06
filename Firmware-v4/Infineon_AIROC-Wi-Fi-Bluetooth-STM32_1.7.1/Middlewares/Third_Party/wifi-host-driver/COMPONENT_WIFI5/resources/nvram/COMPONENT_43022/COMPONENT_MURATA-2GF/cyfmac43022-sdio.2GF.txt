@@ -1,0 +1,142 @@
+# FVIN:1.1.1.1 HVIN:LBEE5WV2GF
+/*
+*CYW43012RevC0WLCSPMuratamoduleEVB
+*RevHistory
+*1.6/22/2017 copiedfrombcmbcm943012mdcspad.txt
+*2.6/22/2017 updatedboardtype,boardrev,macadd
+*3.7/10/2017 udpatedswctrlmap*
+*4. 8/7/2019 copied from Krishna's 1LV (Co-Ex added with switch map mod and RSSI compensation is removed
+*5.7/29/2020 Changed lpflags=0x28 to 0x00 and added lhlgpio_cfg=0x00000020,0x00000000
+*6.9/12/2023 Changed RF-related contents refering to Type1LV
+*7. 3/5/2024 Change lpflags=0x28 to 0x00
+
+NVRAMRev=$Rev:727703$
+sromrev=11
+cckdigfilttype=4
+cckpwroffset0=2
+bphyscale=0x20
+boardflags3=0x40000100
+vendid=0x14e4
+devid=0xA804
+manfid=0x2d0
+prodid=0x052e
+#macaddr=00:90:4c:2a:80:00
+macaddr=00:90:4c:2a:9${maclo12}
+#macaddr=00:90:4c:2a:80:80
+mac_clkgating=1
+nocrc=1
+boardtype=0x084f
+boardrev=0x1102
+xtalfreq=37400
+boardflags2=0xc0000000
+boardflags=0x00000001
+etmode=0x11
+extpagain2g=2
+extpagain5g=2
+ccode=0
+regrev=0
+antswitch=0
+rxgains2gelnagaina0=0
+rxgains2gtrisoa0=15
+rxgains2gtrelnabypa0=0
+rxgains5gelnagaina0=0
+rxgains5gtrisoa0=9
+rxgains5gtrelnabypa0=0
+pdgain5g=0
+pdgain2g=0
+tworangetssi2g=0
+tworangetssi5g=0
+rxchain=1
+txchain=1
+aa2g=1
+aa5g=1
+tssipos5g=0
+tssipos2g=0
+femctrl=17
+subband5gver=4
+pa2ga0=-108,6062,-661
+#pa2ga0=-108,5985,-657
+pa5ga0=-82,6252,-698,-14,6722,-697,-92,6084,-710,-88,6465,-755
+#pa5ga0=-23,5933,-815,-29,5959,-814,-60,6093,-813,-50,6414,-836
+#pa5ga0=-82,6252,-698,-14,6722,-697,-92,6084,-710,-88,6465,-755
+pdoffset40ma0=0
+pdoffset80ma0=0
+lowpowerrange2g=0
+lowpowerrange5g=0
+ed_thresh2g=-63
+ed_thresh5g=-63
+swctrlmap_2g=0x10101010,0x20202020,0x10101010,0x442020,0x3ff
+swctrlmapext_2g=0x01000100,0x01000100,0x01000100,0x000000,0x301
+swctrlmap_5g=0x80808080,0x00000000,0x80808080,0x442020,0x381
+swctrlmapext_5g=0x01000100,0x01000100,0x00000000,0x000000,0x303
+ulpnap=0
+ulpadc=1
+ssagc_en=0
+ds1_nap=0
+spurcan_ch_list_MHz=2422,2427,2432,2437,2462,2467,2472
+spurcan_sp_freq_KHz=9000,4000,-1000,-6000,6400,1400,-3600
+spurcan_NumSpur=7
+epacal2g=0
+epacal5g=0
+papdcck=0
+epacal2g_mask=0x3fff
+maxp2ga0=74
+ofdmlrbw202gpo=0x0020
+dot11agofdmhrbw202gpo=0x6442
+mcsbw202gpo=0xCC864420
+#mcsbw402gpo=0x99555533
+maxp5ga0=70,70,70,70
+mcsbw205glpo=0xCC864220
+mcsbw205gmpo=0xCC864220
+mcsbw205ghpo=0xCC864220
+femctrlwar=0
+use5gpllfor2g=1
+pt5db_gaintbl=0
+
+txwbpapden=1
+wb_rxattn=0x0303
+wb_txattn=0x0203
+wb_papdcalidx=0x0808
+wb_papdcalidx_5g=0x00101010
+wb_eps_offset=0x01ba01a8
+wb_eps_offset_5g=0x01ba01bc
+wb_bbmult=0x2040
+wb_bbmult_5g=0x00303030
+wb_calref_db=0x1c2e
+wb_tia_gain_mode=0x0606
+wb_txbuf_offset=0x1e1e
+wb_frac_del=0x6991
+wb_g_frac_bits=0xab
+
+
+nb_rxattn=0x0404
+nb_txattn=0x0404
+nb_papdcalidx=0x1414
+nb_eps_offset=0x01d701d7
+nb_bbmult=0x5A5A
+nb_tia_gain_mode=0x0000
+# AvVmid_c0=6,100,3,141,3,141,3,141,3,141
+AvVmid_c0=6,100,7,70,7,70,7,70,7,70
+#AvVmid_c0=6,110,7,70,7,70,7,70,7,70
+
+tssisleep_en=0x5
+lpflags=0x00
+lpo_select=4
+lhlgpio_cfg=0x00000020,0x00000000
+
+paprrmcsgamma2g=450,500,550,600,675,950,950,950,950,950,950,950
+paprrmcsgamma5g20=450,500,550,600,800,950,1100,1100,1100,1100,1100,1100
+#paprdis=1
+
+#SW-DiversityRelatedparameters
+swdiv_en=1 #ToenableSW-DIVfeature
+swdiv_gpio=0
+swdiv_swctrl_en=2
+swdiv_swctrl_ant0=0
+swdiv_swctrl_ant1=1
+swdiv_antmap2g_main=1
+swdiv_antmap5g_main=1
+
+swdiv_snrlim=10000 #Onlyenablesw_divifthesnronpresentantennaislessthan10000/8=1250
+swdiv_thresh=3000 #No.ofrxpktsthreshold
+swdiv_snrthresh=24 #Differencebetweenantenna'ssnrisgreaterthan24/8=3dB,thenshifttheantennas

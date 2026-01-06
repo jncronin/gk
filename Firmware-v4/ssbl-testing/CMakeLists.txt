@@ -15,6 +15,8 @@ project(ssbl_testing C CXX ASM)
 
 add_subdirectory(Fusion/Fusion)
 
+add_subdirectory(../Infineon_AIROC-Wi-Fi-Bluetooth-STM32_1.7.1 airoc)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
@@ -98,9 +100,15 @@ target_compile_options(${PROJECT_NAME}
             -Wno-register
         >)
 
+target_include_directories(airoc_gk_whd
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+)
+
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Fusion
+        airoc_gk_whd
 )
 
 target_link_options(${PROJECT_NAME}

@@ -1,0 +1,261 @@
+/*******************************************************************************
+* \file cybt_platform_trace.h
+*
+* \brief
+* Define API to have logging functionality.
+*
+********************************************************************************
+* \copyright
+* Copyright 2018-2021 Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.
+*
+* SPDX-License-Identifier: Apache-2.0
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*******************************************************************************/
+
+#ifndef CYBT_PLATFORM_TRACE_H
+#define CYBT_PLATFORM_TRACE_H
+
+#include <stdio.h>
+
+/**
+ *  @addtogroup    platform_trace   Bluetooth Platform Trace
+ *
+ * ENABLE the below definition CYBT_PLATFORM_TRACE_ENABLE to have logging
+ * functionality by using trace marcos in this file.
+ *
+ *  @{
+ */
+#ifndef CYBT_PLATFORM_TRACE_ENABLE
+#define CYBT_PLATFORM_TRACE_ENABLE 1
+#endif
+
+/*****************************************************************************
+ *                                Constants
+ ****************************************************************************/
+#define INITIAL_TRACE_LEVEL_MAIN          (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_SPIF          (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_HCITX_TASK    (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_HCIRX_TASK    (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_HCI_DRV       (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_HCI_LOG       (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_MEMORY        (CYBT_TRACE_LEVEL_ERROR)
+#define INITIAL_TRACE_LEVEL_PRM           (CYBT_TRACE_LEVEL_ERROR)
+#ifdef ENABLE_BT_SPY_LOG
+#define INITIAL_TRACE_LEVEL_STACK         (CYBT_TRACE_LEVEL_MAX)
+#else
+#define INITIAL_TRACE_LEVEL_STACK         (CYBT_TRACE_LEVEL_ERROR)
+#endif
+#define INITIAL_TRACE_LEVEL_APP           (CYBT_TRACE_LEVEL_ERROR)
+
+//#define UNUSED(x)      ( (void)(x) )
+
+/*****************************************************************************
+ *                             Type Definitions
+ ****************************************************************************/
+/**
+ * trace category id
+ */
+#define CYBT_TRACE_ID_MAIN         (0)
+#define CYBT_TRACE_ID_SPIF         (1)
+#define CYBT_TRACE_ID_HCITX_TASK   (2)
+#define CYBT_TRACE_ID_HCIRX_TASK   (3)
+#define CYBT_TRACE_ID_HCI_DRV      (4)
+#define CYBT_TRACE_ID_HCI_LOG      (5)
+#define CYBT_TRACE_ID_MEMORY       (6)
+#define CYBT_TRACE_ID_PRM          (7)
+#define CYBT_TRACE_ID_STACK        (8)
+#define CYBT_TRACE_ID_APP          (9)
+#define CYBT_TRACE_ID_MAX          (10)
+#define CYBT_TRACE_ID_ALL          (0xFF)
+typedef uint8_t cybt_trace_id_t;
+
+/**
+ * trace level
+ */
+#define CYBT_TRACE_LEVEL_NONE      (0)
+#define CYBT_TRACE_LEVEL_ERROR     (1)
+#define CYBT_TRACE_LEVEL_WARNING   (2)
+#define CYBT_TRACE_LEVEL_API       (3)
+#define CYBT_TRACE_LEVEL_EVENT     (4)
+#define CYBT_TRACE_LEVEL_DEBUG     (5)
+#define CYBT_TRACE_LEVEL_MAX       (6)
+typedef uint8_t cybt_trace_level_t;
+
+/**
+ * trace control block
+ */
+typedef struct
+{
+    uint8_t  trace_level[CYBT_TRACE_ID_MAX];    /**< BT trace level */
+} cybt_platform_trace_cb_t;
+
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#if (CYBT_PLATFORM_TRACE_ENABLE == 1)
+extern cybt_platform_trace_cb_t trace_cb;
+
+extern void cybt_platform_log_print(const char *fmt_str, ...);
+
+#define MAIN_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_MAIN] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define MAIN_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_MAIN] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define MAIN_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_MAIN] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define MAIN_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_MAIN] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define MAIN_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_MAIN] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define SPIF_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_SPIF] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define SPIF_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_SPIF] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define SPIF_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_SPIF] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define SPIF_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_SPIF] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define SPIF_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_SPIF] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define HCITXTASK_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCITX_TASK] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define HCITXTASK_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_HCITX_TASK] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define HCITXTASK_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_HCITX_TASK] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define HCITXTASK_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCITX_TASK] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define HCITXTASK_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCITX_TASK] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define HCIRXTASK_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCIRX_TASK] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIRXTASK_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_HCIRX_TASK] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIRXTASK_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_HCIRX_TASK] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIRXTASK_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCIRX_TASK] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIRXTASK_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCIRX_TASK] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define HCIDRV_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_DRV] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIDRV_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_DRV] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIDRV_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_DRV] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIDRV_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_DRV] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define HCIDRV_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_DRV] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define HCILOG_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_LOG] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define HCILOG_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_LOG] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define HCILOG_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_LOG] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define HCILOG_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_LOG] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define HCILOG_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_HCI_LOG] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define MEM_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_MEMORY] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define MEM_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_MEMORY] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define MEM_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_MEMORY] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define MEM_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_MEMORY] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define MEM_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_MEMORY] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define PRM_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_PRM] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define PRM_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_PRM] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define PRM_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_PRM] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define PRM_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_PRM] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define PRM_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_PRM] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define STACK_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_STACK] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define STACK_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_STACK] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define STACK_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_STACK] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define STACK_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_STACK] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define STACK_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_STACK] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+#define APP_TRACE_ERROR(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_APP] >= CYBT_TRACE_LEVEL_ERROR) cybt_platform_log_print(__VA_ARGS__);}
+#define APP_TRACE_WARNING(...)  {if (trace_cb.trace_level[CYBT_TRACE_ID_APP] >= CYBT_TRACE_LEVEL_WARNING) cybt_platform_log_print(__VA_ARGS__);}
+#define APP_TRACE_API(...)      {if (trace_cb.trace_level[CYBT_TRACE_ID_APP] >= CYBT_TRACE_LEVEL_API) cybt_platform_log_print(__VA_ARGS__);}
+#define APP_TRACE_EVENT(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_APP] >= CYBT_TRACE_LEVEL_EVENT) cybt_platform_log_print(__VA_ARGS__);}
+#define APP_TRACE_DEBUG(...)    {if (trace_cb.trace_level[CYBT_TRACE_ID_APP] >= CYBT_TRACE_LEVEL_DEBUG) cybt_platform_log_print(__VA_ARGS__);}
+
+
+/*****************************************************************************
+ *                           Function Declarations
+ ****************************************************************************/
+/**
+ * Set the trace level for trace categories id.
+ *
+ * @param[in]       id    : trace id, CYBT_TRACE_ID_ALL for all categories
+ * @param[in]       level : trace level
+ *
+ * @returns         void
+ */
+void cybt_platform_set_trace_level(cybt_trace_id_t                id,
+                                               cybt_trace_level_t level
+                                             );
+
+#else
+
+#define MAIN_TRACE_ERROR(...)
+#define MAIN_TRACE_WARNING(...)
+#define MAIN_TRACE_API(...)
+#define MAIN_TRACE_EVENT(...)
+#define MAIN_TRACE_DEBUG(...)
+
+#define SPIF_TRACE_ERROR(...)
+#define SPIF_TRACE_WARNING(...)
+#define SPIF_TRACE_API(...)
+#define SPIF_TRACE_EVENT(...)
+#define SPIF_TRACE_DEBUG(...)
+
+#define HCITXTASK_TRACE_ERROR(...)
+#define HCITXTASK_TRACE_WARNING(...)
+#define HCITXTASK_TRACE_API(...)
+#define HCITXTASK_TRACE_EVENT(...)
+#define HCITXTASK_TRACE_DEBUG(...)
+
+#define HCIRXTASK_TRACE_ERROR(...)
+#define HCIRXTASK_TRACE_WARNING(...)
+#define HCIRXTASK_TRACE_API(...)
+#define HCIRXTASK_TRACE_EVENT(...)
+#define HCIRXTASK_TRACE_DEBUG(...)
+
+#define HCIDRV_TRACE_ERROR(...)
+#define HCIDRV_TRACE_WARNING(...)
+#define HCIDRV_TRACE_API(...)
+#define HCIDRV_TRACE_EVENT(...)
+#define HCIDRV_TRACE_DEBUG(...)
+
+#define HCILOG_TRACE_ERROR(...)
+#define HCILOG_TRACE_WARNING(...)
+#define HCILOG_TRACE_API(...)
+#define HCILOG_TRACE_EVENT(...)
+#define HCILOG_TRACE_DEBUG(...)
+
+#define MEM_TRACE_ERROR(...)
+#define MEM_TRACE_WARNING(...)
+#define MEM_TRACE_API(...)
+#define MEM_TRACE_EVENT(...)
+#define MEM_TRACE_DEBUG(...)
+
+#define PRM_TRACE_ERROR(...)
+#define PRM_TRACE_WARNING(...)
+#define PRM_TRACE_API(...)
+#define PRM_TRACE_EVENT(...)
+#define PRM_TRACE_DEBUG(...)
+
+#define STACK_TRACE_ERROR(...)
+#define STACK_TRACE_WARNING(...)
+#define STACK_TRACE_API(...)
+#define STACK_TRACE_EVENT(...)
+#define STACK_TRACE_DEBUG(...)
+
+#define APP_TRACE_ERROR(...)
+#define APP_TRACE_WARNING(...)
+#define APP_TRACE_API(...)
+#define APP_TRACE_EVENT(...)
+#define APP_TRACE_DEBUG(...)
+#endif
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
+/**@} */
+
+#endif
+

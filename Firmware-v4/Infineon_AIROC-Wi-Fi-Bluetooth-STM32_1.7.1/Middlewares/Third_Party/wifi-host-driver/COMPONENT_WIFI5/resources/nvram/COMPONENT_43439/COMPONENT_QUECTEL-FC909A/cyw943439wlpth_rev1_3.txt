@@ -1,0 +1,89 @@
+# NVRAM file for CYW943439WLPTH
+# CYW43439 is 1x1, 2.4G(802.11b/g/n), 20MHz, 40nm WLAN+BT Combo. WLAN SDIO 2.0, BT UART
+# Memories: 512KB RAM, 640KB ROM and 4Kb OTP. WLAN with ARM CM3 @80MHz
+
+# The following parameter values are just placeholders, need to be updated.
+NVRAMRev=$Rev$
+manfid=0x2d0
+prodid=0x0727
+vendid=0x14e4
+devid=0x43e2
+boardtype=0x0887
+boardrev=0x1102
+boardnum=22
+macaddr=00:90:4c:2d:a0:02
+sromrev=11
+boardflags=0x00404001
+boardflags3=0x08000000
+xtalfreq=26000
+nocrc=1
+# Ant gain 255 is default 2dBi
+ag0=255
+# Ant gain 4dBi
+#ag0=0
+#agbg0=4
+aa2g=1
+ccode=ALL
+rssicorrnorm=0
+
+pa0itssit=0x20
+extpagain2g=0
+#PA parameters for 2.4GHz, measured at CHIP OUTPUT
+pa2ga0=-199,5902,-709
+AvVmid_c0=0x0,0xc8
+cckpwroffset0=5
+
+# PPR params
+maxp2ga0=84
+txpwrbckof=6
+cckbw202gpo=0x0000
+legofdmbw202gpo=0x44444444
+mcsbw202gpo=0x55555555
+propbw202gpo=0xdd
+
+# OFDM IIR :
+ofdmdigfilttype=18
+ofdmdigfilttypebe=18
+# PAPD mode:
+papdmode=1
+papdvalidtest=1
+pacalidx2g=45
+papdepsoffset=-30
+papdendidx=58
+
+# LTECX flags
+#ltecxmux=0
+#ltecxpadnum=0x0102
+#ltecxfnsel=0x44
+#ltecxgcigpio=0x01
+
+il0macaddr=00:90:4c:c5:12:38
+wl0id=0x431b
+
+deadman_to=0xffffffff
+# muxenab: 0x1 for UART enable, 0x10 for HOST WAKE INT enable, 0x11 for both enable
+# Power cycle required if change
+muxenab=0x1
+# CLDO PWM voltage settings - 0x4 - 1.1 volt
+#cldo_pwm=0x4
+
+#VCO freq 326.4MHz
+spurconfig=0x3
+
+#SW based desense - Enable by default
+#i.e using glitich statistcs as critria to change crsmin
+glitch_based_crsmin=1
+
+# Default btc_mode
+btc_mode=0
+# bt_default_ant will fix the antenna for BT irrespective of WL antenna
+# switching when SWDIV is enabled.
+bt_default_ant=0
+
+#Antenna diversity
+#swdiv_en=1
+#swdiv_gpio=2 
+
+#EDthreshold settings
+edonthd20l=-72
+edoffthd20ul=-78
