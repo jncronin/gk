@@ -102,3 +102,38 @@ PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/wifi-host-driver/COMPONENT_WIFI5/src/whd_ring.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/wifi-host-driver/COMPONENT_WIFI5/resources/resource_imp/whd_resources.c
 )
+
+add_library(airoc_btinterface)
+
+target_link_libraries(airoc_btinterface
+PUBLIC
+    airoc_gk_module
+    airoc_gk_pal
+)
+
+target_compile_options(airoc_btinterface
+PRIVATE
+    -Wno-pointer-to-int-cast
+    -Wno-int-to-pointer-cast
+)
+
+target_include_directories(airoc_btinterface
+PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/debug
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack/wiced_include
+)
+
+target_sources(airoc_btinterface
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_hci_rx_task.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_hci_tx_task.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_host_stack_platform_interface.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_patchram_download.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_platform_main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_platform_task.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_platform_trace.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/common/cybt_prm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/btstack-integration/COMPONENT_HCI-UART/debug/cybt_debug_uart.c
+)

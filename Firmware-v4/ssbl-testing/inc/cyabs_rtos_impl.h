@@ -14,4 +14,6 @@ typedef unsigned int cy_event_t;
 typedef unsigned int cy_queue_t;
 typedef unsigned int cy_timer_t;
 
+#define CY_RTOS_PRIORITY_HIGH       100
+
 #endif

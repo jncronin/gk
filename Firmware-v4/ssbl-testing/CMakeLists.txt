@@ -105,6 +105,11 @@ PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
+target_include_directories(airoc_btinterface
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+)
+
 target_compile_definitions(airoc_gk_whd
 PRIVATE
     WPRINT_ENABLE_WHD_INFO
@@ -116,6 +121,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Fusion
         airoc_gk_whd
+        airoc_btinterface
 )
 
 target_link_options(${PROJECT_NAME}
