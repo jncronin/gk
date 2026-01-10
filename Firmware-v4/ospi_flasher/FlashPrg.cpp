@@ -262,14 +262,18 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
         { GPIOD, 0, 10 },
         { GPIOD, 3, 10 },
         { GPIOD, 4, 10 },
-        { GPIOD, 5, 10 }, 
-        { GPIOD, 6, 10 },
-        { GPIOD, 7, 10 },
+        { GPIOD, 5, 10 }
     };
+    const constexpr pin OSPI_nWP { GPIOD, 6 };
+    const constexpr pin OSPI_nHOLD { GPIOD, 7 };
     for(const auto &p : OSPI_PINS)
     {
         p.set_as_af();
     }
+    OSPI_nWP.set_as_output();
+    OSPI_nWP.set();
+    OSPI_nHOLD.set_as_output();
+    OSPI_nHOLD.clear();
 
     RCC->OSPIIOMCFGR |= RCC_OSPIIOMCFGR_OSPIIOMEN;
     RCC->OSPI1CFGR |= RCC_OSPI1CFGR_OSPI1EN;

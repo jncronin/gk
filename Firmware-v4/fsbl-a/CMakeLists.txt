@@ -26,6 +26,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Device/ST/STM32MP2xx/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core/Include"
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -33,11 +34,17 @@ target_compile_definitions(${PROJECT_NAME}
         STM32MP257Fxx
         CORE_CM33
         ETH_MODE
+        PMEM_OFFSET=0
+        GKOS_UNCACHED=1
+        GK_NO_UART_LOCK=1
 )
 
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s
 )
 
 set_target_properties(${PROJECT_NAME}
