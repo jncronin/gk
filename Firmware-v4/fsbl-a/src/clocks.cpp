@@ -1,6 +1,5 @@
 #include <stm32mp2xx.h>
-
-void log(const char *);
+#include "logger.h"
 
 void init_clocks()
 {
@@ -61,9 +60,9 @@ void init_clocks()
     RCC->PLL5CFGR1 |= RCC_PLL5CFGR1_PLLEN;
 
     // Run Core + MCU off PLL5
-    log("FSBL: setting core clocks to PLL5\n");
+    klog("FSBL: setting core clocks to PLL5\n");
     RCC->XBARxCFGR[0] = 0x41;
-    log("FSBL: done\n");
+    klog("FSBL: done\n");
 
     
     // This all seems reasonable.  Clock OSPI1 off PLL4 / 12 -> 100 MHz

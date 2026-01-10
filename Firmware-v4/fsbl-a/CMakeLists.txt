@@ -45,6 +45,8 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/init_array.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/strlen.cpp
 )
 
 set_target_properties(${PROJECT_NAME}
@@ -72,6 +74,8 @@ target_compile_options(${PROJECT_NAME}
         -Wno-psabi
         -Wno-missing-field-initializers
         -Wno-int-to-pointer-cast
+        -mgeneral-regs-only
+        -mstrict-align
 )
 
 target_compile_options(${PROJECT_NAME}
@@ -87,6 +91,11 @@ target_compile_options(${PROJECT_NAME}
         $<$<COMPILE_LANGUAGE:CXX>:
             -Wno-register
         >)
+
+target_link_options(${PROJECT_NAME}
+    PRIVATE
+        -nostdlib
+)
 
 utils_target_set_linker_script(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/stm32mp2_fsbla.ld

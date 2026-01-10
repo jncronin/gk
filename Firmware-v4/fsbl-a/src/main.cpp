@@ -241,7 +241,7 @@ int main(uint32_t bootrom_val)
     auto nb = ospi_ind_read(OCTOSPI1, 3, 0x9f, 0, 0, ccr_spi_no_ab_no_addr, 0, jedec_id);
     if(nb == 3 && jedec_id[0] == 0xef && (jedec_id[1] == 0x40 || jedec_id[1] == 0x70) && jedec_id[2] == 0x16)
     {
-        log("FSBL: W25Q32JV found, enabling quad IO\n");
+        klog("FSBL: W25Q32JV found, enabling quad IO\n");
 
         SYSCFG->VDDIO3CCCR |= SYSCFG_VDDIO3CCCR_EN;
 
@@ -272,7 +272,7 @@ int main(uint32_t bootrom_val)
 
         if(sr2 & 0x2)
         {
-            log("FSBL: QE set\n");
+            klog("FSBL: QE set\n");
 
             while(OCTOSPI1->SR & OCTOSPI_SR_BUSY);
             OCTOSPI1->CR &= ~OCTOSPI_CR_EN;
@@ -280,16 +280,6 @@ int main(uint32_t bootrom_val)
 
             // set up quad IO read at 100 MHz, 1 AB 0xfX, 2x dummy bytes, instruction still on one line
             OCTOSPI1->DCR2 = (0U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz
-            OCTOSPI1->CCR = (3U << OCTOSPI_CCR_DMODE_Pos) |
-                (0U << OCTOSPI_CCR_ABSIZE_Pos) |
-                (3U << OCTOSPI_CCR_ABMODE_Pos) |
-                (2U << OCTOSPI_CCR_ADSIZE_Pos) |
-                (3U << OCTOSPI_CCR_ADMODE_Pos) |
-                (1U << OCTOSPI_CCR_IMODE_Pos);
-            OCTOSPI1->IR = 0xeb;
-            OCTOSPI1->ABR = 0xf0f0f0;
-            OCTOSPI1->TCR = (OCTOSPI1->TCR & ~OCTOSPI_TCR_DCYC_Msk) |
-                (4U << OCTOSPI_TCR_DCYC_Pos);   // 2 bytes = 4 clock cycles at QPI
             OCTOSPI1->TCR |= OCTOSPI_TCR_SSHIFT;
 
             while(OCTOSPI1->SR & OCTOSPI_SR_BUSY);
@@ -313,6 +303,9 @@ int main(uint32_t bootrom_val)
             static uint8_t mfg_dev[32 * 256];
             OCTOSPI1->DCR1 &= ~OCTOSPI_DCR1_DLYBYP;
             RCC->OSPI1CFGR &= ~RCC_OSPI1CFGR_OSPI1DLLRST;
+
+            unsigned int start_good = ~0U;
+            unsigned int end_good = ~0U;
 
             for(unsigned int tap = 0; tap < 32; tap++)
             {
@@ -338,67 +331,12 @@ int main(uint32_t bootrom_val)
                     if(mfg_dev[i * 2 + tap * 256] != 0xef || mfg_dev[i * 2 + 1 + tap * 256] != 0x15)
                     {
                         is_good = false;
-                        log("QPI: fail\n");
-                        //klog("DPI: fail tuning for %u at %u\n", tap, i);
                         break;
                     }
                 }
 
                 if(is_good)
                 {
-                    log("QPI: pass\n");
-                    //klog("DPI: pass tuning for %u\n", tap);
-                    //if(start_good == ~0U)
-                    //    start_good = tap;
-                    //end_good = tap;
-                }
-            }
-
-            // set up dual IO read
-            OCTOSPI1->DCR2 = (0U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz
-            OCTOSPI1->TCR |= OCTOSPI_TCR_SSHIFT;
-
-            static uint8_t mfg_dev2[32 * 256];
-            OCTOSPI1->DCR1 &= ~OCTOSPI_DCR1_DLYBYP;
-            RCC->OSPI1CFGR &= ~RCC_OSPI1CFGR_OSPI1DLLRST;
-
-            unsigned int start_good = ~0U;
-            unsigned int end_good = ~0U;
-
-            for(unsigned int tap = 0; tap < 32; tap++)
-            {
-                SYSCFG->DLYBOS1CR = 0;
-                __asm__ volatile("dsb sy\n" ::: "memory");
-                SYSCFG->DLYBOS1CR = (tap << SYSCFG_DLYBOS1CR_RX_TAP_SEL_Pos) |
-                    SYSCFG_DLYBOS1CR_EN;
-                __asm__ volatile("dsb sy\n" ::: "memory");
-                while(!(SYSCFG->DLYBOS1SR & SYSCFG_DLYBOS1SR_LOCK));
-
-                ospi_ind_read(OCTOSPI1, 256, 0x92, 0, 0xf0f0f0f0, 
-                    (2U << OCTOSPI_CCR_DMODE_Pos) |
-                    (0U << OCTOSPI_CCR_ABSIZE_Pos) |
-                    (2U << OCTOSPI_CCR_ABMODE_Pos) |
-                    (2U << OCTOSPI_CCR_ADSIZE_Pos) |
-                    (2U << OCTOSPI_CCR_ADMODE_Pos) |
-                    (1U << OCTOSPI_CCR_IMODE_Pos)
-                    , 0, &mfg_dev2[tap * 256]);
-
-                bool is_good = true;
-                for(unsigned int i = 0; i < 128; i++)
-                {
-                    if(mfg_dev2[i * 2 + tap * 256] != 0xef || mfg_dev2[i * 2 + 1 + tap * 256] != 0x15)
-                    {
-                        is_good = false;
-                        log("DPI: fail\n");
-                        //klog("DPI: fail tuning for %u at %u\n", tap, i);
-                        break;
-                    }
-                }
-
-                if(is_good)
-                {
-                    log("DPI: pass\n");
-                    //klog("DPI: pass tuning for %u\n", tap);
                     if(start_good == ~0U)
                         start_good = tap;
                     end_good = tap;
@@ -407,19 +345,96 @@ int main(uint32_t bootrom_val)
 
             if(start_good == ~0U)
             {
-                // fail tuning
-                OCTOSPI1->CCR = (1U << OCTOSPI_CCR_DMODE_Pos) |
-                    (0U << OCTOSPI_CCR_ABMODE_Pos) |
-                    (2U << OCTOSPI_CCR_ADSIZE_Pos) |
-                    (1U << OCTOSPI_CCR_ADMODE_Pos) |
-                    (1U << OCTOSPI_CCR_IMODE_Pos);
-                OCTOSPI1->TCR = 0U;
-                OCTOSPI1->IR = 0x03U;
-                OCTOSPI1->DCR2 = (1U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz/2 => 50 MHz
+                klog("FSBL: QPI: fail tuning, try DPI\n");
+                
+                // set up dual IO read
+                OCTOSPI1->DCR2 = (0U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz
+                OCTOSPI1->TCR |= OCTOSPI_TCR_SSHIFT;
+
+                static uint8_t mfg_dev2[32 * 256];
+                OCTOSPI1->DCR1 &= ~OCTOSPI_DCR1_DLYBYP;
+                RCC->OSPI1CFGR &= ~RCC_OSPI1CFGR_OSPI1DLLRST;
+
+                start_good = ~0U;
+                end_good = ~0U;
+
+                for(unsigned int tap = 0; tap < 32; tap++)
+                {
+                    SYSCFG->DLYBOS1CR = 0;
+                    __asm__ volatile("dsb sy\n" ::: "memory");
+                    SYSCFG->DLYBOS1CR = (tap << SYSCFG_DLYBOS1CR_RX_TAP_SEL_Pos) |
+                        SYSCFG_DLYBOS1CR_EN;
+                    __asm__ volatile("dsb sy\n" ::: "memory");
+                    while(!(SYSCFG->DLYBOS1SR & SYSCFG_DLYBOS1SR_LOCK));
+
+                    ospi_ind_read(OCTOSPI1, 256, 0x92, 0, 0xf0f0f0f0, 
+                        (2U << OCTOSPI_CCR_DMODE_Pos) |
+                        (0U << OCTOSPI_CCR_ABSIZE_Pos) |
+                        (2U << OCTOSPI_CCR_ABMODE_Pos) |
+                        (2U << OCTOSPI_CCR_ADSIZE_Pos) |
+                        (2U << OCTOSPI_CCR_ADMODE_Pos) |
+                        (1U << OCTOSPI_CCR_IMODE_Pos)
+                        , 0, &mfg_dev2[tap * 256]);
+
+                    bool is_good = true;
+                    for(unsigned int i = 0; i < 128; i++)
+                    {
+                        if(mfg_dev2[i * 2 + tap * 256] != 0xef || mfg_dev2[i * 2 + 1 + tap * 256] != 0x15)
+                        {
+                            is_good = false;
+                            //klog("DPI: fail tuning for %u at %u\n", tap, i);
+                            break;
+                        }
+                    }
+
+                    if(is_good)
+                    {
+                        if(start_good == ~0U)
+                            start_good = tap;
+                        end_good = tap;
+                    }
+                }
+
+                if(start_good == ~0U)
+                {
+                    // fail tuning
+                    klog("FSBL: DPI: fail tuning, revert to SPI\n");
+                    OCTOSPI1->CCR = (1U << OCTOSPI_CCR_DMODE_Pos) |
+                        (0U << OCTOSPI_CCR_ABMODE_Pos) |
+                        (2U << OCTOSPI_CCR_ADSIZE_Pos) |
+                        (1U << OCTOSPI_CCR_ADMODE_Pos) |
+                        (1U << OCTOSPI_CCR_IMODE_Pos);
+                    OCTOSPI1->TCR = 0U;
+                    OCTOSPI1->IR = 0x03U;
+                    OCTOSPI1->DCR2 = (1U << OCTOSPI_DCR2_PRESCALER_Pos);        // 100 MHz/2 => 50 MHz
+                }
+                else
+                {
+                    klog("FSBL: DPI: pass tuning for (%u, %u), set to %u\n", start_good, end_good,
+                        (start_good + end_good) / 2);
+                    SYSCFG->DLYBOS1CR = 0;
+                    __asm__ volatile("dsb sy\n" ::: "memory");
+                    SYSCFG->DLYBOS1CR = (((start_good + end_good) / 2) << SYSCFG_DLYBOS1CR_RX_TAP_SEL_Pos) |
+                        SYSCFG_DLYBOS1CR_EN;
+                    __asm__ volatile("dsb sy\n" ::: "memory");
+                    while(!(SYSCFG->DLYBOS1SR & SYSCFG_DLYBOS1SR_LOCK));
+
+                    OCTOSPI1->CCR = (2U << OCTOSPI_CCR_DMODE_Pos) |
+                        (0U << OCTOSPI_CCR_ABSIZE_Pos) |
+                        (2U << OCTOSPI_CCR_ABMODE_Pos) |
+                        (2U << OCTOSPI_CCR_ADSIZE_Pos) |
+                        (2U << OCTOSPI_CCR_ADMODE_Pos) |
+                        (1U << OCTOSPI_CCR_IMODE_Pos);
+                    OCTOSPI1->IR = 0xbb;
+                    OCTOSPI1->ABR = 0xf0;
+                    OCTOSPI1->TCR = (OCTOSPI1->TCR & ~OCTOSPI_TCR_DCYC_Msk) |
+                        (0U << OCTOSPI_TCR_DCYC_Pos);   // 0 dummy bytes for dual IO
+                }
             }
             else
             {
-                //klog("DPI: set tap to %u (%u, %u)\n", (start_good + end_good) / 2, start_good, end_good);
+                klog("FSBL: QPI: pass tuning for (%u, %u), set to %u\n", start_good, end_good,
+                        (start_good + end_good) / 2);
                 SYSCFG->DLYBOS1CR = 0;
                 __asm__ volatile("dsb sy\n" ::: "memory");
                 SYSCFG->DLYBOS1CR = (((start_good + end_good) / 2) << SYSCFG_DLYBOS1CR_RX_TAP_SEL_Pos) |
@@ -427,16 +442,16 @@ int main(uint32_t bootrom_val)
                 __asm__ volatile("dsb sy\n" ::: "memory");
                 while(!(SYSCFG->DLYBOS1SR & SYSCFG_DLYBOS1SR_LOCK));
 
-                OCTOSPI1->CCR = (2U << OCTOSPI_CCR_DMODE_Pos) |
+                OCTOSPI1->CCR = (3U << OCTOSPI_CCR_DMODE_Pos) |
                     (0U << OCTOSPI_CCR_ABSIZE_Pos) |
-                    (2U << OCTOSPI_CCR_ABMODE_Pos) |
+                    (3U << OCTOSPI_CCR_ABMODE_Pos) |
                     (2U << OCTOSPI_CCR_ADSIZE_Pos) |
-                    (2U << OCTOSPI_CCR_ADMODE_Pos) |
+                    (3U << OCTOSPI_CCR_ADMODE_Pos) |
                     (1U << OCTOSPI_CCR_IMODE_Pos);
-                OCTOSPI1->IR = 0xbb;
-                OCTOSPI1->ABR = 0xf0;
+                OCTOSPI1->IR = 0xeb;
+                OCTOSPI1->ABR = 0xf0f0f0;
                 OCTOSPI1->TCR = (OCTOSPI1->TCR & ~OCTOSPI_TCR_DCYC_Msk) |
-                    (0U << OCTOSPI_TCR_DCYC_Pos);   // 0 dummy bytes for dual IO
+                    (4U << OCTOSPI_TCR_DCYC_Pos);   // 2 bytes = 4 clock cycles at QPI
             }
 
             while(OCTOSPI1->SR & OCTOSPI_SR_BUSY);
@@ -447,7 +462,7 @@ int main(uint32_t bootrom_val)
     OCTOSPI1->CR = (3U << OCTOSPI_CR_FMODE_Pos) |
         OCTOSPI_CR_EN;
 
-    log("FSBL: starting SSBL\n");
+    klog("FSBL: starting SSBL\n");
 
     // Set up VDERAM for access by SSBL-a
     RCC->VDERAMCFGR |= RCC_VDERAMCFGR_VDERAMEN;
@@ -482,29 +497,6 @@ int main(uint32_t bootrom_val)
     ssbl(bootrom_val);
 
     return 0;
-}
-
-void log(char c)
-{
-    while((USART6->ISR & USART_ISR_TXFNF_Msk) == 0);
-    USART6->TDR = c;
-}
-
-void log(const char *s)
-{
-    while(*s)
-    {
-        if(*s == '\n')
-        {
-            log('\r');
-            log('\n');
-        }
-        else
-        {
-            log(*s);
-        }
-        s++;
-    }
 }
 
 timespec clock_cur()
