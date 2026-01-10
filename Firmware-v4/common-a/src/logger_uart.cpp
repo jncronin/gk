@@ -44,19 +44,23 @@ ssize_t log_fwrite(const void *buf, size_t count)
     return (ssize_t)count;
 }
 
-int klog(const char *format, ...)
+int klogv(const char *format, va_list va)
 {
 #ifndef GK_NO_UART_LOCK
     CriticalGuard cg(s_log);
 #endif
     auto cur = clock_cur();
 
+    auto ret = logger_printf(cur, format, va);
+    
+    return ret;
+}
+
+int klog(const char *format, ...)
+{
     va_list args;
     va_start(args, format);
-
-    auto ret = logger_printf(cur, format, args);
-    
+    auto ret = klogv(format, args);
     va_end(args);
-
     return ret;
 }

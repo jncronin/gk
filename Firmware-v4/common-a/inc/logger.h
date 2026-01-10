@@ -18,6 +18,7 @@ extern "C" {
 #endif
 
 int klog(const char *format, ...);
+int klogv(const char *format, va_list va);
 ssize_t log_fwrite(const void *buf, size_t count);
 
 #ifdef __cplusplus

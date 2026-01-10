@@ -12,6 +12,8 @@
 #include "whd_types.h"
 #include "cyhal.h"
 
+extern "C" void bt_post_reset_cback(void);
+
 static void wifi_airoc_reset();
 
 static bool wifi_airoc_init = false;
@@ -162,4 +164,6 @@ void wifi_airoc_reset()
     whd_bus_sdio_attach(whd_drv, &whd_sdio_config, nullptr);
 
     whd_wifi_on(whd_drv, &whd_iface);
+
+    bt_post_reset_cback();
 }
