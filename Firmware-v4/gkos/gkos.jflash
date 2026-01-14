@@ -56,7 +56,7 @@
   AutoPerformsVerify = 1
   EnableFixedVTref = 0
   EnableTargetPower = 0
-  EraseType = 3
+  EraseType = 1
   FixedVTref = 0x00000CE4
   MonitorVTref = 0
   MonitorVTrefMax = 0x0000157C
