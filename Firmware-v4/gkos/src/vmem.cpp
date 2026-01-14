@@ -252,6 +252,8 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
         if(ttbr0 == ~0ULL)
         {
             auto p = GetCurrentProcessForCore();
+            if(p == nullptr)
+                return 0;
             if(p->user_mem == nullptr)
                 return 0;
             CriticalGuard cg(p->user_mem->sl);

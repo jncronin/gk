@@ -100,7 +100,7 @@ static inline PThread &GetCurrentPThreadForCore()
 
 static inline PProcess GetCurrentProcessForCore()
 {
-    return GetCurrentKernelThreadForCore()->p;
+    return GetCurrentKernelThreadForCore() ? GetCurrentKernelThreadForCore()->p : nullptr;
 }
 
 #endif

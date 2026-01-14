@@ -119,8 +119,8 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 static void DumpThreadFault()
 {
     klog("Process: %s, Thread: %s @ %p\n",
-        GetCurrentProcessForCore()->name.c_str(),
-        GetCurrentThreadForCore()->name.c_str(),
+        (GetCurrentThreadForCore() && GetCurrentProcessForCore()) ? GetCurrentProcessForCore()->name.c_str() : "<NULL>",
+        GetCurrentThreadForCore() ? GetCurrentThreadForCore()->name.c_str() : "<NULL>",
         GetCurrentThreadForCore());
 }
 
@@ -183,6 +183,11 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
     }
     else
     {
+        if(GetCurrentThreadForCore() == nullptr)
+        {
+            klog("pf: lower half from kernel init\n");
+            return SupervisorThreadFault();
+        }
         // check vblock for access
         auto umem = GetCurrentThreadForCore()->p->user_mem.get();
         if(umem == nullptr)

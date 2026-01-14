@@ -342,6 +342,11 @@ static inline size_t get_bpp(int pf)
     }
 }
 
+size_t screen_get_bpp_for_pf(unsigned int pf)
+{
+    return get_bpp(pf);
+}
+
 static int fill_missing(gpu_message &msg, bool fill_src, Process::screen_t &cs)
 {
     auto bufs = _screen_current();

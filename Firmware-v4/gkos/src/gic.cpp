@@ -16,6 +16,7 @@ consteval uint32_t valid_cores()
 
 void SDMMC1_IRQHandler();
 void USB3DR_IRQHandler();
+void LTDC_IRQHandler();
 
 void gic_irq_handler(uint32_t iar)
 {
@@ -31,6 +32,10 @@ void gic_irq_handler(uint32_t iar)
 
         case 155:
             SDMMC1_IRQHandler();
+            break;
+
+        case 190:
+            LTDC_IRQHandler();
             break;
 
         case 259:
