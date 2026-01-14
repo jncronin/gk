@@ -1,6 +1,8 @@
 #include "i2c.h"
 #include "pins.h"
 #include "vmem.h"
+#include "clocks.h"
+#include "kernel_time.h"
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
@@ -74,9 +76,24 @@ void init_i2c()
 
     // init each instance
     i2cs[0].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C1_BASE);
+    i2cs[0].SDA = i2c_pins[0];
+    i2cs[0].SCL = i2c_pins[1];
+    i2cs[0].rcc_reg = &RCC_VMEM->I2C1CFGR;
+
     i2cs[1].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C2_BASE);
+    i2cs[1].SDA = i2c_pins[2];
+    i2cs[1].SCL = i2c_pins[3];
+    i2cs[1].rcc_reg = &RCC_VMEM->I2C2CFGR;
+
     i2cs[3].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C4_BASE);
+    i2cs[3].SDA = i2c_pins[4];
+    i2cs[3].SCL = i2c_pins[5];
+    i2cs[3].rcc_reg = &RCC_VMEM->I2C4CFGR;
+
     i2cs[6].inst = (I2C_TypeDef *)PMEM_TO_VMEM(I2C7_BASE);
+    i2cs[6].SDA = i2c_pins[6];
+    i2cs[6].SCL = i2c_pins[7];
+    i2cs[6].rcc_reg = &RCC_VMEM->I2C7CFGR;
 
     i2cs[0].Init();
     i2cs[1].Init();
@@ -91,6 +108,30 @@ I2C &i2c(unsigned int instance)
 
 int I2C::Init()
 {
+    // toggle pins to avoid any busy glitches
+    *rcc_reg = 0;
+    __asm__ ("dsb sy\n" ::: "memory");
+    *rcc_reg = RCC_I2C1CFGR_I2C1RST;
+    __asm__ ("dsb sy\n" ::: "memory");
+    
+#if 1
+    SDA.set_as_output(pin::OpenDrain);
+    SCL.set_as_output(pin::OpenDrain);
+    SDA.clear();
+    SCL.clear();
+    udelay(500);
+    SDA.set();
+    SCL.set();
+    udelay(500);
+#endif
+    SDA.set_as_af(pin::OpenDrain);
+    SCL.set_as_af(pin::OpenDrain);
+
+    *rcc_reg |= RCC_I2C1CFGR_I2C1EN;
+    __asm__ ("dsb sy\n" ::: "memory");
+    *rcc_reg &= ~RCC_I2C1CFGR_I2C1RST;
+    __asm__ ("dsb sy\n" ::: "memory");
+
     const bool irqs = false;
 
     inst->CR1 = 0U;
@@ -205,6 +246,43 @@ static volatile char *cur_buf_p(void *buf, size_t nbytes,
         return nullptr;
 }
 
+unsigned int I2C::WaitTimeout(unsigned int wait_flag, unsigned int ms)
+{
+    auto tout = clock_cur() + kernel_time_from_ms(5);
+    while(!(inst->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)))
+    {
+        if(clock_cur() > tout)
+        {
+            klog("i2c: ACK timeout\n");
+            init = false;
+            return 0;
+        }
+    }
+    if(inst->ISR & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO))
+    {
+        // fail
+        if(inst->ISR & I2C_ISR_BERR)
+        {
+            klog(msg_i2c_berr);
+            init = false;
+            return I2C_ISR_BERR;
+        }
+        else if(inst->ISR & I2C_ISR_ARLO)
+        {
+            klog(msg_i2c_arlo);
+            init = false;
+            return I2C_ISR_ARLO;
+        }
+        else
+        {
+            klog(msg_i2c_nackf);
+            inst->ICR = I2C_ICR_NACKCF;
+            return I2C_ISR_NACKF;
+        }
+    }
+    return inst->ISR & wait_flag;
+}
+
 int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes, 
             void *buf2, size_t nbytes2,
             bool is_read, bool restart_after_write)
@@ -224,28 +302,11 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
     inst->CR2 = cr2 | I2C_CR2_START;
 
     unsigned int wait_flag = is_read ? I2C_ISR_RXNE : I2C_ISR_TXIS;
-    while(!(inst->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)));
-    if(inst->ISR & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO))
+    // TODO: Block() with deferred irq handling (disable GIC in handler, re-enable here)
+    unsigned int err = WaitTimeout(wait_flag);
+    if(err != wait_flag)
     {
-        // fail
-        if(inst->ISR & I2C_ISR_BERR)
-        {
-            klog(msg_i2c_berr);
-            init = false;
-            return -1;
-        }
-        else if(inst->ISR & I2C_ISR_ARLO)
-        {
-            klog(msg_i2c_arlo);
-            init = false;
-            return -1;
-        }
-        else
-        {
-            klog(msg_i2c_nackf);
-            inst->ICR = I2C_ICR_NACKCF;
-            return -1;
-        }
+        return -1;
     }
     else if(is_read)
     {
@@ -256,15 +317,19 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
         bool cont = true;
         while(cont)
         {
-            while(!(inst->ISR & wait_flag));
+            err = WaitTimeout(wait_flag);
+            if(err != wait_flag)
+            {
+                return -1;
+            }
             auto d = inst->RXDR;
             *cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit) = d;
             n_xmit = n_xmit + 1;
             if(n_xmit == n_tc_end)
             {
-                while(!(inst->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
-                if((restart_after_write && (inst->ISR & I2C_ISR_TC)) ||
-                    (inst->ISR & I2C_ISR_STOPF))
+                err = WaitTimeout(I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF);
+                if((restart_after_write && (err & I2C_ISR_TC)) ||
+                    (err & I2C_ISR_STOPF))
                 {
                     // finished
                     cont = false;
@@ -277,7 +342,7 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
 #endif
                     return n_xmit;
                 }
-                else if(inst->ISR & I2C_ISR_TCR)
+                else if(err & I2C_ISR_TCR)
                 {
                     // reload
                     inst->CR2 = calc_cr2(addr, is_read,
@@ -304,21 +369,25 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
         bool cont = true;
         while(cont)
         {
-            while(!(inst->ISR & wait_flag));
+            err = WaitTimeout(wait_flag);
+            if(err != wait_flag)
+            {
+                return -1;
+            }
             auto d = *cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit);
             n_xmit = n_xmit + 1;
             inst->TXDR = d;
             if(n_xmit == n_tc_end)
             {
-                while(!(inst->ISR & (I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF)));
-                if(inst->ISR & I2C_ISR_NACKF)
+                err = WaitTimeout(I2C_ISR_TC | I2C_ISR_TCR | I2C_ISR_STOPF);
+                if(err & I2C_ISR_NACKF)
                 {
                     //CriticalGuard cg(s_rtt);
                     //kklog("i2c: NACKF during write phase\n");
                     klog(msg_i2c_nackf);
                 }
-                if((restart_after_write && (inst->ISR & I2C_ISR_TC)) ||
-                    (inst->ISR & I2C_ISR_STOPF))
+                if((restart_after_write && (err & I2C_ISR_TC)) ||
+                    (err & I2C_ISR_STOPF))
                 {
                     // finished
                     cont = false;
@@ -331,7 +400,7 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
 #endif
                     return n_xmit;
                 }
-                else if(inst->ISR & I2C_ISR_TCR)
+                else if(err & I2C_ISR_TCR)
                 {
                     // reload
                     inst->CR2 = calc_cr2(addr, is_read,
