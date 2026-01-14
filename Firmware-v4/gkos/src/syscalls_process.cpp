@@ -69,7 +69,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
             proc->screen.screen_h = GK_SCREEN_HEIGHT;
         if(proc->screen.screen_h > GK_MAX_SCREEN_HEIGHT)
             proc->screen.screen_h = GK_MAX_SCREEN_HEIGHT;
-        proc->screen.screen_h = (proc->screen.screen_w + 3) & ~3;
+        proc->screen.screen_h = (proc->screen.screen_h + 3) & ~3;
 
         if(proc->screen.screen_refresh < GK_MIN_SCREEN_REFRESH
             || proc->screen.screen_refresh > GK_MAX_SCREEN_REFRESH)
