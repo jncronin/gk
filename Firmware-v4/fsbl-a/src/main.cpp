@@ -204,6 +204,8 @@ int main(uint32_t bootrom_val)
     USART6->CR3 = 0;
     USART6->CR1 = USART_CR1_FIFOEN | USART_CR1_TE | USART_CR1_UE;
 
+    klog("FSBL: start\n");
+
     // Set up clocks so that we can get a nice fast clock for QSPI
     init_clocks();
 
