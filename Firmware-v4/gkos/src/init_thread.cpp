@@ -35,6 +35,10 @@ void *init_thread(void *)
     p_test->env.args.clear();
     p_test->env.args.push_back("Castlevania IV");
 
+    p_test->screen.screen_pf = GK_PIXELFORMAT_RGB565;
+    p_test->screen.screen_w = GK_SCREEN_WIDTH;
+    p_test->screen.screen_h = GK_SCREEN_HEIGHT;
+
     if(ret == 0)
     {
         auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_test);
