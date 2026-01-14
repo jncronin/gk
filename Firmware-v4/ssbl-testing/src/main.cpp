@@ -142,16 +142,16 @@ int main(uint32_t bootrom_val)
 
 
     void init_wifi_airoc();
-    init_wifi_airoc();
+    //init_wifi_airoc();
 
-    while(true);
+    //while(true);
 
     while(true)
     {
         void lsm_poll();
         void pwr_poll();
 
-        //lsm_poll();
+        lsm_poll();
         pwr_poll();
 
         udelay(40000);
