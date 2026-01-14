@@ -199,6 +199,31 @@ template <typename T> static int ospi_ind_read(OCTOSPI_TypeDef *instance, size_t
     return (int)ret;
 }
 
+static uint32_t ospi_read_status()
+{
+    uint8_t sr1;
+    auto ret = ospi_ind_read(OCTOSPI1, 1, 0x05, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr1);
+    if(ret == 1)
+        return (uint32_t)sr1;
+    else
+        return 0;
+}
+
+static int ospi_write_enable()
+{
+    return (ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x06, 0, 0, ccr_spi_no_ab_no_addr_no_data, 0, nullptr) == 0) ? 0 : -1;
+}
+
+static uint32_t ospi_wait_not_busy()
+{
+    while(true)
+    {
+        auto sr = ospi_read_status();
+        if(!(sr & 0x1))
+            return sr;
+    }
+}
+
 static int set_memmap()
 {
     // set memory mapped mode
@@ -264,8 +289,8 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
         { GPIOD, 4, 10 },
         { GPIOD, 5, 10 }
     };
-    const constexpr pin OSPI_nWP { GPIOD, 6 };
-    const constexpr pin OSPI_nHOLD { GPIOD, 7 };
+    const constexpr pin OSPI_nWP { GPIOD, 6, 10 };
+    const constexpr pin OSPI_nHOLD { GPIOD, 7, 10 };
     for(const auto &p : OSPI_PINS)
     {
         p.set_as_af();
@@ -273,7 +298,7 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
     OSPI_nWP.set_as_output();
     OSPI_nWP.set();
     OSPI_nHOLD.set_as_output();
-    OSPI_nHOLD.clear();
+    OSPI_nHOLD.set();
 
     RCC->OSPIIOMCFGR |= RCC_OSPIIOMCFGR_OSPIIOMEN;
     RCC->OSPI1CFGR |= RCC_OSPI1CFGR_OSPI1EN;
@@ -294,12 +319,62 @@ int Init (uint32_t adr, uint32_t clk, uint32_t fnc)
     OCTOSPI1->CR |= OCTOSPI_CR_EN;
 
     // read jedec id
-    uint8_t jedec_id[3];
-    auto nb = ospi_ind_read(OCTOSPI1, 3, 0x9f, 0, 0, ccr_spi_no_ab_no_addr, 0, jedec_id);
-    klog("FlashPrg: jedec_read: %u, [ %x, %x, %x ]\n",
-        nb, jedec_id[0], jedec_id[1], jedec_id[2]);
-    if(nb != 3 || jedec_id[0] != 0xef || (jedec_id[1] != 0x40 && jedec_id[1] != 0x70) || jedec_id[2] != 0x16)
+    bool succeed = false;
+    for(int nretry = 0; nretry < 10; nretry++)
+    {
+        uint8_t jedec_id[3];
+        auto nb = ospi_ind_read(OCTOSPI1, 3, 0x9f, 0, 0, ccr_spi_no_ab_no_addr, 0, jedec_id);
+        klog("FlashPrg: jedec_read: %u, [ %x, %x, %x ]\n",
+            nb, jedec_id[0], jedec_id[1], jedec_id[2]);
+        if(nb == 3 && jedec_id[0] == 0xef && (jedec_id[1] == 0x40 || jedec_id[1] == 0x70) && jedec_id[2] == 0x16)
+        {
+            succeed = true;
+            break;
+        }
+        for(int i = 0; i < 100000; i++)
+        {
+            __asm__ volatile("dsb sy\n" ::: "memory");
+        }
+    }
+    if(!succeed)
         return -1;
+
+    // is QE set? if not, program in both status register and non-volatile status register
+    uint8_t sr2;
+    if(ospi_ind_read(OCTOSPI1, 1, 0x35, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr2) != 1)
+    {
+        return -1;
+    }
+    if(!(sr2 & 0x2))
+    {
+        // write to SR2
+        ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x06, 0, 0, ccr_spi_no_ab_no_addr_no_data, 0, nullptr);
+        sr2 |= 0x2;
+        ospi_ind_write<uint8_t>(OCTOSPI1, 1, 0x31, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr2);
+
+        // wait for busy clear
+        ospi_wait_not_busy();
+
+        // check the write succeeded
+        ospi_ind_read(OCTOSPI1, 1, 0x35, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr2);
+        
+        if(!(sr2 & 0x2))
+        {
+            return -1;
+        }
+
+        // write to NV SR2
+        ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x50, 0, 0, ccr_spi_no_ab_no_addr_no_data, 0, nullptr);
+        ospi_ind_write<uint8_t>(OCTOSPI1, 1, 0x31, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr2);
+
+        // wait tSHSL2
+        for(int i = 0; i < 100000; i++)
+        {
+            __asm__ volatile("dsb sy\n" ::: "memory");
+        }
+    }
+    OSPI_nWP.set_as_af();
+    OSPI_nHOLD.set_as_af();
 
     klog("FlashPrg: Init success\n");
 
@@ -344,31 +419,6 @@ static uint32_t qspi_read_status()
     return xspi_ind_read16(XSPI2, 0);
 }
 #endif
-
-static uint32_t ospi_read_status()
-{
-    uint8_t sr1;
-    auto ret = ospi_ind_read(OCTOSPI1, 1, 0x05, 0, 0, ccr_spi_no_ab_no_addr, 0, &sr1);
-    if(ret == 1)
-        return (uint32_t)sr1;
-    else
-        return 0;
-}
-
-static int ospi_write_enable()
-{
-    return (ospi_ind_write<uint8_t>(OCTOSPI1, 0, 0x06, 0, 0, ccr_spi_no_ab_no_addr_no_data, 0, nullptr) == 0) ? 0 : -1;
-}
-
-static uint32_t ospi_wait_not_busy()
-{
-    while(true)
-    {
-        auto sr = ospi_read_status();
-        if(!(sr & 0x1))
-            return sr;
-    }
-}
 
 int EraseSector(uint32_t addr)
 {
