@@ -27,7 +27,7 @@
   InitStep0_Action = "Reset"
   InitStep0_Value0 = 0x00000000
   InitStep0_Value1 = 0x00000000
-  InitStep0_Comment = "Reset and halt target"
+  InitStep0_Comment = ""
   NumExitSteps = 0
   UseScriptFile = 0
   ScriptFile = ""
@@ -52,11 +52,11 @@
   AutoPerformsErase = 1
   AutoPerformsProgram = 1
   AutoPerformsSecure = 0
-  AutoPerformsStartApp = 0
+  AutoPerformsStartApp = 1
   AutoPerformsVerify = 1
   EnableFixedVTref = 0
   EnableTargetPower = 0
-  EraseType = 1
+  EraseType = 3
   FixedVTref = 0x00000CE4
   MonitorVTref = 0
   MonitorVTrefMax = 0x0000157C
@@ -69,7 +69,7 @@
   SNLen = 0x00000004
   SNListFile = ""
   SNValue = 0x00000001
-  StartAppType = 0
+  StartAppType = 1
   TargetPowerDelay = 0x00000014
   TimeoutErase = 0x00003A98
   TimeoutProgram = 0x00002710
