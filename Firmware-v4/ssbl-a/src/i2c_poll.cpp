@@ -27,6 +27,12 @@ static int i2c_dotfer();
 
 void i2c_reset(bool irqs)
 {
+    // clock kernel clock from HSI64
+    RCC->FINDIVxCFGR[15] = 0;       // disable
+    RCC->PREDIVxCFGR[15] = 0;       // div 1
+    RCC->XBARxCFGR[15] = 0x48;      // enabled, hsi64_ker_ck
+    RCC->FINDIVxCFGR[15] = 0x40;    // enabled, div 1
+
     RCC->I2C7CFGR |= RCC_I2C7CFGR_I2C7EN;
     (void)RCC->I2C7CFGR;
 
