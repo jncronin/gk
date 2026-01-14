@@ -81,14 +81,26 @@ class TripleBufferScreenLayer
 {
     protected:
         Spinlock sl;
-        PMemBlock pm[3] = { InvalidPMemBlock(), InvalidPMemBlock(), InvalidPMemBlock() };
+        PMemBlock pm[scr_n_bufs] = { InvalidPMemBlock(), InvalidPMemBlock(), InvalidPMemBlock() };
+        // store the screen layouts of the last process to call screen_update()
+        unsigned int pfs[scr_n_bufs] = { 0, 0, 0 };
+        unsigned int lws[scr_n_bufs] = { GK_SCREEN_WIDTH, GK_SCREEN_WIDTH, GK_SCREEN_WIDTH };
+        unsigned int lhs[scr_n_bufs] = { GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT };
+
+        // which buffer is being shown/queued/updated
         unsigned int cur_display = 0;
         unsigned int last_updated = 0;
         unsigned int cur_update = 0;
 
     public:
+        struct layer_details
+        {
+            uintptr_t paddr;
+            unsigned int pf, lw, lh;
+        };
+
         unsigned int update();
-        uintptr_t vsync();
+        layer_details vsync();
         std::pair<unsigned int, unsigned int> current();
 
         friend void init_screen();
@@ -369,27 +381,34 @@ unsigned int TripleBufferScreenLayer::update()
     CriticalGuard cg(sl);
     last_updated = cur_update;
 
-    cur_update = 0;
+    auto p = GetCurrentProcessForCore();
+    if(p)
+    {
+        pfs[last_updated] = p->screen.screen_pf;
+        lws[last_updated] = p->screen.screen_w;
+        lhs[last_updated] = p->screen.screen_h;
+    }
+
     // select a new screen to write to
+    cur_update = 0;
     while(cur_update == last_updated || cur_update == cur_display)
         cur_update++;
 
     return cur_update;
 }
 
-uintptr_t TripleBufferScreenLayer::vsync()
+TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
 {
     CriticalGuard cg(sl);
 
     if(last_updated != cur_display)
     {
-        auto &next_pm = pm[last_updated];
         cur_display = last_updated;
-        return next_pm.base;
+        return { pm[last_updated].base, pfs[last_updated], lws[last_updated], lhs[last_updated] };
     }
     else
     {
-        return 0;
+        return { 0, 0, 0, 0};
     }
 }
 
@@ -409,12 +428,12 @@ void LTDC_IRQHandler()
             CriticalGuard cg(p->screen.sl);
             auto layer = p->screen.screen_layer;
 
-            auto paddr = scrs[layer].vsync();
-            if(paddr)
+            auto ldetails = scrs[layer].vsync();
+            if(ldetails.paddr)
             {
-                auto lw = p->screen.screen_w;
-                auto lh = p->screen.screen_h;
-                auto lpf = p->screen.screen_pf;
+                auto lw = ldetails.lw;
+                auto lh = ldetails.lh;
+                auto lpf = ldetails.pf;
 
                 auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
 
@@ -447,7 +466,7 @@ void LTDC_IRQHandler()
                 l->CFBLR = ((lw * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
                     ((lw * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
                 l->CFBLNR = lh;
-                l->CFBAR = (uint32_t)(uintptr_t)paddr;
+                l->CFBAR = (uint32_t)(uintptr_t)ldetails.paddr;
                 l->CR = 0;
 
                 if(scen)
