@@ -86,8 +86,7 @@ class TripleBufferScreenLayer
         unsigned int pfs[scr_n_bufs] = { 0, 0, 0 };
         unsigned int lws[scr_n_bufs] = { GK_SCREEN_WIDTH, GK_SCREEN_WIDTH, GK_SCREEN_WIDTH };
         unsigned int lhs[scr_n_bufs] = { GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT };
-        bool new_cluts[scr_n_bufs] = { false, false, false };
-        std::vector<uint32_t> cluts[scr_n_bufs] = { std::vector<uint32_t>(), std::vector<uint32_t>(), std::vector<uint32_t>() };
+        pid_t pids[scr_n_bufs] = { 0, 0, 0 };
 
         // which buffer is being shown/queued/updated
         unsigned int cur_display = 0;
@@ -391,18 +390,7 @@ unsigned int TripleBufferScreenLayer::update()
         pfs[last_updated] = p->screen.screen_pf;
         lws[last_updated] = p->screen.screen_w;
         lhs[last_updated] = p->screen.screen_h;
-
-        if(p->screen.new_clut)
-        {
-            new_cluts[last_updated] = true;
-            cluts[last_updated] = p->screen.clut;
-            p->screen.new_clut = false;
-        }
-        else
-        {
-            new_cluts[last_updated] = false;
-            cluts[last_updated].clear();
-        }
+        pids[last_updated] = p->id;
     }
 
     // select a new screen to write to
@@ -415,13 +403,33 @@ unsigned int TripleBufferScreenLayer::update()
 
 TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
 {
-    CriticalGuard cg(sl);
+    CriticalGuard cg(sl, ProcessList.sl);
 
     if(last_updated != cur_display)
     {
         cur_display = last_updated;
-        return { pm[last_updated].base, pfs[last_updated], lws[last_updated], lhs[last_updated],
-            new_cluts[last_updated], cluts[last_updated] };
+        auto p = (pids[last_updated] == 0) ? nullptr : ProcessList._get(pids[last_updated]);
+        auto paddr = pm[last_updated].base;
+        auto lw = lws[last_updated];
+        auto lh = lhs[last_updated];
+        auto pf = pfs[last_updated];
+        cg.unlock();
+
+        bool new_clut = false;
+        std::vector<uint32_t> clut;
+
+        if(p)
+        {
+            CriticalGuard cg2(p->screen.sl);
+            if(p->screen.new_clut)
+            {
+                p->screen.new_clut = false;
+                new_clut = true;
+                clut = std::move(p->screen.clut);
+                p->screen.clut.clear();
+            }
+        }
+        return { paddr, pf, lw, lh, new_clut, clut };
     }
     else
     {
@@ -439,103 +447,98 @@ void LTDC_IRQHandler()
 {
     if(LTDC_VMEM->ISR & LTDC_ISR_LIF)
     {
-        auto p = GetCurrentProcessForCore();
-        if(p)
+        auto layer = 0;
+
+        auto ldetails = scrs[layer].vsync();
+        if(ldetails.paddr)
         {
-            CriticalGuard cg(p->screen.sl);
-            auto layer = p->screen.screen_layer;
+            auto lw = ldetails.lw;
+            auto lh = ldetails.lh;
+            auto lpf = ldetails.pf;
 
-            auto ldetails = scrs[layer].vsync();
-            if(ldetails.paddr)
+            auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
+
+            auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
+            auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
+
+            // size of the output window - automatically centred on screen.  768x480 is 16:10
+            unsigned int disp_w = 800;
+            unsigned int disp_h = 480;
+
+            disp_w = std::min(disp_w, scr_w);
+            disp_h = std::min(disp_h, scr_h);
+
+            auto scen = ((disp_w > lw) || (disp_h > lh)) ? LTDC_LxCR_SCEN : 0;
+
+            auto bpp = screen_get_bpp_for_pf(lpf);
+
+            hstart += (scr_w - disp_w) / 2;
+            vstart += (scr_h - disp_h) / 2;
+
+            l->WHPCR = (hstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
+                ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
+            l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
+                ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+            
+            uint32_t cluten = 0;
+            if(lpf < 7)
+                l->PFCR = lpf;
+            else
             {
-                auto lw = ldetails.lw;
-                auto lh = ldetails.lh;
-                auto lpf = ldetails.pf;
+                l->PFCR = 7;
 
-                auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
-
-                auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
-                auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
-
-                // size of the output window - automatically centred on screen.  768x480 is 16:10
-                unsigned int disp_w = 800;
-                unsigned int disp_h = 480;
-
-                disp_w = std::min(disp_w, scr_w);
-                disp_h = std::min(disp_h, scr_h);
-
-                auto scen = ((disp_w > lw) || (disp_h > lh)) ? LTDC_LxCR_SCEN : 0;
-
-                auto bpp = screen_get_bpp_for_pf(lpf);
-
-                hstart += (scr_w - disp_w) / 2;
-                vstart += (scr_h - disp_h) / 2;
-
-                l->WHPCR = (hstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
-                    ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
-                l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
-                    ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
-                
-                uint32_t cluten = 0;
-                if(lpf < 7)
-                    l->PFCR = lpf;
-                else
+                // flexible pixel format
+                switch(lpf)
                 {
-                    l->PFCR = 7;
-
-                    // flexible pixel format
-                    switch(lpf)
-                    {
-                        case GK_PIXELFORMAT_L8:
-                            l->FPF0R = (8U << 14);
-                            l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
-                            cluten = LTDC_LxCR_CLUTEN;
-                            break;
-                        default:
-                            klog("screen: unsupported pixel format: %u\n", lpf);
-                    }
+                    case GK_PIXELFORMAT_L8:
+                        l->FPF0R = (8U << 14);
+                        l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                        cluten = LTDC_LxCR_CLUTEN;
+                        break;
+                    default:
+                        klog("screen: unsupported pixel format: %u\n", lpf);
                 }
-
-                if(ldetails.new_clut)
-                {
-                    klog("screen: new clut of size %u\n", ldetails.clut.size());
-                    for(unsigned int i = 0; i < std::min(256U, (unsigned int)ldetails.clut.size()); i++)
-                    {
-                        l->CLUTWR = (ldetails.clut[i] & 0xffffffU) |
-                            (i << 24);
-                    }
-                }
-                l->CACR = 0xffUL;
-                l->DCCR = 0UL;
-                l->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
-                    (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now - change for Layer2
-                l->CFBLR = ((lw * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
-                    ((lw * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
-                l->CFBLNR = lh;
-                l->CFBAR = (uint32_t)(uintptr_t)ldetails.paddr;
-                l->CR = 0;
-
-                if(scen)
-                {
-                    l->CR = 0 | scen;
-
-                    l->SISR = (lw << LTDC_LxSISR_SIH_Pos) |
-                        (lh << LTDC_LxSISR_SIV_Pos);
-                    l->SOSR = (disp_w << LTDC_LxSOSR_SOH_Pos) |
-                        (disp_h << LTDC_LxSOSR_SOV_Pos);
-                    l->SHSFR = ((lw - 1) * 4096) / (disp_w - 1);
-                    l->SVSFR = ((lh - 1) * 4096) / (disp_h - 1);
-                    l->SHSPR = l->SHSFR + 4096;
-                    l->SVSPR = l->SVSFR;
-                    //l->SHSPR = 0;
-                    //l->SVSPR = 0;
-                }
-
-                l->CR = LTDC_LxCR_LEN | scen | cluten;
-
-                screen_flip_in_progress = true;
-                LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
             }
+
+            if(ldetails.new_clut)
+            {
+                //klog("screen: new clut of size %u\n", ldetails.clut.size());
+                for(unsigned int i = 0; i < std::min(256U, (unsigned int)ldetails.clut.size()); i++)
+                {
+                    l->CLUTWR = (ldetails.clut[i] & 0xffffffU) |
+                        (i << 24);
+                }
+            }
+            l->CACR = 0xffUL;
+            l->DCCR = 0UL;
+            l->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
+                (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now - change for Layer2
+            l->CFBLR = ((lw * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
+                ((lw * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
+            l->CFBLNR = lh;
+            l->CFBAR = (uint32_t)(uintptr_t)ldetails.paddr;
+            l->CR = 0;
+
+            if(scen)
+            {
+                l->CR = 0 | scen;
+
+                l->SISR = (lw << LTDC_LxSISR_SIH_Pos) |
+                    (lh << LTDC_LxSISR_SIV_Pos);
+                l->SOSR = (disp_w << LTDC_LxSOSR_SOH_Pos) |
+                    (disp_h << LTDC_LxSOSR_SOV_Pos);
+                l->SHSFR = ((lw - 1) * 4096) / (disp_w - 1);
+                l->SVSFR = ((lh - 1) * 4096) / (disp_h - 1);
+                l->SHSPR = l->SHSFR + 4096;
+                l->SVSPR = l->SVSFR;
+                //l->SHSPR = 0;
+                //l->SVSPR = 0;
+            }
+
+            l->CR = LTDC_LxCR_LEN | scen | cluten;
+
+            screen_flip_in_progress = true;
+            LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
         }
         
         scr_vsync.Signal();

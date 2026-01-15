@@ -108,6 +108,7 @@ int syscall_setscreenmode(int *width, int *height, int *pf, int *refresh, int *_
 int syscall_setpalette(unsigned int ncols, const uint32_t *cols, int *_errno)
 {
     auto p = GetCurrentProcessForCore();
+    //klog("syscall_setpalette: ncols: %u\n", ncols);
     CriticalGuard cg(p->screen.sl);
 
     ncols = std::min(ncols, 256U);
