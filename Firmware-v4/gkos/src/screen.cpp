@@ -86,6 +86,8 @@ class TripleBufferScreenLayer
         unsigned int pfs[scr_n_bufs] = { 0, 0, 0 };
         unsigned int lws[scr_n_bufs] = { GK_SCREEN_WIDTH, GK_SCREEN_WIDTH, GK_SCREEN_WIDTH };
         unsigned int lhs[scr_n_bufs] = { GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT };
+        bool new_cluts[scr_n_bufs] = { false, false, false };
+        std::vector<uint32_t> cluts[scr_n_bufs] = { std::vector<uint32_t>(), std::vector<uint32_t>(), std::vector<uint32_t>() };
 
         // which buffer is being shown/queued/updated
         unsigned int cur_display = 0;
@@ -97,6 +99,8 @@ class TripleBufferScreenLayer
         {
             uintptr_t paddr;
             unsigned int pf, lw, lh;
+            bool new_clut;
+            std::vector<uint32_t> clut;
         };
 
         unsigned int update();
@@ -387,6 +391,18 @@ unsigned int TripleBufferScreenLayer::update()
         pfs[last_updated] = p->screen.screen_pf;
         lws[last_updated] = p->screen.screen_w;
         lhs[last_updated] = p->screen.screen_h;
+
+        if(p->screen.new_clut)
+        {
+            new_cluts[last_updated] = true;
+            cluts[last_updated] = p->screen.clut;
+            p->screen.new_clut = false;
+        }
+        else
+        {
+            new_cluts[last_updated] = false;
+            cluts[last_updated].clear();
+        }
     }
 
     // select a new screen to write to
@@ -404,11 +420,12 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
     if(last_updated != cur_display)
     {
         cur_display = last_updated;
-        return { pm[last_updated].base, pfs[last_updated], lws[last_updated], lhs[last_updated] };
+        return { pm[last_updated].base, pfs[last_updated], lws[last_updated], lhs[last_updated],
+            new_cluts[last_updated], cluts[last_updated] };
     }
     else
     {
-        return { 0, 0, 0, 0};
+        return { 0, 0, 0, 0, false, std::vector<uint32_t>() };
     }
 }
 
@@ -458,7 +475,36 @@ void LTDC_IRQHandler()
                     ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
                 l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
                     ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
-                l->PFCR = lpf;
+                
+                uint32_t cluten = 0;
+                if(lpf < 7)
+                    l->PFCR = lpf;
+                else
+                {
+                    l->PFCR = 7;
+
+                    // flexible pixel format
+                    switch(lpf)
+                    {
+                        case GK_PIXELFORMAT_L8:
+                            l->FPF0R = (8U << 14);
+                            l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                            cluten = LTDC_LxCR_CLUTEN;
+                            break;
+                        default:
+                            klog("screen: unsupported pixel format: %u\n", lpf);
+                    }
+                }
+
+                if(ldetails.new_clut)
+                {
+                    klog("screen: new clut of size %u\n", ldetails.clut.size());
+                    for(unsigned int i = 0; i < std::min(256U, (unsigned int)ldetails.clut.size()); i++)
+                    {
+                        l->CLUTWR = (ldetails.clut[i] & 0xffffffU) |
+                            (i << 24);
+                    }
+                }
                 l->CACR = 0xffUL;
                 l->DCCR = 0UL;
                 l->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
@@ -485,7 +531,7 @@ void LTDC_IRQHandler()
                     //l->SVSPR = 0;
                 }
 
-                l->CR = LTDC_LxCR_LEN | scen;
+                l->CR = LTDC_LxCR_LEN | scen | cluten;
 
                 screen_flip_in_progress = true;
                 LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
