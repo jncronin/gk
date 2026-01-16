@@ -14,6 +14,9 @@ consteval uint32_t valid_cores()
     return v;
 }
 
+typedef void (*irqhandler_t)(void);
+static irqhandler_t handlers[GK_MAX_IRQS];
+
 void SDMMC1_IRQHandler();
 void USB3DR_IRQHandler();
 void LTDC_IRQHandler();
@@ -44,7 +47,10 @@ void gic_irq_handler(uint32_t iar)
             break;
 
         default:
-            klog("GIC: spurious interrupt: %d\n", irq_no);
+            if(handlers[irq_no])
+                handlers[irq_no]();
+            else
+                klog("GIC: spurious interrupt: %d\n", irq_no);
             break;
     }
 
@@ -56,6 +62,17 @@ void gic_irq_handler(uint32_t iar)
     {
         __asm__ volatile("svc #1\n" ::: "memory");
     }
+}
+
+int gic_register_handler(unsigned int irq_no, irqhandler_t handler)
+{
+    if(irq_no < 32 || irq_no >= GK_MAX_IRQS)
+    {
+        klog("gic: register_handler: invalid irq_no: %u\n", irq_no);
+        return -1;
+    }
+    handlers[irq_no] = handler;
+    return 0;
 }
 
 int gic_send_sgi(unsigned int sgi_no, int core_id)

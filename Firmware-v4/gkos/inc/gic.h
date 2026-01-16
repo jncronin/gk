@@ -11,6 +11,7 @@ int gic_set_target(unsigned int irq_no, int core_id = GIC_TARGET_SELF);
 int gic_set_enable(unsigned int irq_no);
 int gic_clear_enable(unsigned int irq_no);
 int gic_send_sgi(unsigned int sgi_no, int core_id = GIC_TARGET_SELF);
+int gic_register_handler(unsigned int irq_no, void (*handler)(void));
 
 static constexpr unsigned int gic_enabled_cores()
 {
