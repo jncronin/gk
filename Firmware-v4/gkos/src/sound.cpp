@@ -134,32 +134,40 @@ void init_sound()
 
 int sound_set_extfreq(double freq)
 {
-    /* We use PLL7 which has a fractional divider with 24-bit precision
-        Input is 40 MHz HSE/2 = 20 MHz
-        VCO output frequency is between 800 and 3200 MHz
+    /* We aim for a SCK of 64x FS freq (NODIV in SAI)
+        Any given VCOout can be postdivided by up to /49 in the PLL,
+            and then by /1,2,4 and then /1-/64 in the flexbar
 
-        The postdivider is two /1 to /7 dividers so various steps up to /49
+        Assume a VCOout of 2 GHz
 
-        We first aim for somewhere in the middle of the VCO output range with
-         integer post-dividers (aim 2000 MHz)
+        Freq = 8000 Hz, SCK = 512 kHz = 2 GHz / 3906 = 2 GHz / (4/64 from flexbar) / 15 (from PLL)
+        Freq = 96000 Hz, SCK = 6.144 MHz = 2 GHz / 325 = 2 GHz / (1/64 from flexbar) / 5 (from PLL)
+
+        Therefore always divide /64 in flexbar findiv
+
+        For the above examples, therefore, calculate a prediv value of 1, 2, or 4 such that PLL div
+         is in [1,49], and ideally closest to 25
         
-        Note input frequencies of < 16000 kHz are too low to generate an
-         appropriate divider with min VCO of 800 MHz, so we need to do more
-         scaling in the flexbar
+        Freq = 8000 Hz, SCK*64*25 = 819.2 MHz, Prediv = 2.4, round up to 4
+        Freq = 96000 Hz, SCK*64*25 => Prediv = 0.2, round up to 1
 
-        For a flexbar scale of /4, and a PLL postdiv of /24, we can
-         achieve FS frequencies of 8.1 to 32.5 kHz, so this is a reasonable
-         ballpark if we then adjust PLL postdiv - this gives < 4kHz through 781 kHz
+        Then back-calculate the nearest PLL divider, then the actual VCOout
 
-        Finally, divide /64 in the flexbar to generate an actual SCK frequency (64x FS) 
-         use NODIV in the SAI
+        Freq = 8000 Hz, 2 GHz / (SCK * 64 * 4) = 15.25
+        
     */
-    
-    int sai_prescale = 4;
-    freq = freq * (double)sai_prescale;
 
     const double targ_vcoout = 2000000000.0;
-    double postdiv = targ_vcoout / freq;
+    const int xbar_findiv_i = 64;
+    auto sck = freq * (double)xbar_findiv_i;
+    auto xbar_prediv = targ_vcoout / (sck * (double)xbar_findiv_i * 25.0);
+    int xbar_prediv_i = 4;
+    if(xbar_prediv <= 1.0)
+        xbar_prediv_i = 1;
+    else if(xbar_prediv <= 2.0)
+        xbar_prediv_i = 2;
+    
+    double postdiv = targ_vcoout / (sck * (double)xbar_findiv_i * (double)xbar_prediv_i);
 
     struct unique_postdivs
     {
@@ -193,7 +201,7 @@ int sound_set_extfreq(double freq)
     }
 
     // now use those postdivs to get the actual vco output
-    double vcoout = freq * (double)pd.div1 * (double)pd.div2;
+    double vcoout = sck * (double)pd.div1 * (double)pd.div2 * (double)xbar_prediv_i * (double)xbar_findiv_i;
     if(vcoout < 800000000.0 || vcoout > 3200000000.0)
     {
         klog("audio: incorrect vcoout freq\n");
@@ -206,8 +214,8 @@ int sound_set_extfreq(double freq)
     int intpart = (int)(vcomult);
     int fract_part = (int)((vcomult - (double)intpart) * 16777216.0);
 
-    klog("audio: pll settings: frefdiv: 2, fbdiv: %d, frac: %d, postdiv1: %d, postdiv2: %d, sai_div: %d\n",
-        intpart, fract_part, pd.div1, pd.div2, sai_prescale);
+    klog("audio: pll settings: frefdiv: 2, fbdiv: %d, frac: %d, postdiv1: %d, postdiv2: %d, prediv: %d, findiv: %d\n",
+        intpart, fract_part, pd.div1, pd.div2, xbar_prediv_i, xbar_findiv_i);
     
     // Now program the PLL7
     RCC_VMEM->PLL7CFGR1 &= ~RCC_PLL7CFGR1_PLLEN;
@@ -230,11 +238,11 @@ int sound_set_extfreq(double freq)
 
     while(!(RCC_VMEM->PLL7CFGR1 & RCC_PLL7CFGR1_PLLRDY));
 
-    // Set up FLEXBAR[24] to use PLL7 / 4
+    // Set up FLEXBAR[24] to use PLL7 / (1,2,4) / 64
     RCC_VMEM->FINDIVxCFGR[24] = 0;       // disable
-    RCC_VMEM->PREDIVxCFGR[24] = 0;       // div 1
+    RCC_VMEM->PREDIVxCFGR[24] = xbar_prediv_i - 1;       
     RCC_VMEM->XBARxCFGR[24] = 0x43;      // enabled, pll7
-    RCC_VMEM->FINDIVxCFGR[24] = 0x7f;    // enabled, div 64
+    RCC_VMEM->FINDIVxCFGR[24] = 0x40 | (xbar_findiv_i - 1);    // enabled, div 64
 
     // Finally, output a test signal (FLEXBAR[24] output) on PF11 if on EV1
     if(gbi.btype == gkos_boot_interface::board_type::EV1)
