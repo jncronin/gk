@@ -20,6 +20,7 @@
 #include "bootinfo.h"
 #include "i2c.h"
 #include "pwr.h"
+#include "ctp.h"
 #include <memory>
 
 // test threads
@@ -117,6 +118,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_sound();
     init_i2c();
     init_pwr();
+    init_ctp();
 
     init_process_interface();
 
