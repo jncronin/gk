@@ -30,7 +30,36 @@ void *pwr_thread(void *)
         i2c_pwr.RegisterRead(ina236a_addr, (uint8_t)0x2, &vbus, 2);
         i2c_pwr.RegisterRead(ina236a_addr, (uint8_t)0x1, &vshunt, 2);
 
-        klog("pwr: id: %x, %x, vbus: %u, vshunt: %u\n", ina_id[0], ina_id[1], vbus, vshunt);
+        ina_id[0] = __builtin_bswap16(ina_id[0]);
+        ina_id[1] = __builtin_bswap16(ina_id[1]);
+        vbus = __builtin_bswap16(vbus);
+        vshunt = __builtin_bswap16(vshunt);
+
+        klog("pwr: id: %x, %x, vbus: %u, vshunt: %d\n", ina_id[0], ina_id[1], vbus, vshunt);
+
+        /* For bus voltage, 1 LSB = 1.6 mV
+            For shunt, depends on ADCRANGE
+                ADCRANGE = 0, 1 LSB = 2.5 uV
+                ADCRANGE = 1, 1 LSB = 625 nV
+            We have 10 mOhm as shunt
+            */
+
+        int vbus_uv = (int)vbus * 1600;
+        int vbus_v = vbus_uv / 1000000;
+        int vbus_fract = vbus_uv % 1000000;
+        klog("pwr: VBUS: %d.%06d V\n", vbus_v, vbus_fract);
+
+        // ultimately want microamps here
+        //  uI = nV * 1000 / uR
+        int64_t vshunt_nv = (int64_t)vshunt * 2500;
+        int64_t ishunt_ua = (vshunt_nv * 1000) / 10000;
+        klog("pwr: ISHUNT: %d uA\n", (int)ishunt_ua);
+
+        // P = V * I => uP = uV * uI * 10^-6
+        int64_t pshunt_uw = (int64_t)vbus_uv * ishunt_ua / 1000000;
+        int pshunt_w = (int)(pshunt_uw / 1000000);
+        int pshunt_fract = (int)(pshunt_uw % 1000000);
+        klog("pwr: PSHUNT: %d.%06d W\n", pshunt_w, pshunt_fract);
 
         Block(clock_cur() + kernel_time_from_ms(1000));
     }
