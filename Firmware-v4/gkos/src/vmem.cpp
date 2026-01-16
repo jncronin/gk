@@ -234,11 +234,6 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
         CriticalGuard cg(sl_uh);
         auto paddr = vmem_vaddr_to_paddr_int(vaddr, ttbr1);
 
-#if DEBUG_VMEM
-        klog("vtp: for %llx, ours returned %llx, quick %llx\n",
-            vaddr + UH_START, paddr, vmem_vaddr_to_paddr_quick(vaddr + UH_START));
-#endif
-
         return paddr;
     }
     else if(vaddr >= LH_END)
@@ -259,19 +254,12 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
             CriticalGuard cg(p->user_mem->sl);
             ttbr0 = p->user_mem->ttbr0 & 0xffffffffffffULL;
             auto paddr = vmem_vaddr_to_paddr_int(vaddr, ttbr0);
-#if 0
-            klog("vaddr_to_paddr: for %llx, ours returned %llx, quick %llx\n",
-                vaddr, paddr, vmem_vaddr_to_paddr_quick(vaddr));
-#endif
+
             return paddr;
         }
         else
         {
             auto paddr = vmem_vaddr_to_paddr_int(vaddr, ttbr0 & 0xffffffffffffULL);
-#if 0
-            klog("vaddr_to_paddr: for %llx, ours returned %llx, quick %llx\n",
-                vaddr, paddr, vmem_vaddr_to_paddr_quick(vaddr ));
-#endif
             return paddr;
         }
     }

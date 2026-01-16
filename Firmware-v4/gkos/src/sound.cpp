@@ -25,6 +25,7 @@ static constexpr const pin SPKR_NSD { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOB), 7 }; 
 #define HPDMA1_VMEM ((DMA_TypeDef *)PMEM_TO_VMEM(HPDMA1_BASE))
 
 #define dma_irq 73
+static void dma_irqhandler(exception_regs *, uint64_t);
 
 using audio_conf = Process::audio_conf_t;
 
@@ -36,7 +37,9 @@ struct ll_dma
     uint32_t sar;
     uint32_t next_ll;
 };
-__attribute__((aligned(CACHE_LINE_SIZE))) static ll_dma ll[4];
+__attribute__((aligned(CACHE_LINE_SIZE))) static ll_dma ll[8];
+
+static_assert((sizeof(ll) & (CACHE_LINE_SIZE - 1)) == 0);
 
 static constexpr uint32_t ll_addr(const void *next_ll)
 {
@@ -47,7 +50,7 @@ static constexpr uint32_t ll_addr(const void *next_ll)
 // buffer
 constexpr unsigned int max_buffer_size = VBLOCK_64k;
 
-static void _queue_if_possible(audio_conf &ac);
+static void _queue_if_possible(audio_conf &ac, uint64_t ttbr0);
 
 [[maybe_unused]] static void _clear_buffers(audio_conf &ac)
 {
@@ -343,8 +346,6 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     }
 
     SAI2_Block_A_VMEM->CR1 =
-//        SAI_xCR1_MCKEN |
-//        SAI_xCR1_OSR |
         (0UL << SAI_xCR1_MCKDIV_Pos) |
         SAI_xCR1_NODIV |
         (dsize << SAI_xCR1_DS_Pos) |
@@ -467,6 +468,8 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     ll[1].sar = ac.silence_paddr;
     ll[1].next_ll = ll_addr(&ll[0]); // lower 16 bytes, set ULL, set USA
     CleanA35Cache((uintptr_t)ll, sizeof(ll), CacheType_t::Data, true);
+    klog("ll[0]: { %x, %x }, ll[1]: { %x, %x }\n",
+        ll[0].sar, ll[0].next_ll, ll[1].sar, ll[1].next_ll);
 
     /* Prepare DMA for running */
     dma->CCR = 
@@ -490,8 +493,9 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     dma->CLBAR = (uint32_t)(vmem_vaddr_to_paddr_quick((uintptr_t)&ll[0]) & 0xffff0000U);
     dma->CLLR = ll[0].next_ll;
 
-    gic_set_enable(dma_irq);
+    gic_set_handler(dma_irq, dma_irqhandler);
     gic_set_target(dma_irq, GIC_ENABLED_CORES);
+    gic_set_enable(dma_irq);
 
     {
         klog("audiosetmode: set %d hz, %d channels, %d bit, %u bytes/buffer, %u buffers @ %08x\n",
@@ -503,6 +507,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
 
 int syscall_audioenable(int enable, int *_errno)
 {
+    klog("audioenable: %d\n", enable);
     auto p = GetCurrentProcessForCore();
     auto &ac = p->audio;
     if(!ac.mr_sound.valid)
@@ -515,7 +520,7 @@ int syscall_audioenable(int enable, int *_errno)
     if(enable && !ac.enabled)
     {
         //_queue_if_possible();
-        //dma->CCR |= DMA_CCR_EN;
+        dma->CCR |= DMA_CCR_EN;
         SAI2_Block_A_VMEM->CR1 |= SAI_xCR1_SAIEN;
 
         pcm_mute_set(false);
@@ -540,18 +545,19 @@ int syscall_audioenable(int enable, int *_errno)
     return 0;
 }
 
-[[maybe_unused]] void _queue_if_possible(audio_conf &ac)
+[[maybe_unused]] void _queue_if_possible(audio_conf &ac, uint64_t ttbr0)
 {
     uint32_t next_buffer;
     if(ac.nbuffers == 1)
     {
         // continuous ring buffer
-        next_buffer = (uint32_t)vmem_vaddr_to_paddr_quick(ac.mr_sound.base);
+        next_buffer = (uint32_t)vmem_vaddr_to_paddr_quick(ac.mr_sound.base, ttbr0);
     }
     else if(ac.rd_ready_ptr != ac.wr_ptr)
     {
         // we can queue the next buffer
-        next_buffer = (uint32_t)vmem_vaddr_to_paddr_quick(ac.mr_sound.base + ac.wr_ptr * ac.buf_size_bytes);
+        next_buffer = (uint32_t)vmem_vaddr_to_paddr_quick(
+            ac.mr_sound.base + ac.wr_ptr * ac.buf_size_bytes, ttbr0);
         ac.wr_ptr = _ptr_plus_one(ac.wr_ptr, ac);
     }
     else
@@ -564,11 +570,11 @@ int syscall_audioenable(int enable, int *_errno)
     while(true)
     {
         auto target = (dma->CLLR == ll[0].next_ll) ? &ll[1].sar : &ll[0].sar;
-        *(volatile void **)target = (void*)next_buffer;
+        *(volatile uint32_t *)target = next_buffer;
         __DMB();
         target = (dma->CLLR == ll[0].next_ll) ? &ll[1].sar : &ll[0].sar;
-        CleanA35Cache((uint32_t)(uintptr_t)ll, sizeof(ll), CacheType_t::Data, true);
-        if(*(volatile void **)target == (void*)next_buffer) break;
+        CleanA35Cache((uintptr_t)ll, sizeof(ll), CacheType_t::Data, true);
+        if(*(volatile uint32_t *)target == next_buffer) break;
     }
 }
 
@@ -632,30 +638,47 @@ int syscall_audiowaitfree(int *_errno)
     return 0;
 }
 
-extern "C" void dma_irqhandler()
+void dma_irqhandler(exception_regs *, uint64_t)
 {
+    //klog("sound: dmairq, CSAR: %x, CLLR: %x\n", dma->CSAR, dma->CLLR);
     auto p = GetFocusProcess();
-    auto &ac = p->audio;
-
-    CriticalGuard cg(ac.sl_sound);
-    //static kernel_time last_time;
-
-    //auto tdiff = clock_cur() - last_time;
-    //last_time = clock_cur();
-    //klog("sound: dma, tdiff: %u\n", (uint32_t)tdiff.to_us());
-    if(!ac.mr_sound.valid)
+    if(p)
     {
-        dma->CFCR = DMA_CFCR_TCF;
-        dma->CCR = 0;
-        SAI2_Block_A_VMEM->CR1 = 0;
-        return;
+        auto &ac = p->audio;
+
+        CriticalGuard cg(ac.sl_sound);
+#if GK_DUMP_AUDIO_PACKETS
+        static kernel_time last_time;
+
+        auto tdiff = clock_cur() - last_time;
+        last_time = clock_cur();
+        klog("sound: dma, tdiff: %u\n", (uint32_t)kernel_time_to_us(tdiff));
+#endif
+        if(!ac.mr_sound.valid)
+        {
+            dma->CFCR = DMA_CFCR_TCF;
+            dma->CCR = 0;
+            SAI2_Block_A_VMEM->CR1 = 0;
+            SPKR_NSD.clear();
+            klog("sound: dma, sound buffer not valid, disabling\n");
+            return;
+        }
+        
+        _queue_if_possible(ac, p->user_mem ? p->user_mem->ttbr0 : ~0ULL);
+
+        if(_ptr_plus_one(ac.rd_ptr, ac) != ac.wr_ptr)
+        {
+            ac.waiting_threads.Signal();
+        }
     }
-    
-    _queue_if_possible(ac);
-
-    if(_ptr_plus_one(ac.rd_ptr, ac) != ac.wr_ptr)
+    else
     {
-        ac.waiting_threads.Signal();
+        klog("sound: dma, no focus process, disabling\n");
+        // disable audio
+        SPKR_NSD.clear();
+        //pcm_mute_set(true);   // don't run from irq handler
+        SAI2_Block_A_VMEM->CR1 &= ~SAI_xCR1_SAIEN;
+        dma->CCR &= ~DMA_CCR_EN;
     }
 
     dma->CFCR = DMA_CFCR_TCF;

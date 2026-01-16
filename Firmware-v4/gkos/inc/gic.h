@@ -5,13 +5,24 @@
 #include "gic_irq_nos.h"
 #include "gk_conf.h"
 
-extern "C" void gic_irq_handler(uint32_t aiar);
+struct exception_regs
+{
+    uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, res0;
+    uint64_t saved_spsr_el1, saved_elr_el1;
+    uint64_t res1, res2;            // ensure q0 32 byte alignment ?needed
+    uint64_t fpu_regs[16];
+    uint64_t fp, lr;
+};
+
+extern "C" void gic_irq_handler(uint32_t aiar, exception_regs *regs, uint64_t elr_el1);
+
+typedef void (*gic_irqhandler_t)(exception_regs *regs, uint64_t elr_el1);
 
 int gic_set_target(unsigned int irq_no, int core_id = GIC_TARGET_SELF);
 int gic_set_enable(unsigned int irq_no);
+int gic_set_handler(unsigned int irq_no, gic_irqhandler_t handler);
 int gic_clear_enable(unsigned int irq_no);
 int gic_send_sgi(unsigned int sgi_no, int core_id = GIC_TARGET_SELF);
-int gic_register_handler(unsigned int irq_no, void (*handler)(void));
 
 static constexpr unsigned int gic_enabled_cores()
 {

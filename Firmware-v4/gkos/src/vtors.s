@@ -174,6 +174,8 @@ _vtor_tbl_entry _lower32_serror
     b.eq 1f
 
     # none of the above - use the full interrupt handler
+    mov x1, sp
+    mrs x2, elr_el1
     bl gic_irq_handler
 
 3:

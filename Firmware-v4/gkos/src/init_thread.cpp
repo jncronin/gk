@@ -33,7 +33,7 @@ void *init_thread(void *)
 
     p_test->env.cwd = "/gkmenu-0.1.1-gk";
     p_test->env.args.clear();
-    //p_test->env.args.push_back("Castlevania IV");
+    p_test->env.args.push_back("Doom");
 
     p_test->screen.screen_pf = GK_PIXELFORMAT_RGB565;
     p_test->screen.screen_w = 640;

@@ -7,6 +7,9 @@
 #include "cleanup.h"
 #include "process_interface.h"
 #include "completion_list.h"
+#include <atomic>
+
+static std::atomic<pid_t> focus_process = 0;
 
 PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
 {
@@ -103,4 +106,15 @@ void Process::Kill(void *rc)
 Process::~Process()
 {
     klog("process: %s destructor called\n", name.c_str());
+}
+
+int SetFocusProcess(PProcess p)
+{
+    focus_process = p->id;
+    return 0;
+}
+
+PProcess GetFocusProcess()
+{
+    return ProcessList.Get(focus_process);
 }

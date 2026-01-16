@@ -21,6 +21,7 @@
 #include "i2c.h"
 #include "pwr.h"
 #include "ctp.h"
+#include "memchk.h"
 #include <memory>
 
 // test threads
@@ -71,6 +72,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
             klog("gkos: booting on EV1 board\n");
             break;
     }
+
+    init_memchk();
 
     // allocate some space to test page faults
     auto pf_test = vblock_alloc(VBLOCK_64k, false, true, false);

@@ -14,14 +14,13 @@ consteval uint32_t valid_cores()
     return v;
 }
 
-typedef void (*irqhandler_t)(void);
-static irqhandler_t handlers[GK_MAX_IRQS];
+static gic_irqhandler_t handlers[GK_MAX_IRQS];
 
 void SDMMC1_IRQHandler();
 void USB3DR_IRQHandler();
 void LTDC_IRQHandler();
 
-void gic_irq_handler(uint32_t iar)
+void gic_irq_handler(uint32_t iar, exception_regs *regs, uint64_t elr_el1)
 {
     auto irq_no = iar & 0x3ff;
     bool do_switch = false;
@@ -48,7 +47,7 @@ void gic_irq_handler(uint32_t iar)
 
         default:
             if(handlers[irq_no])
-                handlers[irq_no]();
+                handlers[irq_no](regs, elr_el1);
             else
                 klog("GIC: spurious interrupt: %d\n", irq_no);
             break;
@@ -64,7 +63,7 @@ void gic_irq_handler(uint32_t iar)
     }
 }
 
-int gic_register_handler(unsigned int irq_no, irqhandler_t handler)
+int gic_set_handler(unsigned int irq_no, gic_irqhandler_t handler)
 {
     if(irq_no < 32 || irq_no >= GK_MAX_IRQS)
     {

@@ -116,6 +116,14 @@ int main(uint32_t bootrom_val)
     pmic_dump_status();
 
     init_ddr();
+
+    /* Give everything access to all of DDR, in privileged and unprivileged modes (still secure though) */
+    RISAF4->REG[0].CFGR = 0;
+    RISAF4->REG[0].STARTR = 0;
+    RISAF4->REG[0].ENDR = (uint32_t)(ddr_get_size() - 1);
+    RISAF4->REG[0].CIDCFGR = 0x00ff00ffU;
+    RISAF4->REG[0].CFGR = 0x101;
+
     init_vmem();
 
     // load secure monitor into a paged EL3

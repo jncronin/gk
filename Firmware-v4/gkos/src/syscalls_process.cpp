@@ -103,6 +103,12 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
         return -1;
     }
 
+    // Set with focus
+    if(proc_info->with_focus)
+    {
+        SetFocusProcess(proc);
+    }
+
     // Schedule thread
     sched.Schedule(t_t0);
 

@@ -20,17 +20,30 @@ int vmem_unmap(const VMemBlock &vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 
 void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr);
 uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 
-static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr)
+static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr, uint64_t ttbr0 = ~0U)
 {
     uint64_t daif;
     uint64_t paddr;
 
-#if 1
-    uint64_t _ttbr0;
+    uint64_t cur_ttbr0;
     __asm__ volatile(
-        "mrs %[_ttbr0], ttbr0_el1\n"
-        : [_ttbr0] "=r" (_ttbr0) :: "memory");
-    vmem_invlpg(vaddr, _ttbr0);
+        "mrs %[cur_ttbr0], ttbr0_el1\n"
+        : [cur_ttbr0] "=r" (cur_ttbr0) :: "memory");
+
+    if(ttbr0 == ~0U)
+    {
+        ttbr0 = cur_ttbr0;
+    }
+    if(ttbr0 != cur_ttbr0)
+    {
+        /* cannot do quick version here - the requested page directory is not loaded to ttbr0
+            use slow page walker instead
+        */
+        return vmem_vaddr_to_paddr(vaddr, ttbr0);
+    }
+
+#if 1
+    vmem_invlpg(vaddr, ttbr0);
 #endif
 
     __asm__ volatile(
@@ -50,10 +63,10 @@ static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr)
     if(paddr & 0x1)
     {
 #if DEBUG_VTP
-        uint64_t ttbr0, ttbr1;
-        __asm__ volatile("mrs %[ttbr0], ttbr0_el1\n"
+        uint64_t ttbr1;
+        __asm__ volatile(
             "mrs %[ttbr1], ttbr1_el1\n"
-            : [ttbr0] "=r" (ttbr0), [ttbr1] "=r" (ttbr1) :: "memory");
+            : [ttbr1] "=r" (ttbr1) :: "memory");
         klog("vtp: failed for %llx: %llx, ttbr0 = %llx, ttbr1 = %llx\n", vaddr, paddr, ttbr0, ttbr1);
 
         auto slow_ret = vmem_vaddr_to_paddr(vaddr);
