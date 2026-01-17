@@ -29,6 +29,13 @@ static void dma_irqhandler(exception_regs *, uint64_t);
 
 using audio_conf = Process::audio_conf_t;
 
+/* I2C comms with TAD5112 */
+static const constexpr unsigned int tad_addr = 0x50;
+static const constexpr unsigned int tad_i2c = 2;
+static void tad_reset();
+static int tad_write(uint8_t reg, uint8_t val);
+static uint8_t tad_read(uint8_t reg);
+
 int volume_pct = 51;
 
 /* We define 2 linked list DMA structures to provide a double buffer mode similar to older STMH7s */
@@ -84,19 +91,54 @@ static inline uint16_t pcm1753_volume_right(int volume)
     return 0x1100U | pcm1753_volume(volume);
 }
 
-static void pcm1753_write(const uint16_t *d, size_t n)
-{
-    klog("pcm1753_write: not impl\n");
-}
-
 static void pcm_mute_set(bool val)
 {
-    uint16_t pcmregs[] = {
-        pcm1753_volume_left(val ? 0U : sound_get_volume()),
-        pcm1753_volume_right(val ? 0U : sound_get_volume())
-    };
-    pcm1753_write(pcmregs, sizeof(pcmregs) / sizeof(uint16_t));
     klog("sound: pcm_mute(%s)\n", val ? "true" : "false");
+    if(!val)
+    {
+        // CH_EN
+        tad_write(0x76, 0x0c);
+    }
+    else
+    {
+        tad_write(0x76, 0);
+    }
+}
+
+[[maybe_unused]] static void *sound_thread(void *)
+{
+    while(true)
+    {
+        auto DEV_MISC_CFG = tad_read(0x2);
+        auto AVDD_IOVDD_STS = tad_read(0x3);
+        auto CLK_ERR_STS0 = tad_read(0x3c);
+        auto CLK_ERR_STS1 = tad_read(0x3d);
+        auto CLK_DET_STS0 = tad_read(0x3e);
+        auto CLK_DET_STS1 = tad_read(0x3f);
+        auto CLK_DET_STS2 = tad_read(0x40);
+        auto CLK_DET_STS3 = tad_read(0x41);
+        auto DEV_STS0 = tad_read(0x79);
+        auto DEV_STS1 = tad_read(0x7a);
+
+        klog("sound: DEV_MISC_CFG: %x, AVDD_IOVDD_STS: %x, CLK_ERR_STS0: %x, CLK_ERR_STS1: %x\n",
+            DEV_MISC_CFG, AVDD_IOVDD_STS, CLK_ERR_STS0, CLK_ERR_STS1);
+        klog("sound: CLK_DET_STS0: %x, CLK_DET_STS1: %x, CLK_DET_STS2: %x, CLK_DET_STS3: %x\n",
+            CLK_DET_STS0, CLK_DET_STS1, CLK_DET_STS2, CLK_DET_STS3);
+        klog("sound: DEV_STS0: %x, DEV_STS1: %x\n",
+            DEV_STS0, DEV_STS1);
+
+        // dump all regs
+        uint8_t p0[256];
+        auto &i2c2 = i2c(tad_i2c);
+        i2c2.RegisterRead(tad_addr, (uint8_t)0, p0, 256);
+        for(unsigned int i = 0; i < 256; i += 4)
+        {
+            klog("sound: %2x: %02x, %2x: %02x, %2x: %02x, %2x: %02x\n",
+                i, p0[i], i + 1, p0[i + 1], i + 2, p0[i + 2], i + 3, p0[i + 3]);
+        }
+
+        Block(clock_cur() + kernel_time_from_ms(1000));
+    }
 }
 
 void init_sound()
@@ -133,6 +175,8 @@ void init_sound()
     HPDMA1_VMEM->PRIVCFGR |= (1U << 8);
 
     //sound_set_volume(50);
+
+    // Schedule(Thread::Create("sound", sound_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
 }
 
 int sound_set_extfreq(double freq)
@@ -277,6 +321,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     CriticalGuard cg(ac.sl_sound);
 
     /* this should be the first call from any process - stop sound output then reconfigure */
+    tad_reset();
     pcm_mute_set(true);
     SPKR_NSD.clear();
 
@@ -364,15 +409,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
         (3UL << SAI_xSLOTR_SLOTEN_Pos) |
         (2UL << SAI_xSLOTR_SLOTSZ_Pos);
 
-    // configure PCM1753
-    uint16_t pcm1753_conf[] = {
-        pcm1753_volume_left(sound_get_volume()),
-        pcm1753_volume_right(sound_get_volume()),
-        0x1300,         // enable both DACs
-        0x1404,         // I2S format
-        0x1604,         // single ZEROA pin
-    };
-    pcm1753_write(pcm1753_conf, sizeof(pcm1753_conf) / sizeof(uint16_t));
+    sound_set_volume(sound_get_volume());
 
     /* Set up buffers */
     if(nbufs)
@@ -696,25 +733,16 @@ int sound_set_volume(int new_vol_pct)
 
     if(!pcmz && volume_pct)
     {
-        pcm_mute_set(false);
         SPKR_NSD.set();
     }
     else
     {
-        pcm_mute_set(true);
         SPKR_NSD.clear();
     }
 
     // set volume on PCM
-    uint16_t pcmregs[] = {
-        pcm1753_volume_left(new_vol_pct),
-        pcm1753_volume_right(new_vol_pct),
-    };
-    klog("sound: set volume val: %d, regs %x, %x, zero=%d\n",
-        new_vol_pct,
-        pcmregs[0], pcmregs[1],
-        pcmz ? 1 : 0);
-    pcm1753_write(pcmregs, sizeof(pcmregs) / sizeof(uint16_t));
+    tad_write(0x67, pcm1753_volume(new_vol_pct));
+    tad_write(0x69, pcm1753_volume(new_vol_pct));
 
     return 0;
 }
@@ -749,4 +777,70 @@ int syscall_audiogetbufferpos(size_t *nbufs, size_t *curbuf, size_t *buflen, siz
     if(freq) *freq = ac.freq;
 
     return 0;
+}
+
+static int tad_write(uint8_t reg, uint8_t val)
+{
+    auto &i2c2 = i2c(tad_i2c);
+    auto ret = i2c2.RegisterWrite(tad_addr, reg, &val, 1);
+    if(ret != 1)
+    {
+        klog("sound: tad write failed %d\n", ret);
+    }
+    return ret;
+}
+
+static uint8_t tad_read(uint8_t reg)
+{
+    auto &i2c2 = i2c(tad_i2c);
+    uint8_t rb;
+    auto ret = i2c2.RegisterRead(tad_addr, reg, &rb, 1);
+    if(ret != 1)
+    {
+        klog("sound: tad read failed %d\n", ret);
+        return 0;
+    }
+    return rb;
+}
+
+void tad_reset()
+{
+    // set page 0
+    /*
+    tad_write(0, 0);
+    tad_write(1, 1);
+    Block(clock_cur() + kernel_time_from_ms(10));
+    while(tad_read(1));
+    */
+
+    // exit sleep mode
+    tad_write(0, 0);
+    tad_write(2, 0xb);
+    Block(clock_cur() + kernel_time_from_ms(2));
+
+    // check register 0x6 - should reset to 0x35
+    if(tad_read(0x6) != 0x35)
+    {
+        klog("sound: tad5112 did not reset\n");
+        return;
+    }
+
+    // configure vddio to 1.8V
+    tad_write(2, 0xb);
+
+    // configure 32-bit i2s mode
+    tad_write(0x1a, 0x70);
+
+    // configure DAC1A -> left, DAC1B -> right
+    tad_write(0x64, 0x24);
+
+    // configure OUT1P and OUT1M as headphone driver
+    tad_write(0x65, 0x60);
+    tad_write(0x66, 0x60);
+
+    // disable output
+    tad_write(0x76, 0);
+
+    // power up DAC channels.
+    tad_write(0x78, 0x40);
 }

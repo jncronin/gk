@@ -115,11 +115,11 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
 
+    init_i2c();
     init_sd();
     init_ext4();
     init_screen();
     init_sound();
-    init_i2c();
     init_pwr();
     init_ctp();
 
