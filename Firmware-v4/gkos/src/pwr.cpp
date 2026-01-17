@@ -61,6 +61,13 @@ void *pwr_thread(void *)
         int pshunt_fract = (int)(pshunt_uw % 1000000);
         klog("pwr: PSHUNT: %d.%06d W\n", pshunt_w, pshunt_fract);
 
+        /* Example IO expander test
+        auto &i2c1 = i2c(1);
+        uint8_t ios[2];
+        auto br = i2c1.RegisterRead(0x20, (uint8_t)0, ios, 2);
+        klog("ios: %u: %02x%02x\n", br, ios[0], ios[1]);
+        */
+
         Block(clock_cur() + kernel_time_from_ms(1000));
     }
 }
