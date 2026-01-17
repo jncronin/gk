@@ -31,8 +31,14 @@ static int process_interface_map(volatile uint64_t *pt,
     uintptr_t vaddr, uintptr_t paddr, size_t len,
     uint64_t attrs);
 
+#define RISAB6_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB6_BASE))
+
 void init_process_interface()
 {
+    /* Give unprivileged code access to the last block of the last page of VDERAM */
+    RISAB6_VMEM->CID[1].PRIVCFGR &= ~(1U << 31);
+    RISAB6_VMEM->PGPRIVCFGR[31] = 0x7fU;
+
     process_highest_pt = Pmem.acquire(VBLOCK_64k);
     if(process_highest_pt.valid == false)
     {

@@ -48,62 +48,34 @@ int main(uint32_t bootrom_val)
         for(int i = 0; i < 2500000; i++);
     }
 
-    /* Give CM33 access to RISAF2 (OSPI) (already has secure access to the other RAMs except BKPSRAM)
-        RISAF2->HWCFGR = 0x100c0505
-        
-        We set up region 0 to be the last 16 kiB of flash, and send this to CID 2 (CPU2)
-
-        The rest should stay under the default i.e. boot CPU only
-    */
-    RISAF2->REG[0].CFGR = 0;
-    RISAF2->REG[0].STARTR = 0x3fc000;
-    RISAF2->REG[0].ENDR = 0x3fffff;
-    RISAF2->REG[0].CIDCFGR = 7U;    // TRACE/CPU0/CPU1
-    RISAF2->REG[0].CFGR = 0xf0101;  // all privilege, secure, enable
-
-    /* Set up RISAB6 to deny access to CM33 for the first 96 kiB of VDERAM,
-        enable access to the last 32 kiB
-        For CM33, the last page will be read-only (contains _cur_s updated by CA35)
-    */
-    for(auto i = 0U; i < 7; i++)
+    /* Only allow access to SRAMs for CA35.  We later (in gkos) give CM33 access to some */
+    // Cannot access RISAB3/4 without the relevant SRAM being clocked
+    RCC->SRAM1CFGR |= RCC_SRAM1CFGR_SRAM1EN;
+    RCC->SRAM2CFGR |= RCC_SRAM2CFGR_SRAM2EN;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    
+    for(auto risab : (RISAB_TypeDef *[]){ RISAB1, RISAB2, RISAB3, RISAB4, RISAB5, RISAB6 })
     {
-        RISAB6->CID[i].PRIVCFGR = 0;
-
-        if(i == 2)
+        // Give privileged read/write access to CIDs 0,1
+        for(unsigned int cid = 0; cid <= 6; cid++)
         {
-            RISAB6->CID[i].RDCFGR = 0xff000000U;
-            RISAB6->CID[i].WRCFGR = 0x7f000000U;
+            klog("risab @ %p, cid %u\n", risab, cid);
+            auto enable_val = (cid <= 1) ? 0xffffffffU : 0U;
+            risab->CID[cid].PRIVCFGR = enable_val;
+            risab->CID[cid].RDCFGR = enable_val;
+            risab->CID[cid].WRCFGR = enable_val;
         }
-        else
+
+        for(unsigned int page = 0; page < 32; page++)
         {
-            RISAB6->CID[i].RDCFGR = 0xffffffffU;
-            RISAB6->CID[i].WRCFGR = 0xffffffffU;
+            // Secure accesses only
+            risab->PGSECCFGR[page] = 0xffU;
+            // Privileged accesses only
+            risab->PGPRIVCFGR[page] = 0xffU;
+            // CID filtering
+            risab->PGCIDCFGR[page] = RISAB_PGCIDCFGR_CFEN;
         }
     }
-    for(auto i = 0U; i < 32; i++)
-    {
-        RISAB6->PGCIDCFGR[i] = 0x1; // enable filtering for all pages
-    }
-        
-
-    // Start up the CM33 code running from QSPI @ 0x603fc000
-    // Boot in secure mode
-    RCC->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
-    (void)RCC->SYSCPU1CFGR;
-    CA35SYSCFG->M33_TZEN_CR |= CA35SYSCFG_M33_TZEN_CR_CFG_SECEXT;
-    CA35SYSCFG->M33_INITSVTOR_CR = 0x603fc000;
-    RCC->CPUBOOTCR &= ~RCC_CPUBOOTCR_BOOT_CPU2;
-    (void)RCC->CPUBOOTCR;
-    RCC->C2RSTCSETR = RCC_C2RSTCSETR_C2RST;
-    while(RCC->C2RSTCSETR & RCC_C2RSTCSETR_C2RST);
-
-    /* Start CPU2
-        - comment out for now as current cm33 firmware overwrites the _cur_s etc data
-            at the end of VDERAM
-    */
-    //RCC->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
-
-    klog("SSBL: CPU2 started\n");
 
     // get some details from STPMIC25
     klog("SSBL: PMIC PRODUCT_ID: %08x, VERSION_SR: %08x\n",

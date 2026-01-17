@@ -23,6 +23,7 @@
 #include "ctp.h"
 #include "memchk.h"
 #include "btnled.h"
+#include "cm33_interface.h"
 #include <memory>
 
 // test threads
@@ -123,6 +124,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_sound();
     init_pwr();
     init_ctp();
+    init_cm33_interface();
 
     init_process_interface();
 
