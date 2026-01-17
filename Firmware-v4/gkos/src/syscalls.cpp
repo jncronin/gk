@@ -11,7 +11,7 @@
 #include "elf.h"
 #include "cleanup.h"
 #include "sound.h"
-//#include "btnled.h"
+#include "btnled.h"
 #include "util.h"
 #include "screen.h"
 
@@ -633,6 +633,23 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto p = reinterpret_cast<__syscall_realpath_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_realpath(p->path, p->resolved_path, p->len,
                     reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_set_leds:
+            {
+                auto p = reinterpret_cast<__syscall_set_led_params *>(r2);
+                switch(p->led_id)
+                {
+                    case GK_LED_MAIN:
+                        btnled_setcolor(p->color);
+                        *reinterpret_cast<int *>(r1) = 0;
+                        break;
+                    default:
+                        *reinterpret_cast<int *>(r3) = EINVAL;
+                        *reinterpret_cast<int *>(r1) = -1;
+                        break;
+                }
             }
             break;
 

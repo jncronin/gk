@@ -22,6 +22,7 @@
 #include "pwr.h"
 #include "ctp.h"
 #include "memchk.h"
+#include "btnled.h"
 #include <memory>
 
 // test threads
@@ -124,6 +125,9 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_ctp();
 
     init_process_interface();
+
+    init_btnled();
+    btnled_setcolor(0x808080);
 
     Schedule(Thread::Create("init", init_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
 
