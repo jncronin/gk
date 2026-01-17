@@ -4,15 +4,26 @@
 #include "i2c.h"
 #include "clocks.h"
 #include "scheduler.h"
+#include "osqueue.h"
 #include "gslX680_311_5_F.h"
+#include <atomic>
 
 extern PProcess p_kernel;
+
+/* Command queue */
+enum class ctp_command
+{
+	CTP_INT, CTP_SLEEP, CTP_RESUME
+};
+static FixedQueue<ctp_command, 8> ctp_queue;
 
 /* Adapted from ER-provided driver */
 #define MAX_CONTACTS 10
 #define MULTI_TP_POINTS 10
 
+#define EXTI1_VMEM ((EXTI_TypeDef *)PMEM_TO_VMEM(EXTI1_BASE))
 static const constexpr pin CTP_WAKE { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 2 };
+static const constexpr pin CTP_INT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 5 };
 static const constexpr uint8_t ctp_addr = 0x40;
 #define printk klog
 #define print_info klog
@@ -25,6 +36,8 @@ static uint16_t x_old[MAX_CONTACTS+1] = {0};
 static uint16_t y_old[MAX_CONTACTS+1] = {0};
 static uint16_t x_new = 0;
 static uint16_t y_new = 0;
+
+static std::atomic<bool> ctp_enabled = false;
 
 static void msleep(unsigned int ms)
 {
@@ -48,7 +61,7 @@ static int gsl_ts_write(int addr, char *pdata, unsigned int datalen)
 static int gsl_ts_read(int addr, char *pdata, unsigned int datalen)
 {
     auto &i2c1 = i2c(4);
-    return i2c1.RegisterWrite(ctp_addr, (uint8_t)addr, pdata, datalen);
+    return i2c1.RegisterRead(ctp_addr, (uint8_t)addr, pdata, datalen);
 }
 
 static void clr_reg()
@@ -328,6 +341,30 @@ gp_multi_touch_work(
 #endif
 }
 
+static void check_mem_data(void)
+{
+	char read_buf[4]  = {0};
+	
+	msleep(30);
+
+	gsl_ts_read(0xb0, read_buf, sizeof(read_buf));
+	if (read_buf[3] != 0x5a || read_buf[2] != 0x5a || read_buf[1] != 0x5a || read_buf[0] != 0x5a)
+	{
+		printk("#########check mem read 0xb0 = %x %x %x %x #########\n", read_buf[3], read_buf[2], read_buf[1], read_buf[0]);
+		CTP_WAKE.clear();
+		msleep(20);
+		CTP_WAKE.set();
+		msleep(20);	
+		//test_i2c();
+		clr_reg();
+		reset_chip();
+		gsl_load_fw();
+		startup_chip();
+		reset_chip();
+		startup_chip();
+	}
+}
+
 void ctp_poll()
 {
     if(!ctp_is_init)
@@ -343,15 +380,70 @@ static void *ctp_thread(void *)
 {
 	while(true)
 	{
-		// TODO: enable/disable for processes that request it
-		// TODO: interrupt driven
-		ctp_poll();
+		if(!ctp_is_init)
+		{
+			gsl_reset();
+			ctp_is_init = true;
+		}
 
-		Block(clock_cur() + kernel_time_from_ms(1000));
+		ctp_command cmd;
+		if(ctp_queue.Pop(&cmd))
+		{
+			switch(cmd)
+			{
+				case ctp_command::CTP_INT:
+					gp_multi_touch_work();
+					gic_set_enable(305);
+					break;
+
+				case ctp_command::CTP_RESUME:
+					CTP_WAKE.set();
+					msleep(20);
+					reset_chip();			
+					startup_chip();
+					check_mem_data();
+
+					ctp_enabled = true;
+					gic_set_enable(305);
+					break;
+
+				case ctp_command::CTP_SLEEP:
+					ctp_enabled = false;
+					CTP_WAKE.clear();
+					gic_clear_enable(305);
+					msleep(10);
+					break;
+			}
+		}
 	}
+}
+
+static void exti1_5_handler(exception_regs *, uint64_t)
+{
+	klog("ctp: irq\n");
+	gic_clear_enable(305);
+	EXTI1_VMEM->RPR1 = (1U << 5);
+	ctp_queue.Push(ctp_command::CTP_INT);
 }
 
 void init_ctp()
 {
+	ctp_enabled = false;
+	CTP_INT.set_as_input();
+	EXTI1_VMEM->EXTICR[1] = (EXTI1_VMEM->EXTICR[1] & ~EXTI_EXTICR2_EXTI5_Msk) |
+		(0U << EXTI_EXTICR2_EXTI5_Pos);
+	EXTI1_VMEM->RTSR1 |= (1U << 5);
+	EXTI1_VMEM->FTSR1 &= ~(1U << 5);
+
+	gic_set_handler(305, exti1_5_handler);
+	gic_set_target(305, GIC_ENABLED_CORES);
+
+	ctp_queue.Push(ctp_command::CTP_RESUME);
+	
 	Schedule(Thread::Create("ctp", ctp_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
+}
+
+bool ctp_get_status()
+{
+	return ctp_enabled;
 }
