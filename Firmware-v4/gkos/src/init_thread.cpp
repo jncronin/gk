@@ -44,6 +44,7 @@ void *init_thread(void *)
         auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_test);
         if(t_test)
         {
+            SetFocusProcess(p_test);
             klog("init: thread created, scheduling it\n");
             sched.Schedule(t_test);
         }    
