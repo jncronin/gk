@@ -11,8 +11,9 @@ ENTRY(Reset_Handler)
 
 MEMORY
 {
-    VDERAM          (xrw) : ORIGIN = 0x300b8000, LENGTH = 0x5000
-    FLASH           (xr)  : ORIGIN = 0x603fc000, LENGTH = 0x4000
+    SRAM1          (rw)   : ORIGIN = 0x30040000, LENGTH = 0x20000
+    SRAM2          (rw)   : ORIGIN = 0x30060000, LENGTH = 0x20000
+    FLASH          (xr)   : ORIGIN = 0x603fc000, LENGTH = 0x4000
 }
 
 SECTIONS
@@ -98,7 +99,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >VDERAM AT> FLASH
+  } >SRAM2 AT> FLASH
   _sdata_flash = LOADADDR(.data);
 
   . = ALIGN(4);
@@ -114,7 +115,7 @@ SECTIONS
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
-  } >VDERAM
+  } >SRAM2
 
-  _estack = 0x300bf000;
+  _estack = 0x30080000;
 }

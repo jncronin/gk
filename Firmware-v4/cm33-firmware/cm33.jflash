@@ -23,11 +23,7 @@
   UseMaxSpeed0 = 0
   UseMaxSpeed1 = 0
 [CPU]
-  NumInitSteps = 1
-  InitStep0_Action = "Reset"
-  InitStep0_Value0 = 0x00000000
-  InitStep0_Value1 = 0x00000000
-  InitStep0_Comment = "Reset and halt target"
+  NumInitSteps = 0
   NumExitSteps = 0
   UseScriptFile = 0
   ScriptFile = ""
@@ -39,11 +35,13 @@
   UseAutoSpeed = 0x00000001
   ClockSpeed = 0x00000000
   EndianMode = 0
-  ChipName = "ST STM32MP257F_A35_0"
+  ChipName = "ST STM32MP257F_A35_0_GK_Loader"
 [FLASH]
-  BankName = "External QSPI flash"
+  aRangeSel[1] = 0-1023
+  BankName = "OSPI1"
+  BankSelMode = 1
   BaseAddr = 0x60000000
-  LoaderName = "CLK@PD0_nCS@PD3_D0@PD4_D1@PD5_D2@PD6_D3@PD7_D42NA_D5@NA_D6@NA_D7@NA"
+  LoaderName = "JC Loader"
   NumBanks = 1
 [PRODUCTION]
   AutoPerformsDisconnect = 0
