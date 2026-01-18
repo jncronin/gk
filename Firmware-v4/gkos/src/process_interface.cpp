@@ -62,8 +62,12 @@ void init_process_interface()
     process_interface_map(pt, GK_TIM3, TIM3_BASE_NS, VBLOCK_64k,
         PAGE_INNER_SHAREABLE | PAGE_ATTR(MT_DEVICE) | PAGE_USER_RO | PAGE_XN);
 
-    // ROINFO page is device memory as it can potentially be written to by M33
+    // ROINFO page is device memory
     process_interface_map(pt, GK_ROINFO_PAGE, 0xe0b0000ULL, VBLOCK_64k,
+        PAGE_INNER_SHAREABLE | PAGE_ATTR(MT_DEVICE) | PAGE_USER_RO | PAGE_XN);
+
+    // CM33 page (first part of SRAM1 - used for input raw data etc) is device memory
+    process_interface_map(pt, GK_CM33_USERSPACE_PAGE, 0x30040000, VBLOCK_64k,
         PAGE_INNER_SHAREABLE | PAGE_ATTR(MT_DEVICE) | PAGE_USER_RO | PAGE_XN);
 
     // The rest is pure CA35 stuff so is cached
