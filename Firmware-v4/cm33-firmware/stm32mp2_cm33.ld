@@ -12,7 +12,8 @@ ENTRY(Reset_Handler)
 MEMORY
 {
     SRAM1          (rw)   : ORIGIN = 0x30040000, LENGTH = 0x20000
-    SRAM2          (rw)   : ORIGIN = 0x30060000, LENGTH = 0x20000
+    SRAM2_HEADER   (rw)   : ORIGIN = 0x30060000, LENGTH = 256
+    SRAM2          (rw)   : ORIGIN = 0x30060000 + 256, LENGTH = 0x20000 - 256
     FLASH          (xr)   : ORIGIN = 0x603f8000, LENGTH = 0x8000
 }
 
@@ -88,6 +89,20 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  . = ALIGN(4);
+  .sram2_header (NOLOAD) :
+  {
+    *(.sram2_header)
+    *(.sram2_header*)
+  } >SRAM2_HEADER
+
+  . = ALIGN(4);
+  .sram2 (NOLOAD) :
+  {
+    *(.sram2)
+    *(.sram2*)
+  } >SRAM2
+
   .data :
   {
     . = ALIGN(4);
@@ -116,6 +131,13 @@ SECTIONS
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
   } >SRAM2
+
+  . = ALIGN(4);
+  .sram1 (NOLOAD) :
+  {
+    *(.sram1)
+    *(.sram1*)
+  } >SRAM1
 
   _estack = 0x30080000;
 }

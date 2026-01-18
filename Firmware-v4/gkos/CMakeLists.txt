@@ -53,6 +53,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/lwext4/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/tinyusb/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../cm33-firmware/inc/interface"
 )
 
 target_compile_definitions(${PROJECT_NAME}

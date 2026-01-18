@@ -4,10 +4,12 @@
 #include "clocks.h"
 #include "kernel_time.h"
 #include "Fusion.h"
+#include "interface/cm33_data.h"
 
 using filter_precision = float;
 static kernel_time last_filter = kernel_time_invalid();
 static FusionAhrs filter;
+static int lsm_reset_state = 0;
 
 // see https://github.com/stm32duino/LSM6DSL/blob/main/src/LSM6DSLSensor.cpp for an example
 
@@ -18,17 +20,22 @@ static int lsm_reset();
 static const constexpr pin LSM6DSL_EN { GPIOD, 9 };
 static const constexpr unsigned int addr = 0x6a;
 
-extern float yaw, pitch, roll;
-extern float acc[3], gyr[3];
+extern cm33_data_userspace d;
 
 void init_lsm()
 {
     is_init = false;
     LSM6DSL_EN.clear();
     LSM6DSL_EN.set_as_output();
-    LSM6DSL_EN.set();
 
     FusionAhrsInitialise(&filter);
+}
+
+void lsm_disable()
+{
+    LSM6DSL_EN.clear();
+    is_init = false;
+    lsm_reset_state = 0;
 }
 
 int lsm_poll()
@@ -90,19 +97,19 @@ int lsm_poll()
                 (float)igyr[2] / 1000.0f
             };
 
-            acc[0] = facc.array[0];
-            acc[1] = facc.array[1];
-            acc[2] = facc.array[2];
-            gyr[0] = fgyr.array[0];
-            gyr[1] = fgyr.array[1];
-            gyr[2] = fgyr.array[2];
+            d.acc[0] = facc.array[0];
+            d.acc[1] = facc.array[1];
+            d.acc[2] = facc.array[2];
+            d.gyr[0] = fgyr.array[0];
+            d.gyr[1] = fgyr.array[1];
+            d.gyr[2] = fgyr.array[2];
             
             FusionAhrsUpdateNoMagnetometer(&filter, fgyr, facc, fdt);
             auto out = FusionQuaternionToEuler(FusionAhrsGetQuaternion(&filter));
 
-            yaw = out.angle.yaw;
-            pitch = out.angle.pitch;
-            roll = out.angle.roll;
+            d.yaw = out.angle.yaw;
+            d.pitch = out.angle.pitch;
+            d.roll = out.angle.roll;
         }
     }
     else
@@ -182,8 +189,6 @@ extern "C" uint8_t LSM6DSL_IO_Read(void *handle, uint8_t ReadAddr, uint8_t *pBuf
 int lsm_reset()
 {
     // run a state machine here to handle the required 5 ms delays
-    static int lsm_reset_state = 0;
-
     if(lsm_reset_state == 0)
     {
         FusionAhrsReset(&filter);
