@@ -68,10 +68,17 @@ void init_cm33_interface()
         }
     }
 
-    // Enable the ADC, use lsmcu clock (200 MHz)
+    // Enable the ADC, use root clock 46 (HSI64)
     PWR_VMEM->CR1 |= PWR_CR1_ASV;
     __asm__ volatile("dsb sy\n" ::: "memory");
-    RCC_VMEM->ADC12CFGR |= RCC_ADC12CFGR_ADC12EN | RCC_ADC12CFGR_ADC12KERSEL;
+
+    RCC_VMEM->FINDIVxCFGR[46] = 0;       // disable
+    RCC_VMEM->PREDIVxCFGR[46] = 0;       // div 1
+    RCC_VMEM->XBARxCFGR[46] = 0x48;      // enabled, hsi64_ker_ck
+    RCC_VMEM->FINDIVxCFGR[46] = 0x40;    // enabled, div 1
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    RCC_VMEM->ADC12CFGR |= RCC_ADC12CFGR_ADC12EN;
     RCC_VMEM->ADC12CFGR &= ~RCC_ADC12CFGR_ADC12RST;
     __asm__ volatile("dsb sy\n" ::: "memory");
 
@@ -96,6 +103,8 @@ void init_cm33_interface()
     RCC_VMEM->GPIOJCFGR |= RCC_GPIOJCFGR_GPIOxEN;
     __asm__ volatile("dsb sy\n" ::: "memory");
 
+    JOY_B_X.set_secure(false);
+    JOY_B_Y.set_secure(false);
     JOY_B_X.set_as_analog();
     JOY_B_Y.set_as_analog();
     BTN_MCU_VOLUP.set_as_input();

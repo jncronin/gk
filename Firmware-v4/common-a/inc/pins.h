@@ -19,6 +19,7 @@ struct pin
     void set_as_output(otype otype = PushPull, pup pup = None) const;
     void set_as_input(pup pup = None) const;
     void set_as_analog(pup pup = None) const;
+    void set_secure(bool secure) const;
 };
 
 void pin_set(const struct pin &p, int mode = 1, int ospeed = 3, int af = 0, int otype = 0, int pup = 0);

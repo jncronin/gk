@@ -4,11 +4,13 @@
 #include "_gk_proccreate.h"
 #include "i2c.h"
 #include "clocks.h"
+#include "adc.h"
 
 const pin BTN_MCU_VOLUP { GPIOH, 2 };
 const pin BTN_MCU_VOLDOWN { GPIOJ, 0 };
 
 unsigned int keystate = 0;
+uint32_t adc_vals[4];
 
 unsigned int ioexp_keystate = 0;
 
@@ -65,6 +67,7 @@ int main()
     // TODO: add SLEEPONEXIT to SCB->SCR to ensure fully interrupt driven mode
 
     init_i2c();
+    init_adc();
 
     // Timer
     RCC->TIM6CFGR |= RCC_TIM6CFGR_TIM6EN;

@@ -86,3 +86,15 @@ void pin::set_as_analog(pup _pup) const
 {
     pin_set(*this, 3, 3, 0, 0, (int)_pup);
 }
+
+void pin::set_secure(bool secure) const
+{
+    if(secure)
+    {
+        gpio->SECCFGR |= (1U << pin);
+    }
+    else
+    {
+        gpio->SECCFGR &= ~(1U << pin);
+    }
+}
