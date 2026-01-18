@@ -82,13 +82,13 @@ void init_cm33_interface()
         JOY_B_X             PC9         U8          ADC1_INP8, ADC2_INP8
         JOY_B_Y             PG4         AA4         ADC1_INP4, ADC2_INP4
 
-        BTN_MCU_VOLUP       PH3         V13
-        BTN_MCU_VOLDOWN     PJ10        U15
+        BTN_MCU_VOLUP       PH2         V13
+        BTN_MCU_VOLDOWN     PJ0         U15
     */
     const pin JOY_B_X { GPIOC_VMEM, 9 };
     const pin JOY_B_Y { GPIOG_VMEM, 4 };
-    const pin BTN_MCU_VOLUP { GPIOH_VMEM, 3 };
-    const pin BTN_MCU_VOLDOWN { GPIOJ_VMEM, 10 };
+    const pin BTN_MCU_VOLUP { GPIOH_VMEM, 2 };
+    const pin BTN_MCU_VOLDOWN { GPIOJ_VMEM, 0 };
 
     RCC_VMEM->GPIOCCFGR |= RCC_GPIOCCFGR_GPIOxEN;
     RCC_VMEM->GPIOGCFGR |= RCC_GPIOGCFGR_GPIOxEN;
