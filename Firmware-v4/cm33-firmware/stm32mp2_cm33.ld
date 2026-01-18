@@ -13,7 +13,7 @@ MEMORY
 {
     SRAM1          (rw)   : ORIGIN = 0x30040000, LENGTH = 0x20000
     SRAM2          (rw)   : ORIGIN = 0x30060000, LENGTH = 0x20000
-    FLASH          (xr)   : ORIGIN = 0x603fc000, LENGTH = 0x4000
+    FLASH          (xr)   : ORIGIN = 0x603f8000, LENGTH = 0x8000
 }
 
 SECTIONS

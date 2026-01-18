@@ -13,6 +13,8 @@ include(../cmake/utils.cmake)
 
 project(gkv4_cm33 C CXX ASM)
 
+add_subdirectory(Fusion/Fusion)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
@@ -80,6 +82,11 @@ target_compile_options(${PROJECT_NAME}
         $<$<COMPILE_LANGUAGE:CXX>:
             -Wno-register
         >)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        Fusion
+)
 
 utils_target_set_linker_script(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/stm32mp2_cm33.ld

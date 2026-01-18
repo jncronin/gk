@@ -5,6 +5,7 @@
 #include "i2c.h"
 #include "clocks.h"
 #include "adc.h"
+#include "lsm.h"
 
 const pin BTN_MCU_VOLUP { GPIOH, 2 };
 const pin BTN_MCU_VOLDOWN { GPIOJ, 0 };
@@ -12,6 +13,10 @@ const pin BTN_MCU_VOLDOWN { GPIOJ, 0 };
 unsigned int keystate = 0;
 uint32_t adc_vals[4];
 int16_t joy_a_x, joy_a_y, joy_b_x, joy_b_y;
+float yaw, pitch, roll;
+float acc[3], gyr[3];
+
+int lsm_ret = 0;
 
 unsigned int ioexp_keystate = 0;
 
@@ -108,6 +113,7 @@ int main()
 
     init_i2c();
     init_adc();
+    init_lsm();
 
     // Timer
     RCC->TIM6CFGR |= RCC_TIM6CFGR_TIM6EN;
@@ -196,6 +202,8 @@ static void tick()
     }
 
     joystick_tick();
+
+    lsm_ret = lsm_poll();
 
     db_tick(db_VOLUP);
     db_tick(db_VOLDOWN);
