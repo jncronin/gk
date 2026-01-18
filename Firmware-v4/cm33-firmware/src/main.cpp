@@ -12,7 +12,7 @@ const pin BTN_MCU_VOLDOWN { GPIOJ, 0 };
 
 unsigned int keystate = 0;
 uint32_t adc_vals[4];
-int16_t joy_a_x, joy_a_y, joy_b_x, joy_b_y;
+int16_t joy_a_x, joy_a_y, joy_b_x, joy_b_y, joy_tilt_x, joy_tilt_y;
 float yaw, pitch, roll;
 float acc[3], gyr[3];
 
@@ -80,6 +80,10 @@ const joy_pin JOY_B_LEFT(&joy_b_x, false);
 const joy_pin JOY_B_RIGHT(&joy_b_x, true);
 const joy_pin JOY_B_UP(&joy_b_y, true);
 const joy_pin JOY_B_DOWN(&joy_b_y, false);
+const joy_pin JOY_TILT_LEFT(&joy_tilt_x, false);
+const joy_pin JOY_TILT_RIGHT(&joy_tilt_x, true);
+const joy_pin JOY_TILT_UP(&joy_tilt_y, true);
+const joy_pin JOY_TILT_DOWN(&joy_tilt_y, false);
 
 Debounce db_VOLUP(BTN_MCU_VOLUP, 1U << GK_KEYVOLUP);
 Debounce db_VOLDOWN(BTN_MCU_VOLDOWN, 1U << GK_KEYVOLDOWN);
@@ -106,6 +110,10 @@ Debounce db_JOY_B_LEFT(JOY_B_LEFT, 1U << GK_KEYJOYBDIGILEFT);
 Debounce db_JOY_B_RIGHT(JOY_B_RIGHT, 1U << GK_KEYJOYBDIGIRIGHT);
 Debounce db_JOY_B_UP(JOY_B_UP, 1U << GK_KEYJOYBDIGIUP);
 Debounce db_JOY_B_DOWN(JOY_B_DOWN, 1U << GK_KEYJOYBDIGIDOWN);
+Debounce db_JOY_TILT_LEFT(JOY_TILT_LEFT, 1U << GK_KEYTILTLEFT);
+Debounce db_JOY_TILT_RIGHT(JOY_TILT_RIGHT, 1U << GK_KEYTILTRIGHT);
+Debounce db_JOY_TILT_UP(JOY_TILT_UP, 1U << GK_KEYTILTUP);
+Debounce db_JOY_TILT_DOWN(JOY_TILT_DOWN, 1U << GK_KEYTILTDOWN);
 
 int main()
 {
@@ -204,6 +212,24 @@ static void tick()
     joystick_tick();
 
     lsm_ret = lsm_poll();
+    if(lsm_ret == 0)
+    {
+        /* convert lsm filtered axes to a joystick
+            "pitch" is -ve left/+ve right - aim for a ~15 deg deadspace
+            "roll" is +ve look up (i.e. stick down), -ve look down, again add 15 deg deadspace, will need calibration
+
+            joy debouncer uses 8000/32000 as its deadspace, therefore scale to +/- 60 degree from the middle
+        */
+        auto new_tilt_x = (int32_t)(pitch * 32767.0f / 60.0f);
+        auto new_tilt_y = (int32_t)(-roll * 32767.0f / 60.0f);
+        if(new_tilt_x < -32768) new_tilt_x = -32768;
+        if(new_tilt_x > 32767) new_tilt_x = 32767;
+        if(new_tilt_y < -32768) new_tilt_y = -32768;
+        if(new_tilt_y > 32767) new_tilt_y = 32767;
+
+        joy_tilt_x = (int16_t)new_tilt_x;
+        joy_tilt_y = (int16_t)new_tilt_y;
+    }
 
     db_tick(db_VOLUP);
     db_tick(db_VOLDOWN);
@@ -230,6 +256,10 @@ static void tick()
     db_tick(db_JOY_B_RIGHT);
     db_tick(db_JOY_B_UP);
     db_tick(db_JOY_B_DOWN);
+    db_tick(db_JOY_TILT_LEFT);
+    db_tick(db_JOY_TILT_RIGHT);
+    db_tick(db_JOY_TILT_UP);
+    db_tick(db_JOY_TILT_DOWN);
 }
 
 extern "C" void TIM6_IRQHandler()
