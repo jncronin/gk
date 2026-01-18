@@ -81,3 +81,8 @@ void pin::set_as_input(pup _pup) const
 {
     pin_set(*this, 0, 3, 0, 0, (int)_pup);
 }
+
+void pin::set_as_analog(pup _pup) const
+{
+    pin_set(*this, 3, 3, 0, 0, (int)_pup);
+}

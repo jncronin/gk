@@ -2,6 +2,7 @@
 #include "vmem.h"
 #include "gic.h"
 #include "cm33_interface.h"
+#include "pins.h"
 
 #define RISAF2_VMEM ((RISAF_TypeDef *)PMEM_TO_VMEM(RISAF2_BASE))
 #define RAMCFG_VMEM ((RAMCFG_TypeDef *)PMEM_TO_VMEM(RAMCFG_BASE))
@@ -11,18 +12,26 @@
 #define RISC_VMEM ((RISC_TypeDef *)PMEM_TO_VMEM(RISC_BASE))
 #define CA35SYSCFG_VMEM ((CA35SYSCFG_TypeDef *)PMEM_TO_VMEM(CA35SYSCFG_BASE))
 #define EXTI1_VMEM ((EXTI_TypeDef *)PMEM_TO_VMEM(EXTI1_BASE))
+#define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
+
+#define GPIOC_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE))
+#define GPIOG_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOG_BASE))
+#define GPIOH_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOH_BASE))
+#define GPIOJ_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ_BASE))
+
 
 static void cm33_irq(exception_regs *, uint64_t);
 
 void init_cm33_interface()
 {
-    /* CM33 runs code from OSPI and uses SRAM1 as data area and SRAM2 for comms with A35
+    /* CM33 runs code from OSPI and uses SRAM2 as data area and SRAM1 for comms with A35
 
-        It uses LPTIM1 as a 5 ms timer
+        It uses TIM6 as a 200 Hz/5 ms timer (it sets this up itself)
 
         It has access to I2C1 for interface with the IO expander and LSM6DSL
 
-        It has access to ADC1 for joystick readings
+        It has access to ADC1 for joystick readings (we save ADC2 for the CA35 because
+            it allows VCORE/CPU etc voltage readings too)
     */
 
     // Give CM33 secure access to OSPI
@@ -59,6 +68,39 @@ void init_cm33_interface()
         }
     }
 
+    // Enable the ADC, use lsmcu clock (200 MHz)
+    PWR_VMEM->CR1 |= PWR_CR1_ASV;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+    RCC_VMEM->ADC12CFGR |= RCC_ADC12CFGR_ADC12EN | RCC_ADC12CFGR_ADC12KERSEL;
+    RCC_VMEM->ADC12CFGR &= ~RCC_ADC12CFGR_ADC12RST;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    /* Pins for CM33 to use:
+        JOY_A_X             ANA0        V5          ADC1_INP0, ADC2_INP0
+        JOY_A_Y             ANA1        V6          ADC1_INP1, ADC2_INP1
+
+        JOY_B_X             PC9         U8          ADC1_INP8, ADC2_INP8
+        JOY_B_Y             PG4         AA4         ADC1_INP4, ADC2_INP4
+
+        BTN_MCU_VOLUP       PH3         V13
+        BTN_MCU_VOLDOWN     PJ10        U15
+    */
+    const pin JOY_B_X { GPIOC_VMEM, 9 };
+    const pin JOY_B_Y { GPIOG_VMEM, 4 };
+    const pin BTN_MCU_VOLUP { GPIOH_VMEM, 3 };
+    const pin BTN_MCU_VOLDOWN { GPIOJ_VMEM, 10 };
+
+    RCC_VMEM->GPIOCCFGR |= RCC_GPIOCCFGR_GPIOxEN;
+    RCC_VMEM->GPIOGCFGR |= RCC_GPIOGCFGR_GPIOxEN;
+    RCC_VMEM->GPIOHCFGR |= RCC_GPIOHCFGR_GPIOxEN;
+    RCC_VMEM->GPIOJCFGR |= RCC_GPIOJCFGR_GPIOxEN;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    JOY_B_X.set_as_analog();
+    JOY_B_Y.set_as_analog();
+    BTN_MCU_VOLUP.set_as_input();
+    BTN_MCU_VOLDOWN.set_as_input();
+
     // Start up the CM33 code running from QSPI @ 0x603fc000
     // Boot in secure mode
     RCC_VMEM->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
@@ -75,6 +117,7 @@ void init_cm33_interface()
 
     /* Allow CM33 to send interrupts to us - EXTI1 channel 64 */
     EXTI1_VMEM->RTSR3 |= (1U << 0);
+    EXTI1_VMEM->C1IMR3 |= (1U << 0);
 
     unsigned int cm33_sev_irq = 252U;
     gic_set_handler(cm33_sev_irq, cm33_irq);

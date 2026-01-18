@@ -20,6 +20,11 @@
 .word  PendSV_Handler
 .word  SysTick_Handler
 
+.zero 128*4
+.word  TIM6_IRQHandler
+
+
+
 .weak      NMI_Handler
 .thumb_set NMI_Handler,Default_Handler
 
