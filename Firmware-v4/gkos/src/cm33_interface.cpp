@@ -58,10 +58,10 @@ static void sram_setup()
             risab->PGCIDCFGR[page] = RISAB_PGCIDCFGR_CFEN;
         }
 
-        // Give privileged read/write access to CIDs 0,1,2
+        // Give unprivileged (SRAM1) or privileged (SRAM2) read/write access to CIDs 0,1,2
         for(unsigned int cid = 0; cid < 3; cid++)
         {
-            risab->CID[cid].PRIVCFGR = 0xffffffffU;
+            risab->CID[cid].PRIVCFGR = (risab == RISAB3_VMEM) ? 0U : 0xffffffffU;
             risab->CID[cid].RDCFGR = 0xffffffffU;
             risab->CID[cid].WRCFGR = 0xffffffffU;
         }
