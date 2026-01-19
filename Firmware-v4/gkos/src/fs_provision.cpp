@@ -234,18 +234,23 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
         return -1;
     }
 
+    char *long_fname = nullptr;
     while(true)
     {
         auto ffret = ff(tar_header, 512, f);
         if(ffret == 0)
         {
             free(mem);
+            if(long_fname)
+                free(long_fname);
             return 0;   // EOF
         }
         if(ffret != 512)
         {
             klog("fs_provision: tar header read failed\n");
             free(mem);
+            if(long_fname)
+                free(long_fname);
             return -1;
         }
 
@@ -256,6 +261,8 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             if(n_zero_sectors >= 2)
             {
                 free(mem);
+                if(long_fname)
+                    free(long_fname);
                 return 0;       // EOF
             }
             continue;
@@ -271,12 +278,20 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             
             klog("fs_provision: tar not ustar\n");
             free(mem);
+            if(long_fname)
+                free(long_fname);
             return -1;
         }
 
         auto type = tar_header[156];
         std::string fname;
-        if(tar_header[345])
+        if(long_fname)
+        {
+            fname = std::string(long_fname);
+            free(long_fname);
+            long_fname = nullptr;
+        }
+        else if(tar_header[345])
             fname = "/" + std::string(&tar_header[345]) + std::string(&tar_header[0]);
         else
             fname = "/" + std::string(&tar_header[0]);
@@ -301,7 +316,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 (int)fsize, type);
         }
 
-        if(type == 0 || type == '0')
+        if(type == 0 || type == '0' || type == 'L')
         {
             // regular file
 
@@ -309,13 +324,29 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             uint64_t total_fsize_to_read = (fsize + 511ULL) & ~511ULL;
 
             // open ext4 file
-            auto [fd, _errno] = deferred_call(syscall_open, fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0);
-            if(fd < 0)
+            int fd, _errno;
+            if(type == 'L')
             {
-                
-                klog("fs_provision: fopen failed: %d\n", _errno);
-                free(mem);
-                return -1;
+                long_fname = (char *)malloc(total_fsize_to_read);
+                if(!long_fname)
+                {
+                    klog("fs_provision: couldn't allocate long file name\n");
+                    free(mem);
+                    return -1;
+                }
+            }
+            else
+            {
+                std::tie(fd, _errno) = deferred_call(syscall_open, fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0);
+                if(fd < 0)
+                {
+                    
+                    klog("fs_provision: fopen failed: %d\n", _errno);
+                    if(long_fname)
+                        free(long_fname);
+                    free(mem);
+                    return -1;
+                }
             }
 
             // load in 4 MiB increments
@@ -334,6 +365,8 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 {
                     
                     klog("fs_provision: failed to read file: %d\n", ffret);
+                    if(long_fname)
+                        free(long_fname);
                     free(mem);
                     return -1;
                 }
@@ -344,20 +377,29 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 if(fsize_to_write > FS_PROVISION_BLOCK_SIZE)
                     fsize_to_write = FS_PROVISION_BLOCK_SIZE;
 
-                auto [ bw, _ ] = deferred_call(syscall_write, fd, (char *)mem, (int)fsize_to_write);
-                if(bw != (int)fsize_to_write)
+                if(type == 'L')
                 {
-                    
-                    klog("fs_provision: fwrite failed: %d, expected %d\n",
-                        bw, (int)fsize);
-                    free(mem);
-                    return -1;
+                    memcpy(&long_fname[offset], mem, fsize_to_write);
                 }
-
+                else
                 {
-                    
-                    klog("fs_provision: read %d, wrote %d at offset %d\n",
-                        (int)fsize_to_read, (int)fsize_to_write, (int)offset);
+                    auto [ bw, _ ] = deferred_call(syscall_write, fd, (char *)mem, (int)fsize_to_write);
+                    if(bw != (int)fsize_to_write)
+                    {
+                        
+                        klog("fs_provision: fwrite failed: %d, expected %d\n",
+                            bw, (int)fsize);
+                        if(long_fname)
+                            free(long_fname);
+                        free(mem);
+                        return -1;
+                    }
+
+                    {
+                        
+                        klog("fs_provision: read %d, wrote %d at offset %d\n",
+                            (int)fsize_to_read, (int)fsize_to_write, (int)offset);
+                    }
                 }
 
                 offset += fsize_to_read;
@@ -365,6 +407,8 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             close(fd);
         }
     }
+    if(long_fname)
+        free(long_fname);
 }
 
 int fs_provision()
