@@ -476,7 +476,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                 auto t = GetCurrentThreadForCore();
                 auto p = t->p;
 
-                p->Kill((void *)rc);
+                p->Kill(rc);
 
                 Yield();
             }
@@ -650,6 +650,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
                         *reinterpret_cast<int *>(r1) = -1;
                         break;
                 }
+            }
+            break;
+
+        case __syscall_waitpid:
+            {
+                auto p = reinterpret_cast<__syscall_waitpid_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_waitpid(p->pid, p->stat_loc, p->options,
+                    reinterpret_cast<int *>(r3));
             }
             break;
 
@@ -844,14 +852,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
         case __syscall_read_tp:
             {
                 *reinterpret_cast<void **>(r1) = (void *)GetCurrentThreadForCore()->mr_tls.address;
-            }
-            break;
-
-        case __syscall_waitpid:
-            {
-                auto p = reinterpret_cast<__syscall_waitpid_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_waitpid(p->pid, p->stat_loc, p->options,
-                    reinterpret_cast<int *>(r3));
             }
             break;
 

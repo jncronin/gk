@@ -155,7 +155,10 @@ class Process
             PProcess parent = nullptr);
 
         /* Kill this process */
-        void Kill(void *retval = (void *)0);
+        void Kill(int retval = 0);
+
+        /* Threads waiting on us to end */
+        std::unordered_set<id_t> waiting_threads;
 
         Process() = default;
         ~Process();

@@ -64,6 +64,8 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
             CriticalGuard cg(ret->env.sl, parent->env.sl);
             ret->env.envs = parent->env.envs;
         }
+
+        ret->ppid = parent->id;
     }
 
     return ret;
@@ -84,7 +86,7 @@ void Process::owned_pages_t::add(const PMemBlock &b)
     }
 }
 
-void Process::Kill(void *rc)
+void Process::Kill(int rc)
 {
     CriticalGuard cg(sl, ProcessExitCodes.sl);
     for(auto t : threads)

@@ -1,7 +1,10 @@
 #include "syscalls_int.h"
 #include "process.h"
 #include "elf.h"
+#include "threadproclist.h"
+#include "completion_list.h"
 #include <fcntl.h>
+#include <sys/wait.h>
 
 int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *pid, int *_errno)
 {
@@ -103,6 +106,10 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
         return -1;
     }
 
+    // Return pid, if requested
+    if(pid)
+        *pid = proc->id;
+
     // Set with focus
     if(proc_info->with_focus)
     {
@@ -113,4 +120,46 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     sched.Schedule(t_t0);
 
     return 0;
+}
+
+int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
+{
+    if(retval)
+        ADDR_CHECK_STRUCT_W(retval);
+
+    while(true)
+    {
+        CriticalGuard cg(ProcessList.sl, ProcessExitCodes.sl);
+
+        // ensure pid is a child of ours
+        auto pproc = ProcessList._get(pid);
+        auto cp = GetCurrentProcessForCore();
+        if(pproc->ppid != cp->id)
+        {
+            klog("waitpid: request for a process (%d: %s) which is not a child of the calling process (%d: %s)\n",
+                pid, pproc->name.c_str(), cp->id, cp->name.c_str());
+            *_errno = ECHILD;
+            return -1;
+        }
+
+        auto [finished,pretval] = ProcessExitCodes._get(pid);
+
+        if(finished)
+        {
+            if(retval)
+                *retval = pretval;
+            return pid;
+        }
+        {
+            if(options & WNOHANG)
+            {
+                return 0;
+            }
+            else
+            {
+                pproc->waiting_threads.insert(GetCurrentThreadForCore()->id);
+                Block();
+            }
+        }
+    }
 }

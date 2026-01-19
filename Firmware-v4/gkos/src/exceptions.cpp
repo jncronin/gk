@@ -97,7 +97,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
     if(!t->is_privileged)
     {
-        t->p->Kill((void *)(128 + userspace_fault_code));
+        t->p->Kill(128 + userspace_fault_code);
         return 0;
     }
 

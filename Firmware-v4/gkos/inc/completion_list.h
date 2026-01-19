@@ -4,35 +4,35 @@
 #include <unordered_map>
 #include "osmutex.h"
 
-template <typename T, typename _Hash = std::hash<T>> class CompletionList
+template <typename T_id, typename T_val, typename _Hash = std::hash<T_id>> class CompletionList
 {
     protected:
-        std::unordered_map<T, void *, _Hash> m;
+        std::unordered_map<T_id, T_val, _Hash> m;
 
     public:
         Spinlock sl;
-        int _set(const T &id, void *v)
+        int _set(const T_id &id, T_val v)
         {
             m[id] = v;
             return 0;
         }
 
-        int Set(const T &id, void *v)
+        int Set(const T_id &id, T_val v)
         {
             CriticalGuard cg(sl);
             return _set(id, v);
         }
 
-        std::pair<bool, void *> _get(const T &id)
+        std::pair<bool, T_val> _get(const T_id &id)
         {
             auto iter = m.find(id);
             if(iter == m.end())
-                return std::make_pair(false, nullptr);
+                return std::make_pair(false, T_val{});
             else
                 return std::make_pair(true, iter->second);
         }
 
-        std::pair<bool, void *> Get(const T &id)
+        std::pair<bool, T_val> Get(const T_id &id)
         {
             CriticalGuard cg(sl);
             return _get(id);
@@ -63,7 +63,7 @@ constexpr bool operator==(const pidtid &a, const pidtid &b)
     return a.tid == b.tid;
 }
 
-extern CompletionList<id_t> ProcessExitCodes;
-extern CompletionList<pidtid, pidtid_hash> ThreadExitCodes;
+extern CompletionList<id_t, int> ProcessExitCodes;
+extern CompletionList<pidtid, void *, pidtid_hash> ThreadExitCodes;
 
 #endif

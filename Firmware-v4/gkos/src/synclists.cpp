@@ -8,5 +8,5 @@ CondList_t ConditionList;
 RwLockList_t RwLockList;
 UserspaceSemaphoreList_t UserspaceSemaphoreList;
 
-CompletionList<id_t> ProcessExitCodes;
-CompletionList<pidtid, pidtid_hash> ThreadExitCodes;
+CompletionList<id_t, int> ProcessExitCodes;
+CompletionList<pidtid, void *, pidtid_hash> ThreadExitCodes;
