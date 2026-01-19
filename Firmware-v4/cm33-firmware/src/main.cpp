@@ -212,20 +212,23 @@ template <class T> void db_tick(T &db)
     {
         if(ret & pin_state::StableHigh)
         {
-            send_message(CM33_DK_MSG_PRESS | v);
+            send_message(CM33_DK_MSG_RELEASE| v);
         }
         else if(ret & pin_state::StableLow)
         {
-            send_message(CM33_DK_MSG_RELEASE | v);
+            send_message(CM33_DK_MSG_PRESS | v);
         }
     }
-    if(ret & pin_state::LongPress)
+    if(ret & pin_state::StableLow)
     {
-        send_message(CM33_DK_MSG_LONGPRESS | v);
-    }
-    if(ret & pin_state::Repeat)
-    {
-        send_message(CM33_DK_MSG_REPEAT | v);
+        if(ret & pin_state::LongPress)
+        {
+            send_message(CM33_DK_MSG_LONGPRESS | v);
+        }
+        if(ret & pin_state::Repeat)
+        {
+            send_message(CM33_DK_MSG_REPEAT | v);
+        }
     }
 } 
 
