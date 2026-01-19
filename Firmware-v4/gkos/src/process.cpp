@@ -111,6 +111,13 @@ Process::~Process()
 int SetFocusProcess(PProcess p)
 {
     focus_process = p->id;
+
+    // clear screen on process switch
+    screen_clear_all_userspace();
+
+    // TODO: enable/disable tilt if appropriate
+    // restore palette if used
+
     return 0;
 }
 

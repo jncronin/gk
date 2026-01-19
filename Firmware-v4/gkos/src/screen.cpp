@@ -108,6 +108,7 @@ class TripleBufferScreenLayer
 
         friend void init_screen();
         friend PMemBlock screen_get_buf(unsigned int, unsigned int);
+        friend void screen_clear_all_userspace();
 };
 
 static TripleBufferScreenLayer scrs[2] = { TripleBufferScreenLayer{}, TripleBufferScreenLayer{} };
@@ -550,4 +551,15 @@ void LTDC_IRQHandler()
     }
 
     LTDC_VMEM->ICR = 0xf;
+}
+
+
+void screen_clear_all_userspace()
+{
+    for(unsigned int buf = 0; buf < scr_n_bufs; buf++)
+    {
+        // clear to zero
+        if(scrs[0].pm[buf].valid)
+            memset((void *)PMEM_TO_VMEM(scrs[0].pm[buf].base), 0, scr_layer_size_bytes);
+    }
 }

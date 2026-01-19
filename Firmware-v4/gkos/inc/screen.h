@@ -12,6 +12,7 @@ std::pair<uintptr_t, uintptr_t> screen_current();
 std::pair<uintptr_t, uintptr_t> _screen_current();
 PMemBlock screen_get_buf(unsigned int layer, unsigned int buf);
 size_t screen_get_bpp_for_pf(unsigned int pf);
+void screen_clear_all_userspace();
 
 constexpr size_t scr_layer_size_bytes = align_power_2(GK_MAX_SCREEN_WIDTH * GK_MAX_SCREEN_HEIGHT * 4);
 constexpr unsigned int scr_n_layers = 2;
