@@ -46,7 +46,7 @@
 
 #define GK_LOG_SIZE                 (64*1024)
 
-#define GK_NUM_EVENTS_PER_PROCESS   32
+#define GK_NUM_EVENTS_PER_PROCESS   128
 #define GK_PRIORITY_IDLE    0
 #define GK_PRIORITY_LOW     1
 #define GK_PRIORITY_NORMAL  2
