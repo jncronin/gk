@@ -187,6 +187,7 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
     int reason;
     if(m->try_lock(&reason, block, tout))
     {
+
         return 0;
     }
     else
@@ -584,6 +585,9 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
         return -1;
     }
     c->Wait(tout, signalled);
+
+    m->lock();
+
     return 0;
 }
 
