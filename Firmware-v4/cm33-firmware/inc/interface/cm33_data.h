@@ -58,5 +58,6 @@ static_assert(sizeof(cm33_data_kernel) == 19*4);
 #define CM33_DK_MSG_PRESS           (0x1U << 24)
 #define CM33_DK_MSG_RELEASE         (0x2U << 24)
 #define CM33_DK_MSG_LONGPRESS       (0x3U << 24)
+#define CM33_DK_MSG_REPEAT          (0x4U << 24)
 
 #endif

@@ -145,6 +145,10 @@ class Process
 
         /* Events */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
+        uint32_t mouse_buttons = 0;
+        uint64_t gamepad_buttons = 0;
+        prockeymap_t keymap;
+        int HandleInputEvent(uint32_t cmd);
 
         /* create a process */
         static PProcess Create(const std::string &name, bool is_privileged = false,

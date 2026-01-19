@@ -11,7 +11,8 @@ enum pin_state
     StableLow = 1,
     StableHigh = 2,
     NewStableState = 4,
-    LongPress = 8
+    LongPress = 8,
+    Repeat = 16
 };
 
 static inline pin_state operator|(pin_state a, pin_state b)
@@ -30,6 +31,7 @@ template <typename pin_t,
     int high_time_ms = 20,
     int low_time_ms = high_time_ms,
     int long_press_ms = 1000,
+    int repeat_ms = 500,
     typename val_T = unsigned int> class Debounce
 {
     protected:
@@ -39,6 +41,7 @@ template <typename pin_t,
         static const int high_ticks = high_time_ms / tick_period_ms;
         static const int low_ticks = low_time_ms / tick_period_ms;
         static const int long_press_ticks = long_press_ms / tick_period_ms;
+        static const int repeat_ticks = repeat_ms / tick_period_ms;
 
         static_assert(high_ticks > 0,
             "high_time_ms must be greater than tick_period_ms");
@@ -96,6 +99,11 @@ template <typename pin_t,
                     {
                         // equal, but not greater than - send only once
                         new_state |= pin_state::LongPress;
+                    }
+
+                    if((press_ticks % repeat_ticks) == 0)
+                    {
+                        new_state |= pin_state::Repeat;
                     }
                 }
                 return new_state;

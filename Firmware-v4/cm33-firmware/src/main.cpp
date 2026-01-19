@@ -223,6 +223,10 @@ template <class T> void db_tick(T &db)
     {
         send_message(CM33_DK_MSG_LONGPRESS | v);
     }
+    if(ret & pin_state::Repeat)
+    {
+        send_message(CM33_DK_MSG_REPEAT | v);
+    }
 } 
 
 static int16_t joy_scale(uint32_t input, bool invert)

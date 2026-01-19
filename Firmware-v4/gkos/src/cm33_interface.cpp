@@ -195,7 +195,25 @@ static void cm33_send_cmd(uint32_t cmd)
 
 static void cm33_handle_message(uint32_t msg)
 {
-    klog("cm33: message: %x\n", msg);
+    switch(msg & CM33_DK_MSG_MASK)
+    {
+        case CM33_DK_MSG_PRESS:
+        case CM33_DK_MSG_RELEASE:
+        case CM33_DK_MSG_LONGPRESS:
+        case CM33_DK_MSG_REPEAT:
+            {
+                auto p = GetFocusProcess();
+                if(p)
+                {
+                    p->HandleInputEvent(msg);
+                }
+            }
+            break;
+
+        default:
+            klog("cm33: unhandled message: %x\n", msg);
+            break;
+    }
 }
 
 static void *cm33_manager_thread(void *)

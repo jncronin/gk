@@ -91,8 +91,8 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
         }
     }
 
-    // TODO: keymap etc
-
+    // keymap
+    proc->keymap = proc_info->keymap;
 
     // Create startup thread
     auto t_t0 = Thread::Create(proc->name, proc_ep, nullptr, false, GK_PRIORITY_NORMAL, proc);
