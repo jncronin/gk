@@ -97,6 +97,8 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
     if(!t->is_privileged)
     {
+        // required for yield()
+        __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
         t->p->Kill(128 + userspace_fault_code);
         return 0;
     }
