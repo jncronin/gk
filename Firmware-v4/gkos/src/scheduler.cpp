@@ -289,6 +289,7 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
 
     // Set up the appropriate virtual memory layout for the core
     cpu_setup_vmem();
+    cpu_setup_userspace_permissions();
     cpu_start_local_timer();
 
     // switch to first thread by triggering SVC1
