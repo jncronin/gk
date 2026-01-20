@@ -1,6 +1,7 @@
 .cpu cortex-a35
 
 #include "gic_irq_nos.h"
+#include "gk_conf.h"
 
 /* The exception handling mechanism is different for AArch64 compared with cortex-M
 
@@ -93,6 +94,11 @@ _vtor_tbl_entry _lower32_serror
     stp x29, x30, [sp, #320]
     mov x29, sp
     add x29, x29, #320
+
+#if GK_CUR_THREAD_IN_SYSRAM
+    mrs x0, elr_el1
+    bl thread_save_lr
+#endif
 .endm
 
 .macro restore_regs

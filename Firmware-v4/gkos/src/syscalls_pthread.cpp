@@ -647,9 +647,11 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         // else, tell the thread we are waiting for it to be destroyed
         tthread->join_thread = t->id;
         tthread->join_thread_retval = retval;
+
+        t->blocking.block(tthread);
     }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+
+    return 0;
 }
 
 int syscall_pthread_exit(void **retval, int *_errno)

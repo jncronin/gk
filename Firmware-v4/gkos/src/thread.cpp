@@ -34,6 +34,10 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     t->is_privileged = is_priv;
     t->id = ThreadList.Register(t);
 
+#if GK_CUR_THREAD_IN_SYSRAM
+    *(uint64_t *)(0xfffffd0030000000 + t->id * 0x10) = (uint64_t)(uintptr_t)t.get();
+#endif
+
     if(!owning_process->is_privileged)
         t->is_privileged = false;
 
@@ -242,3 +246,15 @@ ThreadPrivilegeEscalationGuard::~ThreadPrivilegeEscalationGuard()
 {
     GetCurrentThreadForCore()->is_privileged = old_priv;
 }
+
+#if GK_CUR_THREAD_IN_SYSRAM
+extern "C" void thread_save_lr(uint64_t elr_el1)
+{
+    auto t = GetCurrentThreadForCore();
+    if(t)
+    {
+        *(uint64_t *)(0xfffffd0030000000 + t->id * 0x10 + 8) = elr_el1;
+    }
+}
+
+#endif
