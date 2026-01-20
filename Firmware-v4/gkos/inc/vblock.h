@@ -93,6 +93,8 @@ class VBlock
         VMemBlock AllocFixed(size_t size, uintptr_t addr, uint32_t tag = 0);
         bool Free(VMemBlock &be);
         std::pair<VMemBlock, uint32_t> Valid(uintptr_t addr);
+
+        void Dump();
 };
 
 #endif

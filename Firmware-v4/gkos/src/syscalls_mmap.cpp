@@ -43,6 +43,12 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     {
         // try fixed alloc
         vb = p->user_mem->blocks.AllocFixed(vbsize, (uintptr_t)*retaddr, tag);
+
+        if(!vb.valid)
+        {
+            klog("mmap: fixed %x @ %p failed.  Current allocs:\n", vbsize, *retaddr);
+            p->user_mem->blocks.Dump();
+        }
     }
     if(!vb.valid)
     {

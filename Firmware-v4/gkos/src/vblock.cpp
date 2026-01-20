@@ -241,7 +241,7 @@ VMemBlock VBlock::AllocFixed(size_t length, uintptr_t addr, uint32_t tag)
         klog("vblock: AllocFixed addr %x invalid\n", addr);
         return InvalidVMemBlock();
     }
-    
+
     addr -= base;
 
     switch(length)
@@ -886,4 +886,91 @@ bool VBlock::FreeLevel3(VMemBlock &v)
 
     v.valid = false;
     return false;
+}
+
+static std::string tag_to_str(uint32_t tag)
+{
+    char buf[256];
+    snprintf(buf, 255, "%s%s%s%s%s%s%s%s",
+        (tag & VBLOCK_TAG_USER) ? "U" : " ",
+        (tag & VBLOCK_TAG_WRITE) ? "W" : " ",
+        (tag & VBLOCK_TAG_EXEC) ? "X" : " ",
+        (tag & VBLOCK_TAG_GUARD_MASK) ? " GUARD" : "",
+        (tag & VBLOCK_TAG_TLS) ? " TLS" : "",
+        (tag & VBLOCK_TAG_WT) ? " WT" : "",
+        (tag & VBLOCK_TAG_CLEAR) ? " ZERO" : "",
+        (tag & VBLOCK_TAG_FILE) ? " FILE" : "");
+    buf[255] = 0;
+    return std::string(buf);
+}
+
+void VBlock::Dump()
+{
+    for(unsigned long long idx = 0; idx < level1_count; idx++)
+    {
+        auto l1_addr = base + idx * VBLOCK_512M;
+        if(level1[idx] == VBLOCK_UNAVAIL)
+        {
+            klog("%16x-%16x: UNAVAILABLE\n", l1_addr, l1_addr + VBLOCK_512M);
+        }
+        else if(level1[idx] == VBLOCK_BLOCK_FREE)
+        {
+            //klog("%16x-%16x: FREE\n", l1_addr, l1_addr + VBLOCK_512M);
+        }
+        else if((level1[idx] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
+        {
+            auto tag = (uint32_t)(level1[idx] >> 32);
+            klog("%16x-%16x: %s\n", l1_addr, l1_addr + VBLOCK_512M, tag_to_str(tag).c_str());
+        }
+        else
+        {
+            auto l2 = (level2 *)level1[idx];
+
+            for(unsigned long long idx2 = 0; idx2 < LEVEL2_COUNT; idx2++)
+            {
+                auto l2_addr = l1_addr + idx2 * VBLOCK_4M;
+
+                if(l2->b[idx2] == VBLOCK_UNAVAIL)
+                {
+                    klog(" %16x-%16x: UNAVAILABLE\n", l2_addr, l2_addr + VBLOCK_4M);
+                }
+                else if(l2->b[idx2] == VBLOCK_BLOCK_FREE)
+                {
+                    //klog(" %16x-%16x: FREE\n", l2_addr, l2_addr + VBLOCK_4M);
+                }
+                else if((l2->b[idx2] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
+                {
+                    auto tag = (uint32_t)(l2->b[idx2] >> 32);
+                    klog(" %16x-%16x: %s\n", l2_addr, l2_addr + VBLOCK_4M, tag_to_str(tag).c_str());
+                }
+                else
+                {
+                    auto l3 = (level3 *)l2->b[idx2];
+
+                    for(unsigned long long idx3 = 0; idx3 < LEVEL3_COUNT; idx3++)
+                    {
+                        auto l3_addr = l2_addr + idx3 * VBLOCK_64k;
+
+                        if(l3->b[idx3] == VBLOCK_UNAVAIL)
+                        {
+                            klog("  %16x-%16x: UNAVAILABLE\n", l3_addr, l3_addr + VBLOCK_64k);
+                        }
+                        else if(l3->b[idx3] == VBLOCK_BLOCK_FREE)
+                        {
+                            //klog("  %16x-%16x: FREE\n", l3_addr, l3_addr + VBLOCK_64k);
+                        }
+                        else if((l3->b[idx3] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
+                        {
+                            auto tag = (uint32_t)(l3->b[idx3] >> 32);
+                            klog("  %16x-%16x: %s\n", l3_addr, l3_addr + VBLOCK_64k, tag_to_str(tag).c_str());
+                        }
+                        else
+                        {
+                            klog("  %16x-%16x: INVALID\n", l3_addr, l3_addr + VBLOCK_64k);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
