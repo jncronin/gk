@@ -33,7 +33,7 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
-  Edit.SysVar (VAR_HSS_SPEED, FREQ_200_HZ);
+  Edit.SysVar (VAR_HSS_SPEED, 1000000);
   File.Open ("$(ProjectDir)/build/gkv4_cm33.elf");
 }
 

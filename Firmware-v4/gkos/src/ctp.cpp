@@ -376,7 +376,7 @@ void ctp_poll()
     gp_multi_touch_work();
 }
 
-static void *ctp_thread(void *)
+[[maybe_unused]] static void *ctp_thread(void *)
 {
 	while(true)
 	{
@@ -439,8 +439,10 @@ void init_ctp()
 	gic_set_target(305, GIC_ENABLED_CORES);
 
 	ctp_queue.Push(ctp_command::CTP_RESUME);
-	
+
+#if GK_ENABLE_TOUCH
 	Schedule(Thread::Create("ctp", ctp_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
+#endif
 }
 
 bool ctp_get_status()

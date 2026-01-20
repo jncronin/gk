@@ -445,6 +445,11 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
         __asm__ ("brk #254\n" ::: "memory");
         return;
     }
+
+#if GK_CUR_THREAD_IN_SYSRAM
+    *(id_t *)(0xfffffd0030000000 + ncore * 8) = t->id;
+#endif
+
     std::swap(current_thread[ncore], next_thread[ncore]);
     next_thread[ncore].reset();
 }

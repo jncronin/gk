@@ -11,6 +11,8 @@
 #define RISAF2_VMEM ((RISAF_TypeDef *)PMEM_TO_VMEM(RISAF2_BASE))
 #define RAMCFG_VMEM ((RAMCFG_TypeDef *)PMEM_TO_VMEM(RAMCFG_BASE))
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
+#define RISAB1_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB1_BASE))
+#define RISAB2_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB2_BASE))
 #define RISAB3_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB3_BASE))
 #define RISAB4_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB4_BASE))
 #define RISC_VMEM ((RISC_TypeDef *)PMEM_TO_VMEM(RISC_BASE))
@@ -46,7 +48,7 @@ static void sram_setup()
     __asm__ volatile ("dsb sy\n" ::: "memory");
 
     // RISAB3 (SRAM1) and RISAB4 (SRAM2) each have 32 pages of 8 blocks each
-    for(auto risab : { RISAB3_VMEM, RISAB4_VMEM })
+    for(auto risab : { RISAB1_VMEM, RISAB2_VMEM, RISAB3_VMEM, RISAB4_VMEM })
     {
         for(unsigned int page = 0; page < 32; page++)
         {
