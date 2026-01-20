@@ -13,7 +13,8 @@
 #define VBLOCK_TAG_GUARD_UPPER_POS          5
 #define VBLOCK_TAG_GUARD(lower, upper)      (((lower) << VBLOCK_TAG_GUARD_LOWER_POS) | ((upper) << VBLOCK_TAG_GUARD_UPPER_POS))
 #define VBLOCK_TAG_TLS                      (1ULL << 7)
-
+#define VBLOCK_TAG_FILE                     (1ULL << 8)
+#define VBLOCK_TAG_WT                       (1ULL << 9)
 
 class VBlock;
 extern VBlock vblock;

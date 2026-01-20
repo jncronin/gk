@@ -86,6 +86,8 @@ int syscall_sched_get_priority_min(int policy, int *_errno);
 int syscall_memalloc(size_t len, void **retaddr, int is_sync, int *_errno);
 int syscall_memdealloc(size_t len, const void *addr, int *_errno);
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno);
+int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
+    int is_read, int is_write, int is_exec, int fd, int *_errno);
 
 int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int *_errno);
 

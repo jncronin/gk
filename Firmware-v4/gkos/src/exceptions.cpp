@@ -223,7 +223,10 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
         {
             CriticalGuard cg(umem->sl);
 
-            if(vmem_map(far & ~(VBLOCK_64k - 1), 0, be.user, be.write, be.exec, umem->ttbr0))
+            unsigned int mt = (be_tag & VBLOCK_TAG_WT) ? MT_NORMAL_WT : MT_NORMAL;
+
+            if(vmem_map(far & ~(VBLOCK_64k - 1), 0, be.user, be.write, be.exec, umem->ttbr0, 
+                ~0UL, nullptr, mt))
             {
                 return user ? UserThreadFault() : SupervisorThreadFault();
             }
