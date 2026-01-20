@@ -12,6 +12,8 @@
 #define GK_ENABLE_TILT              1
 #define GK_ENABLE_USB_CDC           0
 
+#define GK_ENABLE_PWR_DUMP          0
+
 #define GK_ALLOW_USERSPACE_CACHE_MAINTENANCE    1
 #define GK_CHECK_USER_ADDRESSES     1
 #define GK_USE_IRQ_PRIORITIES       0

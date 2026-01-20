@@ -35,7 +35,6 @@ void *pwr_thread(void *)
         vbus = __builtin_bswap16(vbus);
         vshunt = __builtin_bswap16(vshunt);
 
-        klog("pwr: id: %x, %x, vbus: %u, vshunt: %d\n", ina_id[0], ina_id[1], vbus, vshunt);
 
         /* For bus voltage, 1 LSB = 1.6 mV
             For shunt, depends on ADCRANGE
@@ -45,28 +44,25 @@ void *pwr_thread(void *)
             */
 
         int vbus_uv = (int)vbus * 1600;
-        int vbus_v = vbus_uv / 1000000;
-        int vbus_fract = vbus_uv % 1000000;
-        klog("pwr: VBUS: %d.%06d V\n", vbus_v, vbus_fract);
+        [[maybe_unused]] int vbus_v = vbus_uv / 1000000;
+        [[maybe_unused]] int vbus_fract = vbus_uv % 1000000;
 
         // ultimately want microamps here
         //  uI = nV * 1000 / uR
         int64_t vshunt_nv = (int64_t)vshunt * 2500;
         int64_t ishunt_ua = (vshunt_nv * 1000) / 10000;
-        klog("pwr: ISHUNT: %d uA\n", (int)ishunt_ua);
 
         // P = V * I => uP = uV * uI * 10^-6
         int64_t pshunt_uw = (int64_t)vbus_uv * ishunt_ua / 1000000;
-        int pshunt_w = (int)(pshunt_uw / 1000000);
-        int pshunt_fract = (int)(pshunt_uw % 1000000);
-        klog("pwr: PSHUNT: %d.%06d W\n", pshunt_w, pshunt_fract);
+        [[maybe_unused]] int pshunt_w = (int)(pshunt_uw / 1000000);
+        [[maybe_unused]] int pshunt_fract = (int)(pshunt_uw % 1000000);
 
-        /* Example IO expander test
-        auto &i2c1 = i2c(1);
-        uint8_t ios[2];
-        auto br = i2c1.RegisterRead(0x20, (uint8_t)0, ios, 2);
-        klog("ios: %u: %02x%02x\n", br, ios[0], ios[1]);
-        */
+#if GK_ENABLE_PWR_DUMP
+        klog("pwr: id: %x, %x, vbus: %u, vshunt: %d\n", ina_id[0], ina_id[1], vbus, vshunt);
+        klog("pwr: VBUS: %d.%06d V\n", vbus_v, vbus_fract);
+        klog("pwr: ISHUNT: %d uA\n", (int)ishunt_ua);
+        klog("pwr: PSHUNT: %d.%06d W\n", pshunt_w, pshunt_fract);
+#endif
 
         Block(clock_cur() + kernel_time_from_ms(1000));
     }
