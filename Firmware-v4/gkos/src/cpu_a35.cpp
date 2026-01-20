@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include "gkos_vmem.h"
+#include "gk_conf.h"
 
 void cpu_start_local_timer()
 {
@@ -36,4 +37,22 @@ void cpu_setup_vmem()
         [mair] "r" (mair),
         [tcr_el1] "r" (tcr_el1)
     : "memory");
+}
+
+void cpu_setup_userspace_permissions()
+{
+    uint64_t sctlr_el1;
+    __asm__ volatile("mrs %[sctlr_el1], sctlr_el1\n" :
+        [sctlr_el1] "=r" (sctlr_el1) :: "memory");
+
+    uint64_t userspace_cache_bits = (1UL << 14) | (1UL << 15) | (1UL << 26); // allow access to ctr_el0 and dc __x instructions
+
+#if GK_ALLOW_USERSPACE_CACHE_MAINTENANCE
+    sctlr_el1 |= userspace_cache_bits;
+#else
+    sctlr_el1 &= ~userspace_cache_bits;
+#endif
+
+    __asm__ volatile("msr sctlr_el1, %[sctlr_el1]\n" ::
+        [sctlr_el1] "r" (sctlr_el1) : "memory");
 }

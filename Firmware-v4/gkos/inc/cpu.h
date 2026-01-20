@@ -11,5 +11,6 @@ class Cpu
 
 void cpu_setup_vmem();
 void cpu_start_local_timer();
+void cpu_setup_userspace_permissions();
 
 #endif
