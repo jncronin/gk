@@ -231,6 +231,17 @@ VMemBlock VBlock::Alloc(size_t length, uint32_t tag)
 
 VMemBlock VBlock::AllocFixed(size_t length, uintptr_t addr, uint32_t tag)
 {
+    if(addr < base)
+    {
+        klog("vblock: AllocFixed addr %x invalid\n", addr);
+        return InvalidVMemBlock();
+    }
+    if(addr >= (base + level1_count * VBLOCK_512M))
+    {
+        klog("vblock: AllocFixed addr %x invalid\n", addr);
+        return InvalidVMemBlock();
+    }
+    
     addr -= base;
 
     switch(length)
