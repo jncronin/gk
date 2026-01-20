@@ -6,6 +6,7 @@
 #include "vmem.h"
 #include "thread.h"
 #include "process.h"
+#include "cache.h"
 #include "syscalls_int.h"
 
 #define DEBUG_PF        0
@@ -269,6 +270,15 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
 #if DEBUG_PF
             klog("pf: lazy initialize tls region\n");
 #endif
+        }
+        else if(be_tag & VBLOCK_TAG_CLEAR)
+        {
+            auto page_addr = far & ~(VBLOCK_64k - 1);
+            for(uintptr_t clear_addr = page_addr; clear_addr < (page_addr + VBLOCK_64k);
+                clear_addr += CACHE_LINE_SIZE)
+            {
+                __asm__ volatile("dc zva, %[clear_addr]\n" :: [clear_addr] "r" (clear_addr) : "memory");
+            }
         }
 
 #if DEBUG_PF

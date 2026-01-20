@@ -15,6 +15,7 @@
 #define VBLOCK_TAG_TLS                      (1ULL << 7)
 #define VBLOCK_TAG_FILE                     (1ULL << 8)
 #define VBLOCK_TAG_WT                       (1ULL << 9)
+#define VBLOCK_TAG_CLEAR                    (1ULL << 10)
 
 class VBlock;
 extern VBlock vblock;

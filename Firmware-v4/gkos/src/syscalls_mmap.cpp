@@ -29,6 +29,8 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     uint32_t tag = VBLOCK_TAG_USER;
     if(fd >= 0)
         tag |= VBLOCK_TAG_FILE;
+    else
+        tag |= VBLOCK_TAG_CLEAR;
     if(is_exec)
         tag |= VBLOCK_TAG_EXEC;
     if(is_write)
@@ -42,17 +44,19 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
         // try fixed alloc
         vb = p->user_mem->blocks.AllocFixed(vbsize, (uintptr_t)*retaddr, tag);
     }
-    if(!vb.valid && is_fixed)
+    if(!vb.valid)
     {
-        // fail if we don't deliver the exact block if MAP_FIXED specified
-        // also fail if MAP_FIXED and *retaddr = 0 - cannot allocate 0
-        *_errno = EEXIST;
-        return -1;
-        
+        if(is_fixed)
+        {
+            // fail if we don't deliver the exact block if MAP_FIXED specified
+            // also fail if MAP_FIXED and *retaddr = 0 - cannot allocate 0
+            *_errno = EEXIST;
+            return -1;
+        }
+        // otherwise, try and allocate anywhere
+        vb = p->user_mem->blocks.Alloc(vbsize, tag);
     }
 
-    // otherwise, try and allocate anywhere
-    vb = p->user_mem->blocks.Alloc(vbsize, tag);
     if(vb.valid)
     {
         *retaddr = (void *)vb.data_start();
