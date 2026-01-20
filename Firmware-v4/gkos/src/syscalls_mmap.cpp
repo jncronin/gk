@@ -46,7 +46,7 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
 
         if(!vb.valid)
         {
-            klog("mmap: fixed %x @ %p failed.  Current allocs:\n", vbsize, *retaddr);
+            klog("mmap: fixed %x @ %p failed.  Current allocs:\n", len, *retaddr);
             p->user_mem->blocks.Dump();
         }
     }
