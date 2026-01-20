@@ -698,9 +698,21 @@ std::pair<VMemBlock, uint32_t> VBlock::Valid(uintptr_t addr)
         return std::make_pair(InvalidVMemBlock(), 0);
     }
 
+    if(addr < base)
+    {
+        klog("vblock: invalid address %x\n", addr);
+        return std::make_pair(InvalidVMemBlock(), 0);
+    }
+
     addr -= base;
 
     auto idx = addr / VBLOCK_512M;
+
+    if(idx >= level1_count)
+    {
+        klog("vblock: invalid address %x\n", addr);
+        return std::make_pair(InvalidVMemBlock(), 0);
+    }
 
     CriticalGuard cg(sl);
     if(level1[idx] == VBLOCK_UNAVAIL || level1[idx] == VBLOCK_BLOCK_FREE)
