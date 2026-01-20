@@ -670,6 +670,30 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_getppid:
+            {
+                auto pid = (int)(intptr_t)(r2);
+                *reinterpret_cast<int *>(r1) = syscall_get_proc_ppid(pid,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_getpid:
+            {
+                auto t = GetCurrentThreadForCore();
+                auto p = t->p;
+                *reinterpret_cast<pid_t *>(r1) = p->id;
+            }
+            break;
+
+        case __syscall_kill:
+            {
+                auto p = reinterpret_cast<__syscall_kill_params *>(r2);
+                int ret = syscall_kill(p->pid, p->sig, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {
@@ -820,22 +844,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
-        case __syscall_getpid:
-            {
-                auto t = GetCurrentThreadForCore();
-                auto &p = t->p;
-                *reinterpret_cast<pid_t *>(r1) = p.pid;
-            }
-            break;
-
-        case __syscall_kill:
-            {
-                auto p = reinterpret_cast<__syscall_kill_params *>(r2);
-                int ret = syscall_kill(p->pid, p->sig, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
         case __syscall_newlibinithook:
             {
                 auto lr = reinterpret_cast<uint32_t>(r1);
@@ -937,14 +945,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
         case __syscall_yield:
             Yield();
             *reinterpret_cast<int *>(r1) = 0;
-            break;
-
-        case __syscall_getppid:
-            {
-                auto pid = reinterpret_cast<int>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_get_proc_ppid(pid,
-                    reinterpret_cast<int *>(r3));
-            }
             break;
 
         case __syscall_icacheinvalidate:

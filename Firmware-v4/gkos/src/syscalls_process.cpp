@@ -163,3 +163,41 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
         }
     }
 }
+
+pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
+{
+    auto p = ProcessList.Get(pid);
+    if(p)
+    {
+        return p->id;
+    }
+    else
+    {
+        *_errno = ESRCH;
+        return (pid_t)-1;
+    }
+}
+
+int syscall_kill(pid_t pid, int sig, int *_errno)
+{
+    auto p = ProcessList.Get(pid);
+    if(!p)
+    {
+        *_errno = ESRCH;
+        return -1;
+    }
+
+    switch(sig)
+    {
+        case SIGKILL:
+        case SIGABRT:
+            p->Kill(128 + sig);
+            break;
+
+        default:
+            klog("kill: send %d to %s\n", sig, p->name.c_str());
+            break;
+    }
+
+    return 0;
+}
