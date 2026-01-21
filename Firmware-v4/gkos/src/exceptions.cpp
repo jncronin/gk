@@ -74,6 +74,25 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     if(t)
         klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", t->p->name.c_str(), t->name.c_str(), (uintptr_t)t);
 
+    // regs
+    if(t && !t->is_privileged)
+    {
+        uint64_t sp_el0;
+        __asm__ volatile("mrs %[sp_el0], sp_el0\n" : [sp_el0] "=r" (sp_el0) :: "memory");
+        klog("EXCEPTION: SP0: %llx\n", sp_el0);
+    }
+    klog("EXCEPTION: FP: %llx, LR: %llx\n", regs->fp, regs->lr);
+    klog("EXCEPTION: X0: %llx, X1: %llx\n", regs->x0, regs->x1);
+    klog("EXCEPTION: X2: %llx, X3: %llx\n", regs->x2, regs->x3);
+    klog("EXCEPTION: X4: %llx, X5: %llx\n", regs->x4, regs->x5);
+    klog("EXCEPTION: X6: %llx, X7: %llx\n", regs->x6, regs->x7);
+    klog("EXCEPTION: X8: %llx, X9: %llx\n", regs->x8, regs->x9);
+    klog("EXCEPTION: X10: %llx, X11: %llx\n", regs->x10, regs->x11);
+    klog("EXCEPTION: X12: %llx, X13: %llx\n", regs->x12, regs->x13);
+    klog("EXCEPTION: X14: %llx, X15: %llx\n", regs->x14, regs->x15);
+    klog("EXCEPTION: X16: %llx, X17: %llx\n", regs->x16, regs->x17);
+    klog("EXCEPTION: X18: %llx\n", regs->x18);
+
     // backtrace
     uint64_t fp = regs->fp;
     int level = 1;
@@ -199,7 +218,32 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
         }
 
         VMemBlock be = InvalidVMemBlock();
-        uint32_t be_tag;
+        uint32_t be_tag = 0;
+        // handle directly allocated heap/stacks
+        if(far >= GK_HEAP_START && far < (GK_HEAP_START + VBLOCK_512M))
+        {
+            be.base = GK_HEAP_START;
+            be.length = VBLOCK_512M;
+            be.valid = true;
+            be.user = true;
+            be.write = true;
+            be.exec = false;
+            be.lower_guard = 0;
+            be.upper_guard = 0;
+        }
+        else if(far >= GK_STACKS_START && far < (GK_STACKS_START + VBLOCK_512M))
+        {
+            auto stack_start = far & ~(VBLOCK_4M - 1);
+            be.base = stack_start;
+            be.length = VBLOCK_4M;
+            be.valid = true;
+            be.user = true;
+            be.write = true;
+            be.exec = false;
+            be.lower_guard = GUARD_BITS_64k;
+            be.upper_guard = GUARD_BITS_64k;
+        }
+        else
         {
             CriticalGuard cg(umem->sl);
             be = vblock_valid(far, umem->blocks, &be_tag);

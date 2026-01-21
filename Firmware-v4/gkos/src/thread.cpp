@@ -89,8 +89,28 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     if(!is_priv)
     {
         CriticalGuard cg(owning_process->user_mem->sl);
-        t->mr_user_thread = vblock_alloc(VBLOCK_4M, true, true, false, GUARD_BITS_64k, GUARD_BITS_64k,
-            owning_process->user_mem->blocks);
+        {
+            CriticalGuard cg2(owning_process->heap.sl);
+            if(owning_process->heap.next_local_thread_id < 128)
+            {
+                // directly allocate a stack somewhere high to avoid interfering with userspace mmap requests
+                VMemBlock vb;
+                vb.base = GK_STACKS_START + owning_process->heap.next_local_thread_id * VBLOCK_4M;
+                owning_process->heap.next_local_thread_id++;
+                vb.length = VBLOCK_4M;
+                vb.valid = true;
+                vb.user = true;
+                vb.write = true;
+                vb.exec = false;
+                vb.lower_guard = GUARD_BITS_64k;
+                vb.upper_guard = GUARD_BITS_64k;
+                t->mr_user_thread = vb;
+            }
+        }
+        // else, allocate from vblock
+        if(!t->mr_user_thread.valid)
+            t->mr_user_thread = vblock_alloc(VBLOCK_4M, true, true, false, GUARD_BITS_64k, GUARD_BITS_64k,
+                owning_process->user_mem->blocks);
         if(!t->mr_user_thread.valid)
         {
             klog("thread: could not allocate el0 stack\n");

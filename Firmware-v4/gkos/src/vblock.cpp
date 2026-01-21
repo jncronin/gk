@@ -911,16 +911,16 @@ void VBlock::Dump()
         auto l1_addr = base + idx * VBLOCK_512M;
         if(level1[idx] == VBLOCK_UNAVAIL)
         {
-            klog("%16x-%16x: UNAVAILABLE\n", l1_addr, l1_addr + VBLOCK_512M);
+            klog("%16llx-%16llx  : UNAVAILABLE\n", l1_addr, l1_addr + VBLOCK_512M);
         }
         else if(level1[idx] == VBLOCK_BLOCK_FREE)
         {
-            //klog("%16x-%16x: FREE\n", l1_addr, l1_addr + VBLOCK_512M);
+            //klog("%16llx-%16llx  : FREE\n", l1_addr, l1_addr + VBLOCK_512M);
         }
         else if((level1[idx] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
         {
             auto tag = (uint32_t)(level1[idx] >> 32);
-            klog("%16x-%16x: %s\n", l1_addr, l1_addr + VBLOCK_512M, tag_to_str(tag).c_str());
+            klog("%16llx-%16llx  : %s\n", l1_addr, l1_addr + VBLOCK_512M, tag_to_str(tag).c_str());
         }
         else
         {
@@ -932,16 +932,16 @@ void VBlock::Dump()
 
                 if(l2->b[idx2] == VBLOCK_UNAVAIL)
                 {
-                    klog(" %16x-%16x: UNAVAILABLE\n", l2_addr, l2_addr + VBLOCK_4M);
+                    klog(" %16llx-%16llx : UNAVAILABLE\n", l2_addr, l2_addr + VBLOCK_4M);
                 }
                 else if(l2->b[idx2] == VBLOCK_BLOCK_FREE)
                 {
-                    //klog(" %16x-%16x: FREE\n", l2_addr, l2_addr + VBLOCK_4M);
+                    //klog(" %16llx-%16llx : FREE\n", l2_addr, l2_addr + VBLOCK_4M);
                 }
                 else if((l2->b[idx2] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
                 {
                     auto tag = (uint32_t)(l2->b[idx2] >> 32);
-                    klog(" %16x-%16x: %s\n", l2_addr, l2_addr + VBLOCK_4M, tag_to_str(tag).c_str());
+                    klog(" %16llx-%16llx : %s\n", l2_addr, l2_addr + VBLOCK_4M, tag_to_str(tag).c_str());
                 }
                 else
                 {
@@ -953,20 +953,20 @@ void VBlock::Dump()
 
                         if(l3->b[idx3] == VBLOCK_UNAVAIL)
                         {
-                            klog("  %16x-%16x: UNAVAILABLE\n", l3_addr, l3_addr + VBLOCK_64k);
+                            klog("  %16llx-%16llx: UNAVAILABLE\n", l3_addr, l3_addr + VBLOCK_64k);
                         }
                         else if(l3->b[idx3] == VBLOCK_BLOCK_FREE)
                         {
-                            //klog("  %16x-%16x: FREE\n", l3_addr, l3_addr + VBLOCK_64k);
+                            //klog("  %16llx-%16llx: FREE\n", l3_addr, l3_addr + VBLOCK_64k);
                         }
                         else if((l3->b[idx3] & VBLOCK_BLOCK_ALLOC_MASK) == VBLOCK_BLOCK_ALLOC)
                         {
                             auto tag = (uint32_t)(l3->b[idx3] >> 32);
-                            klog("  %16x-%16x: %s\n", l3_addr, l3_addr + VBLOCK_64k, tag_to_str(tag).c_str());
+                            klog("  %16llx-%16llx: %s\n", l3_addr, l3_addr + VBLOCK_64k, tag_to_str(tag).c_str());
                         }
                         else
                         {
-                            klog("  %16x-%16x: INVALID\n", l3_addr, l3_addr + VBLOCK_64k);
+                            klog("  %16llx-%16llx: INVALID\n", l3_addr, l3_addr + VBLOCK_64k);
                         }
                     }
                 }

@@ -7,6 +7,7 @@
 #include "cleanup.h"
 #include "process_interface.h"
 #include "completion_list.h"
+#include "_gk_memaddrs.h"
 #include <atomic>
 
 static std::atomic<pid_t> focus_process = 0;
@@ -44,11 +45,30 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
         {
             CriticalGuard cg(ret->user_mem->sl);
             ret->user_mem->ttbr0 = ttbr0_reg.base | ((uint64_t)ret->id << 48);
-            ret->user_mem->blocks.init(0, 8191);    // use last entry for fixed space e.g. frame buffers, clock_cur etc
+            // use last entry for fixed space e.g. frame buffers, clock_cur etc
+            // use penultimate entry for heap
+            // use one before for 128 stacks
+            ret->user_mem->blocks.init(0, 8189);    
 
             // allocate the first page to catch null pointer references - not actually used except
             //  to prevent other regions being allocated there - the main logic is in TranslationFault_Handler
             vblock_alloc_fixed(VBLOCK_64k, 0, false, false, false, 0, 0, ret->user_mem->blocks);
+        }
+
+        {
+            // directly allocate the heap somewhere high so it doesn't interefere with userspace mmap requests
+            CriticalGuard cg(ret->heap.sl);
+            VMemBlock vb;
+            vb.base = (uint64_t)GK_HEAP_START;
+            vb.length = VBLOCK_512M;
+            vb.valid = true;
+            vb.user = true;
+            vb.write = true;
+            vb.exec = false;
+            vb.lower_guard = 0;
+            vb.upper_guard = 0;
+            vb.memory_type = MT_NORMAL;
+            ret->heap.vb_heap = vb;
         }
     }
 

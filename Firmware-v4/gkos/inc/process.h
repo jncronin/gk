@@ -76,9 +76,11 @@ class Process
         {
             public:
                 Spinlock sl;
-                // allow for lazy-initialized heap because process could conceivably mmap everything
                 VMemBlock vb_heap = InvalidVMemBlock();
                 uintptr_t brk = 0;
+
+                /* Also directly allocate stacks for the first 128 threads */
+                unsigned int next_local_thread_id = 0;
         };
 
         class screen_t
