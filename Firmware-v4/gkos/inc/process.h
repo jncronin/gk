@@ -156,8 +156,8 @@ class Process
         static PProcess Create(const std::string &name, bool is_privileged = false,
             PProcess parent = nullptr);
 
-        /* Kill this process */
-        void Kill(int retval = 0);
+        /* Kill a process */
+        static void Kill(id_t pid, int retval = 0);
 
         /* Threads waiting on us to end */
         std::unordered_set<id_t> waiting_threads;

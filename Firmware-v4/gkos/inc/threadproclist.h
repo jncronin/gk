@@ -28,7 +28,7 @@ template <class T, class ret_T> struct ThreadProcListMember
 
 struct ProcessListMember : public ThreadProcListMember<Process, int>
 {
-    pid_t ppid = 0;
+    id_t ppid = 0;
 };
 
 using ThreadListMember = ThreadProcListMember<Thread, void *>;

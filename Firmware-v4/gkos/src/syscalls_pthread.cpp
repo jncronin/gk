@@ -11,7 +11,6 @@
 #include "cleanup.h"
 #include "sync_primitive_locks.h"
 #include "threadproclist.h"
-#include "completion_list.h"
 
 #define DEBUG_SYNC 0
 
@@ -615,29 +614,28 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
     auto curp = t->p;
 
     {
-        CriticalGuard cg(ThreadList.sl, ThreadExitCodes.sl);
-        pidtid pt { .pid = curp->id, .tid = thread };
-        auto [for_deletion, rc] = ThreadExitCodes._get(pt);
-        if(for_deletion)
+        CriticalGuard cg(ThreadList.sl);
+        auto tthread = ThreadList._get(thread);
+
+        if(tthread.v == nullptr)
         {
             // already deleted, just return
             if(retval)
-                *retval = rc;
+                *retval = tthread.retval;
             return 0;
         }
 
         // not deleted - need to wait on the thread
-        auto tthread = ThreadList._get(thread).v;
-        if(!thread || tthread->p != curp)
+        if(!thread || tthread.v->p != curp)
         {
             // doesn't exist or doesn't belong to process
             *_errno = ESRCH;
             return -1;
         }
-        CriticalGuard cg2(tthread->sl);
+        CriticalGuard cg2(tthread.v->sl);
 
         // is anything else waiting?
-        auto other_wait_thread = ThreadList._get(tthread->join_thread).v;
+        auto other_wait_thread = ThreadList._get(tthread.v->join_thread).v;
         if(other_wait_thread && other_wait_thread.get() != t)
         {
             *_errno = EDEADLK;
@@ -645,10 +643,10 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         }
 
         // else, tell the thread we are waiting for it to be destroyed
-        tthread->join_thread = t->id;
-        tthread->join_thread_retval = retval;
+        tthread.v->join_thread = t->id;
+        tthread.v->join_thread_retval = retval;
 
-        t->blocking.block(tthread);
+        t->blocking.block(tthread.v);
     }
 
     return 0;
@@ -660,12 +658,11 @@ int syscall_pthread_exit(void **retval, int *_errno)
 
     auto t = GetCurrentThreadForCore();
     {
-        CriticalGuard cg(t->sl, ThreadList.sl, ThreadExitCodes.sl);
-
-        pidtid pt { .pid = t->p->id, .tid = t->id };
-        ThreadExitCodes._set(pt, *retval);
-
+        CriticalGuard cg(t->sl, ThreadList.sl);
+        auto pt = ThreadList._get(t->id).v;
         auto jt = ThreadList._get(t->join_thread).v;
+
+        // TODO: move to thread destructor
         if(jt)
         {
             CriticalGuard cg2(jt->sl);
@@ -678,8 +675,9 @@ int syscall_pthread_exit(void **retval, int *_errno)
             t->join_thread = 0;
         }
 
+        ThreadList._delete(t->id, *retval);
+        sched.Unschedule(pt);
         t->blocking.block_indefinite();
-        CleanupQueue.Push({ .is_thread = true, .t = GetCurrentPThreadForCore() });
     }
     return 0;
 }

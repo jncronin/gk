@@ -2,7 +2,6 @@
 #include "process.h"
 #include "elf.h"
 #include "threadproclist.h"
-#include "completion_list.h"
 #include <fcntl.h>
 #include <sys/wait.h>
 
@@ -129,25 +128,23 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
 
     while(true)
     {
-        CriticalGuard cg(ProcessList.sl, ProcessExitCodes.sl);
+        CriticalGuard cg(ProcessList.sl);
 
         // ensure pid is a child of ours
-        auto pproc = ProcessList._get(pid).v;
+        auto pproc = ProcessList._get(pid);
         auto cp = GetCurrentProcessForCore();
-        if(pproc->ppid != cp->id)
+        if(pproc.ppid != cp->id)
         {
-            klog("waitpid: request for a process (%d: %s) which is not a child of the calling process (%d: %s)\n",
-                pid, pproc->name.c_str(), cp->id, cp->name.c_str());
+            klog("waitpid: request for a process (%d) which is not a child of the calling process (%d: %s)\n",
+                pid, cp->id, cp->name.c_str());
             *_errno = ECHILD;
             return -1;
         }
 
-        auto [finished,pretval] = ProcessExitCodes._get(pid);
-
-        if(finished)
+        if(pproc.v == nullptr)
         {
             if(retval)
-                *retval = pretval;
+                *retval = pproc.retval;
             return pid;
         }
         {
@@ -157,7 +154,7 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
             }
             else
             {
-                pproc->waiting_threads.insert(GetCurrentThreadForCore()->id);
+                pproc.v->waiting_threads.insert(GetCurrentThreadForCore()->id);
                 Block();
             }
         }

@@ -6,8 +6,8 @@
 #include "ipi.h"
 #include "cleanup.h"
 #include "process_interface.h"
-#include "completion_list.h"
 #include "_gk_memaddrs.h"
+#include "syscalls_int.h"
 #include <atomic>
 
 static std::atomic<pid_t> focus_process = 0;
@@ -106,28 +106,34 @@ void Process::owned_pages_t::add(const PMemBlock &b)
     }
 }
 
-void Process::Kill(int rc)
+void Process::Kill(id_t pid, int rc)
 {
-    CriticalGuard cg(sl, ProcessExitCodes.sl);
-    for(auto t : threads)
+    CriticalGuard cg(ProcessList.sl);
+    auto p = ProcessList._get(pid);
+    if(!p.v)
     {
-        CriticalGuard cg2(t->sl);
-        t->blocking.block_indefinite();
-        CleanupQueue.Push({ .is_thread = true, .t = t });
+        klog("process: request to kill a process (%u) that doesn't exist", pid);
+        return;
     }
 
-    ProcessExitCodes._set(id, rc);
-
-    CleanupQueue.Push({ .is_thread = false, .p = ProcessList.Get(id) });
-
-    /* yield all cores */
-    gic_send_sgi(GIC_SGI_YIELD, GIC_TARGET_ALL);
-
+    ProcessList._delete(pid, rc);
 }
 
 Process::~Process()
 {
     klog("process: %s destructor called\n", name.c_str());
+
+    CriticalGuard cg(ThreadList.sl);
+    for(auto t : threads)
+    {
+        auto pt = ThreadList._get(t->id);
+        if(pt.v)
+        {
+            ThreadList._delete(t->id, (void *)0);
+            sched.Unschedule(pt);
+            t->blocking.block_indefinite();
+        }
+    }
 }
 
 int SetFocusProcess(PProcess p)
