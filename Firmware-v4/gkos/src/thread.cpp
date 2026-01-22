@@ -24,7 +24,7 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
             std::shared_ptr<Process> owning_process,
             void *p2)
 {
-    auto t = std::make_shared<Thread>();
+    auto t = ThreadList.Create();
 
     klog("thread_create: %s @ %llx\n", name.c_str(), (uintptr_t)t.get());
 
@@ -32,7 +32,6 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     t->p = owning_process;
     t->base_priority = priority;
     t->is_privileged = is_priv;
-    t->id = ThreadList.Register(t);
 
 #if GK_CUR_THREAD_IN_SYSRAM
     *(uint64_t *)(0xfffffd0030000000 + t->id * 0x10) = (uint64_t)(uintptr_t)t.get();

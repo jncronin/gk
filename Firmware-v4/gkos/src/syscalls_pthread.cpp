@@ -627,7 +627,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         }
 
         // not deleted - need to wait on the thread
-        auto tthread = ThreadList._get(thread);
+        auto tthread = ThreadList._get(thread).v;
         if(!thread || tthread->p != curp)
         {
             // doesn't exist or doesn't belong to process
@@ -637,7 +637,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         CriticalGuard cg2(tthread->sl);
 
         // is anything else waiting?
-        auto other_wait_thread = ThreadList._get(tthread->join_thread);
+        auto other_wait_thread = ThreadList._get(tthread->join_thread).v;
         if(other_wait_thread && other_wait_thread.get() != t)
         {
             *_errno = EDEADLK;
@@ -665,7 +665,7 @@ int syscall_pthread_exit(void **retval, int *_errno)
         pidtid pt { .pid = t->p->id, .tid = t->id };
         ThreadExitCodes._set(pt, *retval);
 
-        auto jt = ThreadList._get(t->join_thread);
+        auto jt = ThreadList._get(t->join_thread).v;
         if(jt)
         {
             CriticalGuard cg2(jt->sl);
@@ -699,7 +699,7 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
     }
 
     /* Check we can access the thread */
-    auto treq = ThreadList.Get(thread);
+    auto treq = ThreadList.Get(thread).v;
     auto t = GetCurrentThreadForCore();
     if(!treq || treq->p != t->p)
     {
@@ -721,7 +721,7 @@ int syscall_set_thread_priority(pthread_t thread, int priority, int *_errno)
         priority = GK_PRIORITY_IDLE + 1;
 
     auto t = GetCurrentThreadForCore();
-    auto tthread = ThreadList.Get(thread);
+    auto tthread = ThreadList.Get(thread).v;
     if(!tthread || tthread->p != t->p)
     {
         *_errno = EINVAL;
@@ -741,7 +741,7 @@ int syscall_set_thread_priority(pthread_t thread, int priority, int *_errno)
 int syscall_get_thread_priority(pthread_t thread, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
-    auto tthread = ThreadList.Get(thread);
+    auto tthread = ThreadList.Get(thread).v;
     if(!tthread || tthread->p != t->p)
     {
         *_errno = EINVAL;

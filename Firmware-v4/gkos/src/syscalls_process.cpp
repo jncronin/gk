@@ -49,7 +49,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     {
         klog("process_create: elf_load_fildes failed: ret: %d\n", ret);
         *_errno = EFAULT;
-        ProcessList.Delete(proc->id);
+        ProcessList.Delete(proc->id, -1);
         return -1;
     }
 
@@ -102,7 +102,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     if(!t_t0)
     {
         klog("process_create: Thread::Create failed\n");
-        ProcessList.Delete(proc->id);
+        ProcessList.Delete(proc->id, -1);
         return -1;
     }
 
@@ -132,7 +132,7 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
         CriticalGuard cg(ProcessList.sl, ProcessExitCodes.sl);
 
         // ensure pid is a child of ours
-        auto pproc = ProcessList._get(pid);
+        auto pproc = ProcessList._get(pid).v;
         auto cp = GetCurrentProcessForCore();
         if(pproc->ppid != cp->id)
         {
@@ -166,7 +166,7 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
 
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
 {
-    auto p = ProcessList.Get(pid);
+    auto p = ProcessList.Get(pid).v;
     if(p)
     {
         return p->id;
@@ -180,7 +180,7 @@ pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
 
 int syscall_kill(pid_t pid, int sig, int *_errno)
 {
-    auto p = ProcessList.Get(pid);
+    auto p = ProcessList.Get(pid).v;
     if(!p)
     {
         *_errno = ESRCH;

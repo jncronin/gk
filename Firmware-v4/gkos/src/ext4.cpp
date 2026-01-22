@@ -234,7 +234,7 @@ static void handle_open_message(ext4_message &msg)
     ext4_file f;
     ext4_dir d;
 
-    auto call_t = ThreadList.Get(msg.tid);
+    auto call_t = ThreadList.Get(msg.tid).v;
     if(!call_t)
     {
         // message from zombie process - ignore it
@@ -653,7 +653,7 @@ void *ext4_thread(void *_p)
             continue;
 
         // if message from a user thread then map its lower half here
-        auto call_t = ThreadList.Get(msg.tid);
+        auto call_t = ThreadList.Get(msg.tid).v;
         if(!call_t)
             continue;
 

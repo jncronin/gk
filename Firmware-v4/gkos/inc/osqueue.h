@@ -41,7 +41,7 @@ template <typename T> class BaseQueue
         {
             for(auto bt : waiting_threads)
             {
-                auto btp = ThreadList.Get(bt);
+                auto btp = ThreadList.Get(bt).v;
                 if(btp)
                 {
                     btp->blocking.unblock();

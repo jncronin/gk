@@ -409,7 +409,7 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
     if(last_updated != cur_display)
     {
         cur_display = last_updated;
-        auto p = (pids[last_updated] == 0) ? nullptr : ProcessList._get(pids[last_updated]);
+        auto p = (pids[last_updated] == 0) ? nullptr : ProcessList._get(pids[last_updated]).v;
         auto paddr = pm[last_updated].base;
         auto lw = lws[last_updated];
         auto lh = lhs[last_updated];

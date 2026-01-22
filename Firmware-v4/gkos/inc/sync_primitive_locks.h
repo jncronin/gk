@@ -15,10 +15,10 @@ using PUserspaceSemaphore = std::shared_ptr<UserspaceSemaphore>;
 
 template <class PrimType> struct owned_sync_list
 {
-    IDList<PrimType> &global_list;
+    SyncPrimIDList<PrimType> &global_list;
     using PT = std::shared_ptr<PrimType>;
 
-    owned_sync_list(IDList<PrimType> &_global_list) : global_list(_global_list) {}
+    owned_sync_list(SyncPrimIDList<PrimType> &_global_list) : global_list(_global_list) {}
 
     Spinlock sl;
     std::set<id_t> pset;

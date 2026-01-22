@@ -34,7 +34,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 {
     auto t = GetCurrentThreadForCore();
     CriticalGuard cg(sl, t->locked_mutexes.sl);
-    auto towner = ThreadList.Get(owner);
+    auto towner = ThreadList.Get(owner).v;
     if(towner == nullptr || (is_recursive && towner.get() == t))
     {
         owner = t->id;
@@ -84,7 +84,7 @@ bool Mutex::unlock(bool do_unlock)
 bool Mutex::unlock(int *reason, bool force)
 {
     CriticalGuard cg(sl, ThreadList.sl);
-    auto towner = ThreadList._get(owner);
+    auto towner = ThreadList._get(owner).v;
     if(!towner)
     {
         if(reason) *reason = EPERM;
@@ -101,7 +101,7 @@ bool Mutex::unlock(int *reason, bool force)
     {
         for(auto wt : waiting_threads)
         {
-            auto pwt = ThreadList._get(wt);
+            auto pwt = ThreadList._get(wt).v;
             if(pwt)
             {
                 pwt->blocking.unblock();
@@ -121,12 +121,12 @@ bool Mutex::try_delete(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);
 
-    auto towner = ThreadList._get(owner);
+    auto towner = ThreadList._get(owner).v;
     if(towner == nullptr || towner.get() == GetCurrentThreadForCore())
     {
         for(auto wt : waiting_threads)
         {
-            auto pwt = ThreadList._get(wt);
+            auto pwt = ThreadList._get(wt).v;
             if(pwt)
             {
                 pwt->blocking.unblock();
