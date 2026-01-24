@@ -170,6 +170,7 @@ class Process
 extern PProcess p_kernel;
 
 PProcess GetFocusProcess();
+id_t GetFocusPid();
 int SetFocusProcess(PProcess p);
 
 #endif

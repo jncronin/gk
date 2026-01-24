@@ -132,12 +132,32 @@ void Process::Kill(id_t pid, int rc)
         return;
     }
 
+    // restore focus process, if applicable
+    if(GetFocusPid() == pid)
+    {
+        auto pparent = ProcessList._get(p.v->ppid);
+        if(pparent.v)
+        {
+            SetFocusProcess(pparent.v);
+        }
+    }
+
     ProcessList._setexitcode(pid, rc);
     cg.unlock();
 
     for(auto t : p.v->threads)
     {
         Thread::Kill(t, (void *)0);
+    }
+
+    // Wake up any waiting threads
+    for(auto t_wait : p.v->waiting_threads)
+    {
+        auto pt_wait = ThreadList.Get(t_wait);
+        if(pt_wait.v)
+        {
+            pt_wait.v->blocking.unblock();
+        }
     }
 
     CleanupQueue.Push(cleanup_message { .is_thread = false, .id = pid });
@@ -174,3 +194,9 @@ PProcess GetFocusProcess()
 {
     return ProcessList.Get(focus_process);
 }
+
+id_t GetFocusPid()
+{
+    return focus_process;
+}
+
