@@ -129,7 +129,6 @@ template <typename T> class PTIDList : public IDList<T>
             auto iter = this->list.find(id);
             if(iter != this->list.end())
             {
-                iter->second.v = nullptr;
                 iter->second.retval = ret;
                 iter->second.has_ended = true;
             }

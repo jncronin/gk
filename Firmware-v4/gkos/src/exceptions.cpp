@@ -71,7 +71,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     : : "memory");
     klog("EXCEPTION: ttbr0: %llx, ttbr1: %llx, tcr: %llx\n", ttbr0, ttbr1, tcr);
     auto [t, p] = GetCurrentThreadProcessForCore();
-    if(t)
+    if(t && p)
         klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", p->name.c_str(), t->name.c_str(), (uintptr_t)t);
 
     // regs
@@ -119,8 +119,14 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     {
         // required for yield()
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
-        Process::Kill(p->id, 128 + userspace_fault_code);
-        return 0;
+        if(p)
+        {
+            Process::Kill(p->id, 128 + userspace_fault_code);
+        }
+        while(true)
+        {
+            Yield();
+        }
     }
 
     while(true);

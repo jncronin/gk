@@ -149,9 +149,10 @@ void Thread::blocking_t::block(void *q, kernel_time tout)
 
 void Thread::blocking_t::block_indefinite()
 {
+    auto [t, p] = GetCurrentThreadProcessForCore();
     klog("block: block_indefinite called: %s:%s\n",
-        GetCurrentProcessForCore()->name.c_str(),
-        GetCurrentThreadForCore()->name.c_str());
+        p ? p->name.c_str() : "<DELETED PROCESS>",
+        t ? t->name.c_str() : "<DELETED THREAD>");
 
     CriticalGuard cg(sl);
     b_until = kernel_time_invalid();
