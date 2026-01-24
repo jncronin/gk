@@ -32,7 +32,7 @@ void UserspaceSemaphore::post(int n, bool add)
     {
         for(auto wt : waiting_threads)
         {
-            auto pwt = ThreadList._get(wt);
+            auto pwt = ThreadList._get(wt).v;
             if(pwt)
             {
                 pwt->blocking.unblock();

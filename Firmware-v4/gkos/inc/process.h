@@ -43,6 +43,7 @@ class Process
                 std::unordered_set<uint32_t> p{};
 
                 void add(const PMemBlock &b);
+                void release_all();
         };
 
         class userspace_mem_t
@@ -118,7 +119,7 @@ class Process
         };
 
         std::string name;
-        std::vector<std::shared_ptr<Thread>> threads;
+        std::vector<id_t> threads;
         id_t id, ppid;
         Spinlock sl;
 
@@ -156,8 +157,8 @@ class Process
         static PProcess Create(const std::string &name, bool is_privileged = false,
             PProcess parent = nullptr);
 
-        /* Kill this process */
-        void Kill(int retval = 0);
+        /* Kill a process */
+        static void Kill(id_t pid, int retval = 0);
 
         /* Threads waiting on us to end */
         std::unordered_set<id_t> waiting_threads;
@@ -169,6 +170,7 @@ class Process
 extern PProcess p_kernel;
 
 PProcess GetFocusProcess();
+id_t GetFocusPid();
 int SetFocusProcess(PProcess p);
 
 #endif

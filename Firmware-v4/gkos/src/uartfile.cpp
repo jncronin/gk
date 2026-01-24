@@ -15,12 +15,12 @@ ssize_t UARTFile::Write(const char *buf, size_t count, int *_errno)
 {
     auto ret = count;
     sl_line_buf.lock();
-    auto t = GetCurrentThreadForCore();
+    auto [t, p] = GetCurrentThreadProcessForCore();
     while(count)
     {
         if(*buf == '\n' || line_buf.size() >= 1024)
         {
-            klog("%s:%s: %.*s\n", t->name.c_str(), t->p->name.c_str(),
+            klog("%s:%s: %.*s\n", t->name.c_str(), p->name.c_str(),
                 line_buf.data(), line_buf.size());
             line_buf.clear();
         }

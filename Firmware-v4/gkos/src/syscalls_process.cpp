@@ -2,7 +2,6 @@
 #include "process.h"
 #include "elf.h"
 #include "threadproclist.h"
-#include "completion_list.h"
 #include <fcntl.h>
 #include <sys/wait.h>
 
@@ -49,7 +48,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     {
         klog("process_create: elf_load_fildes failed: ret: %d\n", ret);
         *_errno = EFAULT;
-        ProcessList.Delete(proc->id);
+        Process::Kill(proc->id, -1);
         return -1;
     }
 
@@ -102,7 +101,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     if(!t_t0)
     {
         klog("process_create: Thread::Create failed\n");
-        ProcessList.Delete(proc->id);
+        Process::Kill(proc->id, -1);
         return -1;
     }
 
@@ -129,25 +128,21 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
 
     while(true)
     {
-        CriticalGuard cg(ProcessList.sl, ProcessExitCodes.sl);
-
         // ensure pid is a child of ours
-        auto pproc = ProcessList._get(pid);
+        auto pproc = ProcessList.Get(pid);
         auto cp = GetCurrentProcessForCore();
-        if(pproc->ppid != cp->id)
+        if(pproc.ppid != cp->id)
         {
-            klog("waitpid: request for a process (%d: %s) which is not a child of the calling process (%d: %s)\n",
-                pid, pproc->name.c_str(), cp->id, cp->name.c_str());
+            klog("waitpid: request for a process (%d) which is not a child of the calling process (%d: %s)\n",
+                pid, cp->id, cp->name.c_str());
             *_errno = ECHILD;
             return -1;
         }
 
-        auto [finished,pretval] = ProcessExitCodes._get(pid);
-
-        if(finished)
+        if(pproc.has_ended)
         {
             if(retval)
-                *retval = pretval;
+                *retval = pproc.retval;
             return pid;
         }
         {
@@ -157,7 +152,10 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
             }
             else
             {
-                pproc->waiting_threads.insert(GetCurrentThreadForCore()->id);
+                {
+                    CriticalGuard cg(pproc.v->sl);
+                    pproc.v->waiting_threads.insert(GetCurrentThreadForCore()->id);
+                }
                 Block();
             }
         }
@@ -166,7 +164,7 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
 
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
 {
-    auto p = ProcessList.Get(pid);
+    auto p = ProcessList.Get(pid).v;
     if(p)
     {
         return p->id;
@@ -180,7 +178,7 @@ pid_t syscall_get_proc_ppid(pid_t pid, int *_errno)
 
 int syscall_kill(pid_t pid, int sig, int *_errno)
 {
-    auto p = ProcessList.Get(pid);
+    auto p = ProcessList.Get(pid).v;
     if(!p)
     {
         *_errno = ESRCH;
@@ -191,7 +189,7 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
     {
         case SIGKILL:
         case SIGABRT:
-            p->Kill(128 + sig);
+            Process::Kill(pid, 128 + sig);
             break;
 
         default:

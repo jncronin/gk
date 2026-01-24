@@ -6,6 +6,7 @@
 #include "osmutex.h"
 #include "kernel_time.h"
 #include "gic.h"
+#include "threadproclist.h"
 
 #include <vector>
 
@@ -93,14 +94,20 @@ static inline void Yield()
 
 void Block(kernel_time until = kernel_time(), PThread block_on = nullptr);
 
-static inline PThread &GetCurrentPThreadForCore()
+static inline PThread GetCurrentPThreadForCore()
 {
-    return sched.GetCurThread(GetCoreID());
+    return ThreadList.Get(GetCurrentThreadForCore()->id).v;
 }
 
 static inline PProcess GetCurrentProcessForCore()
 {
-    return GetCurrentKernelThreadForCore() ? GetCurrentKernelThreadForCore()->p : nullptr;
+    return GetCurrentKernelThreadForCore() ? ProcessList.Get(GetCurrentKernelThreadForCore()->p).v : nullptr;
+}
+
+static inline std::pair<Thread *, PProcess> GetCurrentThreadProcessForCore()
+{
+    auto t = GetCurrentKernelThreadForCore();
+    return std::make_pair(t, t ? ProcessList.Get(t->p).v : nullptr);
 }
 
 #endif

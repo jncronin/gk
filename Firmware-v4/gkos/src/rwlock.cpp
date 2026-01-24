@@ -6,7 +6,7 @@ bool RwLock::try_rdlock(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
-    auto twrowner = ThreadList._get(wrowner);
+    auto twrowner = ThreadList._get(wrowner).v;
     if(twrowner)
     {
         if(twrowner.get() == t)
@@ -35,7 +35,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
-    auto twrowner = ThreadList._get(wrowner);
+    auto twrowner = ThreadList._get(wrowner).v;
     if(twrowner)
     {
         if(twrowner.get() == t)
@@ -67,7 +67,7 @@ bool RwLock::try_wrlock(int *reason, bool block, kernel_time tout)
             if(reason) *reason = EBUSY;
             for(auto rdowner : rdowners)
             {
-                auto trdowner = ThreadList._get(rdowner);
+                auto trdowner = ThreadList._get(rdowner).v;
                 if(trdowner)
                 {
                     if(block)
@@ -97,14 +97,14 @@ bool RwLock::unlock(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
-    auto twrowner = ThreadList._get(wrowner);
+    auto twrowner = ThreadList._get(wrowner).v;
     if(twrowner)
     {
         if(twrowner.get() == t)
         {
             for(auto wt : waiting_threads)
             {
-                auto pwt = ThreadList._get(wt);
+                auto pwt = ThreadList._get(wt).v;
                 if(pwt)
                 {
                     pwt->blocking.unblock();
@@ -141,7 +141,7 @@ bool RwLock::unlock(int *reason)
     {
         for(auto wt : waiting_threads)
         {
-            auto pwt = ThreadList._get(wt);
+            auto pwt = ThreadList._get(wt).v;
             if(pwt)
             {
                 pwt->blocking.unblock();
@@ -157,7 +157,7 @@ bool RwLock::unlock(int *reason)
 bool RwLock::try_delete(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);
-    auto twrowner = ThreadList._get(wrowner);
+    auto twrowner = ThreadList._get(wrowner).v;
     if(twrowner)
     {
         if(reason) *reason = EBUSY;
@@ -169,7 +169,7 @@ bool RwLock::try_delete(int *reason)
     }
     for(auto rdo : rdowners)
     {
-        auto prdo = ThreadList._get(rdo);
+        auto prdo = ThreadList._get(rdo).v;
         if(prdo)
         {
             if(reason) *reason = EBUSY;

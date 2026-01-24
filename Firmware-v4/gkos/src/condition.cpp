@@ -30,7 +30,7 @@ Condition::~Condition()
     for(auto &bt : waiting_threads)
     {
         //CriticalGuard cg2(bt.first->sl);
-        auto pwt = ThreadList._get(bt.first);
+        PThread pwt = ThreadList._get(bt.first);
         if(pwt)
         {
             pwt->blocking.unblock();
@@ -75,7 +75,7 @@ void Condition::Signal(bool signal_all)
                     bt.first);
 #endif
 
-                auto pwt = ThreadList._get(bt.first);
+                auto pwt = ThreadList._get(bt.first).v;
                 if(pwt)
                 {
 #if DEBUG_COND
@@ -118,7 +118,7 @@ void Condition::Signal(bool signal_all)
                     iter->first);
 #endif
                 
-                auto pwt = ThreadList._get(iter->first);
+                auto pwt = ThreadList._get(iter->first).v;
                 if(pwt)
                 {
 #if DEBUG_COND

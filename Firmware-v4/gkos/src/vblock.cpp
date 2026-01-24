@@ -108,7 +108,7 @@ VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write,
 
     if(map)
     {
-        auto p = GetCurrentThreadForCore()->p;
+        auto p = GetCurrentProcessForCore();
 
         for(auto ptr = 0U; ptr < ret.data_length(); ptr += VBLOCK_64k)
         {

@@ -6,8 +6,8 @@
 #include "ipi.h"
 #include "cleanup.h"
 #include "process_interface.h"
-#include "completion_list.h"
 #include "_gk_memaddrs.h"
+#include "syscalls_int.h"
 #include <atomic>
 
 static std::atomic<pid_t> focus_process = 0;
@@ -106,28 +106,75 @@ void Process::owned_pages_t::add(const PMemBlock &b)
     }
 }
 
-void Process::Kill(int rc)
+void Process::owned_pages_t::release_all()
 {
-    CriticalGuard cg(sl, ProcessExitCodes.sl);
-    for(auto t : threads)
+    for(auto curp : p)
     {
-        CriticalGuard cg2(t->sl);
-        t->blocking.block_indefinite();
-        CleanupQueue.Push({ .is_thread = true, .t = t });
+        if(curp & 0x80000000UL)
+            continue;
+        auto addr = ((uint64_t)curp) << 16;
+        PMemBlock pb;
+        pb.base = addr;
+        pb.is_shared = false;
+        pb.length = VBLOCK_64k;
+        pb.valid = true;
+        Pmem.release(pb);
+    }
+}
+
+void Process::Kill(id_t pid, int rc)
+{
+    CriticalGuard cg(ProcessList.sl);
+    auto p = ProcessList._get(pid);
+    if(!p.v)
+    {
+        klog("process: request to kill a process (%u) that doesn't exist", pid);
+        return;
     }
 
-    ProcessExitCodes._set(id, rc);
+    // restore focus process, if applicable
+    if(GetFocusPid() == pid)
+    {
+        auto pparent = ProcessList._get(p.v->ppid);
+        if(pparent.v)
+        {
+            SetFocusProcess(pparent.v);
+        }
+    }
 
-    CleanupQueue.Push({ .is_thread = false, .p = ProcessList.Get(id) });
+    ProcessList._setexitcode(pid, rc);
+    cg.unlock();
 
-    /* yield all cores */
-    gic_send_sgi(GIC_SGI_YIELD, GIC_TARGET_ALL);
+    for(auto t : p.v->threads)
+    {
+        Thread::Kill(t, (void *)0);
+    }
 
+    // Wake up any waiting threads
+    for(auto t_wait : p.v->waiting_threads)
+    {
+        auto pt_wait = ThreadList.Get(t_wait);
+        if(pt_wait.v)
+        {
+            pt_wait.v->blocking.unblock();
+        }
+    }
+
+    CleanupQueue.Push(cleanup_message { .is_thread = false, .id = pid });
 }
 
 Process::~Process()
 {
-    klog("process: %s destructor called\n", name.c_str());
+    // This should only be called by the cleanup thread finally deleting the entry in ProcessList
+    klog("process: %u:%s destructor called\n", id, name.c_str());
+
+    // Release resources
+    owned_pages.release_all();
+
+    owned_conditions.clear();
+    owned_mutexes.clear();
+    owned_rwlocks.clear();
+    owned_semaphores.clear();
 }
 
 int SetFocusProcess(PProcess p)
@@ -147,3 +194,9 @@ PProcess GetFocusProcess()
 {
     return ProcessList.Get(focus_process);
 }
+
+id_t GetFocusPid()
+{
+    return focus_process;
+}
+

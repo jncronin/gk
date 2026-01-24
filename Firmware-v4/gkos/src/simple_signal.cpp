@@ -12,7 +12,7 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
     CriticalGuard cg(sl, ThreadList.sl);
     auto t = GetCurrentThreadForCore();
     {
-        auto pwt = ThreadList._get(waiting_thread);
+        auto pwt = ThreadList._get(waiting_thread).v;
         if(pwt && t != pwt.get())
             return false;
     }
@@ -52,7 +52,7 @@ void SimpleSignal::Signal(SignalOperation op, uint32_t val)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     do_op(op, val);
-    auto pwt = ThreadList._get(waiting_thread);
+    auto pwt = ThreadList._get(waiting_thread).v;
     if(pwt)
     {
         pwt->blocking.unblock();

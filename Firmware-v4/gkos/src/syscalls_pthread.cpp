@@ -11,7 +11,6 @@
 #include "cleanup.h"
 #include "sync_primitive_locks.h"
 #include "threadproclist.h"
-#include "completion_list.h"
 
 #define DEBUG_SYNC 0
 
@@ -38,7 +37,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     ADDR_CHECK_BUFFER_R((void *)start_func, 1);
 
     auto curt = GetCurrentThreadForCore();
-    auto p = curt->p;
+    auto p = GetCurrentProcessForCore();
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
         curt->base_priority, p, arg2);
@@ -87,8 +86,8 @@ int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t
     klog("pthread_mutex: create mutex id %d\n", m->id);
 #endif
     
-    auto t = GetCurrentThreadForCore();
-    *mutex = t->p->owned_mutexes.add(m);
+    auto p = GetCurrentProcessForCore();
+    *mutex = p->owned_mutexes.add(m);
 
     return 0;
 }
@@ -110,8 +109,8 @@ static PMutex check_mutex(pthread_mutex_t *mutex)
         klog("check_mutex: mutex_initialzer - init(), now id = %u\n", *mutex);
 #endif
     }
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_mutexes.get(*mutex);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_mutexes.get(*mutex);
 }
 
 static PCondition check_cond(pthread_cond_t *mutex)
@@ -122,8 +121,8 @@ static PCondition check_cond(pthread_cond_t *mutex)
     {
         syscall_pthread_cond_init(mutex, nullptr, nullptr);
     }
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_conditions.get(*mutex);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_conditions.get(*mutex);
 }
 
 static PRWLock check_rwlock(pthread_rwlock_t *lock)
@@ -134,16 +133,16 @@ static PRWLock check_rwlock(pthread_rwlock_t *lock)
     {
         syscall_pthread_rwlock_init(lock, nullptr, nullptr);
     }
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_rwlocks.get(*lock);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_rwlocks.get(*lock);
 }
 
 static PUserspaceSemaphore check_sem(sem_t *sem)
 {
     if(!sem || !sem->s)
         return nullptr;
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_semaphores.get(sem->s);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_semaphores.get(sem->s);
 }
 
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
@@ -159,8 +158,8 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
     auto ret = m->try_delete();
     if(ret)
     {
-        auto t = GetCurrentThreadForCore();
-        t->p->owned_mutexes.erase(*mutex);
+        auto p = GetCurrentProcessForCore();
+        p->owned_mutexes.erase(*mutex);
 
         return 0;
     }
@@ -237,8 +236,8 @@ int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    *lock = t->p->owned_rwlocks.add(l);
+    auto p = GetCurrentProcessForCore();
+    *lock = p->owned_rwlocks.add(l);
 
     return 0;
 }
@@ -331,8 +330,8 @@ int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno)
 
     if(l->try_delete())
     {
-        auto t = GetCurrentThreadForCore();
-        t->p->owned_rwlocks.erase(*lock);
+        auto p = GetCurrentProcessForCore();
+        p->owned_rwlocks.erase(*lock);
         return 0;
     }
     else
@@ -358,8 +357,8 @@ int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno)
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    sem->s = t->p->owned_semaphores.add(s);
+    auto p = GetCurrentProcessForCore();
+    sem->s = p->owned_semaphores.add(s);
 
     return 0;
 }
@@ -381,8 +380,8 @@ int syscall_sem_destroy(sem_t *sem, int *_errno)
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    t->p->owned_semaphores.erase(sem->s);
+    auto p = GetCurrentProcessForCore();
+    p->owned_semaphores.erase(sem->s);
 
     return 0;
 }
@@ -461,7 +460,7 @@ int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), i
     if(destructor)
         ADDR_CHECK_BUFFER_R((void *)destructor, 1);
 
-    auto &ptls = GetCurrentThreadForCore()->p->pthread_tls;
+    auto &ptls = GetCurrentProcessForCore()->pthread_tls;
     CriticalGuard cg(ptls.sl);
     auto ret = ptls.next_key++;
     ptls.tls_data[ret] = destructor;
@@ -471,7 +470,7 @@ int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), i
 
 int syscall_pthread_key_delete(pthread_key_t key, int *_errno)
 {
-    auto &ptls = GetCurrentThreadForCore()->p->pthread_tls;
+    auto &ptls = GetCurrentProcessForCore()->pthread_tls;
     CriticalGuard cg(ptls.sl);
     auto iter = ptls.tls_data.find(key);
     if(iter == ptls.tls_data.end())
@@ -486,7 +485,8 @@ int syscall_pthread_key_delete(pthread_key_t key, int *_errno)
 int syscall_pthread_setspecific(pthread_key_t key, const void *val, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
-    auto &ptls = t->p->pthread_tls;
+    auto p = GetCurrentProcessForCore();
+    auto &ptls = p->pthread_tls;
 
     CriticalGuard cg(t->sl_pthread_tls, ptls.sl);
     auto iter = ptls.tls_data.find(key);
@@ -532,8 +532,8 @@ int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *at
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    *cond = t->p->owned_conditions.add(c);
+    auto p = GetCurrentProcessForCore();
+    *cond = p->owned_conditions.add(c);
 
     return 0;
 }
@@ -548,8 +548,8 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    t->p->owned_conditions.erase(*cond);
+    auto p = GetCurrentProcessForCore();
+    p->owned_conditions.erase(*cond);
 
     return 0;
 }
@@ -614,30 +614,30 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
     
     auto curp = t->p;
 
+    while(true)
     {
-        CriticalGuard cg(ThreadList.sl, ThreadExitCodes.sl);
-        pidtid pt { .pid = curp->id, .tid = thread };
-        auto [for_deletion, rc] = ThreadExitCodes._get(pt);
-        if(for_deletion)
+        CriticalGuard cg(ThreadList.sl);
+        auto tthread = ThreadList._get(thread);
+
+        if(tthread.has_ended)
         {
             // already deleted, just return
             if(retval)
-                *retval = rc;
+                *retval = tthread.retval;
             return 0;
         }
 
         // not deleted - need to wait on the thread
-        auto tthread = ThreadList._get(thread);
-        if(!thread || tthread->p != curp)
+        if(!thread || tthread.v->p != curp)
         {
             // doesn't exist or doesn't belong to process
             *_errno = ESRCH;
             return -1;
         }
-        CriticalGuard cg2(tthread->sl);
+        CriticalGuard cg2(tthread.v->sl);
 
         // is anything else waiting?
-        auto other_wait_thread = ThreadList._get(tthread->join_thread);
+        auto other_wait_thread = ThreadList._get(tthread.v->join_thread).v;
         if(other_wait_thread && other_wait_thread.get() != t)
         {
             *_errno = EDEADLK;
@@ -645,10 +645,11 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         }
 
         // else, tell the thread we are waiting for it to be destroyed
-        tthread->join_thread = t->id;
-        tthread->join_thread_retval = retval;
+        tthread.v->join_thread = t->id;
+        tthread.v->join_thread_retval = retval;
 
-        t->blocking.block(tthread);
+        t->blocking.block(tthread.v);
+        Yield();
     }
 
     return 0;
@@ -656,31 +657,11 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
 
 int syscall_pthread_exit(void **retval, int *_errno)
 {
-    ADDR_CHECK_STRUCT_R(retval);
+    if(retval)
+        ADDR_CHECK_STRUCT_R(retval);
 
     auto t = GetCurrentThreadForCore();
-    {
-        CriticalGuard cg(t->sl, ThreadList.sl, ThreadExitCodes.sl);
-
-        pidtid pt { .pid = t->p->id, .tid = t->id };
-        ThreadExitCodes._set(pt, *retval);
-
-        auto jt = ThreadList._get(t->join_thread);
-        if(jt)
-        {
-            CriticalGuard cg2(jt->sl);
-            if(t->join_thread_retval)
-            {
-                *t->join_thread_retval = *retval;
-            }
-            jt->blocking.unblock();
-            signal_thread_woken(jt);
-            t->join_thread = 0;
-        }
-
-        t->blocking.block_indefinite();
-        CleanupQueue.Push({ .is_thread = true, .t = GetCurrentPThreadForCore() });
-    }
+    Thread::Kill(t->id, retval ? *retval : nullptr);
     return 0;
 }
 
@@ -699,7 +680,7 @@ int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno)
     }
 
     /* Check we can access the thread */
-    auto treq = ThreadList.Get(thread);
+    auto treq = ThreadList.Get(thread).v;
     auto t = GetCurrentThreadForCore();
     if(!treq || treq->p != t->p)
     {
@@ -721,7 +702,7 @@ int syscall_set_thread_priority(pthread_t thread, int priority, int *_errno)
         priority = GK_PRIORITY_IDLE + 1;
 
     auto t = GetCurrentThreadForCore();
-    auto tthread = ThreadList.Get(thread);
+    auto tthread = ThreadList.Get(thread).v;
     if(!tthread || tthread->p != t->p)
     {
         *_errno = EINVAL;
@@ -741,7 +722,7 @@ int syscall_set_thread_priority(pthread_t thread, int priority, int *_errno)
 int syscall_get_thread_priority(pthread_t thread, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
-    auto tthread = ThreadList.Get(thread);
+    auto tthread = ThreadList.Get(thread).v;
     if(!tthread || tthread->p != t->p)
     {
         *_errno = EINVAL;
@@ -768,7 +749,8 @@ int syscall_get_pthread_dtors(size_t *len, dtor_t *dtors, void **vals, int *_err
     ADDR_CHECK_STRUCT_W(len);
     
     auto t = GetCurrentThreadForCore();
-    auto &ptls = t->p->pthread_tls;
+    auto p = GetCurrentProcessForCore();
+    auto &ptls = p->pthread_tls;
     CriticalGuard cg(t->sl_pthread_tls, ptls.sl);
 
     if(*len < ptls.next_key)
