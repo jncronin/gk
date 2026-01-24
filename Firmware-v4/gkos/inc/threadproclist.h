@@ -18,6 +18,7 @@ template <class T, class ret_T> struct ThreadProcListMember
     using PT = std::shared_ptr<T>;
     PT v{};
     ret_T retval = (ret_T)0;
+    bool has_ended = false;
 
     typedef T value_type;
     typedef PT pointer_type;
@@ -130,6 +131,7 @@ template <typename T> class PTIDList : public IDList<T>
             {
                 iter->second.v = nullptr;
                 iter->second.retval = ret;
+                iter->second.has_ended = true;
             }
         }
 

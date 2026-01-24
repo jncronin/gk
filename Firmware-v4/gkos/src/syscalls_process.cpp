@@ -128,10 +128,8 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
 
     while(true)
     {
-        CriticalGuard cg(ProcessList.sl);
-
         // ensure pid is a child of ours
-        auto pproc = ProcessList._get(pid);
+        auto pproc = ProcessList.Get(pid);
         auto cp = GetCurrentProcessForCore();
         if(pproc.ppid != cp->id)
         {
@@ -141,7 +139,7 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
             return -1;
         }
 
-        if(pproc.v == nullptr)
+        if(pproc.has_ended)
         {
             if(retval)
                 *retval = pproc.retval;
@@ -154,7 +152,10 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
             }
             else
             {
-                pproc.v->waiting_threads.insert(GetCurrentThreadForCore()->id);
+                {
+                    CriticalGuard cg(pproc.v->sl);
+                    pproc.v->waiting_threads.insert(GetCurrentThreadForCore()->id);
+                }
                 Block();
             }
         }
