@@ -43,6 +43,7 @@ class Process
                 std::unordered_set<uint32_t> p{};
 
                 void add(const PMemBlock &b);
+                void release_all();
         };
 
         class userspace_mem_t
@@ -118,7 +119,7 @@ class Process
         };
 
         std::string name;
-        std::vector<std::shared_ptr<Thread>> threads;
+        std::vector<id_t> threads;
         id_t id, ppid;
         Spinlock sl;
 

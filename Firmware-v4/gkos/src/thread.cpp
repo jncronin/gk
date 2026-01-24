@@ -3,6 +3,7 @@
 #include "process.h"
 #include "vmem.h"
 #include "threadproclist.h"
+#include "cleanup.h"
 
 void thread_stub(Thread::threadstart_t func, void *p)
 {
@@ -29,7 +30,7 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     klog("thread_create: %s @ %llx\n", name.c_str(), (uintptr_t)t.get());
 
     t->name = name;
-    t->p = owning_process;
+    t->p = owning_process->id;
     t->base_priority = priority;
     t->is_privileged = is_priv;
 
@@ -141,7 +142,7 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
 
     {
         CriticalGuard cg(owning_process->sl);
-        owning_process->threads.push_back(t);
+        owning_process->threads.push_back(t->id);
     }
 
     return t;
@@ -185,11 +186,11 @@ int Thread::assume_user_thread_lower_half(PThread user_thread)
         return -3;
     if(tss.ttbr0 != 0)
         return -4;
-    if(lower_half_user_thread != nullptr)
+    if(lower_half_user_thread != 0)
         return -5;
     
     tss.ttbr0 = user_thread->tss.ttbr0;
-    lower_half_user_thread = user_thread;
+    lower_half_user_thread = user_thread->id;
     uint64_t tcr_el1;
     __asm__ volatile(
         "msr ttbr0_el1, %[ttbr0]\n"
@@ -217,13 +218,13 @@ int Thread::release_user_thread_lower_half()
     CriticalGuard cg(sl_lower_half_user_thread);
     if(is_privileged == false)
         return -1;
-    if(lower_half_user_thread == nullptr)
+    if(lower_half_user_thread == 0)
         return -2;
     if(tss.ttbr0 == 0)
         return -3;
 
     tss.ttbr0 = 0;
-    lower_half_user_thread = nullptr;
+    lower_half_user_thread = 0;
 
     uint64_t tcr_el1;
 
@@ -248,9 +249,41 @@ int Thread::release_user_thread_lower_half()
     return 0;
 }
 
+int Thread::Kill(id_t id, void *retval)
+{
+    auto pt = ThreadList.Get(id).v;
+
+    if(!pt)
+    {
+        return -1;
+    }
+
+    CriticalGuard cg(ThreadList.sl, pt->sl);
+    auto jt = ThreadList._get(pt->join_thread).v;
+
+    if(jt)
+    {
+        CriticalGuard cg2(jt->sl);
+        if(pt->join_thread_retval)
+        {
+            *pt->join_thread_retval = retval;
+        }
+        jt->blocking.unblock();
+        signal_thread_woken(jt);
+        pt->join_thread = 0;
+    }
+
+    ThreadList._setexitcode(id, retval);
+    CleanupQueue.Push(cleanup_message { .is_thread = true, .id = id });
+    sched.Unschedule(pt);
+    pt->blocking.block_indefinite();
+
+    return 0;
+}
+
 Thread::~Thread()
 {
-    klog("THREAD DESTRUCTOR %s @ %p\n", name.c_str(), this);
+    klog("THREAD DESTRUCTOR %u:%s @ %p\n", id, name.c_str(), this);
 }
 
 ThreadPrivilegeEscalationGuard::ThreadPrivilegeEscalationGuard()

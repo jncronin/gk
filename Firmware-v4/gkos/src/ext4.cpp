@@ -241,7 +241,7 @@ static void handle_open_message(ext4_message &msg)
         klog("ext4: open without tid\n");
         return;
     }
-    auto p = call_t->p;
+    auto p = ProcessList.Get(call_t->p).v;
 
     // convert newlib flags to lwext4 flags
     bool is_opendir = (msg.params.open_params.mode == S_IFDIR) && (msg.params.open_params.f == O_RDONLY);

@@ -91,6 +91,21 @@ template <class T> class IDList
             CriticalGuard cg(sl);
             return _exists(id);
         }
+
+        void _delete(id_t id)
+        {
+            auto iter = this->list.find(id);
+            if(iter != this->list.end())
+            {
+                this->list.erase(iter);
+            }
+        }
+
+        void Delete(id_t id)
+        {
+            CriticalGuard cg(this->sl);
+            _delete(id);
+        }
 };
 
 template <typename T> class PTIDList : public IDList<T>
@@ -108,7 +123,7 @@ template <typename T> class PTIDList : public IDList<T>
             return p;
         }
 
-        void _delete(id_t id, const T::return_type &ret)
+        void _setexitcode(id_t id, const T::return_type &ret)
         {
             auto iter = this->list.find(id);
             if(iter != this->list.end())
@@ -118,10 +133,10 @@ template <typename T> class PTIDList : public IDList<T>
             }
         }
 
-        void Delete(id_t id, const T::return_type &ret)
+        void SetExitCode(id_t id, const T::return_type &ret)
         {
             CriticalGuard cg(this->sl);
-            _delete(id, ret);
+            _setexitcode(id, ret);
         }
 };
 
@@ -135,21 +150,6 @@ template <typename T> class SyncPrimIDList : public IDList<std::shared_ptr<T>>
             auto p = std::make_shared<T>(a...);
             p->id = this->Register(p);
             return p;
-        }
-
-        void _delete(id_t id)
-        {
-            auto iter = this->list.find(id);
-            if(iter != this->list.end())
-            {
-                this->list.erase(iter);
-            }
-        }
-
-        void Delete(id_t id)
-        {
-            CriticalGuard cg(this->sl);
-            _delete(id);
         }
 };
 

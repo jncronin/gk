@@ -70,9 +70,9 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         [tcr] "=r" (tcr)
     : : "memory");
     klog("EXCEPTION: ttbr0: %llx, ttbr1: %llx, tcr: %llx\n", ttbr0, ttbr1, tcr);
-    auto t = GetCurrentKernelThreadForCore();
+    auto [t, p] = GetCurrentThreadProcessForCore();
     if(t)
-        klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", t->p->name.c_str(), t->name.c_str(), (uintptr_t)t);
+        klog("EXCEPTION: p: %s, t: %s, t*: %llx\n", p->name.c_str(), t->name.c_str(), (uintptr_t)t);
 
     // regs
     if(t && !t->is_privileged)
@@ -119,7 +119,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     {
         // required for yield()
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
-        t->p->Kill(128 + userspace_fault_code);
+        p->Kill(128 + userspace_fault_code);
         return 0;
     }
 
@@ -196,19 +196,21 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
     }
     else
     {
-        if(GetCurrentThreadForCore() == nullptr)
+        auto [t, p] = GetCurrentThreadProcessForCore();
+        if(t == nullptr)
         {
             klog("pf: lower half from kernel init\n");
             return SupervisorThreadFault();
         }
         // check vblock for access
-        auto umem = GetCurrentThreadForCore()->p->user_mem.get();
+        auto umem = p->user_mem.get();
         if(umem == nullptr)
         {
             // we may be instead using a temporary lower half - try this
-            if(GetCurrentThreadForCore()->lower_half_user_thread != nullptr)
+            if(t->lower_half_user_thread != 0)
             {
-                umem = GetCurrentThreadForCore()->lower_half_user_thread->p->user_mem.get();
+                auto otherp = ProcessList.Get(t->lower_half_user_thread).v;
+                umem = otherp->user_mem.get();
             }
             if(umem == nullptr)
             {
@@ -286,7 +288,6 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
             uintptr_t src_pointer;
             size_t src_size;
             {
-                auto p = GetCurrentProcessForCore();
                 CriticalGuard cg(p->sl);
                 src_pointer = p->vb_tls.data_start();
                 src_size = p->vb_tls_data_size;

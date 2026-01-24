@@ -37,7 +37,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     ADDR_CHECK_BUFFER_R((void *)start_func, 1);
 
     auto curt = GetCurrentThreadForCore();
-    auto p = curt->p;
+    auto p = GetCurrentProcessForCore();
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
         curt->base_priority, p, arg2);
@@ -86,8 +86,8 @@ int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t
     klog("pthread_mutex: create mutex id %d\n", m->id);
 #endif
     
-    auto t = GetCurrentThreadForCore();
-    *mutex = t->p->owned_mutexes.add(m);
+    auto p = GetCurrentProcessForCore();
+    *mutex = p->owned_mutexes.add(m);
 
     return 0;
 }
@@ -109,8 +109,8 @@ static PMutex check_mutex(pthread_mutex_t *mutex)
         klog("check_mutex: mutex_initialzer - init(), now id = %u\n", *mutex);
 #endif
     }
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_mutexes.get(*mutex);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_mutexes.get(*mutex);
 }
 
 static PCondition check_cond(pthread_cond_t *mutex)
@@ -121,8 +121,8 @@ static PCondition check_cond(pthread_cond_t *mutex)
     {
         syscall_pthread_cond_init(mutex, nullptr, nullptr);
     }
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_conditions.get(*mutex);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_conditions.get(*mutex);
 }
 
 static PRWLock check_rwlock(pthread_rwlock_t *lock)
@@ -133,16 +133,16 @@ static PRWLock check_rwlock(pthread_rwlock_t *lock)
     {
         syscall_pthread_rwlock_init(lock, nullptr, nullptr);
     }
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_rwlocks.get(*lock);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_rwlocks.get(*lock);
 }
 
 static PUserspaceSemaphore check_sem(sem_t *sem)
 {
     if(!sem || !sem->s)
         return nullptr;
-    auto t = GetCurrentThreadForCore();
-    return t->p->owned_semaphores.get(sem->s);
+    auto p = GetCurrentProcessForCore();
+    return p->owned_semaphores.get(sem->s);
 }
 
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
@@ -158,8 +158,8 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
     auto ret = m->try_delete();
     if(ret)
     {
-        auto t = GetCurrentThreadForCore();
-        t->p->owned_mutexes.erase(*mutex);
+        auto p = GetCurrentProcessForCore();
+        p->owned_mutexes.erase(*mutex);
 
         return 0;
     }
@@ -236,8 +236,8 @@ int syscall_pthread_rwlock_init(pthread_rwlock_t *lock, const pthread_rwlockattr
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    *lock = t->p->owned_rwlocks.add(l);
+    auto p = GetCurrentProcessForCore();
+    *lock = p->owned_rwlocks.add(l);
 
     return 0;
 }
@@ -330,8 +330,8 @@ int syscall_pthread_rwlock_destroy(pthread_rwlock_t *lock, int *_errno)
 
     if(l->try_delete())
     {
-        auto t = GetCurrentThreadForCore();
-        t->p->owned_rwlocks.erase(*lock);
+        auto p = GetCurrentProcessForCore();
+        p->owned_rwlocks.erase(*lock);
         return 0;
     }
     else
@@ -357,8 +357,8 @@ int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno)
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    sem->s = t->p->owned_semaphores.add(s);
+    auto p = GetCurrentProcessForCore();
+    sem->s = p->owned_semaphores.add(s);
 
     return 0;
 }
@@ -380,8 +380,8 @@ int syscall_sem_destroy(sem_t *sem, int *_errno)
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    t->p->owned_semaphores.erase(sem->s);
+    auto p = GetCurrentProcessForCore();
+    p->owned_semaphores.erase(sem->s);
 
     return 0;
 }
@@ -460,7 +460,7 @@ int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), i
     if(destructor)
         ADDR_CHECK_BUFFER_R((void *)destructor, 1);
 
-    auto &ptls = GetCurrentThreadForCore()->p->pthread_tls;
+    auto &ptls = GetCurrentProcessForCore()->pthread_tls;
     CriticalGuard cg(ptls.sl);
     auto ret = ptls.next_key++;
     ptls.tls_data[ret] = destructor;
@@ -470,7 +470,7 @@ int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), i
 
 int syscall_pthread_key_delete(pthread_key_t key, int *_errno)
 {
-    auto &ptls = GetCurrentThreadForCore()->p->pthread_tls;
+    auto &ptls = GetCurrentProcessForCore()->pthread_tls;
     CriticalGuard cg(ptls.sl);
     auto iter = ptls.tls_data.find(key);
     if(iter == ptls.tls_data.end())
@@ -485,7 +485,8 @@ int syscall_pthread_key_delete(pthread_key_t key, int *_errno)
 int syscall_pthread_setspecific(pthread_key_t key, const void *val, int *_errno)
 {
     auto t = GetCurrentThreadForCore();
-    auto &ptls = t->p->pthread_tls;
+    auto p = GetCurrentProcessForCore();
+    auto &ptls = p->pthread_tls;
 
     CriticalGuard cg(t->sl_pthread_tls, ptls.sl);
     auto iter = ptls.tls_data.find(key);
@@ -531,8 +532,8 @@ int syscall_pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *at
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    *cond = t->p->owned_conditions.add(c);
+    auto p = GetCurrentProcessForCore();
+    *cond = p->owned_conditions.add(c);
 
     return 0;
 }
@@ -547,8 +548,8 @@ int syscall_pthread_cond_destroy(pthread_cond_t *cond, int *_errno)
         return -1;
     }
 
-    auto t = GetCurrentThreadForCore();
-    t->p->owned_conditions.erase(*cond);
+    auto p = GetCurrentProcessForCore();
+    p->owned_conditions.erase(*cond);
 
     return 0;
 }
@@ -654,31 +655,11 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
 
 int syscall_pthread_exit(void **retval, int *_errno)
 {
-    ADDR_CHECK_STRUCT_R(retval);
+    if(retval)
+        ADDR_CHECK_STRUCT_R(retval);
 
     auto t = GetCurrentThreadForCore();
-    {
-        CriticalGuard cg(t->sl, ThreadList.sl);
-        auto pt = ThreadList._get(t->id).v;
-        auto jt = ThreadList._get(t->join_thread).v;
-
-        // TODO: move to thread destructor
-        if(jt)
-        {
-            CriticalGuard cg2(jt->sl);
-            if(t->join_thread_retval)
-            {
-                *t->join_thread_retval = *retval;
-            }
-            jt->blocking.unblock();
-            signal_thread_woken(jt);
-            t->join_thread = 0;
-        }
-
-        ThreadList._delete(t->id, *retval);
-        sched.Unschedule(pt);
-        t->blocking.block_indefinite();
-    }
+    Thread::Kill(t->id, retval ? *retval : nullptr);
     return 0;
 }
 
@@ -766,7 +747,8 @@ int syscall_get_pthread_dtors(size_t *len, dtor_t *dtors, void **vals, int *_err
     ADDR_CHECK_STRUCT_W(len);
     
     auto t = GetCurrentThreadForCore();
-    auto &ptls = t->p->pthread_tls;
+    auto p = GetCurrentProcessForCore();
+    auto &ptls = p->pthread_tls;
     CriticalGuard cg(t->sl_pthread_tls, ptls.sl);
 
     if(*len < ptls.next_key)

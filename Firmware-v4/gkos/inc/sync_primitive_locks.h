@@ -46,6 +46,16 @@ template <class PrimType> struct owned_sync_list
         }
     }
 
+    void clear()
+    {
+        CriticalGuard cg(sl, global_list.sl);
+        for(auto id : pset)
+        {
+            global_list._delete(id);
+        }
+        pset.clear();
+    }
+
     PT get(id_t id)
     {
         CriticalGuard cg(sl, global_list.sl);

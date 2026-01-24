@@ -355,10 +355,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
         case __syscall_thread_cleanup:
             {
                 auto t = GetCurrentThreadForCore();
-                CriticalGuard cg(t->sl);
-                //t->retval = r1;
-                t->blocking.block_indefinite();
-                CleanupQueue.Push({ .is_thread = true, .t = GetCurrentPThreadForCore() });
+                Thread::Kill(t->id, r1);
                 Yield();
             }
             break;
@@ -473,10 +470,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto rc = (int)(intptr_t)(r1);
 
-                auto t = GetCurrentThreadForCore();
-                auto p = t->p;
+                auto p = GetCurrentThreadForCore()->p;
 
-                p->Kill(rc);
+                Process::Kill(p, rc);
 
                 Yield();
             }
@@ -682,7 +678,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto t = GetCurrentThreadForCore();
                 auto p = t->p;
-                *reinterpret_cast<pid_t *>(r1) = p->id;
+                *reinterpret_cast<pid_t *>(r1) = p;
             }
             break;
 

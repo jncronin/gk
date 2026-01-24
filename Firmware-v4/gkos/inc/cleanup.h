@@ -8,8 +8,7 @@
 struct cleanup_message
 {
     bool is_thread;
-    PThread t;
-    PProcess p;
+    id_t id;
 };
 
 using CleanupQueue_t = FixedQueue<cleanup_message, 8>;

@@ -106,6 +106,22 @@ void Process::owned_pages_t::add(const PMemBlock &b)
     }
 }
 
+void Process::owned_pages_t::release_all()
+{
+    for(auto curp : p)
+    {
+        if(curp & 0x80000000UL)
+            continue;
+        auto addr = ((uint64_t)curp) << 16;
+        PMemBlock pb;
+        pb.base = addr;
+        pb.is_shared = false;
+        pb.length = VBLOCK_64k;
+        pb.valid = true;
+        Pmem.release(pb);
+    }
+}
+
 void Process::Kill(id_t pid, int rc)
 {
     CriticalGuard cg(ProcessList.sl);
@@ -116,24 +132,29 @@ void Process::Kill(id_t pid, int rc)
         return;
     }
 
-    ProcessList._delete(pid, rc);
+    ProcessList._setexitcode(pid, rc);
+    cg.unlock();
+
+    for(auto t : p.v->threads)
+    {
+        Thread::Kill(t, (void *)0);
+    }
+
+    CleanupQueue.Push(cleanup_message { .is_thread = false, .id = pid });
 }
 
 Process::~Process()
 {
-    klog("process: %s destructor called\n", name.c_str());
+    // This should only be called by the cleanup thread finally deleting the entry in ProcessList
+    klog("process: %u:%s destructor called\n", id, name.c_str());
 
-    CriticalGuard cg(ThreadList.sl);
-    for(auto t : threads)
-    {
-        auto pt = ThreadList._get(t->id);
-        if(pt.v)
-        {
-            ThreadList._delete(t->id, (void *)0);
-            sched.Unschedule(pt);
-            t->blocking.block_indefinite();
-        }
-    }
+    // Release resources
+    owned_pages.release_all();
+
+    owned_conditions.clear();
+    owned_mutexes.clear();
+    owned_rwlocks.clear();
+    owned_semaphores.clear();
 }
 
 int SetFocusProcess(PProcess p)

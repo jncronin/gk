@@ -18,7 +18,7 @@
 
 int syscall_fstat(int file, struct stat *st, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -44,7 +44,7 @@ int syscall_fstat(int file, struct stat *st, int *_errno)
 
 int syscall_write(int file, char *buf, int nbytes, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -58,7 +58,7 @@ int syscall_write(int file, char *buf, int nbytes, int *_errno)
 
 int syscall_read(int file, char *buf, int nbytes, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
 #if DEBUG_SYSCALL_FILESYS
     klog("syscall_read: %s.%u\n", p->name.c_str(), file);
 #endif
@@ -90,7 +90,7 @@ int syscall_read(int file, char *buf, int nbytes, int *_errno)
 
 int syscall_isatty(int file, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -103,7 +103,7 @@ int syscall_isatty(int file, int *_errno)
 
 off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
 #if DEBUG_SYSCALL_FILESYS
     klog("syscall_lseek: %s.%u\n", p->name.c_str(), file);
 #endif
@@ -119,7 +119,7 @@ off_t syscall_lseek(int file, off_t offset, int whence, int *_errno)
 
 int syscall_ftruncate(int file, off_t length, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -242,7 +242,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 {
     // try and get free process file handle
     auto t = GetCurrentThreadForCore();
-    auto p = t->p;
+    auto p = GetCurrentProcessForCore();
     bool is_opendir = (mode == S_IFDIR) && (flags == O_RDONLY);
 
     CriticalGuard cg(p->open_files.sl);
@@ -368,7 +368,7 @@ int syscall_opendir(const char *pathname, int *_errno)
 
 int syscall_close1(int file, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
 #if DEBUG_SYSCALL_FILESYS
     klog("syscall_close1: %s.%u\n", p->name.c_str(), file);
 #endif
@@ -387,7 +387,7 @@ int syscall_close1(int file, int *_errno)
 
 int syscall_close2(int file, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
 #if DEBUG_SYSCALL_FILESYS
     klog("syscall_close2: %s.%u\n", p->name.c_str(), file);
 #endif
@@ -408,7 +408,7 @@ int syscall_close2(int file, int *_errno)
 
 int syscall_readdir(int file, dirent *de, int *_errno)
 {
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
     CriticalGuard(p->open_files.sl);
     if(file < 0 || (size_t)file >= p->open_files.f.size() || !p->open_files.f[file])
     {
@@ -481,7 +481,7 @@ int syscall_chdir(const char *pathname, int *_errno)
 
     auto act_name = parse_fname(pathname);
 
-    auto p = GetCurrentThreadForCore()->p;
+    auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->env.sl);
     p->env.cwd = act_name;
     return 0;

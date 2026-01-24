@@ -48,7 +48,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     {
         klog("process_create: elf_load_fildes failed: ret: %d\n", ret);
         *_errno = EFAULT;
-        ProcessList.Delete(proc->id, -1);
+        Process::Kill(proc->id, -1);
         return -1;
     }
 
@@ -101,7 +101,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     if(!t_t0)
     {
         klog("process_create: Thread::Create failed\n");
-        ProcessList.Delete(proc->id, -1);
+        Process::Kill(proc->id, -1);
         return -1;
     }
 

@@ -55,7 +55,7 @@ class Thread
         // Generic spinlock for everything else (name, for_deletion etc)
         Spinlock sl{};
 
-        std::shared_ptr<Process> p;
+        id_t p;
         std::string name;
         id_t id;
 
@@ -93,7 +93,7 @@ class Thread
 
         /* Stores the thread to which we are temporarily assuming the lower half */
         Spinlock sl_lower_half_user_thread{};
-        PThread lower_half_user_thread = nullptr;
+        id_t lower_half_user_thread = 0;
 
         typedef void *(*threadstart_t)(void *p);
         static std::shared_ptr<Thread> Create(const std::string &name,
@@ -102,6 +102,8 @@ class Thread
             bool is_priv, int priority,
             std::shared_ptr<Process> owning_process,
             void *p2 = nullptr);
+
+        static int Kill(id_t id, void *retval);
 
         /* determine if a given address range is within the memory accessible by
             this thread */
