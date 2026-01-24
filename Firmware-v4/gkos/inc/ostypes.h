@@ -18,6 +18,11 @@ struct pidtid
 using PProcess = std::shared_ptr<Process>;
 using PThread = std::shared_ptr<Thread>;
 
+struct SwapFileIndex
+{
+    // TODO
+};
+
 struct MemRegion
 {
     uint64_t base;
