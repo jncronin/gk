@@ -209,8 +209,15 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
             // we may be instead using a temporary lower half - try this
             if(t->lower_half_user_thread != 0)
             {
-                auto otherp = ProcessList.Get(t->lower_half_user_thread).v;
-                umem = otherp->user_mem.get();
+                auto othert = ThreadList.Get(t->lower_half_user_thread).v;
+                if(othert)
+                {
+                    auto otherp = ProcessList.Get(othert->p).v;
+                    if(otherp)
+                    {
+                        umem = otherp->user_mem.get();
+                    }
+                }
             }
             if(umem == nullptr)
             {

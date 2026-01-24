@@ -16,7 +16,7 @@ class UserspaceSemaphore;
 template <class T, class ret_T> struct ThreadProcListMember
 {
     using PT = std::shared_ptr<T>;
-    PT v = nullptr;
+    PT v{};
     ret_T retval = (ret_T)0;
 
     typedef T value_type;
