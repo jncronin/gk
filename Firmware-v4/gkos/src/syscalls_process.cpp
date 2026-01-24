@@ -189,7 +189,7 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
     {
         case SIGKILL:
         case SIGABRT:
-            p->Kill(128 + sig);
+            Process::Kill(pid, 128 + sig);
             break;
 
         default:
