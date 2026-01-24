@@ -618,7 +618,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         CriticalGuard cg(ThreadList.sl);
         auto tthread = ThreadList._get(thread);
 
-        if(tthread.v == nullptr)
+        if(tthread.has_ended)
         {
             // already deleted, just return
             if(retval)
