@@ -614,6 +614,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
     
     auto curp = t->p;
 
+    while(true)
     {
         CriticalGuard cg(ThreadList.sl);
         auto tthread = ThreadList._get(thread);
@@ -648,6 +649,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         tthread.v->join_thread_retval = retval;
 
         t->blocking.block(tthread.v);
+        Yield();
     }
 
     return 0;
