@@ -274,6 +274,8 @@ int Thread::Kill(id_t id, void *retval)
     }
 
     ThreadList._setexitcode(id, retval);
+    cg.unlock();
+    
     CleanupQueue.Push(cleanup_message { .is_thread = true, .id = id });
     sched.Unschedule(pt);
 
