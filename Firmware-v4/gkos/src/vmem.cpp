@@ -313,6 +313,8 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
 
 int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr)
 {
+    ttbr &= PAGE_PADDR_MASK;
+    
     auto end = vaddr + len;
     vaddr &= ~(VBLOCK_64k - 1);
     end = (end + (VBLOCK_64k - 1)) & ~(VBLOCK_64k - 1);
