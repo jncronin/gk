@@ -240,6 +240,8 @@ int Thread::Kill(id_t id, void *retval)
         return -1;
     }
 
+    klog("thread: kill %u (%s)\n", id, pt->name.c_str());
+
     CriticalGuard cg(ThreadList.sl, pt->sl);
     auto jt = ThreadList._get(pt->join_thread).v;
 
