@@ -109,7 +109,7 @@ template <class T> class IDList
         }
 };
 
-template <typename T> class PTIDList : public IDList<T>
+template <typename T> class TIDList : public IDList<T>
 {
     public:
         using PT = T::pointer_type;
@@ -129,6 +129,7 @@ template <typename T> class PTIDList : public IDList<T>
             auto iter = this->list.find(id);
             if(iter != this->list.end())
             {
+                //iter->second.v = nullptr;
                 iter->second.retval = ret;
                 iter->second.has_ended = true;
             }
@@ -138,6 +139,26 @@ template <typename T> class PTIDList : public IDList<T>
         {
             CriticalGuard cg(this->sl);
             _setexitcode(id, ret);
+        }
+};
+
+template <typename T> class PIDList : public TIDList<T>
+{
+    public:
+        void _setppid(id_t id, id_t ppid)
+        {
+            auto iter = this->list.find(id);
+            if(iter != this->list.end())
+            {
+                //iter->second.v = nullptr;
+                iter->second.ppid = ppid;
+            }
+        }
+
+        void SetPPID(id_t id, id_t ppid)
+        {
+            CriticalGuard cg(this->sl);
+            _setppid(id, ppid);
         }
 };
 
@@ -154,8 +175,8 @@ template <typename T> class SyncPrimIDList : public IDList<std::shared_ptr<T>>
         }
 };
 
-using ThreadList_t = PTIDList<ThreadListMember>;
-using ProcessList_t = PTIDList<ProcessListMember>;
+using ThreadList_t = TIDList<ThreadListMember>;
+using ProcessList_t = PIDList<ProcessListMember>;
 using MutexList_t = SyncPrimIDList<Mutex>;
 using CondList_t = SyncPrimIDList<Condition>;
 using RwLockList_t = SyncPrimIDList<RwLock>;
