@@ -1,23 +1,21 @@
 #include "syscalls_int.h"
 #include "process.h"
 #include "osspinlock.h"
+#include "vmem.h"
 
 int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     int is_read, int is_write, int is_exec, int fd, int is_fixed, size_t foffset, int *_errno)
 {
     ADDR_CHECK_STRUCT_W(retaddr);
 
-    if(fd >= 0)
+    len = (len + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
+    if((uintptr_t)*retaddr & (PAGE_SIZE - 1))
     {
-        klog("mmapv4: file mappings not yet supported\n");
-        *_errno = ENOTSUP;
+        *_errno = EINVAL;
         return -1;
     }
-
-    auto vbsize = vblock_size_for(len);
-    if(vbsize == 0)
+    if(foffset & (PAGE_SIZE - 1))
     {
-        klog("mmapv4: request too large (%u)\n", len);
         *_errno = EINVAL;
         return -1;
     }
