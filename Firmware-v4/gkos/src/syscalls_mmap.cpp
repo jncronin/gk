@@ -14,7 +14,7 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
         *_errno = EINVAL;
         return -1;
     }
-    if(foffset & (PAGE_SIZE - 1))
+    if((fd >= 0) && (foffset & (PAGE_SIZE - 1)))
     {
         *_errno = EINVAL;
         return -1;
