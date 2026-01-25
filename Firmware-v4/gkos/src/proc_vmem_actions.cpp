@@ -132,6 +132,9 @@ MemBlock MemBlock::TLSMemory(uintptr_t src_len,
     ret.b.upper_guard = 0;
     ret.b.memory_type = MT_NORMAL;
 
+    ret.foffset = src_addr;
+    ret.flen = src_len;
+
     ret.FillFirst = action_tlsfill;
     ret.FillSubsequent = action_swapfill;
     ret.Sync = action_swapsync;

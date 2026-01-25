@@ -106,11 +106,11 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
                         false, false), false);
                 if(!p->vb_tls.valid)
                 {
-                    klog("elf: couldn't allocate vblock for PT_TLS of size %llu (%llu)\n",
-                        memsz, vblock_size_for(memsz));
+                    klog("elf: couldn't allocate vblock for PT_TLS of size %llu\n",
+                        phdr.p_memsz);
                     return -1;
                 }
-                p->vb_tls_data_size = memsz;
+                p->vb_tls_data_size = phdr.p_memsz;
             }
             else if(writeable)
             {

@@ -50,7 +50,7 @@ class Process
         class userspace_mem_t
         {
             public:
-                Mutex m;
+                Mutex m = Mutex(true);
                 uintptr_t ttbr0;
                 MapVBlockAllocator vblocks;
         };
