@@ -53,6 +53,7 @@ bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
         else
         {
             // non-error checking non-recursive mutex already owned - deadlock
+            klog("mutex: recursive lock of non-recursive mutex\n");
             t->blocking.block_indefinite();
             Yield();
             return false;
