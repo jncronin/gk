@@ -831,6 +831,10 @@ void tad_reset()
     // configure 32-bit i2s mode
     tad_write(0x1a, 0x70);
 
+    // configure I2S left -> mixer CH1, I2S right -> mixer CH2
+    tad_write(0x28, 0x20);
+    tad_write(0x29, 0x30);
+
     // configure DAC1A -> left, DAC1B -> right
     tad_write(0x64, 0x24);
 
