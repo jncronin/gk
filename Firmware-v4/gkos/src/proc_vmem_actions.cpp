@@ -163,11 +163,12 @@ static int action_filefill(uintptr_t page_vaddr, uintptr_t page_paddr, MemBlock 
         mb.f->Lseek(file_offset, SEEK_SET, &cerrno);
         auto fret = mb.f->Read((char *)PMEM_TO_VMEM(page_paddr), file_to_read, &cerrno);
         mb.f->Lseek(old_offset, SEEK_SET, &cerrno);
-        if((fret < 0) || ((size_t)fret != file_to_read))
+        if(fret < 0)
         {
             klog("filefill: read failed %d\n", fret);
             return -1;
         }
+        file_to_read = (uintptr_t)fret;
     }
 
     if(file_to_read != PAGE_SIZE)
