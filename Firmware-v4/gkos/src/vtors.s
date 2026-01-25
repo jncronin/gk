@@ -93,7 +93,7 @@ _vtor_tbl_entry _lower32_serror
     stp x29, x30, [sp, #0]
     mov x29, sp
 
-#if GK_CUR_THREAD_IN_SYSRAM
+#if GK_THREAD_LIST_IN_SYSRAM
     mrs x0, elr_el1
     bl thread_save_lr
 #endif
