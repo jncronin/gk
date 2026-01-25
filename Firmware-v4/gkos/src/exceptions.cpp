@@ -287,7 +287,7 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
             unmap_block.base = far & PAGE_VADDR_MASK;
             unmap_block.length = VBLOCK_64k;
             unmap_block.valid = true;
-            vmem_unmap(unmap_block, umem->ttbr0);
+            vmem_unmap(unmap_block, umem->ttbr0, ~0ULL, false);
         }
         else
         {
@@ -316,19 +316,23 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
         }
 
         // decide on the appropriate refill logic
-        if((pte != 0) &&
-            (((pte & PAGE_PRIV_MASK) == PAGE_PRIV_RW) ||
-            ((pte & PAGE_PRIV_MASK) == PAGE_USER_RW)))
+        if(pte != 0)
         {
-            if(!uvblock.FillSubsequent)
+            if(((pte & PAGE_PRIV_MASK) == PAGE_PRIV_RW) ||
+                ((pte & PAGE_PRIV_MASK) == PAGE_USER_RW))
             {
-                klog("pf: FillSubsequent not defined\n");
-                return user ? UserThreadFault() : SupervisorThreadFault();
+                // pte was already write, so this is a subsequent refill due to DT_PAGE being 0
+                if(!uvblock.FillSubsequent)
+                {
+                    klog("pf: FillSubsequent not defined\n");
+                    return user ? UserThreadFault() : SupervisorThreadFault();
+                }
+                uvblock.FillSubsequent(far & PAGE_VADDR_MASK, paddr, uvblock);
             }
-            uvblock.FillSubsequent(far & PAGE_VADDR_MASK, paddr, uvblock);
         }
         else
         {
+            // pte == 0
             if(!uvblock.FillFirst)
             {
                 klog("pf: FillFirst not defined\n");

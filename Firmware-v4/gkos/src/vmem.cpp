@@ -55,7 +55,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
 
 static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr,
     unsigned int memory_type = MT_NORMAL, bool is_global = false);
-static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
+static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr, bool release_page);
 static uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr);
 static uint64_t vmem_get_pte_int(uintptr_t vaddr, uintptr_t ttbr);
 
@@ -182,7 +182,7 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
     return 0;
 }
 
-int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
+int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1, bool release_page)
 {
     uint64_t ttbr;
     auto vaddr = _vaddr.base;
@@ -201,7 +201,7 @@ int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
 
         {
             CriticalGuard cg(sl_uh);
-            return vmem_unmap_int(vaddr, _vaddr.length, ttbr, vaddr + UH_START);
+            return vmem_unmap_int(vaddr, _vaddr.length, ttbr, vaddr + UH_START, release_page);
         }
     }
     else
@@ -217,7 +217,7 @@ int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
         }
 
         // no lock here - already done in calling function
-        return vmem_unmap_int(vaddr, _vaddr.length, ttbr, vaddr);
+        return vmem_unmap_int(vaddr, _vaddr.length, ttbr, vaddr, release_page);
     }
 }
 
@@ -311,10 +311,10 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
     }
 }
 
-int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr)
+int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr, bool release_page)
 {
     ttbr &= PAGE_PADDR_MASK;
-    
+
     auto end = vaddr + len;
     vaddr &= ~(VBLOCK_64k - 1);
     end = (end + (VBLOCK_64k - 1)) & ~(VBLOCK_64k - 1);
@@ -350,11 +350,14 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
 
                 vmem_invlpg(act_vpage, ttbr);
 
-                PMemBlock pb;
-                pb.base = page;
-                pb.length = VBLOCK_64k;
-                pb.valid = true;
-                Pmem.release(pb);
+                if(release_page)
+                {
+                    PMemBlock pb;
+                    pb.base = page;
+                    pb.length = VBLOCK_64k;
+                    pb.valid = true;
+                    Pmem.release(pb);
+                }
             }
         }
 

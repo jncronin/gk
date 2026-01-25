@@ -114,6 +114,7 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
             }
             else if(writeable)
             {
+                MutexGuard mg(p->user_mem->m);
                 auto vbret = p->user_mem->vblocks.AllocFixed(
                     MemBlock::FileBackedReadWriteMemory(mem_start, memsz, pf, f_start,
                         filesz, true, exec));
@@ -126,6 +127,7 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
             }
             else
             {
+                MutexGuard mg(p->user_mem->m);
                 auto vbret = p->user_mem->vblocks.AllocFixed(
                     MemBlock::FileBackedReadOnlyMemory(mem_start, memsz, pf, f_start,
                         filesz, true, exec));
@@ -137,6 +139,24 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
                 }
             }
         }
+    }
+
+    {
+        MutexGuard mg(p->user_mem->m);
+        klog("elf: userspace map:\n");
+        p->user_mem->vblocks.Traverse([](MemBlock &mb)
+        {
+            klog("mmap: %p - %p, %s%s%s%s %llx %llx\n",
+                (void *)mb.b.data_start(),
+                (void *)mb.b.data_end(),
+                mb.b.user ? "U" : " ",
+                mb.b.write ? "W" : " ",
+                mb.b.exec ? "X" : " ",
+                (mb.f == nullptr) ? "" : " FILE",
+                mb.foffset,
+                mb.flen);
+            return 0;
+        });
     }
 
     if(epoint)

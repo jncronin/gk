@@ -46,22 +46,6 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
             MutexGuard cg(ret->user_mem->m);
             ret->user_mem->ttbr0 = ttbr0_reg.base | ((uint64_t)ret->id << 48);
         }
-
-        {
-            // directly allocate the heap somewhere high so it doesn't interefere with userspace mmap requests
-            CriticalGuard cg(ret->heap.sl);
-            VMemBlock vb;
-            vb.base = (uint64_t)GK_HEAP_START;
-            vb.length = VBLOCK_512M;
-            vb.valid = true;
-            vb.user = true;
-            vb.write = true;
-            vb.exec = false;
-            vb.lower_guard = 0;
-            vb.upper_guard = 0;
-            vb.memory_type = MT_NORMAL;
-            ret->heap.vb_heap = vb;
-        }
     }
 
     // inherit fds + environ

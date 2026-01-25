@@ -149,7 +149,7 @@ static int action_filefill(uintptr_t page_vaddr, uintptr_t page_paddr, MemBlock 
 {
     auto block_offset = page_vaddr - mb.b.data_start();
     auto file_offset = block_offset + mb.foffset;
-    auto file_to_read = (mb.flen > file_offset) ? std::min(PAGE_SIZE, mb.flen - file_offset) : 0;
+    auto file_to_read = (mb.flen > block_offset) ? std::min(PAGE_SIZE, mb.flen - block_offset) : 0;
     
     if(file_to_read)
     {

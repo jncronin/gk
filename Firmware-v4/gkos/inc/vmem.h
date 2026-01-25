@@ -18,7 +18,8 @@
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr0 = ~0ULL,
     uintptr_t ttbr1 = ~0ULL, uintptr_t *paddr_out = nullptr, unsigned int mt = MT_NORMAL);
 int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
-int vmem_unmap(const VMemBlock &vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
+int vmem_unmap(const VMemBlock &vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL,
+    bool release_page = true);
 void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr);
 uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 uint64_t vmem_get_pte(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
