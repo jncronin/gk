@@ -313,8 +313,6 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
 
 int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr, bool release_page)
 {
-    ttbr &= PAGE_PADDR_MASK;
-
     auto end = vaddr + len;
     vaddr &= ~(VBLOCK_64k - 1);
     end = (end + (VBLOCK_64k - 1)) & ~(VBLOCK_64k - 1);
@@ -329,7 +327,7 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
         auto l2_addr = (vaddr >> 29) & 0x1fffULL;
         auto l3_addr = (vaddr >> 16) & 0x1fffULL;
 
-        auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr);
+        auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr & PAGE_PADDR_MASK);
         volatile uint64_t *pt;
         if((pd[l2_addr] & DT_PT) == DT_PT)
         {
