@@ -43,16 +43,8 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
 
         ret->user_mem = std::make_unique<userspace_mem_t>();
         {
-            CriticalGuard cg(ret->user_mem->sl);
+            MutexGuard cg(ret->user_mem->m);
             ret->user_mem->ttbr0 = ttbr0_reg.base | ((uint64_t)ret->id << 48);
-            // use last entry for fixed space e.g. frame buffers, clock_cur etc
-            // use penultimate entry for heap
-            // use one before for 128 stacks
-            ret->user_mem->blocks.init(0, 8189);    
-
-            // allocate the first page to catch null pointer references - not actually used except
-            //  to prevent other regions being allocated there - the main logic is in TranslationFault_Handler
-            vblock_alloc_fixed(VBLOCK_64k, 0, false, false, false, 0, 0, ret->user_mem->blocks);
         }
 
         {

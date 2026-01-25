@@ -84,7 +84,9 @@
 #if __GK_UNIT_TEST__
 #include "unit_test.h"
 #else
+#include "osfile.h"
 #include "osmutex.h"
+#include "_gk_memaddrs.h"
 #endif
 
 #define VBLOCK_64k      65536ULL
@@ -95,50 +97,37 @@ class MemBlock
     public:
         VMemBlock b;
 
-        virtual int FillFirst(uintptr_t offset) = 0;
-        virtual int FillSubsequent(uintptr_t offset) = 0;
-        virtual int Sync(uintptr_t offset) = 0;
-
-        virtual ~MemBlock() = default;
-};
-
-class ZeroBackedReadOnlyMemory : public MemBlock
-{
-    public:
-        int FillFirst(uintptr_t offset) = 0;
-        int FillSubsequent(uintptr_t offset) = 0;
-        int Sync(uintptr_t offset) = 0;
-};
-
-class ZeroBackedReadWriteMemory : public MemBlock
-{
-    public:
         SwapFileIndex si{};
+        std::shared_ptr<File> f{};
+        size_t foffset = 0;
+        size_t flen = 0;
 
-        int FillFirst(uintptr_t offset) = 0;
-        int FillSubsequent(uintptr_t offset) = 0;
-        int Sync(uintptr_t offset) = 0;
-};
+        typedef int (*action_t)(uintptr_t page_vaddr, uintptr_t page_paddr, MemBlock &mb);
 
-class FileBackedReadOnlyMemory : public MemBlock
-{
-    public:
-        id_t fd = 0;
+        action_t FillFirst = nullptr;
+        action_t FillSubsequent = nullptr;
+        action_t Sync = nullptr;
 
-        int FillFirst(uintptr_t offset) = 0;
-        int FillSubsequent(uintptr_t offset) = 0;
-        int Sync(uintptr_t offset) = 0;
-};
+        static MemBlock ZeroBackedReadOnlyMemory(uintptr_t base,
+            uintptr_t length,
+            bool user, bool exec, unsigned int guard_type = 0, unsigned int mt = MT_NORMAL);
+        static MemBlock ZeroBackedReadWriteMemory(uintptr_t base,
+            uintptr_t length,
+            bool user, bool exec, unsigned int guard_type = 0, unsigned int mt = MT_NORMAL);
+        static MemBlock FileBackedReadOnlyMemory(uintptr_t base,
+            uintptr_t length,
+            std::shared_ptr<File> &file,
+            size_t file_offset,
+            size_t file_len,
+            bool user, bool exec, unsigned int guard_type = 0, unsigned int mt = MT_NORMAL);
+        static MemBlock FileBackedReadWriteMemory(uintptr_t base,
+            uintptr_t length,
+            std::shared_ptr<File> &file,
+            size_t file_offset,
+            size_t file_len,
+            bool user, bool exec, unsigned int guard_type = 0, unsigned int mt = MT_NORMAL);
+        static MemBlock TLSMemory(uintptr_t length, uintptr_t src_addr);
 
-class FileBackedReadWriteMemory : public MemBlock
-{
-    public:
-        id_t fd = 0;
-        SwapFileIndex si{};
-        
-        int FillFirst(uintptr_t offset) = 0;
-        int FillSubsequent(uintptr_t offset) = 0;
-        int Sync(uintptr_t offset) = 0;
 };
 
 /* Define the allocator interface
@@ -154,35 +143,38 @@ class VBlockAllocator
 {
     public:
         uintptr_t base = VBLOCK_64k;        // catch null pointer references
-        uintptr_t length = LH_END - base;
+        uintptr_t length = GK_PROCESS_INTERFACE_START - base;
         
-        typedef int (*traversal_function_t)(std::unique_ptr<MemBlock> &mb);
+        typedef int (*traversal_function_t)(MemBlock &mb);
 
-        virtual std::pair<bool, uintptr_t> AllocFixed(std::unique_ptr<MemBlock> &&region) = 0;
-        virtual std::unique_ptr<MemBlock> &Split(uintptr_t address) = 0;
-        virtual std::pair<bool, uintptr_t> AllocAny(std::unique_ptr<MemBlock> &&region, bool lowest_first = true) = 0;
-        virtual std::unique_ptr<MemBlock> &IsAllocated(uintptr_t address) = 0;
+        virtual VMemBlock AllocFixed(MemBlock region) = 0;
+        virtual MemBlock &Split(uintptr_t address) = 0;
+        virtual VMemBlock AllocAny(MemBlock region, bool lowest_first = true) = 0;
+        virtual MemBlock &IsAllocated(uintptr_t address) = 0;
         virtual int Traverse(traversal_function_t tf) = 0;
-        virtual int Dealloc(std::unique_ptr<MemBlock> &region) = 0;
+        virtual int Dealloc(VMemBlock& region) = 0;
+        virtual int Dealloc(MemBlock& region);
 };
 
 class MapVBlockAllocator : public VBlockAllocator
 {
     protected:
-        std::map<uintptr_t, std::unique_ptr<MemBlock>> l;
+        std::map<uintptr_t, MemBlock> l;
         Mutex m;
 
         std::tuple<bool, uintptr_t, uintptr_t> fits(uintptr_t len,
-            std::unique_ptr<MemBlock> *prev,
-            std::unique_ptr<MemBlock> *next);
+            MemBlock *prev,
+            MemBlock *next);
 
     public:
-        std::pair<bool, uintptr_t> AllocFixed(std::unique_ptr<MemBlock> &&region);
-        std::unique_ptr<MemBlock> &Split(uintptr_t address);
-        std::pair<bool, uintptr_t> AllocAny(std::unique_ptr<MemBlock> &&region, bool lowest_first = true);
-        std::unique_ptr<MemBlock> &IsAllocated(uintptr_t address);
+        VMemBlock AllocFixed(MemBlock region);
+        MemBlock &Split(uintptr_t address);
+        VMemBlock AllocAny(MemBlock region, bool lowest_first = true);
+        MemBlock &IsAllocated(uintptr_t address);
         int Traverse(traversal_function_t tf);
-        int Dealloc(std::unique_ptr<MemBlock> &region);
+        int Dealloc(VMemBlock &region);
+
+        using VBlockAllocator::Dealloc;
 };
 
 #endif

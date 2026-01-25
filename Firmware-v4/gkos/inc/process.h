@@ -15,6 +15,7 @@
 #include "gk_conf.h"
 #include "_gk_event.h"
 #include "osqueue.h"
+#include "proc_vmem.h"
 
 class Thread;
 class Process;
@@ -49,9 +50,9 @@ class Process
         class userspace_mem_t
         {
             public:
-                Spinlock sl;
+                Mutex m;
                 uintptr_t ttbr0;
-                VBlock blocks;
+                MapVBlockAllocator vblocks;
         };
 
         class environ_t
@@ -79,9 +80,6 @@ class Process
                 Spinlock sl;
                 VMemBlock vb_heap = InvalidVMemBlock();
                 uintptr_t brk = 0;
-
-                /* Also directly allocate stacks for the first 128 threads */
-                unsigned int next_local_thread_id = 0;
         };
 
         class screen_t

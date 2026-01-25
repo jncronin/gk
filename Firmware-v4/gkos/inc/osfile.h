@@ -27,6 +27,8 @@ class File
         FileType type;
 
     public:
+        Mutex m;
+        
         virtual ssize_t Write(const char *buf, size_t count, int *_errno) = 0;
         virtual ssize_t Read(char *buf, size_t count, int *_errno) = 0;
         virtual int ReadDir(dirent *de, int *_errno);

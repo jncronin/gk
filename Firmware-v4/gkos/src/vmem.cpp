@@ -57,6 +57,7 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
     unsigned int memory_type = MT_NORMAL, bool is_global = false);
 static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr);
 static uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr);
+static uint64_t vmem_get_pte_int(uintptr_t vaddr, uintptr_t ttbr);
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
     uintptr_t ttbr0, uintptr_t ttbr1, uintptr_t *paddr_out, unsigned int memory_type)
@@ -220,6 +221,51 @@ int vmem_unmap(const VMemBlock &_vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
     }
 }
 
+uint64_t vmem_get_pte(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
+{
+    if(vaddr >= UH_START)
+    {
+        // higher half
+        vaddr = vaddr - UH_START;
+
+        if(ttbr1 == ~0ULL)
+            __asm__ volatile("mrs %[ttbr], ttbr1_el1\n" : [ttbr] "=r" (ttbr1) : : "memory");
+        ttbr1 &= 0xffffffffffffULL;
+
+        CriticalGuard cg(sl_uh);
+        auto paddr = vmem_get_pte_int(vaddr, ttbr1);
+
+        return paddr;
+    }
+    else if(vaddr >= LH_END)
+    {
+        return 0;
+    }
+    else
+    {
+        // lower half
+
+        if(ttbr0 == ~0ULL)
+        {
+            auto p = GetCurrentProcessForCore();
+            if(p == nullptr)
+                return 0;
+            if(p->user_mem == nullptr)
+                return 0;
+            MutexGuard mg(p->user_mem->m);
+            ttbr0 = p->user_mem->ttbr0 & 0xffffffffffffULL;
+            auto paddr = vmem_get_pte_int(vaddr, ttbr0);
+
+            return paddr;
+        }
+        else
+        {
+            auto paddr = vmem_get_pte_int(vaddr, ttbr0 & 0xffffffffffffULL);
+            return paddr;
+        }
+    }
+}
+
 uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
 {
     if(vaddr >= UH_START)
@@ -251,7 +297,7 @@ uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0, uintptr_t ttbr1)
                 return 0;
             if(p->user_mem == nullptr)
                 return 0;
-            CriticalGuard cg(p->user_mem->sl);
+            MutexGuard mg(p->user_mem->m);
             ttbr0 = p->user_mem->ttbr0 & 0xffffffffffffULL;
             auto paddr = vmem_vaddr_to_paddr_int(vaddr, ttbr0);
 
@@ -372,6 +418,38 @@ uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr)
         auto block_addr = pd_ent & 0xffffe0000000ULL;
         auto block_offset = vaddr & 0x1fffffffULL;
         return block_addr | block_offset;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+uint64_t vmem_get_pte_int(uintptr_t vaddr, uintptr_t ttbr)
+{
+    auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr);
+
+    auto l2_addr = (vaddr >> 29) & 0x1fffULL;
+    auto pd_ent = pd[l2_addr];
+
+#if DEBUG_VMEM
+    klog("vtp: pd: %llx, l2_addr: %llx, pd_ent: %llx\n", (uintptr_t)pd, l2_addr, pd_ent);
+#endif
+
+    if((pd_ent & 0x3) == 0x3)
+    {
+        // its a table
+        auto pt_paddr = pd_ent & 0xffffffff0000ULL;
+        auto pt = (volatile uint64_t *)PMEM_TO_VMEM(pt_paddr);
+
+        auto l3_addr = (vaddr >> 16) & 0x1fffULL;
+        auto pt_ent = pt[l3_addr];
+        return pt_ent;
+    }
+    else if((pd_ent & 0x3) == 0x1)
+    {
+        // its a block
+        return 0;
     }
     else
     {

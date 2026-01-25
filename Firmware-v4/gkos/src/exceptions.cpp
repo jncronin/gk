@@ -7,11 +7,12 @@
 #include "thread.h"
 #include "process.h"
 #include "cache.h"
+#include "pmem.h"
 #include "syscalls_int.h"
 
 #define DEBUG_PF        0
 
-static uint64_t TranslationFault_Handler(bool user, bool write, uint64_t address, uint64_t el);
+static uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t address, uint64_t el);
 
 extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
     uint64_t etype, exception_regs *regs, uint64_t lr)
@@ -32,25 +33,25 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         // exception
         auto ec = (esr >> 26) & 0x3fULL;
         auto iss = esr & 0x1ffffffULL;
-        if(ec == 0b100100 || ec == 0b100101)
+        if(ec == 0b100100 || ec == 0b100101 || ec == 0b100000 || ec == 0b100001)
         {
-            // data abort
+            // data/instruction abort - fake dfsc for instruction faults
+            auto dfsc = (ec == 0b100000 || ec == 0b100001) ? 7ULL : (iss & 0x3fULL);
 
-            auto dfsc = iss & 0x3fULL;
-
-            if(dfsc >= 4 && dfsc <= 7)
+            if((dfsc >= 4 && dfsc <= 7) || (dfsc >= 12 && dfsc <= 15))
             {
-                // page fault
+                // page/permission fault
 
-                bool user = (etype > 0x201) || (ec == 0b100100);
+                bool user = (etype > 0x201) || (ec == 0b100100) || (ec == 0b100000);
                 bool write = (iss & (1ULL << 6)) != 0;
+                bool exec = (ec == 0b100000 || ec == 0b100001);
 
 #if DEBUG_PF
                 klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx, sp: %llx, nested elr: %llx\n",
                     etype, esr, far, lr, (uint64_t)regs, regs->saved_elr_el1);
 #endif
 
-                userspace_fault_code = TranslationFault_Handler(user, write, far, lr);
+                userspace_fault_code = TranslationFault_Handler(user, write, exec, far, lr);
                 if(userspace_fault_code == 0)
                     return userspace_fault_code;
             }
@@ -157,11 +158,11 @@ static uint64_t SupervisorThreadFault(int sig = SIGSEGV)
     return ~0ULL;
 }
 
-uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t lr)
+uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far, uint64_t lr)
 {
 #if DEBUG_PF
     klog("TranslationFault %s %s @ %llx from %llx\n", user ? "USER" : "SUPERVISOR",
-        write ? "WRITE" : "READ", far, lr);
+        exec ? "EXEC" : (write ? "WRITE" : "READ"), far, lr);
 #endif
 
     if(far < VBLOCK_64k)
@@ -202,6 +203,9 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
     }
     else
     {
+        // This can all be interruptible
+        __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
+
         auto [t, p] = GetCurrentThreadProcessForCore();
         if(t == nullptr)
         {
@@ -232,111 +236,105 @@ uint64_t TranslationFault_Handler(bool user, bool write, uint64_t far, uint64_t 
             }
         }
 
-        VMemBlock be = InvalidVMemBlock();
-        uint32_t be_tag = 0;
-        // handle directly allocated heap/stacks
-        if(far >= GK_HEAP_START && far < (GK_HEAP_START + VBLOCK_512M))
+        MutexGuard mg(umem->m);
+        auto &uvblock = umem->vblocks.IsAllocated(far);
+        if(uvblock.b.valid == false)
         {
-            be.base = GK_HEAP_START;
-            be.length = VBLOCK_512M;
-            be.valid = true;
-            be.user = true;
-            be.write = true;
-            be.exec = false;
-            be.lower_guard = 0;
-            be.upper_guard = 0;
-        }
-        else if(far >= GK_STACKS_START && far < (GK_STACKS_START + VBLOCK_512M))
-        {
-            auto stack_start = far & ~(VBLOCK_4M - 1);
-            be.base = stack_start;
-            be.length = VBLOCK_4M;
-            be.valid = true;
-            be.user = true;
-            be.write = true;
-            be.exec = false;
-            be.lower_guard = GUARD_BITS_64k;
-            be.upper_guard = GUARD_BITS_64k;
-        }
-        else
-        {
-            CriticalGuard cg(umem->sl);
-            be = vblock_valid(far, umem->blocks, &be_tag);
-        }
-
-        if(!be.valid)
-        {
-            klog("pf: user space vblock not found\n");
+            klog("pf: invalid access, blocks:\n");
+            umem->vblocks.Traverse([](MemBlock &mb) { klog("mblock: %p - %p\n", mb.b.base, mb.b.end()); return 0; });
             return user ? UserThreadFault() : SupervisorThreadFault();
         }
 
-        if(far < be.data_start() || far >= be.data_end())
+        // Catch guard accesses
+        if(far < uvblock.b.data_start() || far >= uvblock.b.data_end())
         {
             klog("pf: guard page hit\n");
             return user ? UserThreadFault() : SupervisorThreadFault();
         }
 
-#if DEBUG_PF
-        klog("pf: lazy map %llx\n", far);
-#endif
-
+        // Catch access to non-user pages
+        if(user && !uvblock.b.user)
         {
-            CriticalGuard cg(umem->sl);
+            klog("pf: user access to supervisor page\n");
+            return UserThreadFault();
+        }
 
-            unsigned int mt = (be_tag & VBLOCK_TAG_WT) ? MT_NORMAL_WT : MT_NORMAL;
+        // Catch write accessts to RO pages
+        if(write && !uvblock.b.write)
+        {
+            klog("pf: write access to RO page\n");
+            return user ? UserThreadFault() : SupervisorThreadFault();
+        }
 
-            if(vmem_map(far & ~(VBLOCK_64k - 1), 0, be.user, be.write, be.exec, umem->ttbr0, 
-                ~0UL, nullptr, mt))
+        // Catch exec to NX pages
+        if(exec && !uvblock.b.exec)
+        {
+            klog("pf: exec access to NX page\n");
+            return user ? UserThreadFault() : SupervisorThreadFault();
+        }
+
+        // Do we have a pte for the page?
+        auto pte = vmem_get_pte(far, umem->ttbr0);
+        uintptr_t paddr = 0;
+
+        if((pte & DT_PAGE) == DT_PAGE)
+        {
+            // We do, use it
+            paddr = pte & PAGE_PADDR_MASK;
+
+            // break before make
+            VMemBlock unmap_block;
+            unmap_block.base = far & PAGE_VADDR_MASK;
+            unmap_block.length = VBLOCK_64k;
+            unmap_block.valid = true;
+            vmem_unmap(unmap_block, umem->ttbr0);
+        }
+        else
+        {
+            // Allocate one
+            auto pmemret = Pmem.acquire(VBLOCK_64k);
+            if(!pmemret.valid)
             {
+                klog("pf: OOM\n");
                 return user ? UserThreadFault() : SupervisorThreadFault();
             }
+            paddr = pmemret.base;
         }
 
-        if(be_tag & VBLOCK_TAG_TLS)
+        /* map as writeable if:
+            If subsequent access (pte != 0) then use block access
+            If first access, only writeable if the current access is a write, else read */
+
+        auto mret = vmem_map(far & PAGE_VADDR_MASK, paddr, uvblock.b.user, 
+            pte ? uvblock.b.write : write,
+            uvblock.b.exec,
+            umem->ttbr0, ~0ULL, nullptr, uvblock.b.memory_type);
+        if(mret != 0)
         {
-            // need to copy tls data into the block
-            auto dest_offset = far - be.data_start();
-            auto dest_page = dest_offset / VBLOCK_64k;
-
-            uintptr_t src_pointer;
-            size_t src_size;
-            {
-                CriticalGuard cg(p->sl);
-                src_pointer = p->vb_tls.data_start();
-                src_size = p->vb_tls_data_size;
-            }
-
-            auto src_offset = dest_page * VBLOCK_64k - 16;
-            auto dst_page_offset = 0;
-
-            if(dest_page == 0)
-            {
-                auto dst = (volatile uint64_t *)be.data_start();
-                dst[0] = 0;     // should point to DTV (see ELF Handling for TLS) but for now catch accesses
-                dst[1] = 0;     // reserved
-
-                src_offset += 16;
-                dst_page_offset += 16;
-            }
-
-            auto bytes_left = src_size - src_offset;
-            auto to_copy = std::min(bytes_left, VBLOCK_64k - dst_page_offset);
-
-            memcpy((void *)(be.data_start() + dest_page * VBLOCK_64k + dst_page_offset),
-                (const void *)(src_pointer + src_offset), to_copy);
-
-#if DEBUG_PF
-            klog("pf: lazy initialize tls region\n");
-#endif
+            klog("pf: vmem_map failed %d\n", mret);
+            return user ? UserThreadFault() : SupervisorThreadFault();
         }
-        else if(be_tag & VBLOCK_TAG_CLEAR)
+
+        // decide on the appropriate refill logic
+        if((pte != 0) &&
+            (((pte & PAGE_PRIV_MASK) == PAGE_PRIV_RW) ||
+            ((pte & PAGE_PRIV_MASK) == PAGE_USER_RW)))
         {
-            auto page_addr = far & ~(VBLOCK_64k - 1);
-            for(uintptr_t clear_addr = page_addr; clear_addr < (page_addr + VBLOCK_64k);
-                clear_addr += CACHE_LINE_SIZE)
+            if(!uvblock.FillSubsequent)
             {
-                __asm__ volatile("dc zva, %[clear_addr]\n" :: [clear_addr] "r" (clear_addr) : "memory");
+                klog("pf: FillSubsequent not defined\n");
+                return user ? UserThreadFault() : SupervisorThreadFault();
             }
+            uvblock.FillSubsequent(far & PAGE_VADDR_MASK, paddr, uvblock);
+        }
+        else
+        {
+            if(!uvblock.FillFirst)
+            {
+                klog("pf: FillFirst not defined\n");
+                return user ? UserThreadFault() : SupervisorThreadFault();
+            }
+            uvblock.FillFirst(far & PAGE_VADDR_MASK, paddr, uvblock);
         }
 
 #if DEBUG_PF

@@ -88,29 +88,11 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     // set up el0 stack
     if(!is_priv)
     {
-        CriticalGuard cg(owning_process->user_mem->sl);
-        {
-            CriticalGuard cg2(owning_process->heap.sl);
-            if(owning_process->heap.next_local_thread_id < 128)
-            {
-                // directly allocate a stack somewhere high to avoid interfering with userspace mmap requests
-                VMemBlock vb;
-                vb.base = GK_STACKS_START + owning_process->heap.next_local_thread_id * VBLOCK_4M;
-                owning_process->heap.next_local_thread_id++;
-                vb.length = VBLOCK_4M;
-                vb.valid = true;
-                vb.user = true;
-                vb.write = true;
-                vb.exec = false;
-                vb.lower_guard = GUARD_BITS_64k;
-                vb.upper_guard = GUARD_BITS_64k;
-                t->mr_user_thread = vb;
-            }
-        }
-        // else, allocate from vblock
-        if(!t->mr_user_thread.valid)
-            t->mr_user_thread = vblock_alloc(VBLOCK_4M, true, true, false, GUARD_BITS_64k, GUARD_BITS_64k,
-                owning_process->user_mem->blocks);
+        MutexGuard mg(owning_process->user_mem->m);
+
+        t->mr_user_thread = owning_process->user_mem->vblocks.AllocAny(
+            MemBlock::ZeroBackedReadWriteMemory(0, VBLOCK_4M, true, false, GUARD_BITS_64k), false);
+        
         if(!t->mr_user_thread.valid)
         {
             klog("thread: could not allocate el0 stack\n");
@@ -125,10 +107,10 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
         // userspace tls structure
         if(owning_process->vb_tls.valid)
         {
-            t->mr_elf_tls = owning_process->user_mem->blocks.Alloc(
-                vblock_size_for(owning_process->vb_tls_data_size + 16),     // pointer to DTV at the beginning
-                VBLOCK_TAG_TLS | VBLOCK_TAG_USER | VBLOCK_TAG_WRITE
-            );
+            t->mr_elf_tls = owning_process->user_mem->vblocks.AllocAny(
+                MemBlock::TLSMemory(owning_process->vb_tls_data_size + 16,
+                    owning_process->vb_tls.data_start()), false);
+
             if(!t->mr_elf_tls.valid)
             {
                 klog("thread: could not allocate block for thread tls of size %llu\n",

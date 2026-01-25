@@ -3,7 +3,7 @@
 #include "osspinlock.h"
 
 int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
-    int is_read, int is_write, int is_exec, int fd, int is_fixed, int *_errno)
+    int is_read, int is_write, int is_exec, int fd, int is_fixed, size_t foffset, int *_errno)
 {
     ADDR_CHECK_STRUCT_W(retaddr);
 
@@ -24,30 +24,58 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
 
     auto p = GetCurrentProcessForCore();
     // try allocating a vblock
-    CriticalGuard cg(p->user_mem->sl);
+    MutexGuard mg(p->user_mem->m);
+    MemBlock pmb;
 
-    uint32_t tag = VBLOCK_TAG_USER;
     if(fd >= 0)
-        tag |= VBLOCK_TAG_FILE;
+    {
+        CriticalGuard cgf(p->open_files.sl);
+        if(p->open_files.f.size() <= (size_t)fd)
+        {
+            *_errno = EBADF;
+            return -1;
+        }
+        if(foffset & (VBLOCK_64k - 1))
+        {
+            *_errno = EINVAL;
+            return -1;
+        }
+
+        if(is_write)
+        {
+            pmb = MemBlock::FileBackedReadWriteMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
+                ~0, true, is_exec != 0);
+        }
+        else
+        {
+            pmb = MemBlock::FileBackedReadOnlyMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
+                ~0, true, is_exec != 0);
+        }
+    }
     else
-        tag |= VBLOCK_TAG_CLEAR;
-    if(is_exec)
-        tag |= VBLOCK_TAG_EXEC;
-    if(is_write)
-        tag |= VBLOCK_TAG_WRITE;
-    if(is_sync && fd < 0)
-        tag |= VBLOCK_TAG_WT;
+    {
+        if(is_write)
+        {
+            pmb = MemBlock::ZeroBackedReadWriteMemory((uintptr_t)*retaddr, len, true, is_exec != 0, 0,
+                is_sync ? MT_NORMAL_WT : MT_NORMAL);
+        }
+        else
+        {
+            pmb = MemBlock::ZeroBackedReadOnlyMemory((uintptr_t)*retaddr, len, true, is_exec != 0, 0,
+                is_sync ? MT_NORMAL_WT : MT_NORMAL);
+        }
+    }
 
     VMemBlock vb = InvalidVMemBlock();
     if(*retaddr)
     {
         // try fixed alloc
-        vb = p->user_mem->blocks.AllocFixed(vbsize, (uintptr_t)*retaddr, tag);
+        vb = p->user_mem->vblocks.AllocFixed(pmb);
 
         if(!vb.valid)
         {
             klog("mmap: fixed %x @ %p failed.  Current allocs:\n", len, *retaddr);
-            p->user_mem->blocks.Dump();
+            p->user_mem->vblocks.Traverse([](MemBlock &mb) { klog("mmap: %p - %p\n", mb.b.base, mb.b.end()); return 0; });
         }
     }
     if(!vb.valid)
@@ -60,7 +88,7 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
             return -1;
         }
         // otherwise, try and allocate anywhere
-        vb = p->user_mem->blocks.Alloc(vbsize, tag);
+        vb = p->user_mem->vblocks.AllocAny(pmb, false);
     }
 
     if(vb.valid)

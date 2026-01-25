@@ -116,6 +116,8 @@ class LwextFile : public File
     public:
         ssize_t Write(const char *buf, size_t count, int *_errno);
         ssize_t Read(char *buf, size_t count, int *_errno);
+        ssize_t AbsRead(const char *buf, size_t count, size_t offset, int *_errno);
+        ssize_t AbsWrite(const char *buf, size_t count, size_t offset, int *_errno);
         int ReadDir(dirent *de, int *_errno);
 
         int Fstat(struct stat *buf, int *_errno);

@@ -9,6 +9,16 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
     if(fd < 0)
         return -1;
 
+    PFile pf;
+    {
+        CriticalGuard cg(p->open_files.sl);
+        if((size_t)fd >= p->open_files.f.size())
+        {
+            return -1;
+        }
+        pf = p->open_files.f[fd];
+    }
+
     // we use syscall_read to write to kernel heap structures here
     ThreadPrivilegeEscalationGuard tpeg;
         
@@ -71,15 +81,15 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
         }
         if(phdr.p_type == PT_LOAD || phdr.p_type == PT_TLS)
         {
-            auto foffset = phdr.p_offset;
-            deferred_call(syscall_lseek, fd, foffset, SEEK_SET);
-
             bool writeable = (phdr.p_flags & PF_W) != 0;
             bool exec = (phdr.p_flags & PF_X) != 0;
 
-            auto filesz = (unsigned long long)phdr.p_filesz;
-            auto memsz = (unsigned long long)phdr.p_memsz;
-            auto vaddr = phdr.p_vaddr;
+            auto f_start = phdr.p_offset & ~(PAGE_SIZE - 1);
+            auto f_dataend = phdr.p_offset + phdr.p_filesz;
+            auto f_zeroend = (phdr.p_offset + phdr.p_memsz + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
+            auto mem_start = phdr.p_vaddr & ~(PAGE_SIZE - 1);
+            auto filesz = f_dataend - f_start;
+            auto memsz = f_zeroend - f_start;
 
             bool is_tls = phdr.p_type == PT_TLS;
             if(is_tls)
@@ -90,8 +100,10 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
                     return -1;
                 }
 
-                CriticalGuard cg(p->user_mem->sl);
-                p->vb_tls = vblock_alloc(vblock_size_for(memsz), false, false, false, 0, 0, p->user_mem->blocks);
+                MutexGuard mg(p->user_mem->m);
+                p->vb_tls = p->user_mem->vblocks.AllocAny(
+                    MemBlock::FileBackedReadOnlyMemory(0, phdr.p_memsz, pf, phdr.p_offset, phdr.p_filesz,
+                        false, false), false);
                 if(!p->vb_tls.valid)
                 {
                     klog("elf: couldn't allocate vblock for PT_TLS of size %llu (%llu)\n",
@@ -99,88 +111,29 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
                     return -1;
                 }
                 p->vb_tls_data_size = memsz;
-                vaddr = p->vb_tls.data_start();
             }
-
-            while(memsz)
+            else if(writeable)
             {
-                // allocate memory for the current page
-                auto cur_page = vaddr & ~(VBLOCK_64k - 1ULL);
-                uintptr_t dest_page = 0;
-
+                auto vbret = p->user_mem->vblocks.AllocFixed(
+                    MemBlock::FileBackedReadWriteMemory(mem_start, memsz, pf, f_start,
+                        filesz, true, exec));
+                if(!vbret.valid)
                 {
-                    CriticalGuard cg(p->user_mem->sl, p->owned_pages.sl);
-                    VMemBlock cur_vblock;
-                    if(is_tls)
-                    {
-                        // fake vblock for 1 page to satisfy per-page mapping done later
-                        cur_vblock.base = cur_page;
-                        cur_vblock.length = VBLOCK_64k;
-                        cur_vblock.valid = true;
-                        cur_vblock.user = false;
-                        cur_vblock.write = false;
-                        cur_vblock.exec = false;
-                        cur_vblock.lower_guard = 0;
-                        cur_vblock.upper_guard = 0;
-                    }
-                    else
-                    {
-                        // normal PT_LOAD segment
-                        cur_vblock = vblock_alloc_fixed(VBLOCK_64k, cur_page, true, writeable, exec, 0, 0,
-                            p->user_mem->blocks);
-                    }
-
-                    if(!cur_vblock.valid)
-                    {
-                        klog("elf_load_fildes: failed to allocate %llx\n", cur_page);
-                        return -1;
-                    }
-
-                    auto cur_ppage = Pmem.acquire(VBLOCK_64k);
-                    if(!cur_ppage.valid)
-                    {
-                        klog("elf_load_fildes: failed to allocate pmem for %llx\n", cur_page);
-                        return -1;
-                    }
-
-#if DEBUG_ELF
-                    klog("elf_load_fildes: mapping v %llx to p %llx within ttbr0: %llx\n",
-                        cur_vblock.base, cur_ppage.base, p->user_mem->ttbr0);
-#endif
-                    vmem_map(cur_vblock, cur_ppage, p->user_mem->ttbr0);
-
-                    dest_page = PMEM_TO_VMEM(cur_ppage.base);
-
-                    p->owned_pages.add(cur_ppage);
+                    klog("elf: couldn't allocate block at %p - %p\n", (void *)mem_start,
+                        (void *)(mem_start + memsz));
+                    return -1;
                 }
-
-                auto dest_offset_within_page = vaddr - cur_page;
-                auto max_copy = VBLOCK_64k - dest_offset_within_page;
-
-                if(filesz)
+            }
+            else
+            {
+                auto vbret = p->user_mem->vblocks.AllocFixed(
+                    MemBlock::FileBackedReadOnlyMemory(mem_start, memsz, pf, f_start,
+                        filesz, true, exec));
+                if(!vbret.valid)
                 {
-                    auto to_load = std::min(max_copy, filesz);
-
-                    std::tie(bret, berrno) = deferred_call(syscall_read, fd, (char *)(dest_page + dest_offset_within_page), (int)to_load);
-
-                    if(bret != (int)to_load)
-                    {
-                        klog("elf_load_fildes: failed to load program %d, %d\n", bret, berrno);
-                        return -1;
-                    }
-
-                    filesz -= to_load;
-                    memsz -= to_load;
-                    max_copy -= to_load;
-                    dest_offset_within_page += to_load;
-                    vaddr += to_load;
-                }
-                if(memsz && max_copy)
-                {
-                    auto to_blank = std::min(max_copy, memsz);
-                    memset((void *)(dest_page + dest_offset_within_page), 0, to_blank);
-                    memsz -= to_blank;
-                    vaddr += to_blank;
+                    klog("elf: couldn't allocate block at %p - %p\n", (void *)mem_start,
+                        (void *)(mem_start + memsz));
+                    return -1;
                 }
             }
         }

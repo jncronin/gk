@@ -28,6 +28,9 @@ const uint64_t mair = 0x040044bbff;
 #define UH_DEVICE_START     0xfffffd0000000000ULL
 #define LH_END      0x40000000000ULL
 
+#define PAGE_PADDR_MASK         0xffffffff0000ULL
+#define PAGE_VADDR_MASK         0xffffffffffff0000ULL
+
 #define DT_BLOCK    0x1ULL
 #define DT_PAGE     0x3ULL
 #define DT_PT       0x3ULL
@@ -40,6 +43,7 @@ const uint64_t mair = 0x040044bbff;
 #define PAGE_PRIV_RO            (0x2ULL << 6)
 #define PAGE_USER_RW            (0x1ULL << 6)
 #define PAGE_USER_RO            (0x3ULL << 6)
+#define PAGE_PRIV_MASK          (0x3ULL << 6)
 #define PAGE_NON_SECURE         (0x1ULL << 5)
 #define PAGE_ATTR(x)            ((x) << 2)
 

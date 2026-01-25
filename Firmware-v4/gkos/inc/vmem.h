@@ -11,6 +11,8 @@
 #define PMEM_TO_VMEM_DEVICE(a) (((uintptr_t)(a) + UH_DEVICE_START))
 #define VMEM_TO_PMEM(a) (((uintptr_t)(a) - UH_START))
 
+#define PAGE_SIZE 65536UL
+
 #define DEBUG_VTP  1
 
 int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr0 = ~0ULL,
@@ -19,6 +21,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0 = ~
 int vmem_unmap(const VMemBlock &vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr);
 uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
+uint64_t vmem_get_pte(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 
 static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr, uint64_t ttbr0 = ~0U)
 {

@@ -661,7 +661,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             {
                 auto p = reinterpret_cast<__syscall_mmapv4_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_mmapv4(p->len, p->retaddr,
-                    p->is_sync, p->is_read, p->is_write, p->is_exec, p->fd, p->is_fixed,
+                    p->is_sync, p->is_read, p->is_write, p->is_exec, p->fd, p->is_fixed, p->foffset,
                     reinterpret_cast<int *>(r3));
             }
             break;

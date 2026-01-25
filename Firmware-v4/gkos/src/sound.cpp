@@ -453,9 +453,9 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
     {
         if(p->user_mem)
         {
-            CriticalGuard cg2(p->user_mem->sl);
-            ac.mr_sound = vblock_alloc(VBLOCK_64k, true, true, false, 0, 0,
-                p->user_mem->blocks);
+            MutexGuard mg(p->user_mem->m);
+            ac.mr_sound = p->user_mem->vblocks.AllocAny(
+                MemBlock::ZeroBackedReadWriteMemory(0, VBLOCK_64k, true, false, 0, MT_NORMAL_WT));
         }
         else
         {
@@ -489,7 +489,7 @@ int syscall_audiosetmodeex(int nchan, int nbits, int freq, size_t buf_size_bytes
         }
         else
         {
-            CriticalGuard cg2(p->user_mem->sl);
+            MutexGuard mg(p->user_mem->m);
             vmem_map(ac.mr_sound.base, ac.p_sound.base, true, true, false,
                 p->user_mem->ttbr0 & 0xffffffff0000ULL, ~0ULL, nullptr, MT_NORMAL_WT);
         }
