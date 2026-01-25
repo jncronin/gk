@@ -62,7 +62,7 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
         }
 
         ret->ppid = parent->id;
-        ProcessList.SetPPID(ret->ppid, parent->id);
+        ProcessList.SetPPID(ret->id, parent->id);
     }
 
     return ret;
