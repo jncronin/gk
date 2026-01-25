@@ -9,7 +9,7 @@ intptr_t syscall_sbrk(intptr_t incr, int *_errno)
     {
         // try allocating a vblock
         MutexGuard mg(p->user_mem->m);
-        for(auto heap_size = 2ULL*1024*1024; heap_size >= VBLOCK_64k; heap_size /= 2)
+        for(auto heap_size = 2ULL*1024*1024*1024; heap_size >= VBLOCK_64k; heap_size /= 2)
         {
             p->heap.vb_heap = p->user_mem->vblocks.AllocAny(
                 MemBlock::ZeroBackedReadWriteMemory(0, heap_size, true, false), false);
