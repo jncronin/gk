@@ -690,6 +690,21 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_setwindowtitle:
+            {
+                auto p = reinterpret_cast<const char *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setwindowtitle(p, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_setprot:
+            {
+                auto p = reinterpret_cast<__syscall_setprot_params *>(r2);
+                int ret = syscall_setprot(p->addr, p->is_read, p->is_write, p->is_exec, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {

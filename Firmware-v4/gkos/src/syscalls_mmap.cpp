@@ -100,3 +100,23 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
         return -1;
     }
 }
+
+int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    // try allocating a vblock
+    MutexGuard mg(p->user_mem->m);
+
+    auto &reg = p->user_mem->vblocks.IsAllocated((uintptr_t)addr);
+    if(reg.b.valid)
+    {
+        reg.b.write = is_write != 0;
+        reg.b.exec = is_exec != 0;
+        return 0;
+    }
+    else
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+}

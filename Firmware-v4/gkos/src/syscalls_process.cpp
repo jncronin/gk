@@ -199,3 +199,9 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
 
     return 0;
 }
+
+int syscall_setwindowtitle(const char *title, int *_errno)
+{
+    klog("windowtitle: %s\n", title);
+    return 0;
+}
