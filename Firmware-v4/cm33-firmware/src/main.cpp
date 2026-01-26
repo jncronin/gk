@@ -76,12 +76,12 @@ const ioexp_pin BTN_MCU_MENU(1U << 14);
 
 const joy_pin JOY_A_LEFT((int16_t *)&d.joy_a.x, false);
 const joy_pin JOY_A_RIGHT((int16_t *)&d.joy_a.x, true);
-const joy_pin JOY_A_UP((int16_t *)&d.joy_a.y, true);
-const joy_pin JOY_A_DOWN((int16_t *)&d.joy_a.y, false);
+const joy_pin JOY_A_UP((int16_t *)&d.joy_a.y, false);
+const joy_pin JOY_A_DOWN((int16_t *)&d.joy_a.y, true);
 const joy_pin JOY_B_LEFT((int16_t *)&d.joy_b.x, false);
 const joy_pin JOY_B_RIGHT((int16_t *)&d.joy_b.x, true);
-const joy_pin JOY_B_UP((int16_t *)&d.joy_b.y, true);
-const joy_pin JOY_B_DOWN((int16_t *)&d.joy_b.y, false);
+const joy_pin JOY_B_UP((int16_t *)&d.joy_b.y, false);
+const joy_pin JOY_B_DOWN((int16_t *)&d.joy_b.y, true);
 const joy_pin JOY_TILT_LEFT((int16_t *)&d.joy_tilt.x, false);
 const joy_pin JOY_TILT_RIGHT((int16_t *)&d.joy_tilt.x, true);
 const joy_pin JOY_TILT_UP((int16_t *)&d.joy_tilt.y, true);
