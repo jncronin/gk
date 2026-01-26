@@ -7,6 +7,7 @@
 #include "cleanup.h"
 #include "process_interface.h"
 #include "_gk_memaddrs.h"
+#include "_gk_scancodes.h"
 #include "syscalls_int.h"
 #include <atomic>
 
@@ -154,12 +155,66 @@ Process::~Process()
     owned_semaphores.clear();
 }
 
+extern PMemBlock process_kernel_info_page;
+
+static void set_joystick_mapping(char stick_map, int16_t *x, int16_t *y)
+{
+    auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
+
+    if((stick_map >= GK_STICK_JOY0) && (stick_map <= GK_STICK_JOY2))
+    {
+        auto stick_id = (unsigned int)(stick_map - GK_STICK_JOY0);
+        auto x_axis_id = stick_id * 2;
+        auto y_axis_id = x_axis_id + 1;
+
+        kinfo->joystick_axes[x_axis_id] = x;
+        kinfo->joystick_axes[y_axis_id] = y;
+
+        if((y_axis_id + 1) > kinfo->joystick_naxes)
+        {
+            kinfo->joystick_naxes = y_axis_id + 1;
+        }
+    }
+}
+
 int SetFocusProcess(PProcess p)
 {
     focus_process = p->id;
 
     // clear screen on process switch
     screen_clear_all_userspace();
+
+    // update userspace input mapping
+    auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
+
+    kinfo->joystick_naxes = 0;
+    memset(kinfo->joystick_axes, 0, sizeof(kinfo->joystick_axes));
+
+    set_joystick_mapping(p->keymap.left_stick,
+        (int16_t *)(GK_JOYSTICK_ADDRESS),
+        (int16_t *)(GK_JOYSTICK_ADDRESS + 4));
+    set_joystick_mapping(p->keymap.right_stick,
+        (int16_t *)(GK_JOYSTICKB_ADDRESS),
+        (int16_t *)(GK_JOYSTICKB_ADDRESS + 4));
+    set_joystick_mapping(p->keymap.tilt_stick,
+        (int16_t *)(GK_TILT_ADDRESS),
+        (int16_t *)(GK_TILT_ADDRESS + 4));
+
+    unsigned int nbuttons = 0;
+    for(auto i = 0U; i < GK_NUMKEYS; i++)
+    {
+        auto scancode = p->keymap.gamepad_to_scancode[i];
+        if(scancode >= GK_GAMEPAD_BUTTON && scancode <= GK_GAMEPAD_END)
+        {
+            auto btn_id = scancode - GK_GAMEPAD_BUTTON;
+            if(btn_id < 64 && (btn_id + 1U) > nbuttons)
+            {
+                nbuttons = btn_id + 1U;
+            }
+        }
+    }
+    kinfo->joystick_buttons = 0;
+    kinfo->joystick_nbuttons = nbuttons;
 
     // TODO: enable/disable tilt if appropriate
     // restore palette if used

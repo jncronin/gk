@@ -1,9 +1,14 @@
 #include "process.h"
 #include "cm33_data.h"
 #include "_gk_scancodes.h"
+#include "vmem.h"
+
+extern PMemBlock process_kernel_info_page;
 
 int Process::HandleInputEvent(unsigned int cm33_cmd)
 {
+    auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
+
     auto key = cm33_cmd & CM33_DK_MSG_CONTENTS;
     auto action = cm33_cmd & CM33_DK_MSG_MASK;
     if(key >= GK_NUMKEYS)
@@ -66,11 +71,13 @@ int Process::HandleInputEvent(unsigned int cm33_cmd)
             case CM33_DK_MSG_PRESS:
             case CM33_DK_MSG_REPEAT:
                 gamepad_buttons |= btn;
+                kinfo->joystick_buttons |= btn;
                 events.Push({ .type = Event::event_type_t::ButtonDown, .key = gkey });
                 break;
 
             case CM33_DK_MSG_RELEASE:
                 gamepad_buttons &= ~btn;
+                kinfo->joystick_buttons &= ~btn;
                 events.Push({ .type = Event::event_type_t::ButtonUp, .key = gkey });
                 break;
         }
