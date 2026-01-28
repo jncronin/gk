@@ -7,7 +7,21 @@ bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
     CriticalGuard cg(sl, ThreadList.sl);
     auto bt_locked = ThreadList._get(b_thread).v;
     if(kernel_time_is_valid(b_until) && b_until <= clock_cur())
+    {
         b_until = kernel_time_invalid();
+        b_indefinite = false;
+        b_thread = 0;
+#if GK_DEBUG_BLOCKING
+        b_condition = nullptr;
+        b_ss = nullptr;
+        b_uss = nullptr;
+        b_rwl = nullptr;
+        b_queue = nullptr;
+#else
+        b_prim = true;
+#endif
+        return false;
+    }
     auto isb = b_indefinite ||
         kernel_time_is_valid(b_until) ||
         bt_locked ||
