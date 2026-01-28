@@ -2,6 +2,7 @@
 #include "clocks.h"
 #include <cstdio>
 #include "time.h"
+#include "logger.h"
 
 static uint32_t cpu_freq = 0;
 
@@ -66,7 +67,8 @@ void init_clocks()
     RCC->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
 
     // Now, set up the internal CA35SS PLL1
-    clock_set_cpu(1200000000);
+    // Note frequencies > 1200 MHz require a "F" chip and a VCPU boost
+    clock_set_cpu(1500000000);
 
     // start the system timer
     clock_start_sys();
@@ -118,7 +120,18 @@ void clock_set_cpu(unsigned int freq)
         FREQ2 = 0xe        -> POSTDIV1 = 6, POSTDIV2 = 1
         EN = 0x7 - enabled, not in reset 
         
-        This gives a 400 MHz clock */
+        This gives a 400 MHz clock from HSI64
+
+
+        We use HSE40 as the reference clock so need to change this.
+
+        VCOout is between 800 and 3200 MHz
+
+        For frefdiv of 2, we can scale fbdiv between 60 and 150 to give
+        VCOout of 1200 to 3000 MHz
+        We can then post-divide by 2 to give 600 - 1500 MHz
+        And post divide 600 by more to give smaller values.
+    */
 
     // Disable use of PLL
     CA35SS_SSC_CHGCLKREQx->set = 0x1;
@@ -127,8 +140,17 @@ void clock_set_cpu(unsigned int freq)
     CA35SS_SSC_PLL_ENx->clear = 0x5;
     while(CA35SS_SSC_PLL_ENx->value & 0x5);
 
-    // the BOOTROM configured clock is 2400 MHz - divide appropriately
-    uint32_t divider = (uint32_t)(2400000000ULL / (uint64_t)freq);
+    // Get appropriate VCOout
+    auto vcoout = (unsigned long)freq * 2UL;
+    if(vcoout < 1200000000UL)
+        vcoout = 1200000000UL;
+    if(vcoout > 3000000000UL)
+        vcoout = 3000000000UL;
+    
+    auto frefdiv = vcoout * 2UL / 40000000UL;
+
+    // calculate postdivider for given VCOout
+    uint32_t divider = (uint32_t)(vcoout / (unsigned long)freq);
     uint32_t postdiv2 = divider / 7;
     if(postdiv2 < 1) postdiv2 = 1;
     if(postdiv2 > 7) postdiv2 = 7;
@@ -137,7 +159,7 @@ void clock_set_cpu(unsigned int freq)
     if(postdiv1 > 7) postdiv1 = 7;
 
     // Program
-    CA35SS_SSC_PLL_FREQ1_x->value = 0x0002004b; // as per BOOTROM
+    CA35SS_SSC_PLL_FREQ1_x->value = 0x00020000UL | frefdiv; 
     CA35SS_SSC_PLL_FREQ2_x->value = postdiv1 | (postdiv2 << 3);
 
     // Enable PLL
@@ -149,7 +171,9 @@ void clock_set_cpu(unsigned int freq)
     CA35SS_SSC_CHGCLKREQx->clear = 0x1;
     while(CA35SS_SSC_CHGCLKREQx->value & 0x2);
 
-    cpu_freq = 2400000000UL / postdiv1 / postdiv2;
+    cpu_freq = vcoout / postdiv1 / postdiv2;
+
+    klog("cpu: frequency %llu\n", cpu_freq);
 }
 
 void clock_start_sys()
