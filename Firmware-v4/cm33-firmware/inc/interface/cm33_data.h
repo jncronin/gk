@@ -14,10 +14,11 @@ struct cm33_data_userspace
     volatile uint32_t keystate;
     volatile cm33_joystick joy_a, joy_b, joy_tilt;
     volatile float yaw, pitch, roll;
-    volatile float acc[3], gyr[3];   
+    volatile float acc[3], gyr[3];
+    volatile cm33_joystick joy_a_raw, joy_b_raw;    // for calibration purposes
 };
 
-static_assert(sizeof(cm33_data_userspace) == 16*4);
+static_assert(sizeof(cm33_data_userspace) == 20*4);
 
 struct cm33_joy_calib
 {
@@ -29,7 +30,6 @@ struct cm33_data_kernel
     volatile uint32_t sr;
     volatile uint32_t cr;
 
-    volatile cm33_joystick joy_a_raw, joy_b_raw;    // for calibration purposes
     volatile cm33_joy_calib joy_a_calib, joy_b_calib;
     float tilt_zero;
 
@@ -39,7 +39,7 @@ struct cm33_data_kernel
     volatile uint32_t rb_paddr;
 };
 
-static_assert(sizeof(cm33_data_kernel) == 19*4);
+static_assert(sizeof(cm33_data_kernel) == 15*4);
 
 // status register
 #define CM33_DK_SR_READY            1

@@ -764,6 +764,16 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_joystick_calib:
+            {
+                auto p = reinterpret_cast<__syscall_joystick_calib_params *>(r2);
+                int ret = syscall_joystick_calib(p->axis_pair, p->left, p->right,
+                    p->top, p->bottom, p->middle_x, p->middle_y,
+                    reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
 #if 0
         case WaitSimpleSignal:
             {

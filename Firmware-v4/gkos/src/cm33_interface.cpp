@@ -31,7 +31,7 @@ static volatile cm33_data_kernel *dk = (volatile cm33_data_kernel *)0xfffffd0030
 static SimpleSignal cm33_event;
 
 static float input_tilt_centre = 30.0f;
-static cm33_joy_calib input_joy_calib[2] =
+cm33_joy_calib input_joy_calib[2] =
 {
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
