@@ -16,6 +16,8 @@ struct sem_t
     id_t s;
 };
 
+std::vector<std::pair<size_t, size_t>> syscalls_get_count();
+
 int get_free_fildes(Process &p, int start_fd = 0);
 
 intptr_t syscall_sbrk(intptr_t increment, int *_errno);

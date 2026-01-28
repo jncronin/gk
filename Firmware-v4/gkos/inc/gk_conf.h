@@ -1,7 +1,7 @@
 #ifndef GK_CONF_H
 #define GK_CONF_H
 
-#define GK_NUM_CORES                1
+#define GK_NUM_CORES                2
 
 #define GK_ENABLE_NETWORK           0
 #define GK_ENABLE_WIFI              0
@@ -23,6 +23,7 @@
 #define GK_EXT_USE_JOURNAL          0
 #define GK_SD_USE_HS_MODE           1
 #define GK_GPU_SHOW_FPS             1
+#define GK_COUNT_SYSCALLS           1
 #define GK_TICKLESS                 0
 #define GK_CUR_THREAD_IN_SYSRAM     1
 #define GK_THREAD_LIST_IN_SYSRAM    0

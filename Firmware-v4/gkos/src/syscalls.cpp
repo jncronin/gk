@@ -8,6 +8,8 @@
 #include "syscalls_int.h"
 #include <sys/times.h>
 #include <cstring>
+#include <atomic>
+#include <algorithm>
 #include "elf.h"
 #include "cleanup.h"
 #include "sound.h"
@@ -19,6 +21,36 @@
 
 extern PProcess p_kernel;
 
+#if GK_COUNT_SYSCALLS
+static const constexpr size_t n_syscall_counts = 512;
+static std::atomic<size_t> syscall_counts[n_syscall_counts] = { 0 };
+
+static Spinlock sl_last_syscall_dump;
+static kernel_time last_syscall_dump = kernel_time_invalid();
+
+std::vector<std::pair<size_t, size_t>> syscalls_get_count()
+{
+    std::vector<std::pair<size_t, size_t>> ret;
+    for(size_t n = 0; n < n_syscall_counts; n++)
+    {
+        auto cnt = syscall_counts[n].exchange(0);
+        if(cnt)
+        {
+            ret.push_back(std::make_pair(n, cnt));
+        }
+    }
+    // sort descending
+    std::sort(ret.begin(), ret.end(), [](const auto &a, const auto &b) { return a.second > b.second; });
+    return ret;
+}
+#else
+std::vector<std::pair<size_t, size_t>> syscalls_get_count()
+{
+    std::vector<std::pair<size_t, size_t>> ret;
+    return ret;
+}
+#endif
+
 void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
 {
 #if DEBUG_SYSCALLS
@@ -29,6 +61,33 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
     if((int)sno != 50 && (int)sno != 51)
     {
         klog("syscalls: start: %d (%p, %p, %p)\n", (int)sno, dr1, dr2, dr3);
+    }
+#endif
+#if GK_COUNT_SYSCALLS
+    if((size_t)sno < 512)
+    {
+        syscall_counts[(size_t)sno]++;
+    }
+
+    auto now = clock_cur();
+    sl_last_syscall_dump.lock();
+    if(!kernel_time_is_valid(last_syscall_dump) || (now > last_syscall_dump + kernel_time_from_ms(1000)))
+    {
+        last_syscall_dump = now;
+        sl_last_syscall_dump.unlock();
+
+        auto counts = syscalls_get_count();
+
+        klog("syscalls: id, count\n");
+        for(const auto &v : counts)
+        {
+            klog("syscalls: %3u : %u\n", v.first, v.second);
+        }
+        klog("syscalls: dump ends\n");
+    }
+    else
+    {
+        sl_last_syscall_dump.unlock();
     }
 #endif
     [[maybe_unused]] auto syscall_start = clock_cur_ms();
