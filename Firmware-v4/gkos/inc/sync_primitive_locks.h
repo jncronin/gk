@@ -85,7 +85,7 @@ template <class PrimType> struct locked_sync_list
 {
     Spinlock sl;
 
-    std::unordered_set<id_t> pset;
+    std::unordered_set<id_t> pset = std::unordered_set<id_t>(8);
 
     void Add(id_t id)
     {

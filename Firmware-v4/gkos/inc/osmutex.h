@@ -14,7 +14,7 @@ class Mutex
 {
     protected:
         id_t owner = 0;
-        std::unordered_set<id_t> waiting_threads;
+        std::unordered_set<id_t> waiting_threads = std::unordered_set<id_t>(8);
         bool is_recursive = false;
         bool echeck = false;
         int lockcount = 0;
@@ -34,8 +34,8 @@ class RwLock
 {
     protected:
         id_t wrowner = 0;
-        std::unordered_set<id_t> rdowners;
-        std::unordered_set<id_t> waiting_threads;
+        std::unordered_set<id_t> rdowners = std::unordered_set<id_t>(8);
+        std::unordered_set<id_t> waiting_threads = std::unordered_set<id_t>(8);
         Spinlock sl;
 
     public:
@@ -50,7 +50,7 @@ class UserspaceSemaphore
 {
     protected:
         unsigned int val;
-        std::unordered_set<id_t> waiting_threads;
+        std::unordered_set<id_t> waiting_threads = std::unordered_set<id_t>(8);
         Spinlock sl;
 
     public:
