@@ -51,7 +51,8 @@ enum ddr_type {
 //#define STM32MP_DDR4_TYPE 1
 #define STM32MP_LPDDR4_TYPE 1
 //#include "ddr_configs/stm32mp255f-ev1-ddr.h"
-#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4.h"
+//#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4.h"
+#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-1200MHz-LPDDR4.h"
 //#include "ddr_configs/stm32mp255f-IS43LQ16512A-062BLI-800MHz-LPDDR4-RP1_5.h"
 //#include "ddr_configs/stm32mp255f-test3.h"
 
