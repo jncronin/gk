@@ -48,11 +48,11 @@
   LoaderName = "JC Loader"
   NumBanks = 1
 [PRODUCTION]
-  AutoPerformsDisconnect = 1
+  AutoPerformsDisconnect = 0
   AutoPerformsErase = 1
   AutoPerformsProgram = 1
   AutoPerformsSecure = 0
-  AutoPerformsStartApp = 0
+  AutoPerformsStartApp = 1
   AutoPerformsVerify = 1
   EnableFixedVTref = 0
   EnableTargetPower = 0
