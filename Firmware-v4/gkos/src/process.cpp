@@ -66,6 +66,8 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
         ProcessList.SetPPID(ret->id, parent->id);
     }
 
+    ret->window_title = _name;
+
     return ret;
 }
 
@@ -224,7 +226,7 @@ int SetFocusProcess(PProcess p)
 
 PProcess GetFocusProcess()
 {
-    return ProcessList.Get(focus_process);
+    return ProcessList.Get(focus_process).v;
 }
 
 id_t GetFocusPid()

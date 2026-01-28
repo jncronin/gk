@@ -19,6 +19,7 @@
 
 class Thread;
 class Process;
+class Widget;
 
 using PProcess = std::shared_ptr<Process>;
 using WPProcess = std::weak_ptr<Process>;
@@ -116,6 +117,14 @@ class Process
             Spinlock sl_sound;
         };
 
+        struct osd_t
+        {
+            bool has_osd = false;
+            bool osd_prepped = false;
+            Widget *osd = nullptr;
+            std::string osd_text;
+        };
+
         std::string name;
         std::vector<id_t> threads;
         id_t id, ppid;
@@ -130,6 +139,7 @@ class Process
         heap_t heap{};
         screen_t screen{};
         audio_conf_t audio{};
+        osd_t osd{};
 
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);
@@ -144,12 +154,16 @@ class Process
         VMemBlock vb_tls = InvalidVMemBlock();
         size_t vb_tls_data_size;        // actual size of TLS data to copy
 
-        /* Events */
+        /* Events/userspace stuff */
         FixedQueue<Event, GK_NUM_EVENTS_PER_PROCESS> events;
         uint32_t mouse_buttons = 0;
         uint64_t gamepad_buttons = 0;
         prockeymap_t keymap;
+        std::string window_title;
         int HandleInputEvent(uint32_t cmd);
+        void set_osd(const std::string &_osd_text);
+        void delete_osd();
+        Widget *get_osd();
 
         /* create a process */
         static PProcess Create(const std::string &name, bool is_privileged = false,

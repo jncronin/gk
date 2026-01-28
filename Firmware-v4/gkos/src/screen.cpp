@@ -38,7 +38,8 @@ static const constexpr pin CTP_WAKE { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 
 volatile std::atomic_bool screen_flip_in_progress = false;
 Condition scr_vsync;
 
-#if GK_GPU_SHOW_FPS
+static int brightness = 50;
+
 class FPSCounter
 {
     protected:
@@ -46,9 +47,15 @@ class FPSCounter
         kernel_time last_dump;
         unsigned int nframes = 0;
         int layer;
+        double ffps;
 
     public:
         FPSCounter(int _layer) : layer(_layer) {}
+
+        double GetFPS() const
+        {
+            return ffps;
+        }
 
         void Tick()
         {
@@ -60,9 +67,11 @@ class FPSCounter
 
             if(tdiff >= kernel_time_from_ms(1000))
             {
-                auto fps = (nframes * 1000000ULL) /  kernel_time_to_us(tdiff);
+                ffps = (double)nframes * 1000000.0 / (double)kernel_time_to_us(tdiff);
+#if GK_GPU_SHOW_FPS
+                auto fps = (unsigned long)ffps;
                 klog("screen: layer %d: FPS: %lu\n", layer, fps);
-
+#endif
                 nframes = 0;
                 last_dump = now;
             }
@@ -74,8 +83,6 @@ static FPSCounter fpsc[scr_n_layers]
     FPSCounter(0),
     FPSCounter(1)
 };
-
-#endif
 
 class TripleBufferScreenLayer
 {
@@ -448,98 +455,118 @@ void LTDC_IRQHandler()
 {
     if(LTDC_VMEM->ISR & LTDC_ISR_LIF)
     {
-        auto layer = 0;
-
-        auto ldetails = scrs[layer].vsync();
-        if(ldetails.paddr)
+        for(auto layer = 0U; layer < scr_n_layers; layer++)
         {
-            auto lw = ldetails.lw;
-            auto lh = ldetails.lh;
-            auto lpf = ldetails.pf;
-
-            auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
-
-            auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
-            auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
-
-            // size of the output window - automatically centred on screen.  768x480 is 16:10
-            unsigned int disp_w = 800;
-            unsigned int disp_h = 480;
-
-            disp_w = std::min(disp_w, scr_w);
-            disp_h = std::min(disp_h, scr_h);
-
-            auto scen = ((disp_w > lw) || (disp_h > lh)) ? LTDC_LxCR_SCEN : 0;
-
-            auto bpp = screen_get_bpp_for_pf(lpf);
-
-            hstart += (scr_w - disp_w) / 2;
-            vstart += (scr_h - disp_h) / 2;
-
-            l->WHPCR = (hstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
-                ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
-            l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
-                ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
-            
-            uint32_t cluten = 0;
-            if(lpf < 7)
-                l->PFCR = lpf;
-            else
+            auto ldetails = scrs[layer].vsync();
+            if(ldetails.paddr)
             {
-                l->PFCR = 7;
+                auto lw = ldetails.lw;
+                auto lh = ldetails.lh;
+                auto lpf = ldetails.pf;
 
-                // flexible pixel format
-                switch(lpf)
+                auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
+
+                auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
+                auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
+
+                // size of the output window - automatically centred on screen.  768x480 is 16:10
+                unsigned int disp_w = 800;
+                unsigned int disp_h = 480;
+
+                disp_w = std::min(disp_w, scr_w);
+                disp_h = std::min(disp_h, scr_h);
+
+                auto scen = ((disp_w > lw) || (disp_h > lh)) ? LTDC_LxCR_SCEN : 0;
+
+                auto bpp = screen_get_bpp_for_pf(lpf);
+
+                hstart += (scr_w - disp_w) / 2;
+                vstart += (scr_h - disp_h) / 2;
+
+                l->WHPCR = (hstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
+                    ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
+                l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
+                    ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+                
+                uint32_t cluten = 0;
+                if(lpf < 7)
+                    l->PFCR = lpf;
+                else
                 {
-                    case GK_PIXELFORMAT_L8:
-                        l->FPF0R = (8U << 14);
-                        l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
-                        cluten = LTDC_LxCR_CLUTEN;
-                        break;
-                    default:
-                        klog("screen: unsupported pixel format: %u\n", lpf);
-                }
-            }
+                    l->PFCR = 7;
 
-            if(ldetails.new_clut)
-            {
-                //klog("screen: new clut of size %u\n", ldetails.clut.size());
-                for(unsigned int i = 0; i < std::min(256U, (unsigned int)ldetails.clut.size()); i++)
+                    // flexible pixel format
+                    switch(lpf)
+                    {
+                        case GK_PIXELFORMAT_L8:
+                            l->FPF0R = (8U << 14);
+                            l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                            cluten = LTDC_LxCR_CLUTEN;
+                            break;
+                        case GK_PIXELFORMAT_A4L4:
+                            l->FPF0R = (4U << 14) | (4U << 5) | (4U << 0);
+                            l->FPF1R = (1U << 18) | (4U << 14) | (4U << 5);
+                            cluten = LTDC_LxCR_CLUTEN;
+                            break;
+                        default:
+                            klog("screen: unsupported pixel format: %u\n", lpf);
+                    }
+                }
+
+                if(ldetails.new_clut)
                 {
-                    l->CLUTWR = (ldetails.clut[i] & 0xffffffU) |
-                        (i << 24);
+                    //klog("screen: new clut of size %u\n", ldetails.clut.size());
+                    auto clut_size = std::min(256U, (unsigned int)ldetails.clut.size());
+                    for(unsigned int i = 0; i < clut_size; i++)
+                    {                        
+                        l->CLUTWR = (ldetails.clut[i] & 0xffffffU) |
+                            (i << 24);
+                    }
+                    // for AL44 we may need to double the lower nibble of the pix_id variable
+                    if(clut_size <= 16U)
+                    {
+                        for(unsigned int i = 1; i < clut_size; i++)
+                        {
+                            auto pix_id = i | (i << 4);
+                            l->CLUTWR = (ldetails.clut[i] & 0xffffffU) |
+                                (pix_id << 24);
+                        }
+                    }
                 }
+                l->CACR = 0xffUL;
+                l->DCCR = 0UL;
+                l->BFCR = (layer == 0) ?
+                    ((4U << LTDC_LxBFCR_BF1_Pos) | (5U << LTDC_LxBFCR_BF2_Pos)) // constant alpha for L0
+                    :
+                    ((1U << LTDC_LxBFCR_BOR_Pos) |
+                        (6U << LTDC_LxBFCR_BF1_Pos) | (7UL << LTDC_LxBFCR_BF2_Pos)); // blend for L1
+                l->CFBLR = ((lw * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
+                    ((lw * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
+                l->CFBLNR = lh;
+                l->CFBAR = (uint32_t)(uintptr_t)ldetails.paddr;
+                l->CR = 0;
+
+                if(scen)
+                {
+                    l->CR = 0 | scen;
+
+                    l->SISR = (lw << LTDC_LxSISR_SIH_Pos) |
+                        (lh << LTDC_LxSISR_SIV_Pos);
+                    l->SOSR = (disp_w << LTDC_LxSOSR_SOH_Pos) |
+                        (disp_h << LTDC_LxSOSR_SOV_Pos);
+                    l->SHSFR = ((lw - 1) * 4096) / (disp_w - 1);
+                    l->SVSFR = ((lh - 1) * 4096) / (disp_h - 1);
+                    l->SHSPR = l->SHSFR + 4096;
+                    l->SVSPR = l->SVSFR;
+                    //l->SHSPR = 0;
+                    //l->SVSPR = 0;
+                }
+
+                l->CR = LTDC_LxCR_LEN | scen | cluten;
+
+                screen_flip_in_progress = true;
+                LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
             }
-            l->CACR = 0xffUL;
-            l->DCCR = 0UL;
-            l->BFCR = (4UL << LTDC_LxBFCR_BF1_Pos) |
-                (5UL << LTDC_LxBFCR_BF2_Pos);       // Use constant alpha for now - change for Layer2
-            l->CFBLR = ((lw * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
-                ((lw * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
-            l->CFBLNR = lh;
-            l->CFBAR = (uint32_t)(uintptr_t)ldetails.paddr;
-            l->CR = 0;
-
-            if(scen)
-            {
-                l->CR = 0 | scen;
-
-                l->SISR = (lw << LTDC_LxSISR_SIH_Pos) |
-                    (lh << LTDC_LxSISR_SIV_Pos);
-                l->SOSR = (disp_w << LTDC_LxSOSR_SOH_Pos) |
-                    (disp_h << LTDC_LxSOSR_SOV_Pos);
-                l->SHSFR = ((lw - 1) * 4096) / (disp_w - 1);
-                l->SVSFR = ((lh - 1) * 4096) / (disp_h - 1);
-                l->SHSPR = l->SHSFR + 4096;
-                l->SVSPR = l->SVSFR;
-                //l->SHSPR = 0;
-                //l->SVSPR = 0;
-            }
-
-            l->CR = LTDC_LxCR_LEN | scen | cluten;
-
-            screen_flip_in_progress = true;
-            LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
         }
         
         scr_vsync.Signal();
@@ -562,4 +589,24 @@ void screen_clear_all_userspace()
         if(scrs[0].pm[buf].valid)
             memset((void *)PMEM_TO_VMEM(scrs[0].pm[buf].base), 0, scr_layer_size_bytes);
     }
+}
+
+int screen_get_brightness()
+{
+    return brightness;
+}
+
+int screen_set_brightness(int bright)
+{
+    if(bright > 100) bright = 100;
+    if(bright < 0) bright = 0;
+    brightness = bright;
+    return brightness;
+}
+
+double screen_get_fps(unsigned int layer)
+{
+    if(layer >= scr_n_layers)
+        return 0.0;
+    return fpsc[layer].GetFPS();
 }

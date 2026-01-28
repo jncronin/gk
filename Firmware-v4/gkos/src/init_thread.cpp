@@ -6,9 +6,11 @@
 #include "usb.h"
 #include "fs_provision.h"
 #include "_gk_scancodes.h"
+#include "supervisor.h"
 #include <fcntl.h>
 
 PProcess p_test;
+id_t pid_gkmenu;
 
 void *init_thread(void *)
 {
@@ -16,6 +18,9 @@ void *init_thread(void *)
     fs_provision();
     
     usb_process_start();
+
+    // start supervisor
+    init_supervisor();
 
     // start gkmenu
     auto proc_fd = syscall_open("/gkmenu-0.1.1-gk/bin/gkmenu", O_RDONLY, 0, &errno);
@@ -52,6 +57,8 @@ void *init_thread(void *)
     p_test->keymap.gamepad_to_scancode[GK_KEYRIGHT] = GK_SCANCODE_AUDIONEXT;
     p_test->keymap.gamepad_to_scancode[GK_KEYUP] = GK_SCANCODE_AUDIOPREV;
     p_test->keymap.gamepad_to_scancode[GK_KEYDOWN] = GK_SCANCODE_AUDIONEXT;
+
+    pid_gkmenu = p_test->id;
 
     if(ret == 0)
     {

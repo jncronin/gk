@@ -1,0 +1,17 @@
+#include "widget.h"
+
+void ImageWidget::Update(alpha_t alpha)
+{
+    if(!visible) return;
+    coord_t actx, acty;
+    GetAbsolutePosition(&actx, &acty);
+
+    color_t bg_color, border_color;
+
+    bg_color = bg_inactive_color;
+    border_color = border_inactive_color;
+
+    RenderBackground(actx, acty, w, h, bg_color, alpha);
+    RenderBorder(actx, acty, w, h, border_color, border_width, alpha);
+    RenderImage(actx, acty, w, h, img_w, img_h, img_hoffset, img_voffset, image, bg_color, alpha, img_bpp, img_color);
+}

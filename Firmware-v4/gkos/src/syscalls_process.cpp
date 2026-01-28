@@ -203,5 +203,19 @@ int syscall_kill(pid_t pid, int sig, int *_errno)
 int syscall_setwindowtitle(const char *title, int *_errno)
 {
     klog("windowtitle: %s\n", title);
+
+    auto p = GetCurrentProcessForCore();
+    if(p)
+    {
+        CriticalGuard cg(p->sl);
+        p->window_title = std::string(title);
+        cg.unlock();
+
+        extern PProcess p_supervisor;
+        Event ev;
+        ev.type = Event::event_type_t::CaptionChange;
+        p_supervisor->events.Push(ev);
+    }
+
     return 0;
 }

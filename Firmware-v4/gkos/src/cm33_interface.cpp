@@ -7,6 +7,7 @@
 #include <cstring>
 #include "osqueue.h"
 #include "process.h"
+#include "supervisor.h"
 
 #define RISAF2_VMEM ((RISAF_TypeDef *)PMEM_TO_VMEM(RISAF2_BASE))
 #define RAMCFG_VMEM ((RAMCFG_TypeDef *)PMEM_TO_VMEM(RAMCFG_BASE))
@@ -204,7 +205,7 @@ static void cm33_handle_message(uint32_t msg)
         case CM33_DK_MSG_LONGPRESS:
         case CM33_DK_MSG_REPEAT:
             {
-                auto p = GetFocusProcess();
+                auto p = (supervisor_is_active() && p_supervisor) ? p_supervisor : GetFocusProcess();
                 if(p)
                 {
                     p->HandleInputEvent(msg);

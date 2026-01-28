@@ -1,6 +1,7 @@
 #include "process.h"
 #include "cm33_data.h"
 #include "_gk_scancodes.h"
+#include "supervisor.h"
 #include "vmem.h"
 
 extern PMemBlock process_kernel_info_page;
@@ -21,20 +22,37 @@ int Process::HandleInputEvent(unsigned int cm33_cmd)
     /* Power, menu (always), and _unhandled_ volup/down go to supervisor */
     if(scode == 0 || (key == GK_KEYPOWER) || (key == GK_KEYMENU))
     {
-        switch(key)
-        {
-            case GK_KEYPOWER:
-            case GK_KEYMENU:
-            case GK_KEYVOLUP:
-            case GK_KEYVOLDOWN:
-                // TODO: send to supervisor
-                klog("input: send to supervisor not implemented\n");
-                return 0;
+        unsigned short sc = 0;
 
-            default:
-                // ignore
-                return 0;
+        switch(key)
+        {            
+            case GK_KEYPOWER:
+                sc = GK_SCANCODE_POWER;
+                break;
+
+            case GK_KEYMENU:
+                sc = GK_SCANCODE_MENU;
+                break;
+
+            case GK_KEYVOLUP:
+                sc = GK_SCANCODE_VOLUMEUP;
+                break;
+
+            case GK_KEYVOLDOWN:
+                sc = GK_SCANCODE_VOLUMEDOWN;
+                break;
         }
+
+        if(sc)
+        {
+            Event ev;
+            ev.type = (action == CM33_DK_MSG_RELEASE) ? Event::event_type_t::KeyUp :
+                Event::event_type_t::KeyDown;
+            ev.key = sc;
+            p_supervisor->events.Push(ev);
+        }
+
+        return 0;
     }
 
     /* Handle mouse buttons */

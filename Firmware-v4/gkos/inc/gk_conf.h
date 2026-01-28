@@ -1,7 +1,7 @@
 #ifndef GK_CONF_H
 #define GK_CONF_H
 
-#define GK_NUM_CORES                2
+#define GK_NUM_CORES                1
 
 #define GK_ENABLE_NETWORK           0
 #define GK_ENABLE_WIFI              0
