@@ -1,7 +1,7 @@
 #include "widget.h"
 #include <cmath>
 
-static const constexpr float btn_w = 32.0f;
+static const constexpr float btn_w = 40.0f;
 static const constexpr float btn_h = 32.0f;
 
 KeyboardWidget::KeyboardWidget()
