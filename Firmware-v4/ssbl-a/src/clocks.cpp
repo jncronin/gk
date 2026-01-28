@@ -38,8 +38,9 @@ void init_clocks()
     RCC->LSMCUDIVR |= RCC_LSMCUDIVR_LSMCUDIV;
     while(!(RCC->LSMCUDIVR & RCC_LSMCUDIVR_LSMCUDIVRDY));
     
-    // Provide ck_pll1_ref from HSI64
-    RCC->MUXSELCFGR = RCC->MUXSELCFGR &~ RCC_MUXSELCFGR_MUXSEL5_Msk;    // MUXSEL5 = PLL1 confusingly
+    // Provide ck_pll1_ref from HSE64
+    RCC->MUXSELCFGR = (RCC->MUXSELCFGR &~ RCC_MUXSELCFGR_MUXSEL5_Msk) |
+        (1U << RCC_MUXSELCFGR_MUXSEL5_Pos);    // MUXSEL5 = PLL1 confusingly
     (void)RCC->MUXSELCFGR;
 
     // Provide ck_ker_stgen from HSI64 via crossbar (33)
