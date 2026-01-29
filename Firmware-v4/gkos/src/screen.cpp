@@ -393,18 +393,42 @@ unsigned int TripleBufferScreenLayer::update()
     last_updated = cur_update;
 
     auto p = GetCurrentProcessForCore();
+
+    size_t copy_to_new = 0;
+    unsigned int p_layer = 0;
+
     if(p)
     {
         pfs[last_updated] = p->screen.screen_pf;
         lws[last_updated] = p->screen.screen_w;
         lhs[last_updated] = p->screen.screen_h;
         pids[last_updated] = p->id;
+
+        
+        if(!p->screen.updates_each_frame)
+        {
+            copy_to_new = p->screen.screen_w * p->screen.screen_h *
+                screen_get_bpp_for_pf(p->screen.screen_pf);
+            p_layer = p->screen.screen_layer;
+        }
     }
 
     // select a new screen to write to
     cur_update = 0;
     while(cur_update == last_updated || cur_update == cur_display)
         cur_update++;
+
+    cg.unlock();
+
+    /* Update the next screen with the current one for apps that only
+        perform updates rather than full refreshes */
+    if(copy_to_new)
+    {
+        // TODO: could use HPDMA on physical addresses (from pm[])
+        auto from = screen_buf_to_vaddr(p_layer, last_updated);
+        auto to = screen_buf_to_vaddr(p_layer, cur_update);
+        memcpy((void *)to, (void *)from, copy_to_new);
+    }
 
     return cur_update;
 }

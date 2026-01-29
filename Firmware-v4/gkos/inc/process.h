@@ -91,6 +91,7 @@ class Process
                 uint16_t screen_h = GK_SCREEN_HEIGHT;
                 uint8_t screen_pf = 0;
                 unsigned int screen_refresh = 60;
+                bool updates_each_frame = false;
 
                 unsigned int screen_layer = 0;
 
