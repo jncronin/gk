@@ -10,6 +10,7 @@
 #include "cache.h"
 #include <stm32mp2xx.h>
 #include <atomic>
+#include <cmath>
 
 const unsigned int scr_w = GK_SCREEN_WIDTH;
 const unsigned int scr_h = GK_SCREEN_HEIGHT;
@@ -33,10 +34,13 @@ const unsigned int scr_h = GK_SCREEN_HEIGHT;
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
 #define dma ((DMA_Channel_TypeDef *)PMEM_TO_VMEM(HPDMA1_Channel12_BASE))
 #define HPDMA1_VMEM ((DMA_TypeDef *)PMEM_TO_VMEM(HPDMA1_BASE))
+#define TIM2_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM2_BASE))
 
-static const constexpr pin PWM_BACKLIGHT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 4 };
+static const constexpr pin PWM_BACKLIGHT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 4, 8 };
 static const constexpr pin LS_OE_N { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE), 0 };
 static const constexpr pin CTP_WAKE { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 2 };
+
+static const constexpr unsigned int arr = 4096;
 
 volatile std::atomic_bool screen_flip_in_progress = false;
 Condition scr_vsync;
@@ -133,6 +137,23 @@ void init_screen()
     HPDMA1_VMEM->SECCFGR |= (1U << 12);
     HPDMA1_VMEM->PRIVCFGR |= (1U << 12);
 
+    // Enable backlight on TIM2 CH1 PA4 AF8
+    RCC_VMEM->TIM2CFGR |= RCC_TIM2CFGR_TIM2EN;
+    RCC_VMEM->TIM2CFGR &= ~RCC_TIM2CFGR_TIM2RST;
+    __asm__ volatile("dsb sy\n" ::: "memory");
+
+    PWM_BACKLIGHT.set_as_af();
+    TIM2_VMEM->CCMR1 = (0UL << TIM_CCMR1_CC1S_Pos) |
+        TIM_CCMR1_OC1PE |
+        (6UL << TIM_CCMR1_OC1M_Pos);
+    TIM2_VMEM->CCMR2 =0;
+    TIM2_VMEM->CCER = TIM_CCER_CC1E;
+    TIM2_VMEM->PSC = 5UL;    // (ck = ck/(1 + PSC))
+    TIM2_VMEM->ARR = arr;
+    TIM2_VMEM->CCR1 = 0UL;
+    TIM2_VMEM->BDTR = TIM_BDTR_MOE;
+    TIM2_VMEM->CR1 = TIM_CR1_CEN;
+
     // prepare screen backbuffers for layers 1 and 2
     for(unsigned int layer = 0; layer < 2; layer++)
     {
@@ -175,8 +196,7 @@ void init_screen()
     __asm__ volatile("dsb sy\n");
 
     // turn on backlight
-    PWM_BACKLIGHT.set_as_output();
-    PWM_BACKLIGHT.set();
+    screen_set_brightness(screen_get_brightness());
 
     // enable level shifter
     LS_OE_N.set_as_output();
@@ -696,6 +716,20 @@ int screen_set_brightness(int bright)
     if(bright > 100) bright = 100;
     if(bright < 0) bright = 0;
     brightness = bright;
+
+    // gamma function with minimum set to 2.5% of ARR
+    const double minimum = 0.025;
+    const double fsr = 1.0 - minimum;       // scale to this * ARR
+    const double gamma = 2.2;
+
+    double vin = (double)bright / 100.0;
+    double vout = std::pow(vin, gamma);
+
+    double vout_sc = vout * fsr + minimum;
+    auto vout_sc_i = (unsigned int)std::round(vout_sc * (double)arr);
+
+    TIM2_VMEM->CCR1 = vout_sc_i;
+
     return brightness;
 }
 
