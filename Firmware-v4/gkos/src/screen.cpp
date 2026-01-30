@@ -7,6 +7,7 @@
 #include "process.h"
 #include "process_interface.h"
 #include "pins.h"
+#include "cache.h"
 #include <stm32mp2xx.h>
 #include <atomic>
 
@@ -30,6 +31,8 @@ const unsigned int scr_h = GK_SCREEN_HEIGHT;
 #define LTDC_Layer2_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer2_BASE))
 #define LTDC_Layer3_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer3_BASE))
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
+#define dma ((DMA_Channel_TypeDef *)PMEM_TO_VMEM(HPDMA1_Channel12_BASE))
+#define HPDMA1_VMEM ((DMA_TypeDef *)PMEM_TO_VMEM(HPDMA1_BASE))
 
 static const constexpr pin PWM_BACKLIGHT { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE), 4 };
 static const constexpr pin LS_OE_N { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE), 0 };
@@ -123,6 +126,13 @@ VMemBlock l1_priv[3] = { InvalidVMemBlock(), InvalidVMemBlock(), InvalidVMemBloc
 
 void init_screen()
 {
+    // Enable HPDMA1 channel1
+    RCC_VMEM->HPDMA1CFGR |= RCC_HPDMA1CFGR_HPDMA1EN;
+    RCC_VMEM->HPDMA1CFGR &= ~RCC_HPDMA1CFGR_HPDMA1RST;
+
+    HPDMA1_VMEM->SECCFGR |= (1U << 12);
+    HPDMA1_VMEM->PRIVCFGR |= (1U << 12);
+
     // prepare screen backbuffers for layers 1 and 2
     for(unsigned int layer = 0; layer < 2; layer++)
     {
@@ -395,7 +405,10 @@ unsigned int TripleBufferScreenLayer::update()
     auto p = GetCurrentProcessForCore();
 
     size_t copy_to_new = 0;
+    size_t pitch = 0;
+    size_t nlines = 0;
     unsigned int p_layer = 0;
+    unsigned int update_type = 0;
 
     if(p)
     {
@@ -405,11 +418,13 @@ unsigned int TripleBufferScreenLayer::update()
         pids[last_updated] = p->id;
 
         
-        if(!p->screen.updates_each_frame)
+        if(p->screen.updates_each_frame != GK_SCREEN_UPDATE_FULL)
         {
-            copy_to_new = p->screen.screen_w * p->screen.screen_h *
-                screen_get_bpp_for_pf(p->screen.screen_pf);
+            pitch = p->screen.screen_h * screen_get_bpp_for_pf(p->screen.screen_pf);
+            nlines = p->screen.screen_w;
+            copy_to_new = nlines * pitch;
             p_layer = p->screen.screen_layer;
+            update_type = p->screen.updates_each_frame;
         }
     }
 
@@ -422,12 +437,59 @@ unsigned int TripleBufferScreenLayer::update()
 
     /* Update the next screen with the current one for apps that only
         perform updates rather than full refreshes */
-    if(copy_to_new)
+    if(update_type == GK_SCREEN_UPDATE_PARTIAL_READBACK)
     {
         // TODO: could use HPDMA on physical addresses (from pm[])
         auto from = screen_buf_to_vaddr(p_layer, last_updated);
         auto to = screen_buf_to_vaddr(p_layer, cur_update);
         memcpy((void *)to, (void *)from, copy_to_new);
+    }
+    else if(update_type == GK_SCREEN_UPDATE_PARTIAL_NOREADBACK)
+    {
+        // Use HPDMA so we return to the app quicker
+        while(dma->CCR & DMA_CCR_EN);
+
+        // decide on beat size - make it a factor of pitch
+        [[maybe_unused]] size_t beat_size = 0;
+        uint32_t beat_size_log2 = 0;
+        if(pitch & 0x1U)
+        {
+            beat_size = 1;
+            beat_size_log2 = 0;
+        }
+        else if(pitch & 0x2U)
+        {
+            beat_size = 2;
+            beat_size_log2 = 1;
+        }
+        else if(pitch & 0x4U)
+        {
+            beat_size = 4;
+            beat_size_log2 = 2;
+        }
+        else
+        {
+            beat_size = 8;
+            beat_size_log2 = 3;
+        }
+
+        // program DMA
+        dma->CTR1 = (15U << DMA_CTR1_DBL_1_Pos) |
+            DMA_CTR1_DINC |
+            (beat_size_log2 << DMA_CTR1_DDW_LOG2_Pos) |
+            (15U << DMA_CTR1_SBL_1_Pos) |
+            DMA_CTR1_SINC |
+            (beat_size_log2 << DMA_CTR1_SDW_LOG2_Pos);
+        dma->CTR2 = (1U << DMA_CTR2_TRIGM_Pos) |
+            DMA_CTR2_SWREQ;
+        dma->CTR3 = 0U;
+        dma->CBR1 = ((nlines - 1) << DMA_CBR1_BRC_Pos) |
+            (pitch << DMA_CBR1_BNDT_Pos);
+        dma->CBR2 = 0U;
+        dma->CSAR = pm[last_updated].base;
+        dma->CDAR = pm[cur_update].base;
+        dma->CLLR = 0U;
+        dma->CCR = DMA_CCR_EN;
     }
 
     return cur_update;
