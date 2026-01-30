@@ -474,9 +474,12 @@ unsigned int TripleBufferScreenLayer::update()
         }
 
         // program DMA
-        dma->CTR1 = (15U << DMA_CTR1_DBL_1_Pos) |
+        dma->CTR1 = 
+            DMA_CTR1_DSEC |
+            (15U << DMA_CTR1_DBL_1_Pos) |
             DMA_CTR1_DINC |
             (beat_size_log2 << DMA_CTR1_DDW_LOG2_Pos) |
+            DMA_CTR1_SSEC |
             (15U << DMA_CTR1_SBL_1_Pos) |
             DMA_CTR1_SINC |
             (beat_size_log2 << DMA_CTR1_SDW_LOG2_Pos);
