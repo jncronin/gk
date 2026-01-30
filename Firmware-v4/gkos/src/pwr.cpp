@@ -4,6 +4,8 @@
 #include "process.h"
 #include "i2c.h"
 
+adouble vsys, isys, psys;
+
 static void *pwr_thread(void *);
 
 void init_pwr()
@@ -46,16 +48,19 @@ void *pwr_thread(void *)
         int vbus_uv = (int)vbus * 1600;
         [[maybe_unused]] int vbus_v = vbus_uv / 1000000;
         [[maybe_unused]] int vbus_fract = vbus_uv % 1000000;
+        vsys = (double)vbus_uv / 1000000.0;
 
         // ultimately want microamps here
         //  uI = nV * 1000 / uR
         int64_t vshunt_nv = (int64_t)vshunt * 2500;
         int64_t ishunt_ua = (vshunt_nv * 1000) / 10000;
+        isys = (double)ishunt_ua / 1000000.0;
 
         // P = V * I => uP = uV * uI * 10^-6
         int64_t pshunt_uw = (int64_t)vbus_uv * ishunt_ua / 1000000;
         [[maybe_unused]] int pshunt_w = (int)(pshunt_uw / 1000000);
         [[maybe_unused]] int pshunt_fract = (int)(pshunt_uw % 1000000);
+        psys = (double)pshunt_uw / 1000000.0;
 
 #if GK_ENABLE_PWR_DUMP
         klog("pwr: id: %x, %x, vbus: %u, vshunt: %d\n", ina_id[0], ina_id[1], vbus, vshunt);

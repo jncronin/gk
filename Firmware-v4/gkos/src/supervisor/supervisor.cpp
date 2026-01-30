@@ -680,7 +680,8 @@ void *supervisor_thread(void *p)
                     strftime(buf, 63, "%F %T", t);
                     buf[63] = 0;
                     char buf_line[128];
-                    snprintf(buf_line, 127, "%s %.1f FPS %.1fC %.2fV", buf, screen_get_fps(), 0.0 /* temp_get_core() */, 0.0 /* pwr_get_vdd() */);
+                    snprintf(buf_line, 127, "%s %.1f FPS %.1fC %.2fV %.2fW", buf, screen_get_fps(), 0.0 /* temp_get_core() */,
+                        (double)vsys, (double)psys);
                     buf_line[127] = 0;
                     l_time.text = std::string(buf_line);
 
