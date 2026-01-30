@@ -60,6 +60,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
         proc->screen.screen_w = proc_info->screen_w;
         proc->screen.screen_h = proc_info->screen_h;
         proc->screen.screen_refresh = proc_info->screen_refresh;
+        proc->screen.updates_each_frame = proc_info->screen_overwritten_each_frame;
 
         if(proc->screen.screen_w == 0)
             proc->screen.screen_w = GK_SCREEN_WIDTH;
@@ -81,6 +82,12 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
 
         if(proc->screen.screen_pf > GK_PIXELFORMAT_MAX)
             proc->screen.screen_pf = 0;
+
+        if(proc->screen.updates_each_frame < 0 ||
+            proc->screen.updates_each_frame >= 3)
+        {
+            proc->screen.updates_each_frame = 0;
+        }
     }
 
     {
