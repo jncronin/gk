@@ -439,7 +439,8 @@ unsigned int TripleBufferScreenLayer::update()
         perform updates rather than full refreshes */
     if(update_type == GK_SCREEN_UPDATE_PARTIAL_READBACK)
     {
-        // TODO: could use HPDMA on physical addresses (from pm[])
+        // Readback updates need the data to be visible to the processor in cache
+        //  Could either DMA and invalidate cache or just direct copy (we do the latter)
         auto from = screen_buf_to_vaddr(p_layer, last_updated);
         auto to = screen_buf_to_vaddr(p_layer, cur_update);
         memcpy((void *)to, (void *)from, copy_to_new);
