@@ -6,6 +6,7 @@
 #include "clocks.h"
 #include "adc.h"
 #include "lsm.h"
+#include <cmath>
 
 #include "interface/cm33_data.h"
 
@@ -36,24 +37,109 @@ class ioexp_pin
         }
 };
 
-class joy_pin
+/* This maps a pair of joystick axes (X,Y) to a digital 8-way stick
+
+
+    There is a circular deadzone in the middle.  Then we divide up the outer
+    region into 8 segments: UP, UP/RIGHT, RIGHT etc
+    Each segment is 45 degrees so the dividing lines are at 22.5, 67.5 etc degrees.
+
+    The result is then passed through a debouncer (joy_pin) below.
+*/
+class digi_joy
 {
     public:
-        bool positive;
-        int16_t *v;
+        const int16_t *x, *y;
+        int16_t deadzone;
+        float dz_sq;
+        float dist;
+        float ang;
+        unsigned int btns = 0U; // L, R, U, D
+        static const unsigned int left = 1U << 0;
+        static const unsigned int right = 1U << 1;
+        static const unsigned int up = 1U << 2;
+        static const unsigned int down = 1U << 3;
 
-        joy_pin(int16_t *_v, bool pos) : positive(pos), v(_v) {}
-        bool value() const
+        digi_joy(const int16_t *_x, const int16_t *_y, int16_t _deadzone = 8000) :
+            x(_x), y(_y), deadzone(_deadzone)
         {
-            // pretend to be an active low output
+            dz_sq = (float)(int)_deadzone * (float)(int)_deadzone;
+        }
 
-            if(positive)
+        void tick()
+        {
+            auto cx = (float)(int)*x;
+            auto cy = (float)(int)*y;
+
+            dist = cx * cx + cy * cy;
+            if(dist < dz_sq)
             {
-                return *v < 8000;
+                btns = 0;
+                return;
+            }
+
+            // up is encoded as negative y, left as negative x - correct for this for typical
+            //  cartesian coordinates
+            ang = std::atan2(-cy, cx);
+
+            // check all angles
+            if(ang > (float)M_PI * 7.0f / 8.0f)
+            {
+                btns = left;
+            }
+            else if(ang > (float)M_PI * 5.0f / 8.0f)
+            {
+                btns = left | up;
+            }
+            else if(ang > (float)M_PI * 3.0f / 8.0f)
+            {
+                btns = up;
+            }
+            else if(ang > (float)M_PI * 1.0f / 8.0f)
+            {
+                btns = right | up;
+            }
+            else if(ang > (float)M_PI * -1.0f / 8.0f)
+            {
+                btns = right;
+            }
+            else if(ang > (float)M_PI * -3.0f / 8.0f)
+            {
+                btns = right | down;
+            }
+            else if(ang > (float)M_PI * -5.0f / 8.0f)
+            {
+                btns = down;
+            }
+            else if(ang > (float)M_PI * -7.0f / 8.0f)
+            {
+                btns = left | down;
             }
             else
             {
-                return *v > -8000;
+                btns = left;
+            }
+        }
+};
+
+class joy_pin
+{
+    public:
+        const digi_joy &dj;
+        unsigned int btn;
+
+        joy_pin(const digi_joy &_dj, unsigned int _btn) : dj(_dj), btn(_btn) {}
+
+        bool value() const
+        {
+            // pretend to be an active low output
+            if(dj.btns & btn)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
             }
         }
 };
@@ -74,18 +160,27 @@ const ioexp_pin BTN_MCU_JOY_A(1U << 12);
 const ioexp_pin BTN_MCU_JOY_B(1U << 13);
 const ioexp_pin BTN_MCU_MENU(1U << 14);
 
-const joy_pin JOY_A_LEFT((int16_t *)&d.joy_a.x, false);
-const joy_pin JOY_A_RIGHT((int16_t *)&d.joy_a.x, true);
-const joy_pin JOY_A_UP((int16_t *)&d.joy_a.y, false);
-const joy_pin JOY_A_DOWN((int16_t *)&d.joy_a.y, true);
-const joy_pin JOY_B_LEFT((int16_t *)&d.joy_b.x, false);
-const joy_pin JOY_B_RIGHT((int16_t *)&d.joy_b.x, true);
-const joy_pin JOY_B_UP((int16_t *)&d.joy_b.y, false);
-const joy_pin JOY_B_DOWN((int16_t *)&d.joy_b.y, true);
-const joy_pin JOY_TILT_LEFT((int16_t *)&d.joy_tilt.x, false);
-const joy_pin JOY_TILT_RIGHT((int16_t *)&d.joy_tilt.x, true);
-const joy_pin JOY_TILT_UP((int16_t *)&d.joy_tilt.y, true);
-const joy_pin JOY_TILT_DOWN((int16_t *)&d.joy_tilt.y, false);
+digi_joy dj_A((const int16_t *)&d.joy_a.x,
+    (const int16_t *)&d.joy_a.y);
+digi_joy dj_B((const int16_t *)&d.joy_b.x,
+    (const int16_t *)&d.joy_b.y);
+digi_joy dj_TILT((const int16_t *)&d.joy_tilt.x,
+    (const int16_t *)&d.joy_tilt.y, 12000);
+
+const joy_pin JOY_A_LEFT(dj_A, digi_joy::left);
+const joy_pin JOY_A_RIGHT(dj_A, digi_joy::right);
+const joy_pin JOY_A_UP(dj_A, digi_joy::up);
+const joy_pin JOY_A_DOWN(dj_A, digi_joy::down);
+
+const joy_pin JOY_B_LEFT(dj_B, digi_joy::left);
+const joy_pin JOY_B_RIGHT(dj_B, digi_joy::right);
+const joy_pin JOY_B_UP(dj_B, digi_joy::up);
+const joy_pin JOY_B_DOWN(dj_B, digi_joy::down);
+
+const joy_pin JOY_TILT_LEFT(dj_TILT, digi_joy::left);
+const joy_pin JOY_TILT_RIGHT(dj_TILT, digi_joy::right);
+const joy_pin JOY_TILT_UP(dj_TILT, digi_joy::down);        // invert tilt for typical flight stick orientation
+const joy_pin JOY_TILT_DOWN(dj_TILT, digi_joy::up);
 
 Debounce db_VOLUP(BTN_MCU_VOLUP, GK_KEYVOLUP);
 Debounce db_VOLDOWN(BTN_MCU_VOLDOWN, GK_KEYVOLDOWN);
@@ -310,6 +405,10 @@ static void joystick_tick()
 
     joy_apply_calibration(&d.joy_a_raw, &d.joy_a, &dk.joy_a_calib);
     joy_apply_calibration(&d.joy_b_raw, &d.joy_b, &dk.joy_b_calib);
+
+    dj_A.tick();
+    dj_B.tick();
+    dj_TILT.tick();
 }
 
 static void tick()
