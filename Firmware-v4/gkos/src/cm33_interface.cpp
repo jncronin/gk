@@ -37,7 +37,7 @@ cm33_joy_calib input_joy_calib[2] =
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
 };
-static bool input_tilt_enable = true;
+static bool input_tilt_enable = false;
 
 static void cm33_irq(exception_regs *, uint64_t);
 
@@ -324,4 +324,10 @@ void init_cm33_interface()
 
     Schedule(Thread::Create("cm33", cm33_manager_thread, nullptr, true, GK_PRIORITY_HIGH,
         p_kernel));
+}
+
+int cm33_set_tilt(bool en)
+{
+    input_tilt_enable = en;
+    return 0;
 }

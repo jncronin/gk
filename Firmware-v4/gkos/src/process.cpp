@@ -9,6 +9,7 @@
 #include "_gk_memaddrs.h"
 #include "_gk_scancodes.h"
 #include "syscalls_int.h"
+#include "cm33_interface.h"
 #include <atomic>
 
 static std::atomic<pid_t> focus_process = 0;
@@ -218,7 +219,20 @@ int SetFocusProcess(PProcess p)
     kinfo->joystick_buttons = 0;
     kinfo->joystick_nbuttons = nbuttons;
 
-    // TODO: enable/disable tilt if appropriate
+    // enable/disable tilt if appropriate
+    if(p->keymap.tilt_stick == GK_STICK_DIGITAL &&
+        p->keymap.gamepad_to_scancode[GK_KEYTILTLEFT] == 0 &&
+        p->keymap.gamepad_to_scancode[GK_KEYTILTRIGHT] == 0 &&
+        p->keymap.gamepad_to_scancode[GK_KEYTILTUP] == 0 &&
+        p->keymap.gamepad_to_scancode[GK_KEYTILTDOWN] == 0)
+    {
+        cm33_set_tilt(false);
+    }
+    else
+    {
+        cm33_set_tilt(true);
+    }
+    
     // restore palette if used
 
     return 0;
