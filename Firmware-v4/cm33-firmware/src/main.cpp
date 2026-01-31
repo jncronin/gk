@@ -303,10 +303,10 @@ static void joystick_tick()
 
         Add dead zone in the middle of 8k (after scaling and calibration), then pass through a debouncer for digital inputs */
     
-    d.joy_a_raw.x = joy_scale(adc_vals[0], false);
-    d.joy_a_raw.y = joy_scale(adc_vals[1], true);
-    d.joy_b_raw.x = joy_scale(adc_vals[3], false);
-    d.joy_b_raw.y = joy_scale(adc_vals[2], false);
+    d.joy_a_raw.x = joy_scale(adc_vals[0] & 0x3fffU, false);
+    d.joy_a_raw.y = joy_scale(adc_vals[1] & 0x3fffU, true);
+    d.joy_b_raw.x = joy_scale(adc_vals[3] & 0x3fffU, false);
+    d.joy_b_raw.y = joy_scale(adc_vals[2] & 0x3fffU, false);
 
     joy_apply_calibration(&d.joy_a_raw, &d.joy_a, &dk.joy_a_calib);
     joy_apply_calibration(&d.joy_b_raw, &d.joy_b, &dk.joy_b_calib);
