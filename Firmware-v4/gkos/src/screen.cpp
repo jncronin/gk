@@ -77,7 +77,7 @@ class FPSCounter
                 ffps = (double)nframes * 1000000.0 / (double)kernel_time_to_us(tdiff);
 #if GK_GPU_SHOW_FPS
                 auto fps = (unsigned long)ffps;
-                klog("screen: layer %d: FPS: %lu\n", layer, fps);
+                klog("screen: layer %d: FPS: %lu, CPU: %u\n", layer, fps, (unsigned int)(sched.CPUUsage() * 100.0));
 #endif
                 nframes = 0;
                 last_dump = now;

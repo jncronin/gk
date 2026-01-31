@@ -9,12 +9,15 @@
 #include "threadproclist.h"
 
 #include <vector>
+#include <atomic>
 
 class Scheduler
 {
     public:
         constexpr static const int npriorities = GK_NPRIORITIES;
         constexpr static const unsigned int ncores = GK_NUM_CORES;
+        std::atomic<double> cpu_usage[ncores];
+        double CPUUsage(int core_id = -1);
 
     protected:
         struct IndexedThreadVector
@@ -25,6 +28,9 @@ class Scheduler
         };
 
         PThread idle_threads[ncores];
+        std::atomic<uint64_t> timeslice_start[ncores];
+        uint64_t idle_thread_times[ncores];
+        uint64_t non_idle_thread_times[ncores];
 
         IndexedThreadVector tlist[npriorities];
 

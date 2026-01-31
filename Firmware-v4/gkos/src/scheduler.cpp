@@ -284,6 +284,7 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
     extern PProcess p_kernel;
     idle_threads[core] = Thread::Create("idle_" + std::to_string(core),
         idle_thread, nullptr, true, GK_PRIORITY_IDLE, p_kernel);
+    idle_threads[core]->is_idle_thread = true;
 
     scheduler_running[core] = true;
 
@@ -451,8 +452,35 @@ void Scheduler::SetNextThread(uint32_t ncore, Thread *t)
     *(id_t *)(0xfffffd0030000000 + ncore * 8) = t->id;
 #endif
 
+    /* Update timeslices */
+    if(current_thread[ncore])
+    {
+        auto now = clock_cur_us();
+        auto cur_thread_time = now - timeslice_start[ncore].exchange(now);
+        current_thread[ncore]->thread_time_us += cur_thread_time;
+        auto is_idle = current_thread[ncore]->is_idle_thread;
+
+        if(is_idle)
+        {
+            idle_thread_times[ncore] += cur_thread_time;
+        }
+        else
+        {
+            non_idle_thread_times[ncore] += cur_thread_time;
+        }
+        // update 
+        if(idle_thread_times[ncore] + non_idle_thread_times[ncore] >= 1000000UL)
+        {
+            cpu_usage[ncore] = (double)non_idle_thread_times[ncore] /
+                (double)(idle_thread_times[ncore] + non_idle_thread_times[ncore]);
+            non_idle_thread_times[ncore] = 0;
+            idle_thread_times[ncore] = 0;
+        }
+    }
+
     std::swap(current_thread[ncore], next_thread[ncore]);
     next_thread[ncore].reset();
+    cg.unlock();
 }
 
 Thread *GetNextThreadForCore(uint32_t iar, void *, uint32_t irq)
@@ -481,4 +509,25 @@ PThread &Scheduler::GetCurThread(uint32_t ncore)
 {
     CriticalGuard cg(sl_cur_next);
     return current_thread[ncore];
+}
+
+double Scheduler::CPUUsage(int core_id)
+{
+    if(core_id < 0)
+    {
+        double ret = 0.0;
+        for(unsigned int i = 0; i < ncores; i++)
+        {
+            ret += cpu_usage[i];
+        }
+        return ret;
+    }
+    else if((unsigned int)core_id < ncores)
+    {
+        return (double)cpu_usage[(unsigned int)core_id];
+    }
+    else
+    {
+        return 0.0;
+    }
 }

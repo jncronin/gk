@@ -4,6 +4,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <atomic>
 #include "ostypes.h"
 #include "osmutex.h"
 #include "kernel_time.h"
@@ -94,6 +95,10 @@ class Thread
         /* Stores the thread to which we are temporarily assuming the lower half */
         Spinlock sl_lower_half_user_thread{};
         id_t lower_half_user_thread = 0;
+
+        /* system times */
+        bool is_idle_thread = false;
+        std::atomic<uint64_t> thread_time_us = 0;
 
         typedef void *(*threadstart_t)(void *p);
         static std::shared_ptr<Thread> Create(const std::string &name,
