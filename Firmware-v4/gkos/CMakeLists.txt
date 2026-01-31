@@ -81,6 +81,7 @@ target_sources(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/pins.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/cpuclock.cpp"
         ${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source/ff.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source/ffsystem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source/ffunicode.c

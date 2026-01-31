@@ -1,6 +1,7 @@
 #include <stm32mp2xx.h>
 #include "clocks.h"
 #include "vmem.h"
+#include "smc.h"
 
 #define TIM3_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM3_BASE))
 
@@ -60,4 +61,37 @@ void clock_get_timebase(struct timespec *tp)
         tp->tv_nsec = 0;
         tp->tv_sec  = 0;
     }
+}
+
+unsigned int clock_set_cpu_and_vddcpu(unsigned int freq)
+{
+    uint32_t part_no = *(uint32_t *)(0xfffffd0044000024);
+    unsigned int max_freq = (part_no & 0x80000000U) ? 1500000000U : 1200000000U;
+    const unsigned int min_freq = 400000000U;
+
+    if(freq > max_freq)
+    {
+        freq = max_freq;
+    }
+    if(freq < min_freq)
+    {
+        freq = min_freq;
+    }
+
+    if(freq > 1200000000U)
+    {
+        // set vddcpu to 0.91V
+        smc_set_power(SMC_Power_Target::CPU, 910U);
+        udelay(5000);
+    }
+
+    freq = clock_set_cpu(freq);
+
+    if(freq <= 1200000000U)
+    {
+        // set vddcpu to 0.8V
+        smc_set_power(SMC_Power_Target::CPU, 800U);
+    }
+
+    return freq;
 }

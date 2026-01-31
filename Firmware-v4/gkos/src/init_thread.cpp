@@ -45,6 +45,7 @@ void *init_thread(void *)
     p_gkmenu->screen.screen_w = 640;
     p_gkmenu->screen.screen_h = 480;
     p_gkmenu->screen.updates_each_frame = GK_SCREEN_UPDATE_PARTIAL_NOREADBACK;
+    p_gkmenu->cpu_freq = 800000000U;
 
     // gkmenu keymap
     memset(&p_gkmenu->keymap, 0, sizeof(p_gkmenu->keymap));

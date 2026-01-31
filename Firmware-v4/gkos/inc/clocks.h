@@ -4,6 +4,7 @@
 #include <ctime>
 
 #include "gkos_boot_interface.h"
+#include "cpuclock.h"
 
 void init_clocks(const gkos_boot_interface *gbi);
 
@@ -14,6 +15,8 @@ uint64_t clock_cur_ms();
 void udelay(unsigned int);
 
 void clock_get_timebase(struct timespec *tp);
+
+unsigned int clock_set_cpu_and_vddcpu(unsigned int freq);
 
 constexpr inline timespec operator+=(timespec &a, const timespec &b)
 {

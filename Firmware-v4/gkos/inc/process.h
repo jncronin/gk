@@ -133,6 +133,7 @@ class Process
 
         bool is_privileged = true;
         std::unique_ptr<userspace_mem_t> user_mem;
+        unsigned int cpu_freq = 1200000000U;
 
         open_files_t open_files{};
         owned_pages_t owned_pages{};

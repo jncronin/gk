@@ -48,6 +48,7 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_uart.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s
         ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/cpuclock.cpp
 )
 
 set_target_properties(${PROJECT_NAME}

@@ -103,6 +103,11 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     // keymap
     proc->keymap = proc_info->keymap;
 
+    if(proc_info->cpu_freq >= 400000000U && proc_info->cpu_freq <= 1500000000U)
+    {
+        proc->cpu_freq = proc_info->cpu_freq;
+    }
+
     // Create startup thread
     auto t_t0 = Thread::Create(proc->name, proc_ep, nullptr, false, GK_PRIORITY_NORMAL, proc);
     if(!t_t0)

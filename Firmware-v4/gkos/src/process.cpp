@@ -232,8 +232,15 @@ int SetFocusProcess(PProcess p)
     {
         cm33_set_tilt(true);
     }
-    
+
     // restore palette if used
+
+
+    // update cpu freq
+    if(p->cpu_freq != clock_get_cpu())
+    {
+        clock_set_cpu_and_vddcpu(p->cpu_freq);
+    }
 
     return 0;
 }
