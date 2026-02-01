@@ -94,7 +94,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
     switch(sno)
     {
         case GetThreadHandle:
-            *reinterpret_cast<Thread**>(r1) = GetCurrentThreadForCore();
+            *reinterpret_cast<id_t *>(r1) = GetCurrentThreadForCore()->id;
             break;
 
         case FlipFrameBuffer:
