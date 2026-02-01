@@ -60,7 +60,12 @@ class CriticalGuard
         using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
 
     public:
-        CriticalGuard(Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false)
+        CriticalGuard(Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false), _try_only(false)
+        {
+            relock();
+        }
+
+        CriticalGuard(bool try_once, Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false), _try_only(try_once)
         {
             relock();
         }
@@ -86,6 +91,12 @@ class CriticalGuard
                 i = 0U;
                 std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
                 restore_interrupts();
+
+                if(_try_only)
+                {
+                    // only try once - code can see if we're locked by using IsLocked()
+                    return;
+                }
             }
         }
 
@@ -136,11 +147,14 @@ class CriticalGuard
             unlock(false);
         }
 
+        bool IsLocked() const { return is_locked; }
+
     private:
         std::tuple<Spinlock_t &...> sl;
         uint64_t cpsr;
         bool is_locked;
         bool has_disabled_ints;
+        bool _try_only;
 };
 
 template <Spinlock_c... Spinlock_t> requires all_same<Spinlock_t...>

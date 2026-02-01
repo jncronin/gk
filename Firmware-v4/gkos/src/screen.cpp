@@ -538,8 +538,8 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
 
         if(p)
         {
-            CriticalGuard cg2(p->screen.sl);
-            if(p->screen.new_clut)
+            CriticalGuard cg2(true, p->screen.sl);
+            if(cg2.IsLocked() && p->screen.new_clut)
             {
                 p->screen.new_clut = false;
                 new_clut = true;
