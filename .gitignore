@@ -583,3 +583,4 @@ jlink-log.txt
 !Firmware-v4/gkos/libgcc.a
 !Firmware-v4/gkos/libstdc++.a
 !Firmware-v4/gkos/libsupc++.a
+*.chitubox
