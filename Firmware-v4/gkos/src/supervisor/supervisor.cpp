@@ -685,6 +685,8 @@ void *supervisor_thread(void *p)
                     buf_line[127] = 0;
                     l_time.text = std::string(buf_line);
 
+                    klog("supervisor: %s\n", buf_line);
+
                     // update status images
                     /*
                     pwr_status pstat;
