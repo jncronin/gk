@@ -15,7 +15,7 @@
 static uint8_t *klog_buf_uart = (uint8_t *)PMEM_TO_VMEM(0x20090000);
 static uint8_t *klog_buf_file = (uint8_t *)PMEM_TO_VMEM(0x20098000);
 
-static Condition klog_updated{};
+static BinarySemaphore klog_updated{};
 
 void init_klogbuffer()
 {
