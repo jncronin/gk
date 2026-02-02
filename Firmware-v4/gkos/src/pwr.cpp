@@ -8,6 +8,7 @@
 
 adouble vsys, isys, psys;
 adouble t0, t1, tavg;
+adouble vcell, soc, crate;
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define DTS_VMEM ((DTS_TypeDef *)PMEM_TO_VMEM(DTS_BASE))
@@ -97,7 +98,7 @@ void *pwr_thread(void *)
         }
         else
         {
-            auto dts_cnt = DTS_VMEM->TSCSMPLCNTR;
+            [[maybe_unused]] auto dts_cnt = DTS_VMEM->TSCSMPLCNTR;
             auto ts0_d = DTS_VMEM->TS0SDIFDATAR;
             auto ts1_d = DTS_VMEM->TS1SDIFDATAR;
 
@@ -163,6 +164,44 @@ void *pwr_thread(void *)
         klog("pwr: ISHUNT: %d uA\n", (int)ishunt_ua);
         klog("pwr: PSHUNT: %d.%06d W\n", pshunt_w, pshunt_fract);
 #endif
+
+        // MAX17048 on 0x54
+        const unsigned int max_addr = 0x40;
+
+        unsigned int vcell_i = 0, soc_i = 0, crate_i = 0;
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x02, &vcell_i, 2);
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x04, &soc_i, 2);
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x16, &crate_i, 2);
+
+        vcell_i = __builtin_bswap16(vcell_i);
+        soc_i = __builtin_bswap16(soc_i);
+        crate_i = __builtin_bswap16(crate_i);
+        int i_crate = (int)(int16_t)crate_i;
+
+        vcell = (double)vcell_i * 78.125 / 1000000.0;
+        soc = (double)soc_i / 256.0;
+        crate = (double)i_crate * 0.208;
+
+        char maxbuf[256];
+        snprintf(maxbuf, sizeof(maxbuf) - 1,
+            "pwr: vcell: %f, soc: %f, crate: %f\n", (double)vcell, (double)soc, (double)crate);
+        maxbuf[sizeof(maxbuf) - 1] = 0;
+        klog(maxbuf);
+
+
+        uint16_t version, hibrt, config, vreset, status;
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x08, &version, 2);
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x0a, &hibrt, 2);
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x0c, &config, 2);
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x18, &vreset, 2);
+        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x1a, &status, 2);
+        klog("pwr: version: %x, hibrt: %x, config: %x, vreset: %x, status: %x\n",
+            __builtin_bswap16(version),
+            __builtin_bswap16(hibrt),
+            __builtin_bswap16(config),
+            __builtin_bswap16(vreset),
+            __builtin_bswap16(status));
+
 
         Block(clock_cur() + kernel_time_from_ms(1000));
     }

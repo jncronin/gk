@@ -9,5 +9,6 @@ using adouble = std::atomic<double>;
 
 extern adouble vsys, isys, psys;
 extern adouble t0, t1, tavg;
+extern adouble vcell, soc, crate;
 
 #endif
