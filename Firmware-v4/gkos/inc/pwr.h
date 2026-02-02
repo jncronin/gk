@@ -8,5 +8,6 @@ void init_pwr();
 using adouble = std::atomic<double>;
 
 extern adouble vsys, isys, psys;
+extern adouble t0, t1, tavg;
 
 #endif
