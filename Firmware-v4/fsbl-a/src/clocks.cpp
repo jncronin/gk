@@ -17,6 +17,8 @@ void init_clocks()
     while(RCC->BDCR & RCC_BDCR_LSERDY);
     RCC->BDCR &= ~RCC_BDCR_LSEBYP;
     __asm__ volatile("dsb sy\n" ::: "memory");
+    RCC->BDCR |= RCC_BDCR_LSEGFON;
+    __asm__ volatile("dsb sy\n" ::: "memory");
     RCC->BDCR |= RCC_BDCR_LSEON;
     RCC->BDCR |= RCC_BDCR_LSION;
     __asm__ volatile("dsb sy\n" ::: "memory");

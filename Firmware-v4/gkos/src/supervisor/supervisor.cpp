@@ -674,7 +674,8 @@ void *supervisor_thread(void *p)
                 if(!kernel_time_is_valid(last_status_update) || clock_cur() >= (last_status_update + kernel_time_from_ms(1000)))
                 {
                     // update time/date
-                    timespec tp = clock_cur();  // TOOD: make actual time/date
+                    timespec tp;
+                    clock_get_realtime(&tp);
                     auto t = localtime(&tp.tv_sec);
                     char buf[64];
                     strftime(buf, 63, "%F %T", t);

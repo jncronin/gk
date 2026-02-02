@@ -9,6 +9,7 @@
 #include "cache.h"
 #include "pmem.h"
 #include "syscalls_int.h"
+#include "klog_buffer.h"
 
 #define DEBUG_PF        0
 
@@ -113,6 +114,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
     if(!t)
     {
+        klogbuffer_purge_uart();
         while(true);
     }
 

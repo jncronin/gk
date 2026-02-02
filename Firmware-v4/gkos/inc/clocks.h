@@ -15,6 +15,10 @@ uint64_t clock_cur_ms();
 void udelay(unsigned int);
 
 void clock_get_timebase(struct timespec *tp);
+void clock_get_realtime(struct timespec *tp);
+int clock_get_timespec_from_rtc(timespec *ts);
+void clock_set_timebase(const struct timespec *tp);
+int clock_set_rtc_from_timespec(const timespec *ts);
 
 unsigned int clock_set_cpu_and_vddcpu(unsigned int freq);
 

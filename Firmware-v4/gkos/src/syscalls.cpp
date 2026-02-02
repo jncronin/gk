@@ -774,6 +774,47 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
             }
             break;
 
+        case __syscall_gettimeofday:
+            {
+                auto p = reinterpret_cast<__syscall_gettimeofday_params *>(r2);
+                int ret = syscall_gettimeofday(p->tv, (timezone *)p->tz, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
+        case __syscall_clock_gettime:
+            {
+                auto p = reinterpret_cast<__syscall_clock_gettime_params *>(r2);
+                if(!p->tp)
+                {
+                    *reinterpret_cast<int *>(r3) = EINVAL;
+                    *reinterpret_cast<int *>(r1) = -1;
+                }
+                else
+                {
+                    switch(p->clk_id)
+                    {
+                        case CLOCK_REALTIME:
+                            clock_get_realtime(p->tp);
+                            *reinterpret_cast<int *>(r1) = 0;
+                            break;
+
+                        case 4: // MONOTONIC
+                        case 5: // MONOTONIC_RAW
+                            *p->tp = clock_cur();
+                            *reinterpret_cast<int *>(r1) = 0;
+                            break;
+
+                        default:
+                            *reinterpret_cast<int *>(r3) = EINVAL;
+                            *reinterpret_cast<int *>(r1) = -1;
+                            break;
+                    }
+                }
+            }
+            break;
+
+
 #if 0
         case WaitSimpleSignal:
             {
