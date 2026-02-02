@@ -1,13 +1,12 @@
 /*
 
-The ssbl runs from QSPI NOR flash at 60100000
+The ssbl runs from QSPI NOR flash at 60020000
 
 Sysram is still in use for the stack, the bootrom_api structure and
  the AP executing code in an infinite loop.
 
-Therefore, use RETRAM for our RAM needs
-The AP does a WFI loop in SRAM2 (where it also has its stack)
- - need to set the first page of SRAM2 for secure access therefore
+Therefore, use VDERAM for our RAM needs
+The AP does a WFI loop in VDERAM (where it also has its stack)
 
 We use the second 128 kiB of flash.
 */
