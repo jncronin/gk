@@ -24,6 +24,8 @@
 #include "memchk.h"
 #include "btnled.h"
 #include "cm33_interface.h"
+#include "klog_buffer.h"
+#include "retram.h"
 #include <memory>
 
 // test threads
@@ -47,6 +49,9 @@ extern "C" int mp_kpremain(const gkos_boot_interface *_gbi, uint64_t magic)
     // These need to happen before __libc_init_array, which may call malloc
     gbi = *_gbi;
 
+    init_retram();
+    init_klogbuffer();
+
     init_clocks(_gbi);
     
     klog("gkos: startup\n");
@@ -55,11 +60,16 @@ extern "C" int mp_kpremain(const gkos_boot_interface *_gbi, uint64_t magic)
 
     klog("gkos: magic: %s, ddr: %llx - %llx\n", (const char *)(&magic_str[0]), _gbi->ddr_start, _gbi->ddr_end);
     
+    klogbuffer_purge_uart();
+
     init_pmem(_gbi->ddr_start, _gbi->ddr_end);
 
     // Initialize a upper half block manager in the space between the mapped physical memory and the kernel
     init_vblock();
     init_kheap();
+
+    klogbuffer_purge_uart();
+
     return 0;
 }
 
@@ -74,6 +84,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
             klog("gkos: booting on EV1 board\n");
             break;
     }
+
+    klogbuffer_purge_uart();
 
     init_memchk();
 
@@ -117,6 +129,8 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     //Schedule(Thread::Create("testa", task_a, nullptr, true, 1, p_kernel));
     //Schedule(Thread::Create("testb", task_b, nullptr, true, 1, p_kernel));
 
+    klogbuffer_purge_uart();
+
     init_i2c();
     init_sd();
     init_ext4();
@@ -126,7 +140,10 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_ctp();
     init_cm33_interface();
 
+    klogbuffer_purge_uart();
+
     init_process_interface();
+    init_klogbuffer_thread();
 
     init_btnled();
     btnled_setcolor(0x808080);
