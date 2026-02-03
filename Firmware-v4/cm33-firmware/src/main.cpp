@@ -21,7 +21,7 @@ __attribute__((section(".sram2"))) volatile uint32_t rb[rb_size];
 
 uint32_t adc_vals[4];
 int lsm_ret = 0;
-unsigned int ioexp_keystate = 0;
+unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
 
 class ioexp_pin
 {
