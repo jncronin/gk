@@ -176,7 +176,7 @@ static volatile char *cur_buf_p(void *buf, size_t nbytes,
 
 unsigned int I2C::WaitTimeout(unsigned int wait_flag, unsigned int ms)
 {
-    auto tout = clock_cur() + kernel_time_from_ms(5);
+    auto tout = clock_cur() + kernel_time_from_ms(ms);
     while(!(inst->ISR & (wait_flag | I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO)))
     {
         if(clock_cur() > tout)

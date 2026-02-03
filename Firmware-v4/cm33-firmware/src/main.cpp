@@ -23,6 +23,9 @@ uint32_t adc_vals[4];
 int lsm_ret = 0;
 unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
 
+volatile bool ticked = false;
+static void tick();
+
 class ioexp_pin
 {
     public:
@@ -235,8 +238,6 @@ int main()
     dk.rb_size = rb_size;
     dk.rb_paddr = (uint32_t)(uintptr_t)rb;
 
-    // TODO: add SLEEPONEXIT to SCB->SCR to ensure fully interrupt driven mode
-
     init_i2c();
     init_adc();
     init_lsm();
@@ -269,6 +270,10 @@ int main()
     while(true)
     {
         __WFI();
+        if(ticked)
+        {
+            tick();
+        }
     }
 }
 
@@ -509,7 +514,7 @@ static void tick()
 extern "C" void TIM6_IRQHandler()
 {
     clock_tick();
-    tick();
+    ticked = true;
     TIM6->SR = 0;
     __DMB();
 }
