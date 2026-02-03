@@ -10,7 +10,7 @@ struct exception_regs
     uint64_t fp, lr;
     uint64_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, res0;
     uint64_t saved_spsr_el1, saved_elr_el1;
-    uint64_t fpu_regs[16];
+    uint64_t fpu_regs[64];
 };
 
 extern "C" void gic_irq_handler(uint32_t aiar, exception_regs *regs, uint64_t elr_el1);

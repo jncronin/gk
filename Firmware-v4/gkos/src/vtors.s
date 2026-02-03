@@ -70,7 +70,7 @@ _vtor_tbl_entry _lower32_serror
     // gkos uses newlib which uses fpu registers in, e.g. memcmp, so save these as well
     // we also save spsr and elr in case we trigger another exception within the kernel (e.g. task switch)
 
-    sub sp, sp, #320
+    sub sp, sp, #704
     stp x0, x1, [sp, #16]
     stp x2, x3, [sp, #32]
     stp x4, x5, [sp, #48]
@@ -84,10 +84,23 @@ _vtor_tbl_entry _lower32_serror
     mrs x0, spsr_el1
     mrs x1, elr_el1
     stp x0, x1, [sp, #176]
+
     stp q0, q1, [sp, #192]
     stp q2, q3, [sp, #224]
     stp q4, q5, [sp, #256]
     stp q6, q7, [sp, #288]
+    stp q8, q9, [sp, #320]
+    stp q10, q11, [sp, #352]
+    stp q12, q13, [sp, #384]
+    stp q14, q15, [sp, #416]
+    stp q16, q17, [sp, #448]
+    stp q18, q19, [sp, #480]
+    stp q20, q21, [sp, #512]
+    stp q22, q23, [sp, #544]
+    stp q24, q25, [sp, #576]
+    stp q26, q27, [sp, #608]
+    stp q28, q29, [sp, #640]
+    stp q30, q31, [sp, #672]
 
     // aarch64 stack frame
     stp x29, x30, [sp, #0]
@@ -114,13 +127,26 @@ _vtor_tbl_entry _lower32_serror
     ldp x14, x15, [sp, #128]
     ldp x16, x17, [sp, #144]
     ldr x18, [sp, #160]
+
     ldp q0, q1, [sp, #192]
     ldp q2, q3, [sp, #224]
     ldp q4, q5, [sp, #256]
     ldp q6, q7, [sp, #288]
+    ldp q8, q9, [sp, #320]
+    ldp q10, q11, [sp, #352]
+    ldp q12, q13, [sp, #384]
+    ldp q14, q15, [sp, #416]
+    ldp q16, q17, [sp, #448]
+    ldp q18, q19, [sp, #480]
+    ldp q20, q21, [sp, #512]
+    ldp q22, q23, [sp, #544]
+    ldp q24, q25, [sp, #576]
+    ldp q26, q27, [sp, #608]
+    ldp q28, q29, [sp, #640]
+    ldp q30, q31, [sp, #672]
 
     ldp x29, x30, [sp, #0]
-    add sp, sp, #320
+    add sp, sp, #704
 .endm
 
 # sync exceptions need to extract svc #0 as task switch code and stay in assembly (or with known stack layout)
