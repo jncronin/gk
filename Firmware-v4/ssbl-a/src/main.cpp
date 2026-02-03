@@ -91,6 +91,8 @@ int main(uint32_t bootrom_val)
     auto sw_on_reason = pmic_read_register(0x02);
     klog("SSBL: TURN_ON_SR: %02x, TURN_OFF_SR: %02x, RESTART_SR: %02x\n", sw_on_reason,
         pmic_read_register(0x03), pmic_read_register(0x04));
+    klog("SSBL: PADS_PULL_CR: %02x, INT_SRC_R1: %02x\n",
+        pmic_read_register(0x18), pmic_read_register(0x7c));
 
     if(sw_on_reason == 0x08 || sw_on_reason == 0x04)
     {
