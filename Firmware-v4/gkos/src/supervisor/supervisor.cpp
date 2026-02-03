@@ -473,7 +473,7 @@ void *supervisor_thread(void *p)
     scr_status.AddChild(i_bt);
 
     auto supervisor_start_time = clock_cur();
-    kernel_time last_status_update;
+    kernel_time last_status_update = kernel_time_invalid();
 
     // process messages
     while(true)

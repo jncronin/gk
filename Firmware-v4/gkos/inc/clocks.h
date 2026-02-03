@@ -25,7 +25,7 @@ unsigned int clock_set_cpu_and_vddcpu(unsigned int freq);
 constexpr inline timespec operator+=(timespec &a, const timespec &b)
 {
     a.tv_nsec += b.tv_nsec;
-    while(a.tv_nsec >= 1000000000)
+    if(a.tv_nsec >= 1000000000)
     {
         a.tv_nsec -= 1000000000;
         a.tv_sec++;
@@ -36,7 +36,7 @@ constexpr inline timespec operator+=(timespec &a, const timespec &b)
 constexpr inline timespec operator-=(timespec &a, const timespec &b)
 {
     a.tv_nsec -= b.tv_nsec;
-    while(a.tv_nsec < 0)
+    if(a.tv_nsec < 0)
     {
         a.tv_nsec += 1000000000;
         a.tv_sec--;
