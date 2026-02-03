@@ -403,9 +403,7 @@ uintptr_t screen_update()
     CriticalGuard cg(p->screen.sl);
     auto layer = p->screen.screen_layer;
     auto buf = scrs[layer].update();
-#if GK_GPU_SHOW_FPS
     fpsc[layer].Tick();
-#endif
     return screen_buf_to_vaddr(layer, buf);
 }
 
