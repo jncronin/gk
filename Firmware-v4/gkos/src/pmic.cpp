@@ -2,6 +2,13 @@
 #include "pmic.h"
 #include <cstdio>
 #include "logger.h"
+#include "thread.h"
+#include "scheduler.h"
+#include "process.h"
+#include "pins.h"
+#include "vmem.h"
+#include <atomic>
+#include "_gk_scancodes.h"
 
 #define I2C_ADDR 0x33
 
@@ -477,4 +484,126 @@ int pmic_set_power_target(pmic_vreg::_type type, unsigned int id, unsigned int v
         default:
             return -1;
     }
+}
+
+static BinarySemaphore sem_pmic_irq;
+extern PProcess p_supervisor;
+#define GPIOA_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE))
+#define EXTI1_VMEM ((EXTI_TypeDef *)PMEM_TO_VMEM(EXTI1_BASE))
+
+static const constexpr pin PWR_WKUP1 { GPIOA_VMEM, 0 };
+
+static void exti1_0_handler(exception_regs *, uint64_t)
+{
+    gic_clear_enable(300);
+    EXTI1_VMEM->RPR1 = (1U << 0);
+    sem_pmic_irq.Signal();
+}
+
+std::atomic<bool> pmic_vbus_ok = true, pmic_vin_ok = true, pmic_wakeupn = true,
+    pmic_ponkeyn = true;
+
+static std::pair<bool, bool> val_changed(uint8_t set_val, uint8_t clear_val,
+    std::atomic<bool> &bval)
+{
+    bool new_val = false;
+    if(!(set_val & 0x1) && !(clear_val & 0x1))
+    {
+        // nothing changed
+        return std::make_pair(false, bval.load());
+    }
+    else if(set_val & 0x1)
+    {
+        new_val = true;
+    }
+
+    bool old_val = bval.exchange(new_val);
+    return std::make_pair(old_val != new_val, new_val);
+}
+
+static void *pmic_thread(void *)
+{
+    // Allow us to respond to PMIC interrupts
+    PWR_WKUP1.set_as_input();
+
+	EXTI1_VMEM->EXTICR[1] = (EXTI1_VMEM->EXTICR[0] & ~EXTI_EXTICR1_EXTI0_Msk) |
+		(0U << EXTI_EXTICR1_EXTI0_Pos);
+	EXTI1_VMEM->RTSR1 &= ~(1U << 0);
+	EXTI1_VMEM->FTSR1 |= (1U << 0);
+
+	gic_set_handler(300, exti1_0_handler);
+	gic_set_target(300, GIC_ENABLED_CORES);
+
+    // which interrupts?
+    const uint8_t irqs = 0xffU;
+
+    // get current values
+    auto curact1 = pmic_read_register(0x7c) & irqs;
+
+    val_changed(curact1 >> 1, curact1 >> 0, pmic_ponkeyn);
+    val_changed(curact1 >> 3, curact1 >> 2, pmic_wakeupn);
+    val_changed(curact1 >> 4, curact1 >> 5, pmic_vin_ok);
+    val_changed(curact1 >> 7, curact1 >> 6, pmic_vbus_ok);
+
+    // enable irqs
+    pmic_write_register(0x78, (uint8_t)~irqs);
+
+    while(true)
+    {
+        if(sem_pmic_irq.Wait(clock_cur() + kernel_time_from_ms(250)) ||
+            PWR_WKUP1.value() == false)
+        {
+            // get latched value and actual value
+            auto pr1 = pmic_read_register(0x70) & irqs;
+            auto act1 = pmic_read_register(0x7c) & irqs;
+
+            // handle
+            auto [ new_ponkeyn, ponkeyn_val ] = val_changed(act1 >> 1, act1 >> 0, pmic_ponkeyn);
+            auto [ new_wakeupn, wakeupn_val ] = val_changed(act1 >> 3, act1 >> 2, pmic_wakeupn);
+            auto [ new_vinok, vinok_val ] = val_changed(act1 >> 4, act1 >> 5, pmic_vin_ok);
+            auto [ new_vbusok, vbusok_val ] = val_changed(act1 >> 7, act1 >> 6, pmic_vbus_ok);
+
+            pmic_write_register(0x74, pr1);
+
+            gic_set_enable(300);
+
+            if(new_ponkeyn)
+            {
+                klog("pmic: PONKEYN: %s\n", ponkeyn_val ? "true" : "false");
+                Event ev;
+                ev.type = ponkeyn_val ? Event::event_type_t::KeyUp :
+                    Event::event_type_t::KeyDown;
+                ev.key = GK_SCANCODE_POWER;
+                p_supervisor->events.Push(ev);
+            }
+            if(new_wakeupn)
+            {
+                klog("pmic: WAKEUPN: %s\n", wakeupn_val ? "true" : "false");
+            }
+            if(new_vinok)
+            {
+                klog("pmic: VINOK: %s\n", vinok_val ? "true" : "false");
+            }
+            if(new_vbusok)
+            {
+                klog("pmic: VBUSOK: %s\n", vbusok_val ? "true" : "false");
+            }
+        }
+    }
+}
+
+void init_pmic()
+{
+    sched.Schedule(Thread::Create("pmic", pmic_thread, nullptr, true,
+        GK_PRIORITY_VHIGH, p_kernel));
+}
+
+void pmic_switchoff()
+{
+    pmic_write_register(0x10, 0x81U);
+}
+
+void pmic_reset()
+{
+    pmic_write_register(0x10, 0x83U);
 }

@@ -41,6 +41,8 @@ void pmic_dump(const pmic_vreg &v);
 void pmic_dump();
 void pmic_set(const pmic_vreg &v);
 int pmic_set_power(PMIC_Power_Target target, unsigned int voltage_mv);
-
+void pmic_switchoff();
+void pmic_reset();
+void init_pmic();
 
 #endif

@@ -3,7 +3,12 @@
 #include "screen.h"
 #include "sd.h"
 #include "pwr.h"
+#include "pmic.h"
 //#include "reset.h"
+#include "vmem.h"
+#include <stm32mp2xx.h>
+
+#define USART6_VMEM ((USART_TypeDef *)PMEM_TO_VMEM(USART6_BASE))
 
 void supervisor_shutdown_system()
 {
@@ -24,9 +29,6 @@ void supervisor_shutdown_system()
         klog("shutdown: ext4 unmounted: %d\n", ss_ext4.Value());
     }
 
-    while(true);
-
-#if 0
     sd_request sdr;
     SimpleSignal ss_sd;
     int ret_sd;
@@ -36,15 +38,17 @@ void supervisor_shutdown_system()
     sdr.completion_event = &ss_sd;
     sdr.res_out = &ret_sd;
     sd_perform_transfer_async(sdr);
-    ss_sd.Wait(SimpleSignal::SignalOperation::Noop, 0, clock_cur() + kernel_time::from_ms(500));
+    ss_sd.Wait(SimpleSignal::SignalOperation::Noop, 0, clock_cur() + kernel_time_from_ms(500));
     klog("shutdown: sd disabled: %d\n", ss_sd.Value());
+    while(!(USART6_VMEM->ISR & USART_ISR_TXFE));
 
     /* Pull the power plug */
-    pwrbtn_setvregen(0);
-    Block(clock_cur() + kernel_time::from_ms(500));
+    pmic_switchoff();
+    Block(clock_cur() + kernel_time_from_ms(500));
 
     /* Shouldn't get this far */
     klog("shutdown: power did not switch off.  Resetting...\n");
-    gk_reset();
-#endif
+    while(!(USART6_VMEM->ISR & USART_ISR_TXFE));
+    pmic_reset();
+    while(true);
 }

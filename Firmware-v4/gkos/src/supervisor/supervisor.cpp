@@ -719,7 +719,7 @@ void *supervisor_thread(void *p)
                     i_bt.visible = false;   // TODO
                     */
 
-                    i_charge.visible = false;
+                    i_charge.visible = pmic_vbus_ok.load();
                     i_wifi.visible = false;
                     i_usb.visible = false;
                     i_bt.visible = false;
