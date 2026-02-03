@@ -12,7 +12,7 @@
 //#include "ext4_thread.h"
 #include "gk_conf.h"
 #include "vmem.h"
-#include "smc.h"
+#include "pmic.h"
 #include "gic.h"
 
 #define SDMMC1_VMEM ((SDMMC_TypeDef *)PMEM_TO_VMEM(SDMMC1_BASE))
@@ -410,7 +410,7 @@ void sd_reset()
     SDMMC1_VMEM->CLKCR |= SDMMC_CLKCR_HWFC_EN;
 
     // power-cycle card here
-    auto mv = smc_set_power(SMC_Power_Target::SDCard, 0);
+    auto mv = pmic_set_power(PMIC_Power_Target::SDCard, 0);
     if(mv != 0)
     {
         klog("SD: failed to switch off card %d\n", mv);
@@ -418,7 +418,7 @@ void sd_reset()
     }
     PWR_VMEM->CR8 &= ~PWR_CR8_VDDIO1VRSEL;
     delay_ms(10);
-    mv = smc_set_power(SMC_Power_Target::SDCard_IO, 3300);
+    mv = pmic_set_power(PMIC_Power_Target::SDCard_IO, 3300);
     if(mv != 3300)
     {
         klog("SD: failed to turn on SDMMC1 IO %d\n", mv);
@@ -433,10 +433,10 @@ void sd_reset()
     delay_ms(1);
 
     // enable card VCC and wait power ramp-up time
-    mv = smc_set_power(SMC_Power_Target::SDCard, 3300);
+    mv = pmic_set_power(PMIC_Power_Target::SDCard, 3300);
     if(mv != 3300)
     {
-        smc_set_power(SMC_Power_Target::SDCard_IO, 0);
+        pmic_set_power(PMIC_Power_Target::SDCard_IO, 0);
         PWR_VMEM->CR8 &= ~PWR_CR8_VDDIO1SV;
         klog("SD: failed to turn on card %d\n", mv);
         return;
@@ -579,7 +579,7 @@ void sd_reset()
         }
 
         klog("init_sd: D0 low - proceeding with vswitch\n");
-        mv = smc_set_power(SMC_Power_Target::SDCard_IO, 1800);
+        mv = pmic_set_power(PMIC_Power_Target::SDCard_IO, 1800);
         if(mv != 1800)
         {
             klog("init_sd: voltage regulator change failed: %u\n", mv);
@@ -1017,8 +1017,8 @@ void *sd_thread(void *param)
                 delay_ms(1);
 
                 sd_shutdown = true;
-                smc_set_power(SMC_Power_Target::SDCard, 0);
-                smc_set_power(SMC_Power_Target::SDCard_IO, 0);
+                pmic_set_power(PMIC_Power_Target::SDCard, 0);
+                pmic_set_power(PMIC_Power_Target::SDCard_IO, 0);
                 PWR_VMEM->CR8 &= ~PWR_CR8_VDDIO1SV;
 
                 if(sdr.res_out)

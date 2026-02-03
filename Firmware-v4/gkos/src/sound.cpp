@@ -10,7 +10,7 @@
 #include "cache.h"
 #include "vmem.h"
 #include "pmem.h"
-#include "smc.h"
+#include "pmic.h"
 #include "bootinfo.h"
 
 static constexpr const pin SAI2_SD_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 12, 3 };
@@ -108,7 +108,7 @@ static void pcm_mute_set(bool val)
 [[maybe_unused]] static void *sound_thread(void *)
 {
     // bring up VDD_AUDIO (TODO: could be selectively disabled)
-    smc_set_power(SMC_Power_Target::Audio, 3300);
+    pmic_set_power(PMIC_Power_Target::Audio, 3300);
 
 #if GK_SOUND_DUMP
     while(true)

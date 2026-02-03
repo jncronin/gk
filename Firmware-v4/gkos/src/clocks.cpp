@@ -1,7 +1,7 @@
 #include <stm32mp2xx.h>
 #include "clocks.h"
 #include "vmem.h"
-#include "smc.h"
+#include "pmic.h"
 #include "osmutex.h"
 
 #define TIM3_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM3_BASE))
@@ -84,7 +84,7 @@ unsigned int clock_set_cpu_and_vddcpu(unsigned int freq)
     if(freq > 1200000000U)
     {
         // set vddcpu to 0.91V
-        smc_set_power(SMC_Power_Target::CPU, 910U);
+        pmic_set_power(PMIC_Power_Target::CPU, 910U);
         udelay(5000);
     }
 
@@ -93,7 +93,7 @@ unsigned int clock_set_cpu_and_vddcpu(unsigned int freq)
     if(freq <= 1200000000U)
     {
         // set vddcpu to 0.8V
-        smc_set_power(SMC_Power_Target::CPU, 800U);
+        pmic_set_power(PMIC_Power_Target::CPU, 800U);
     }
 
     return freq;

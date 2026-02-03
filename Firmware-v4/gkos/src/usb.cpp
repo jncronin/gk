@@ -6,12 +6,12 @@
 #include "usb.h"
 #include "process.h"
 #include "logger.h"
-#include "smc.h"
 #include "stm32mp2xx.h"
 #include "vmem.h"
 #include "clocks.h"
 #include "pmem.h"
 #include "osqueue.h"
+#include "pmic.h"
 
 #include "usb_device.h"
 #include "usb_dwc3.h"
@@ -61,7 +61,7 @@ void init_usb()
     klog("usb: SYSCFG->USB3DRCR:       %08x\n", SYSCFG_VMEM->USB3DRCR);
 
     /* Enable power to USB pins */
-    smc_set_power(SMC_Power_Target::USB, 3300);
+    pmic_set_power(PMIC_Power_Target::USB, 3300);
     PWR_VMEM->CR1 = PWR_VMEM->CR1 | PWR_CR1_USB33VMEN;
     __asm__ volatile("dmb sy\n" ::: "memory");
     while(!(PWR_VMEM->CR1 & PWR_CR1_USB33RDY))
