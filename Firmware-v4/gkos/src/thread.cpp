@@ -9,12 +9,11 @@ void thread_stub(Thread::threadstart_t func, void *p)
 {
     auto ret = func(p);
     auto t = GetCurrentKernelThreadForCore();
-    t->thread_retval = ret;
-
-    // TODO call cleanup
+    Thread::Kill(t->id, ret);
+    Yield();
     while(true)
     {
-        __asm__ volatile("wfi\n" : : : "memory");
+        Block();
     }
 }
 

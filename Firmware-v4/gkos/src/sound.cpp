@@ -107,6 +107,10 @@ static void pcm_mute_set(bool val)
 
 [[maybe_unused]] static void *sound_thread(void *)
 {
+    // bring up VDD_AUDIO (TODO: could be selectively disabled)
+    smc_set_power(SMC_Power_Target::Audio, 3300);
+
+#if GK_SOUND_DUMP
     while(true)
     {
         auto DEV_MISC_CFG = tad_read(0x2);
@@ -139,6 +143,9 @@ static void pcm_mute_set(bool val)
 
         Block(clock_cur() + kernel_time_from_ms(1000));
     }
+#endif
+
+    return nullptr;
 }
 
 void init_sound()
@@ -160,9 +167,6 @@ void init_sound()
         SPKR_NSD.set_as_output();
     }
 
-    // bring up VDD_AUDIO (TODO: could be selectively disabled)
-    smc_set_power(SMC_Power_Target::Audio, 3300);
-
     // Enable clock to SAI2_VMEM
     sound_set_extfreq(44100.0);
     RCC_VMEM->SAI2CFGR |= RCC_SAI2CFGR_SAI2EN;
@@ -176,7 +180,7 @@ void init_sound()
 
     //sound_set_volume(50);
 
-    // Schedule(Thread::Create("sound", sound_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
+    Schedule(Thread::Create("sound", sound_thread, nullptr, true, GK_PRIORITY_VHIGH, p_kernel));
 }
 
 int sound_set_extfreq(double freq)
