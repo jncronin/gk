@@ -182,6 +182,7 @@ void *pwr_thread(void *)
         soc = (double)soc_i / 256.0;
         crate = (double)i_crate * 0.208;
 
+#if GK_DUMP_MAX
         char maxbuf[256];
         snprintf(maxbuf, sizeof(maxbuf) - 1,
             "pwr: vcell: %f, soc: %f, crate: %f\n", (double)vcell, (double)soc, (double)crate);
@@ -190,10 +191,15 @@ void *pwr_thread(void *)
 
 
         uint16_t version, hibrt, config, vreset, status;
+        klog("pwr: version\n");
         i2c_pwr.RegisterRead(max_addr, (uint8_t)0x08, &version, 2);
+        klog("pwr: hibrt\n");
         i2c_pwr.RegisterRead(max_addr, (uint8_t)0x0a, &hibrt, 2);
+        klog("pwr: config\n");
         i2c_pwr.RegisterRead(max_addr, (uint8_t)0x0c, &config, 2);
+        klog("pwr: vreset\n");
         i2c_pwr.RegisterRead(max_addr, (uint8_t)0x18, &vreset, 2);
+        klog("pwr: status\n");
         i2c_pwr.RegisterRead(max_addr, (uint8_t)0x1a, &status, 2);
         klog("pwr: version: %x, hibrt: %x, config: %x, vreset: %x, status: %x\n",
             __builtin_bswap16(version),
@@ -201,7 +207,7 @@ void *pwr_thread(void *)
             __builtin_bswap16(config),
             __builtin_bswap16(vreset),
             __builtin_bswap16(status));
-
+#endif
 
         Block(clock_cur() + kernel_time_from_ms(1000));
     }
