@@ -51,12 +51,12 @@ void *init_thread(void *)
     memset(&p_gkmenu->keymap, 0, sizeof(p_gkmenu->keymap));
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYA] = GK_SCANCODE_RETURN;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYB] = GK_SCANCODE_ESCAPE;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGILEFT] = GK_SCANCODE_AUDIOPREV;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIRIGHT] = GK_SCANCODE_AUDIONEXT;
+    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGILEFT] = 0;
+    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIRIGHT] = 0;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIUP] = GK_SCANCODE_AUDIOPREV;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIDOWN] = GK_SCANCODE_AUDIONEXT;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYLEFT] = GK_SCANCODE_AUDIOPREV;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYRIGHT] = GK_SCANCODE_AUDIONEXT;
+    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYLEFT] = 0;
+    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYRIGHT] = 0;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYUP] = GK_SCANCODE_AUDIOPREV;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYDOWN] = GK_SCANCODE_AUDIONEXT;
 
