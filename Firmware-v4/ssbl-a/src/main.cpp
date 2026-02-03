@@ -87,6 +87,20 @@ int main(uint32_t bootrom_val)
     
     pmic_dump_status();
 
+    // Why did we just switch on?
+    auto sw_on_reason = pmic_read_register(0x02);
+    klog("SSBL: TURN_ON_SR: %02x, TURN_OFF_SR: %02x, RESTART_SR: %02x\n", sw_on_reason,
+        pmic_read_register(0x03), pmic_read_register(0x04));
+
+    if(sw_on_reason == 0x08 || sw_on_reason == 0x04)
+    {
+        // AUTO turn on by VIN going high or VBUS turn on - just switch off again
+        klog("SSBL: auto turn on - shutting down\n");
+        while(!(USART6->ISR & USART_ISR_TXFE));
+        pmic_write_register(0x10, 0x81);
+        while(true);
+    }
+
     init_ddr();
 
     /* Give everything access to all of DDR, in privileged and unprivileged modes (still secure though) */

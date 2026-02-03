@@ -16,6 +16,7 @@ struct pmic_vreg
 };
 
 uint8_t pmic_read_register(uint8_t reg);
+void pmic_write_register(uint8_t addr, uint8_t val);
 pmic_vreg pmic_get_buck(int id, bool alt = false);
 pmic_vreg pmic_get_ldo(int id, bool alt = false);
 pmic_vreg pmic_get_refddr(bool alt = false);
