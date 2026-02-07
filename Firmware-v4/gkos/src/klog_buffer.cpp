@@ -78,8 +78,6 @@ ssize_t log_fwrite(const void *buf, size_t count)
     auto fret = retram->klog.b_file.write(buf, count);
     auto uret = retram->klog.b_uart.write(buf, count);
 
-    klog_updated.Signal();
-
     return std::max(fret, uret);
 }
 
@@ -96,4 +94,26 @@ void init_klogbuffer_thread()
 {
     sched.Schedule(Thread::Create("klogbuffer", klogbuffer_thread, nullptr, true,
         GK_PRIORITY_IDLE + 1, p_kernel));
+}
+
+static Spinlock sl_log;
+
+int logger_printf(const timespec &now, const char *format, va_list va);
+
+int klog(const char *format, ...)
+{
+    CriticalGuard cg(sl_log);
+    auto cur = clock_cur();
+
+    va_list args;
+    va_start(args, format);
+
+    auto ret = logger_printf(cur, format, args);
+    
+    va_end(args);
+    sl_log.unlock();
+
+    klog_updated.Signal();
+
+    return ret;
 }
