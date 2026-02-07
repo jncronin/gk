@@ -72,11 +72,11 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
     }
 
     auto now = clock_cur();
-    sl_last_syscall_dump.lock();
+    CriticalGuard cg_last_syscall_dump(sl_last_syscall_dump);
     if(!kernel_time_is_valid(last_syscall_dump) || (now > last_syscall_dump + kernel_time_from_ms(1000)))
     {
         last_syscall_dump = now;
-        sl_last_syscall_dump.unlock();
+        cg_last_syscall_dump.unlock();
 
         auto counts = syscalls_get_count();
 
@@ -89,7 +89,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
     }
     else
     {
-        sl_last_syscall_dump.unlock();
+        cg_last_syscall_dump.unlock();
     }
 #endif
     [[maybe_unused]] auto syscall_start = clock_cur_ms();
