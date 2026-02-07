@@ -189,13 +189,13 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
     if(m->try_lock(&reason, block, tout))
     {
         PROFILE_NOW(prof);
-        prof->ver_flags = 0x1;
+        if(prof) prof->ver_flags = 0x1;
         return 0;
     }
     else
     {
         PROFILE_NOW(prof);
-        prof->ver_flags = 0x2;
+        if(prof) prof->ver_flags = 0x2;
         *_errno = reason;
         if(reason == EBUSY)
             return -3;      // Try again
@@ -218,13 +218,13 @@ int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno, profile_t 
     if(m->unlock())
     {
         PROFILE_NOW(prof);
-        prof->ver_flags = 0x1;
+        if(prof) prof->ver_flags = 0x1;
         return 0;
     }
     else
     {   
         PROFILE_NOW(prof);
-        prof->ver_flags = 0x2;
+        if(prof) prof->ver_flags = 0x2;
         *_errno = EPERM;
         return -1;
     }
