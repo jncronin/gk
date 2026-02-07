@@ -24,6 +24,7 @@
 #define GK_SD_USE_HS_MODE           1
 #define GK_GPU_SHOW_FPS             0
 #define GK_COUNT_SYSCALLS           0
+#define GK_PROFILE_SYSCALLS         1
 #define GK_TICKLESS                 0
 #define GK_CUR_THREAD_IN_SYSRAM     1
 #define GK_THREAD_LIST_IN_SYSRAM    0

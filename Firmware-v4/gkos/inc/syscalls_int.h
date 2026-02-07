@@ -1,6 +1,8 @@
 #ifndef SYSCALLS_INT_H
 #define SYSCALLS_INT_H
 
+#include "gk_conf.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -10,6 +12,9 @@
 #include "_gk_event.h"
 #include "_sys_dirent.h"
 #include "clocks.h"
+#include "gic.h"
+
+using profile_t = syscall_profile_v1;
 
 struct sem_t
 {
@@ -49,8 +54,8 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
 
 int syscall_pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr, int *_errno);
 int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno);
-int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno);
-int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno);
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno, profile_t *prof = nullptr);
+int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno, profile_t *prof = nullptr);
 
 int syscall_pthread_key_create(pthread_key_t *key, void (*destructor)(void *), int *_errno);
 int syscall_pthread_getspecific(pthread_key_t key, void **retval, int *_errno);
@@ -231,6 +236,7 @@ static inline bool addr_is_valid(const void *buf, size_t len, bool is_write = fa
 
 #endif
 
-extern "C" void SyscallHandler(syscall_no sno, void *x1, void *x2, void *x3, uintptr_t lr);
+extern "C" void SyscallHandler(syscall_no sno, void *x1, void *x2, void *x3, uintptr_t lr,
+    exception_regs *regs);
 
 #endif

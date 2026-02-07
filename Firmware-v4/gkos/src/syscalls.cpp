@@ -1,4 +1,5 @@
 //#include <stm32h7rsxx.h>
+#include "gk_conf.h"
 #include "syscalls.h"
 #include "thread.h"
 #include "process.h"
@@ -51,7 +52,7 @@ std::vector<std::pair<size_t, size_t>> syscalls_get_count()
 }
 #endif
 
-void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
+void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, exception_regs *regs)
 {
 #if DEBUG_SYSCALLS
     void *dr1 = r1;
@@ -91,6 +92,24 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
     }
 #endif
     [[maybe_unused]] auto syscall_start = clock_cur_ms();
+    syscall_profile_v1 *prof = nullptr;
+    if((uint64_t)r1 & 0x8000000000000000ULL)
+    {
+        r1 = (void *)((uint64_t)r1 & ~0x8000000000000000ULL);
+
+        // TODO: handle __thread_cleanup and __exit which use r1 specially
+        
+#if GK_PROFILE_SYSCALLS
+        prof = (syscall_profile_v1 *)regs->x4;
+        if(prof->ver_flags != 1)
+        {
+            prof = nullptr;
+        }
+#endif
+    }
+
+    PROFILE_NOW(prof);
+
     switch(sno)
     {
         case GetThreadHandle:
@@ -1117,6 +1136,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr)
 #if 0
     GetCurrentThreadForCore()->total_s_time += clock_cur_ms() - syscall_start;
 #endif
+
+    PROFILE_NOW(prof);
 
 #if DEBUG_SYSCALLS
     if((int)sno != 50 && (int)sno != 51)

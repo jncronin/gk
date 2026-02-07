@@ -168,10 +168,12 @@ int syscall_pthread_mutex_destroy(pthread_mutex_t *mutex, int *_errno)
     return -1;
 }
 
-int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno)
+int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const timespec *until, int *_errno,
+    profile_t *prof)
 {
     ADDR_CHECK_STRUCT_W(mutex);
     PMutex m = check_mutex(mutex);
+    PROFILE_NOW(prof);
     if(!m)
     {   
         *_errno = EINVAL;
@@ -186,11 +188,14 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
     int reason;
     if(m->try_lock(&reason, block, tout))
     {
-
+        PROFILE_NOW(prof);
+        prof->ver_flags = 0x1;
         return 0;
     }
     else
     {
+        PROFILE_NOW(prof);
+        prof->ver_flags = 0x2;
         *_errno = reason;
         if(reason == EBUSY)
             return -3;      // Try again
@@ -199,10 +204,11 @@ int syscall_pthread_mutex_trylock(pthread_mutex_t *mutex, int clock_id, const ti
     }
 }
 
-int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)
+int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno, profile_t *prof)
 {
     ADDR_CHECK_STRUCT_W(mutex);
     PMutex m = check_mutex(mutex);
+    PROFILE_NOW(prof);
     if(!m)
     {   
         *_errno = EINVAL;
@@ -210,9 +216,15 @@ int syscall_pthread_mutex_unlock(pthread_mutex_t *mutex, int *_errno)
     }
 
     if(m->unlock())
+    {
+        PROFILE_NOW(prof);
+        prof->ver_flags = 0x1;
         return 0;
+    }
     else
     {   
+        PROFILE_NOW(prof);
+        prof->ver_flags = 0x2;
         *_errno = EPERM;
         return -1;
     }
