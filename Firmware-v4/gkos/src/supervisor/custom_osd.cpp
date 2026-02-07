@@ -1,7 +1,11 @@
 #include "widgets/widget.h"
 #include "process.h"
 #include "syscalls_int.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-truncation"
 #include "INIReader.h"
+#pragma GCC diagnostic pop
 
 WidgetAnimationList *GetAnimationList();
 

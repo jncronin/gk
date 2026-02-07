@@ -22,6 +22,11 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
 
     auto p = GetCurrentProcessForCore();
     // try allocating a vblock
+    if(!p || !p->user_mem)
+    {
+        *_errno = EFAULT;
+        return -1;
+    }
     MutexGuard mg(p->user_mem->m);
     MemBlock pmb;
 
@@ -104,6 +109,12 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
 int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, int *_errno)
 {
     auto p = GetCurrentProcessForCore();
+    if(!p || !p->user_mem)
+    {
+        *_errno = EFAULT;
+        return -1;
+    }
+
     // try allocating a vblock
     MutexGuard mg(p->user_mem->m);
 

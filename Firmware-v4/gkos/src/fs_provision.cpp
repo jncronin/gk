@@ -324,7 +324,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             uint64_t total_fsize_to_read = (fsize + 511ULL) & ~511ULL;
 
             // open ext4 file
-            int fd, _errno;
+            int fd = -1, _errno;
             if(type == 'L')
             {
                 long_fname = (char *)malloc(total_fsize_to_read);

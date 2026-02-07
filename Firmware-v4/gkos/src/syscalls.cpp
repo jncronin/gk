@@ -1088,11 +1088,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         default:
             {
-                klog("syscall: unhandled syscall %d, Process %s, Thread %s @ %p, lr: %llx\n", (int)sno,
-                    GetCurrentProcessForCore()->name.c_str(),
-                    GetCurrentThreadForCore()->name.c_str(),
-                    GetCurrentThreadForCore(),
-                    lr);
+                auto [ cur_t, cur_p ] = GetCurrentThreadProcessForCore();
+                if(cur_t && cur_p)
+                {
+                    klog("syscall: unhandled syscall %d, Process %s, Thread %s @ %p, lr: %llx\n", (int)sno,
+                        cur_p->name.c_str(),
+                        cur_t->name.c_str(),
+                        cur_t,
+                        lr);
+                }
             }
             //__asm__ volatile ("bkpt #0\n");
             if(r1)

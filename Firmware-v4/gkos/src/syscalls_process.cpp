@@ -143,6 +143,11 @@ int syscall_waitpid(pid_t pid, int *retval, int options, int *_errno)
         // ensure pid is a child of ours
         auto pproc = ProcessList.Get(pid);
         auto cp = GetCurrentProcessForCore();
+        if(!cp)
+        {
+            *_errno = EFAULT;
+            return -1;
+        }
         if(pproc.ppid != cp->id)
         {
             klog("waitpid: request for a process (%d) which is not a child of the calling process (%d: %s)\n",

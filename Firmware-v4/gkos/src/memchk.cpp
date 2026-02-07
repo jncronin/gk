@@ -70,10 +70,10 @@ static void iac_isr(unsigned int rifidx)
 
 void iac_irq(exception_regs *regs, uint64_t elr_el1)
 {
-    auto t = GetCurrentThreadForCore();
-    if(t)
+    auto [t, p] = GetCurrentThreadProcessForCore();
+    if(t && p)
     {
-        klog("iac: ILLEGAL ACCESS by %s.%s @ %p\n", GetCurrentProcessForCore()->name.c_str(),
+        klog("iac: ILLEGAL ACCESS by %s.%s @ %p\n", p->name.c_str(),
             t->name.c_str(), elr_el1);
     }
     for(auto i = 0U; i <= 5; i++)

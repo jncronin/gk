@@ -140,10 +140,12 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
 
 static void DumpThreadFault()
 {
+    auto [t, p] = GetCurrentThreadProcessForCore();
+
     klog("Process: %s, Thread: %s @ %p\n",
-        (GetCurrentThreadForCore() && GetCurrentProcessForCore()) ? GetCurrentProcessForCore()->name.c_str() : "<NULL>",
-        GetCurrentThreadForCore() ? GetCurrentThreadForCore()->name.c_str() : "<NULL>",
-        GetCurrentThreadForCore());
+        p ? p->name.c_str() : "<NULL>",
+        t ? t->name.c_str() : "<NULL>",
+        t);
 }
 
 static uint64_t UserThreadFault(int sig = SIGSEGV)

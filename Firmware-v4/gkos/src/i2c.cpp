@@ -323,7 +323,9 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
                 return -1;
             }
             auto d = inst->RXDR;
-            *cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit) = d;
+            auto ddest = cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit);
+            if(ddest)
+                *ddest = d;
             n_xmit = n_xmit + 1;
             if(n_xmit == n_tc_end)
             {
@@ -374,7 +376,8 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
             {
                 return -1;
             }
-            auto d = *cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit);
+            auto dsrc = cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit);
+            auto d = dsrc ? *dsrc : 0;
             n_xmit = n_xmit + 1;
             inst->TXDR = d;
             if(n_xmit == n_tc_end)

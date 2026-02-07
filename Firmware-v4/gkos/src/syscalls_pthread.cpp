@@ -640,7 +640,7 @@ int syscall_pthread_join(pthread_t thread, void **retval, int *_errno)
         }
 
         // not deleted - need to wait on the thread
-        if(!thread || tthread.v->p != curp)
+        if(!thread || !tthread.v || tthread.v->p != curp)
         {
             // doesn't exist or doesn't belong to process
             *_errno = ESRCH;
