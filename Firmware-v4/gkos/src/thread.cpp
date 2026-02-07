@@ -62,10 +62,10 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
     *--kthread_ptr = 0;                 // recursive lr
     auto recursive_fp = --kthread_ptr;
     *recursive_fp = (uintptr_t)recursive_fp;
-    // set up kernel thread for return to privileged process (TODO: alter for user code)
-    for(auto i = 0U; i < 64U; i++)
+    // set up kernel thread for return to our thread_stub or a userspace provided function
+    for(auto i = 0U; i < 48U; i++)
     {
-        *--kthread_ptr = 0U;    // Q0-31
+        *--kthread_ptr = 0U;    // Q0-7, Q16-31
     }
     *--kthread_ptr = (is_priv ? (uint64_t)thread_stub : (uint64_t)func);         // ELR_EL1
     *--kthread_ptr = (uint64_t)(is_priv ? spsr_el1_return : spsr_el0_return);     // SPSR_EL1

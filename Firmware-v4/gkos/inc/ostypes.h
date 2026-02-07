@@ -91,10 +91,10 @@ struct thread_saved_state
 
     uint64_t res1, res2;    // for 32-byte alignment for q registers
 
-    // FP registers - 24*128 bits (q0-q7 already saved)
-    uint64_t fpu_regs[48];
+    // FP registers - 8*128 bits (q0-q7, q16-31 already saved)
+    uint64_t fpu_regs[16];
 };
 
-static_assert(sizeof(thread_saved_state) == 512);
+static_assert(sizeof(thread_saved_state) == 256);
 
 #endif
