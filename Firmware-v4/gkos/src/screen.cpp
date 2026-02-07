@@ -388,6 +388,9 @@ std::pair<uintptr_t, uintptr_t> screen_current()
 std::pair<uintptr_t, uintptr_t> _screen_current()
 {
     auto p = GetCurrentProcessForCore();
+    if(!p)
+        return std::make_pair(0, 0);
+    
     auto layer = p->screen.screen_layer;
     auto buf = scrs[layer].current();
     if(buf.first >= 3)
