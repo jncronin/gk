@@ -58,6 +58,7 @@ class CriticalGuard
 {
     private:
         using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
+        std::array<bool, sizeof...(Spinlock_t)> locked = {};
 
     public:
         CriticalGuard(Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false), _try_only(false)
@@ -76,12 +77,11 @@ class CriticalGuard
             {
                 klog("CriticalGuard: nested lock() - potential bug\n");
             }
-            constexpr std::size_t size = sizeof...(Spinlock_t);
             while(true)
             {
-                std::array<bool, size> locked = {};
                 size_t i = 0U;
                 disable_interrupts();
+                std::fill(locked.begin(), locked.end(), false);
                 if(std::apply([&](Spinlock_t &... apply_args) { return (... && (locked[i++] = apply_args.try_lock(), locked[i - 1])); }, sl))
                 {
                     is_locked = true;
@@ -100,6 +100,16 @@ class CriticalGuard
             }
         }
 
+        void unlockone(size_t id)
+        {
+            std::array<bool, sizeof...(Spinlock_t)> to_unlock{};
+            to_unlock[id] = locked[id];
+
+            size_t i = 0U;
+            std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(to_unlock[i++])); }, sl);
+            locked[id] = false;
+        }
+
         void unlock(bool lock_test = true)
         {
             if(!is_locked)
@@ -114,7 +124,9 @@ class CriticalGuard
                 }
                 return;
             }
-            std::apply([](Spinlock_t &... apply_args) { (... , apply_args.unlock()); }, sl);
+
+            size_t i = 0U;
+            std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
             is_locked = false;
             restore_interrupts();
         }
