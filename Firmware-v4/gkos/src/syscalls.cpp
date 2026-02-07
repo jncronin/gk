@@ -58,6 +58,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
     void *dr1 = r1;
     void *dr2 = r2;
     void *dr3 = r3;
+    void *dr4 = (void *)(uintptr_t)regs->x4;
 
     if((int)sno != 50 && (int)sno != 51)
     {
@@ -98,7 +99,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
         r1 = (void *)((uint64_t)r1 & ~0x8000000000000000ULL);
 
         // TODO: handle __thread_cleanup and __exit which use r1 specially
-        
+
 #if GK_PROFILE_SYSCALLS
         prof = (syscall_profile_v1 *)regs->x4;
         if(prof->ver_flags != 1)
@@ -221,7 +222,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
         case __syscall_pthread_mutex_trylock:
             {
                 auto p = reinterpret_cast<__syscall_trywait_params *>(r2);
-                int ret = syscall_pthread_mutex_trylock((pthread_mutex_t *)p->sync, p->clock_id, p->until, reinterpret_cast<int *>(r3));
+                int ret = syscall_pthread_mutex_trylock((pthread_mutex_t *)p->sync, p->clock_id, p->until, reinterpret_cast<int *>(r3), prof);
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -229,7 +230,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
         case __syscall_pthread_mutex_unlock:
             {
                 auto p = reinterpret_cast<pthread_mutex_t *>(r2);
-                int ret = syscall_pthread_mutex_unlock(p, reinterpret_cast<int *>(r3));
+                int ret = syscall_pthread_mutex_unlock(p, reinterpret_cast<int *>(r3), prof);
                 *reinterpret_cast<int *>(r1) = ret;
             }
             break;
@@ -494,13 +495,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
                 auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
                 int ret = syscall_read(p->file, p->ptr, p->len, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
-
-#if DEBUG_SYSCALLS
-                {
-                    klog("syscall_read: file %d addr: %p, len: %d, ret: %d\n",
-                        p->file, p->ptr, p->len, ret);
-                }
-#endif
             }
             break;
 
