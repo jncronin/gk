@@ -833,6 +833,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             );
             break;
 
+        case __syscall_times:
+            {
+                auto p = reinterpret_cast<__syscall_times_params *>(r2);
+                *p->retval = syscall_times(p->buf, reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            break;
+
 
 #if 0
         case WaitSimpleSignal:
@@ -973,14 +981,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
                 auto p = reinterpret_cast<__syscall_gpuenqueue_params *>(r2);
                 int ret = syscall_gpuenqueue(p->msgs, p->nmsg, p->nsent, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_times:
-            {
-                auto p = reinterpret_cast<__syscall_times_params *>(r2);
-                *p->retval = syscall_times(p->buf, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = 0;
             }
             break;
 

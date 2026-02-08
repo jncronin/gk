@@ -1,6 +1,9 @@
 #include "syscalls_int.h"
 #include <sys/time.h>
+#include <sys/times.h>
 #include "clocks.h"
+#include "process.h"
+#include "thread.h"
 
 int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
 {
@@ -25,4 +28,38 @@ int syscall_gettimeofday(timeval *tv, timezone *tz, int *_errno)
     }
 
     return 0;
+}
+
+clock_t syscall_times(struct tms *buf, int *_errno)
+{
+    ADDR_CHECK_STRUCT_W(buf);
+
+    auto p = GetCurrentProcessForCore();
+    if(p)
+    {
+        unsigned long user_dur = 0;
+
+        {
+            CriticalGuard cg(p->sl, ThreadList.sl);
+            for(auto tid : p->threads)
+            {
+                auto t = ThreadList._get(tid);
+                if(t.v)
+                {
+                    user_dur += t.v->thread_time_us;
+                }
+            }
+        }
+
+        buf->tms_utime = (clock_t)user_dur;
+        buf->tms_stime = 0;
+        buf->tms_cutime = 0;
+        buf->tms_cstime = 0;
+    }
+    else
+    {
+        memset(buf, 0, sizeof(*buf));
+    }
+
+    return (clock_t)clock_cur_us();
 }
