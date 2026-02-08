@@ -3,17 +3,19 @@
 #include "thread.h"
 #include "ipi.h"
 #include "scheduler.h"
+#include "gk_conf.h"
+
+extern BinarySemaphore klog_updated;
 
 SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
 {}
 
 uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time tout)
 {
-    CriticalGuard cg(sl, ThreadList.sl);
+    CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
     {
-        auto pwt = ThreadList._get(waiting_thread).v;
-        if(pwt && t != pwt.get())
+        if(waiting_thread && waiting_thread != t->id)
             return false;
     }
     if(signal_value)
@@ -21,10 +23,13 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
         auto ret = signal_value;
         do_op(op, vop);
         waiting_thread = 0;
+#if GK_PROFILE_SS
+        if(this != (SimpleSignal *)&klog_updated)
+            klog("ss: %p ret\n", this);
+#endif
         return ret;
     }
     waiting_thread = t->id;
-    cg.unlockone(1U);
 
     t->blocking.block(this, tout);
     Yield();
@@ -33,6 +38,10 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
 
 uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
 {
+#if GK_PROFILE_SS
+    if(this != (SimpleSignal *)&klog_updated)
+        klog("ss: %p wait\n", this);
+#endif
     while(true)
     {
         auto sv = WaitOnce(op, vop, tout);
@@ -45,6 +54,10 @@ uint32_t SimpleSignal::Wait(SignalOperation op, uint32_t vop, kernel_time tout)
 
 void SimpleSignal::Signal(SignalOperation op, uint32_t val)
 {
+#if GK_PROFILE_SS
+    if(this != (SimpleSignal *)&klog_updated)
+        klog("ss: %p signal\n", this);
+#endif
     CriticalGuard cg(sl, ThreadList.sl);
     do_op(op, val);
     auto pwt = ThreadList._get(waiting_thread).v;

@@ -584,8 +584,6 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
     if(signalled)
         ADDR_CHECK_STRUCT_W(signalled);
 
-    m->unlock();
-
     kernel_time tout = kernel_time_invalid();
     if(abstime)
     {
@@ -593,11 +591,21 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
     }
     if(kernel_time_is_valid(tout) && tout > clock_cur())
     {
+        m->unlock();
         *_errno = ETIMEDOUT;
         return -1;
     }
-    c->Wait(tout, signalled);
 
+    /* Unlocking of the mutex and blocking on the condition needs to be atomic, i.e. the other
+        core should not be able to acquire the mutex and signal the condition between the calls
+        to Mutex::unlock and Condition::Wait
+    */
+    
+    {
+        CriticalGuard cg(m->sl, c->sl, ThreadList.sl);
+        m->_unlock();
+        c->_Wait(tout, signalled);
+    }
     m->lock();
 
     return 0;
@@ -832,5 +840,17 @@ int syscall_pthread_cleanup_pop(int execute, int *_errno)
         }
     }
 
+    return 0;
+}
+
+int syscall_setgoldenthread(pthread_t thread, int *_errno)
+{
+    auto t = thread ? ThreadList.Get(thread) : GetCurrentPThreadForCore();
+    if(!t)
+    {
+        *_errno = ESRCH;
+        return -1;
+    }
+    sched.SetGoldenThread(t);
     return 0;
 }

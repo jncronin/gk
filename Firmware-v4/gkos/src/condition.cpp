@@ -8,6 +8,11 @@
 void Condition::Wait(kernel_time tout, int *signalled_ret)
 {
     CriticalGuard cg(sl);
+    _Wait(tout, signalled_ret);
+}
+
+void Condition::_Wait(kernel_time tout, int *signalled_ret)
+{
     auto t = GetCurrentThreadForCore();
     timeout to { tout, signalled_ret };
     waiting_threads.insert_or_assign(t->id, to);

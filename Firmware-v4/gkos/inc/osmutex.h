@@ -18,14 +18,17 @@ class Mutex
         bool is_recursive = false;
         bool echeck = false;
         int lockcount = 0;
-        Spinlock sl;
 
     public:
+        Spinlock sl;
         id_t id;
         Mutex(bool recursive = false, bool error_check = false);
         void lock(bool allow_deadlk = false);
         bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
+        void _lock(bool allow_deadlk = false);
+        bool _try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool unlock(int *reason = nullptr, bool force = false);
+        bool _unlock(int *reason = nullptr, bool force = false);
         bool unlock(bool do_unlock);
         bool try_delete(int *reason = nullptr);
 };
@@ -68,11 +71,12 @@ class Condition
     protected:
         struct timeout { kernel_time tout; int *signalled; };
         std::unordered_map<id_t, timeout> waiting_threads;
-        Spinlock sl;
 
     public:
+        Spinlock sl;
         id_t id;
         void Wait(kernel_time tout = kernel_time(), int *signalled_ret = nullptr);
+        void _Wait(kernel_time tout = kernel_time(), int *signalled_ret = nullptr);
         void Signal(bool all = true);
         ~Condition();
 };

@@ -26,7 +26,7 @@ std::shared_ptr<Thread> Thread::Create(const std::string &name,
 {
     auto t = ThreadList.Create();
 
-    klog("thread_create: %s @ %llx\n", name.c_str(), (uintptr_t)t.get());
+    klog("thread_create: %d: %s @ %llx\n", t->id, name.c_str(), (uintptr_t)t.get());
 
     t->name = name;
     t->p = owning_process->id;

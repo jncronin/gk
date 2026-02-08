@@ -30,10 +30,34 @@ void Mutex::lock(bool allow_deadlk)
     }
 }
 
+void Mutex::_lock(bool allow_deadlk)
+{
+    int reason;
+    while(!_try_lock(&reason))
+    {
+        if(allow_deadlk && reason == EDEADLK)
+        {
+            return;
+        }
+        
+        if(reason != EBUSY)
+        {
+            __asm__ volatile("brk #212\n" ::: "memory");
+        }
+    }
+}
+
 bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
 {
     auto t = GetCurrentThreadForCore();
     CriticalGuard cg(sl, t->locked_mutexes.sl);
+
+    return _try_lock(reason, block, tout);
+}
+
+bool Mutex::_try_lock(int *reason, bool block, kernel_time tout)
+{
+    auto t = GetCurrentThreadForCore();
     auto towner = ThreadList.Get(owner).v;
     if(towner == nullptr || (is_recursive && towner.get() == t))
     {
@@ -85,6 +109,11 @@ bool Mutex::unlock(bool do_unlock)
 bool Mutex::unlock(int *reason, bool force)
 {
     CriticalGuard cg(sl, ThreadList.sl);
+    return _unlock(reason, force);
+}
+
+bool Mutex::_unlock(int *reason, bool force)
+{
     auto towner = ThreadList._get(owner).v;
     if(!towner)
     {

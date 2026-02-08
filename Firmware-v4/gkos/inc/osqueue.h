@@ -75,6 +75,9 @@ template <typename T> class BaseQueue
 
             //_b[_wptr] = v;
             _wptr = ptr_plus_one(_wptr);
+#if GK_PROFILE_QUEUE
+            klog("queue: %p push\n", this);
+#endif
             signal_waiting();
             return true;
         }
@@ -96,6 +99,9 @@ template <typename T> class BaseQueue
 
             //_b[_wptr] = v;
             _wptr = ptr_plus_one(_wptr);
+#if GK_PROFILE_QUEUE
+            klog("queue: %p push\n", this);
+#endif
             signal_waiting();
             return true;
         }
@@ -198,7 +204,7 @@ template <typename T> class BaseQueue
                     CriticalGuard cg(sl);
                     if(empty())
                     {
-                        auto t = GetCurrentPThreadForCore();
+                        auto t = GetCurrentThreadForCore();
                         waiting_threads.insert(t->id);
                         t->blocking.block(this, timeout);
                         Yield();
@@ -215,6 +221,9 @@ template <typename T> class BaseQueue
                             *v = _b[_rptr];
                         }
                         _rptr = ptr_plus_one(_rptr);
+#if GK_PROFILE_QUEUE
+                        klog("queue: %p pop\n", this);
+#endif
                         return true;
                     }
                 }

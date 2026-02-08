@@ -139,8 +139,15 @@ inline void Scheduler::set_timeout(const PThread new_t)
 
 Thread *Scheduler::GetNextThread(uint32_t ncore)
 {
-    //CPUAffinity OnlyMe = (ncore == 0) ? CPUAffinity::M7Only : CPUAffinity::M4Only;
-    //CPUAffinity PreferMe = (ncore == 0) ? CPUAffinity::PreferM7 : CPUAffinity::PreferM4;
+    // If we are the golden thread then simply return
+    {
+        CriticalGuard cg(sl_cur_next);
+        auto tptr = GetCurrentThreadForCore();
+        if(tptr && tptr == golden_thread[ncore].get())
+        {
+            return tptr;
+        }
+    }
 
     PThread cur_t;
     int cur_prio;
@@ -389,6 +396,17 @@ void Scheduler::Unschedule(PThread t)
             }
         }
     }
+
+    {
+        CriticalGuard cg(sl_cur_next);
+        for(size_t i = 0; i < ncores; i++)
+        {
+            if(golden_thread[i].get() == t.get())
+            {
+                golden_thread[i].reset();
+            }
+        }
+    }
 }
 
 void Scheduler::ChangePriority(PThread t, int old_p, int new_p)
@@ -529,5 +547,48 @@ double Scheduler::CPUUsage(int core_id)
     else
     {
         return 0.0;
+    }
+}
+
+void Scheduler::SetGoldenThread(PThread t)
+{
+    if(!t)
+        return;
+
+    // Cannot have golden thread for unicore
+    if(ncores == 1)
+        return;
+    
+    CriticalGuard cg(sl_cur_next);
+
+    // first determine how many golden threads are already allocated
+    size_t n_golden = 0;
+    for(const auto &curt : golden_thread)
+    {
+        if(curt)
+            n_golden++;
+    }
+
+    // if less than max, then just allocate somewhere
+    if(n_golden < (ncores - 1))
+    {
+        for(size_t i = 0U; i < ncores; i++)
+        {
+            if(golden_thread[i].get() == nullptr)
+            {
+                golden_thread[i] = t;
+                return;
+            }
+        }
+    }
+
+    // else, allocate on top of an existing one
+    for(size_t i = 0U; i < ncores; i++)
+    {
+        if(golden_thread[i].get())
+        {
+            golden_thread[i] = t;
+            return;
+        }
     }
 }

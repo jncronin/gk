@@ -59,9 +59,12 @@ class Scheduler
 
         void ChangePriority(PThread t, int old_priority, int new_priority);
 
+        void SetGoldenThread(PThread t);
+
         Spinlock sl_cur_next;
         PThread current_thread[ncores];
         PThread next_thread[ncores];
+        PThread golden_thread[ncores];
 
         bool scheduler_running[ncores];
 
