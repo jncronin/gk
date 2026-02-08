@@ -536,12 +536,16 @@ double Scheduler::CPUUsage(int core_id)
         double ret = 0.0;
         for(unsigned int i = 0; i < ncores; i++)
         {
-            ret += cpu_usage[i];
+            ret += CPUUsage((int)i);
         }
         return ret;
     }
     else if((unsigned int)core_id < ncores)
     {
+        CriticalGuard cg(sl_cur_next);
+        if(golden_thread[core_id] != nullptr)
+            return 1.0;
+        cg.unlock();
         return (double)cpu_usage[(unsigned int)core_id];
     }
     else
