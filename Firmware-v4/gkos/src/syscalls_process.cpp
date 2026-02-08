@@ -111,16 +111,11 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
 #endif
     if(proc_info->cpu_freq >= 400000000U && proc_info->cpu_freq <= max_cpu_freq)
     {
-#if GK_OVERCLOCK_MHZ
-        if(proc_info->cpu_freq == 1500000000U)
-        {
-            proc->cpu_freq = max_cpu_freq;
-        }
-        else
-#endif
-        {
-            proc->cpu_freq = proc_info->cpu_freq;
-        }
+        proc->cpu_freq = proc_info->cpu_freq;
+    }
+    else
+    {
+        proc->cpu_freq = 1200000000U;
     }
 
     // Create startup thread
