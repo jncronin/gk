@@ -7,8 +7,11 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "threadproclist.h"
+#include <memory>
+#include <vector>
 
 class Thread;
+using PThread = std::shared_ptr<Thread>;
 
 class Mutex
 {
@@ -28,7 +31,7 @@ class Mutex
         void _lock(bool allow_deadlk = false);
         bool _try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool unlock(int *reason = nullptr, bool force = false);
-        bool _unlock(int *reason = nullptr, bool force = false);
+        std::pair<bool, std::vector<PThread>> _unlock(int *reason = nullptr, bool force = false);
         bool unlock(bool do_unlock);
         bool try_delete(int *reason = nullptr);
 };

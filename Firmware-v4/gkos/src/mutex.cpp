@@ -109,33 +109,45 @@ bool Mutex::unlock(bool do_unlock)
 bool Mutex::unlock(int *reason, bool force)
 {
     CriticalGuard cg(sl, ThreadList.sl);
-    return _unlock(reason, force);
+    auto [ ret, to_unlock ] = _unlock(reason, force);
+    cg.unlock();
+    if(ret)
+    {
+        for(auto pwt : to_unlock)
+        {
+            pwt->blocking.unblock();
+            signal_thread_woken(pwt);
+        }
+    }
+    return ret;
 }
 
-bool Mutex::_unlock(int *reason, bool force)
+std::pair<bool, std::vector<PThread>> Mutex::_unlock(int *reason, bool force)
 {
     auto towner = ThreadList._get(owner).v;
     if(!towner)
     {
         if(reason) *reason = EPERM;
-        return false;
+        return std::make_pair(false, std::vector<PThread>());
     }
     auto t = GetCurrentThreadForCore();
     if(((towner.get() != t) && (force == false)) ||
         ((force == true) && towner->is_privileged))
     {
         if(reason) *reason = EPERM;
-        return false;
+        return std::make_pair(false, std::vector<PThread>());
     }
+
+    std::vector<PThread> to_unlock{};
     if(!is_recursive || --lockcount == 0)
     {
+
         for(auto wt : waiting_threads)
         {
             auto pwt = ThreadList._get(wt).v;
             if(pwt)
             {
-                pwt->blocking.unblock();
-                signal_thread_woken(pwt);
+                to_unlock.push_back(std::move(pwt));
             }
         }
         waiting_threads.clear();
@@ -144,7 +156,7 @@ bool Mutex::_unlock(int *reason, bool force)
 
     t->locked_mutexes.Delete(id);
 
-    return true;
+    return std::make_pair(true, to_unlock);
 }
 
 bool Mutex::try_delete(int *reason)

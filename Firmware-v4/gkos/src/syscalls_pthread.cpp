@@ -603,8 +603,17 @@ int syscall_pthread_cond_timedwait(pthread_cond_t *cond,
     
     {
         CriticalGuard cg(m->sl, c->sl, ThreadList.sl);
-        m->_unlock();
+        auto [ munlocked, threads_to_wake ] = m->_unlock();
         c->_Wait(tout, signalled);
+        if(munlocked)
+        {
+            cg.unlockone(2);
+            for(auto ttw : threads_to_wake)
+            {
+                ttw->blocking.unblock();
+                signal_thread_woken(ttw);
+            }
+        }
     }
     m->lock();
 

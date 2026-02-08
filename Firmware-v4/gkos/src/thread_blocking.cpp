@@ -6,6 +6,11 @@ bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
 {
     CriticalGuard cg(sl, ThreadList.sl);
     auto bt_locked = ThreadList._get(b_thread).v;
+    cg.unlockone(1);
+    if(b_thread && bt_locked == nullptr)
+    {
+        b_thread = 0;
+    }
     if(kernel_time_is_valid(b_until) && b_until <= clock_cur())
     {
         b_until = kernel_time_invalid();
