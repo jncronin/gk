@@ -108,7 +108,7 @@ class Process
             unsigned int rd_ptr;
             unsigned int rd_ready_ptr;
             uintptr_t silence_paddr;
-            Condition waiting_threads;
+            BinarySemaphore waiting_threads;
             bool enabled = false;
             unsigned int freq, nbits, nchan;
             unsigned int audio_max_buffer_size = 0;

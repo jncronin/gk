@@ -678,11 +678,19 @@ int syscall_audiowaitfree(int *_errno)
         return -1;
     }
 
-    CriticalGuard cg(ac.sl_sound);
-    if(_ptr_plus_one(ac.rd_ptr, ac) == ac.wr_ptr)
+    bool buf_has_space;
+    do
     {
-        ac.waiting_threads.Wait();
-    }
+        {
+            CriticalGuard cg(ac.sl_sound);
+            buf_has_space = _ptr_plus_one(ac.rd_ptr, ac) != ac.wr_ptr;
+        }
+        if(!buf_has_space)
+        {
+            ac.waiting_threads.Wait();
+        }
+    } while(!buf_has_space);
+    
     return 0;
 }
 
