@@ -72,7 +72,8 @@ unsigned int clock_set_cpu(unsigned int freq)
     while(CA35SS_SSC_PLL_ENx->value & 0x5);
 
     // Get appropriate VCOout
-    auto vcoout = (unsigned long)freq * 2UL;
+    auto test_post_divide = (freq <= 1500000000UL) ? 2UL : 1UL;
+    auto vcoout = (unsigned long)freq * test_post_divide;
     if(vcoout < 1200000000UL)
         vcoout = 1200000000UL;
     if(vcoout > 3000000000UL)
@@ -86,7 +87,7 @@ unsigned int clock_set_cpu(unsigned int freq)
     if(postdiv2 < 1) postdiv2 = 1;
     if(postdiv2 > 7) postdiv2 = 7;
     uint32_t postdiv1 = divider / postdiv2;
-    if(postdiv1 < 2) postdiv1 = 2;
+    if(postdiv1 < 1) postdiv1 = 1;
     if(postdiv1 > 7) postdiv1 = 7;
 
     // Program

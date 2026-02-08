@@ -3,6 +3,7 @@
 #include "vmem.h"
 #include "pmic.h"
 #include "osmutex.h"
+#include "gk_conf.h"
 
 #define TIM3_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM3_BASE))
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
@@ -68,8 +69,12 @@ void udelay(unsigned int d)
 
 unsigned int clock_set_cpu_and_vddcpu(unsigned int freq)
 {
+#if GK_OVERCLOCK_MHZ
+    const unsigned int max_freq = GK_OVERCLOCK_MHZ * 1000000U;
+#else
     uint32_t part_no = *(uint32_t *)(0xfffffd0044000024);
     unsigned int max_freq = (part_no & 0x80000000U) ? 1500000000U : 1200000000U;
+#endif
     const unsigned int min_freq = 400000000U;
 
     if(freq > max_freq)
