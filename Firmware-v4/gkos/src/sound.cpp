@@ -77,8 +77,15 @@ static void _queue_if_possible(audio_conf &ac, uint64_t ttbr0);
 /* Return volume as expected to be written to one DAC channel */
 static inline uint16_t pcm1753_volume(int volume)
 {
-    // Linear scale in top of range for now
-    return volume ? (155U + volume) : 0U;
+    if(volume == 0)
+        return 0;
+    
+    // Linear scale from 0 to 255
+    auto vol_i = (int)std::round((double)volume * 255.0 / 100.0);
+    if(vol_i < 0) vol_i = 0;
+    if(vol_i > 255) vol_i = 255;
+
+    return (uint16_t)vol_i;
 }
 
 /* Return volume per channel */
