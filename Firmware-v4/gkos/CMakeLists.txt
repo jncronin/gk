@@ -29,6 +29,9 @@ PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/inc"
 )
 
+add_subdirectory(../Infineon_AIROC-Wi-Fi-Bluetooth-STM32_1.7.1 airoc)
+
+
 
 set(ZLIB_BUILD_EXAMPLES OFF)
 add_subdirectory(../../Firmware/zlib-1.3.1 zlib)
@@ -143,10 +146,29 @@ target_link_options(${PROJECT_NAME}
         -Wl,-z,common-page-size=65536
 )
 
+target_include_directories(airoc_gk_whd
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+)
+
+target_include_directories(airoc_btinterface
+PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+)
+
+target_compile_definitions(airoc_gk_whd
+PRIVATE
+    WPRINT_ENABLE_WHD_INFO
+    WPRINT_ENABLE_WHD_DEBUG
+    WPRINT_ENABLE_WHD_DATA_LOG
+)
+
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         lwext4
         zlib
+        airoc_gk_whd
+        airoc_btinterface
 )
 
 utils_target_set_linker_script(${PROJECT_NAME}

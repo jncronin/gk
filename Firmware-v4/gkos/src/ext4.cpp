@@ -18,6 +18,8 @@
 #include "vmem.h"
 #include "pmem.h"
 
+#include "sdif.h"
+
 #include <sys/stat.h>
 #include <_sys_dirent.h>
 
@@ -35,8 +37,6 @@ static_assert(EXT4_DE_SYMLINK == DT_LNK);
 
 extern char _sext4_data, _eext4_data;
 
-extern bool sd_ready;
-extern uint64_t sd_size;
 static bool unmounted = false;
 
 static int sd_open(struct ext4_blockdev *bdev);
@@ -733,12 +733,12 @@ void init_ext4()
 
 int sd_open(ext4_blockdev *bdev)
 {
-    while(!sd_ready)
+    while(!sdmmc[0].sd_ready)
         Yield();
 
     if(bdev->part_size == 0 || bdev->bdif->ph_bcnt == 0)
     {
-        bdev->part_size = sd_size;
+        bdev->part_size = sdmmc[0].sd_size;
         bdev->bdif->ph_bcnt = bdev->part_size / bdev->bdif->ph_bsize;
     }
 
