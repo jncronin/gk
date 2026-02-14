@@ -107,7 +107,7 @@ class FatfsFile : public File
         FIL *f;
         std::string fname;
 };
-
+*/
 
 // TODO: pipe
 
@@ -133,6 +133,5 @@ class SocketFile : public File
 
         Socket *sck;
 };
-*/
 
 #endif

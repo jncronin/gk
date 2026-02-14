@@ -27,6 +27,7 @@
 #include "klog_buffer.h"
 #include "retram.h"
 #include "pmic.h"
+#include "osnet.h"
 #include <memory>
 
 // test threads
@@ -141,6 +142,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_ctp();
     init_cm33_interface();
     init_pmic();
+    init_net();
 
     klogbuffer_purge_uart();
 
