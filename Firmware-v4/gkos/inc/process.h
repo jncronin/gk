@@ -148,6 +148,7 @@ class Process
         owned_sync_list<Condition> owned_conditions = owned_sync_list(ConditionList);
         owned_sync_list<RwLock> owned_rwlocks = owned_sync_list(RwLockList);
         owned_sync_list<UserspaceSemaphore> owned_semaphores = owned_sync_list(UserspaceSemaphoreList);
+        owned_sync_list<Barrier> owned_barriers = owned_sync_list(BarrierList);
 
         /* pthread TLS data */
         pthread_tls_t pthread_tls{};

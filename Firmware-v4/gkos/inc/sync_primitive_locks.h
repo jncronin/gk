@@ -12,6 +12,7 @@ using PMutex = std::shared_ptr<Mutex>;
 using PCondition = std::shared_ptr<Condition>;
 using PRWLock = std::shared_ptr<RwLock>;
 using PUserspaceSemaphore = std::shared_ptr<UserspaceSemaphore>;
+using PBarrier = std::shared_ptr<Barrier>;
 
 template <class PrimType> struct owned_sync_list
 {

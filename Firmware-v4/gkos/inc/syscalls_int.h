@@ -79,6 +79,10 @@ int syscall_pthread_rwlock_unlock(pthread_rwlock_t *lock, int *_errno);
 
 int syscall_pthread_setname_np(pthread_t thread, const char *name, int *_errno);
 
+int syscall_pthread_barrier_init(id_t *barrier, const void *attr, unsigned int count, int *_errno);
+int syscall_pthread_barrier_wait(id_t *barrier, int *_errno);
+int syscall_pthread_barrier_destroy(id_t *barrier, int *_errno);
+
 int syscall_setgoldenthread(pthread_t thread, int *_errno);
 
 int syscall_sem_init(sem_t *sem, int pshared, unsigned int value, int *_errno);

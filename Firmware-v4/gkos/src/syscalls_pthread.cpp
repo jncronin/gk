@@ -137,6 +137,14 @@ static PRWLock check_rwlock(pthread_rwlock_t *lock)
     return p->owned_rwlocks.get(*lock);
 }
 
+static PBarrier check_barrier(id_t *barrier)
+{
+    if(!barrier)
+        return nullptr;
+    auto p = GetCurrentProcessForCore();
+    return p->owned_barriers.get(*barrier);
+}
+
 static PUserspaceSemaphore check_sem(sem_t *sem)
 {
     if(!sem || !sem->s)
@@ -631,6 +639,57 @@ int syscall_pthread_cond_signal(pthread_cond_t *cond, int *_errno)
     }
 
     c->Signal(false);
+    return 0;
+}
+
+int syscall_pthread_barrier_init(id_t *barrier, const void *attr, unsigned int count, int *_errno)
+{
+    ADDR_CHECK_STRUCT_W(barrier);
+    if(count == 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto b = BarrierList.Create(count);
+    if(!b)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
+    auto p = GetCurrentProcessForCore();
+    *barrier = p->owned_barriers.add(b);
+
+    return 0;
+}
+
+int syscall_pthread_barrier_wait(id_t *barrier, int *_errno)
+{
+    auto b = check_barrier(barrier);
+
+    if(!b)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    return b->Wait();
+}
+
+int syscall_pthread_barrier_destroy(id_t *barrier, int *_errno)
+{
+    ADDR_CHECK_STRUCT_W(barrier);
+    auto c = check_cond(barrier);
+    if(!c)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto p = GetCurrentProcessForCore();
+    p->owned_barriers.erase(*barrier);
+
     return 0;
 }
 

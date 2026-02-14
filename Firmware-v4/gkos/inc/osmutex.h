@@ -191,5 +191,21 @@ class MutexGuard
         bool is_locked;
 };
 
+class Barrier
+{
+    protected:
+        unsigned int nrequired;
+        unsigned int ncur = 0;
+        std::vector<id_t> waiting_threads;
+
+    public:
+        Spinlock sl{};
+        id_t id;
+
+        int Wait();
+
+        Barrier(unsigned int _nrequired);
+        ~Barrier();
+};
 
 #endif

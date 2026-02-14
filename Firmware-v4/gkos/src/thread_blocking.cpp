@@ -22,6 +22,7 @@ bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
         b_uss = nullptr;
         b_rwl = nullptr;
         b_queue = nullptr;
+        b_barrier = nullptr;
 #else
         b_prim = true;
 #endif
@@ -35,7 +36,8 @@ bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
         b_ss ||
         b_uss ||
         b_rwl ||
-        b_queue;
+        b_queue ||
+        b_barrier;
 #else
         b_prim;
 #endif
@@ -59,6 +61,7 @@ void Thread::blocking_t::unblock()
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = false;
 #endif
@@ -76,6 +79,7 @@ void Thread::blocking_t::block(PThread t, kernel_time tout)
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = false;
 #endif
@@ -93,6 +97,7 @@ void Thread::blocking_t::block(Condition *c, kernel_time tout)
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = true;
 #endif
@@ -110,6 +115,7 @@ void Thread::blocking_t::block(SimpleSignal *ss, kernel_time tout)
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = true;
 #endif
@@ -127,6 +133,7 @@ void Thread::blocking_t::block(UserspaceSemaphore *uss, kernel_time tout)
     b_uss = uss;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = true;
 #endif
@@ -144,6 +151,7 @@ void Thread::blocking_t::block(RwLock *rwl, kernel_time tout)
     b_uss = nullptr;
     b_rwl = rwl;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = true;
 #endif
@@ -161,6 +169,25 @@ void Thread::blocking_t::block(void *q, kernel_time tout)
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = q;
+    b_barrier = nullptr;
+#else
+    b_prim = true;
+#endif
+}
+
+void Thread::blocking_t::block(Barrier *barrier, kernel_time tout)
+{
+    CriticalGuard cg(sl);
+    b_until = tout;
+    b_indefinite = false;
+    b_thread = 0;
+#if GK_DEBUG_BLOCKING
+    b_condition = nullptr;
+    b_ss = nullptr;
+    b_uss = nullptr;
+    b_rwl = nullptr;
+    b_queue = nullptr;
+    b_barrier = barrier;
 #else
     b_prim = true;
 #endif
@@ -183,6 +210,7 @@ void Thread::blocking_t::block_indefinite()
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = false;
 #endif
@@ -206,6 +234,7 @@ void Thread::blocking_t::block(kernel_time tout)
     b_uss = nullptr;
     b_rwl = nullptr;
     b_queue = nullptr;
+    b_barrier = nullptr;
 #else
     b_prim = false;
 #endif

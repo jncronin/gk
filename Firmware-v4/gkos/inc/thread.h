@@ -34,6 +34,7 @@ class Thread
                 UserspaceSemaphore *b_uss = nullptr;
                 RwLock *b_rwl = nullptr;
                 void *b_queue = nullptr;
+                Barrier *b_barrier = nullptr;
 #else
                 bool b_prim = false;
 #endif
@@ -47,6 +48,7 @@ class Thread
                 void block(UserspaceSemaphore *uss, kernel_time tout = kernel_time_invalid());
                 void block(RwLock *uss, kernel_time tout = kernel_time_invalid());
                 void block(void *q, kernel_time tout = kernel_time_invalid());
+                void block(Barrier *q, kernel_time tout = kernel_time_invalid());
                 void block(kernel_time tout);
                 void block_indefinite();
         };

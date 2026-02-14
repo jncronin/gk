@@ -841,6 +841,29 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_pthread_barrier_init:
+            {
+                auto p = reinterpret_cast<__syscall_pthread_barrier_init_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_barrier_init((id_t *)p->barrier,
+                    p->attr, p->count, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pthread_barrier_wait:
+            {
+                auto bid = reinterpret_cast<id_t *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_barrier_wait(bid,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_pthread_barrier_destroy:
+            {
+                auto bid = reinterpret_cast<id_t *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_pthread_barrier_destroy(bid,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
 
 #if 0
         case WaitSimpleSignal:

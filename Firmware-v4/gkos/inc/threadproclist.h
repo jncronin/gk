@@ -12,6 +12,7 @@ class Mutex;
 class Condition;
 class RwLock;
 class UserspaceSemaphore;
+class Barrier;
 
 template <class T, class ret_T> struct ThreadProcListMember
 {
@@ -181,6 +182,7 @@ using MutexList_t = SyncPrimIDList<Mutex>;
 using CondList_t = SyncPrimIDList<Condition>;
 using RwLockList_t = SyncPrimIDList<RwLock>;
 using UserspaceSemaphoreList_t = SyncPrimIDList<UserspaceSemaphore>;
+using BarrierList_t = SyncPrimIDList<Barrier>;
 
 extern ThreadList_t ThreadList;
 extern ProcessList_t ProcessList;
@@ -188,5 +190,6 @@ extern MutexList_t MutexList;
 extern CondList_t ConditionList;
 extern RwLockList_t RwLockList;
 extern UserspaceSemaphoreList_t UserspaceSemaphoreList;
+extern BarrierList_t BarrierList;
 
 #endif
