@@ -74,17 +74,14 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     {
         // try fixed alloc
         vb = p->user_mem->vblocks.AllocFixed(pmb);
-
-        if(!vb.valid)
-        {
-            klog("mmap: fixed %x @ %p failed.  Current allocs:\n", len, *retaddr);
-            p->user_mem->vblocks.Traverse([](MemBlock &mb) { klog("mmap: %p - %p\n", mb.b.base, mb.b.end()); return 0; });
-        }
     }
     if(!vb.valid)
     {
         if(is_fixed)
         {
+            klog("mmap: fixed %x @ %p failed.  Current allocs:\n", len, *retaddr);
+            p->user_mem->vblocks.Traverse([](MemBlock &mb) { klog("mmap: %p - %p\n", mb.b.base, mb.b.end()); return 0; });
+
             // fail if we don't deliver the exact block if MAP_FIXED specified
             // also fail if MAP_FIXED and *retaddr = 0 - cannot allocate 0
             *_errno = EEXIST;
