@@ -127,6 +127,10 @@ class SDIF
             bool with_data = false,
             bool ignore_crc = false,
             int timeout_retry = 10);
+
+        void IRQ();
+
+        void (*card_interrupt_handler)() = nullptr;
 };
 
 extern SDIF sdmmc[2];

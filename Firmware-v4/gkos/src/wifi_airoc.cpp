@@ -5,6 +5,7 @@
 #include "sdif.h"
 #include "logger.h"
 
+#include "wifi_airoc_if.h"
 #include "cybsp.h"
 #include "cybsp_wifi.h"
 #include "cy_network_buffer.h"
@@ -14,10 +15,6 @@
 
 extern "C" void bt_post_reset_cback(void);
 
-static void wifi_airoc_reset();
-
-static bool wifi_airoc_init = false;
-
 #define GPIOC_VMEM (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE)
 static const constexpr pin WIFI_REG_ON { GPIOC_VMEM, 7 };
 static const constexpr pin BT_REG_ON { GPIOC_VMEM, 8 };
@@ -26,7 +23,6 @@ static const constexpr pin BT_REG_ON { GPIOC_VMEM, 8 };
 static const constexpr pin MCO1 { GPIOI_VMEM, 6, 1 };
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
-
 
 static whd_init_config_t init_config_default =
 {
@@ -53,13 +49,8 @@ static whd_netif_funcs_t netif_if_default =
 
 extern whd_resource_source_t resource_ops;
 
-static whd_driver_t whd_drv;
-static whd_interface_t whd_iface;
-
 void init_wifi_airoc()
 {
-    wifi_airoc_init = false;
-
     RCC_VMEM->GPIOCCFGR |= RCC_GPIOCCFGR_GPIOxEN;
     RCC_VMEM->GPIOICFGR |= RCC_GPIOICFGR_GPIOxEN;
     __asm__ volatile("dsb sy\n" ::: "memory");
@@ -81,13 +72,13 @@ void init_wifi_airoc()
     sdmmc[1].supply_off = []() { WIFI_REG_ON.clear(); udelay(10000); return 0; };
     sdmmc[1].supply_on = []() { WIFI_REG_ON.set(); BT_REG_ON.set(); udelay(250000); return 0; };
 
-    wifi_airoc_reset();
+    //wifi_airoc_reset();
 }
 
-void wifi_airoc_reset()
+int WifiAirocNetInterface::wifi_airoc_reset()
 {
     if(sdmmc[1].reset() != 0)
-        return;
+        return -1;
     
     sdmmc[1].sdio_enable_function(0, true);
     sdmmc[1].sdio_enable_function(1, true);
@@ -110,7 +101,7 @@ void wifi_airoc_reset()
         size_t len;
         auto ret = sdmmc[1].sdio_read_tuple<256U>(&cis_addr, &tid, &len, tuple);
         if(ret != 0)
-            return;
+            return -1;
                 
         switch(tid)
         {
@@ -137,7 +128,7 @@ void wifi_airoc_reset()
     if(manf_code != 0x04b4 || part_no != 0xbd3d)
     {
         klog("airoc: invalid manf/part no\n");
-        return;
+        return -1;
     }
 
     sdmmc[1].sdio_set_func_block_size(0, f0_blk_size);
@@ -163,7 +154,63 @@ void wifi_airoc_reset()
     };
     whd_bus_sdio_attach(whd_drv, &whd_sdio_config, nullptr);
 
-    whd_wifi_on(whd_drv, &whd_iface);
+    return whd_wifi_on(whd_drv, &whd_iface) == WHD_SUCCESS ? 0 : -1;
 
-    bt_post_reset_cback();
+    //bt_post_reset_cback();
+}
+
+int WifiAirocNetInterface::HardwareEvent()
+{
+    klog("airoc: hwevent\n");
+    return 0;
+}
+
+int WifiAirocNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
+            bool release_buffer)
+{
+    klog("airoc: send_ethernet_packet\n");
+    return 0;
+}
+
+int WifiAirocNetInterface::GetHeaderSize() const
+{
+    klog("airoc: get_header_size\n");
+    return 64;
+}
+
+int WifiAirocNetInterface::GetFooterSize() const
+{
+    klog("airoc: get_footer_size\n");
+    return 64;
+}
+
+int WifiAirocNetInterface::Activate()
+{
+    if(wifi_airoc_reset() != 0)
+    {
+        klog("net: wifi_airoc_reset failed\n");
+        return -1;
+    }
+
+    return NetInterface::Activate();
+}
+
+int WifiAirocNetInterface::Deactivate()
+{
+    whd_wifi_off(whd_iface);
+    sdmmc[1].sd_ready = false;
+    sdmmc[1].io_0();
+    sdmmc[1].supply_off();
+
+    return NetInterface::Deactivate();
+}
+
+std::string WifiAirocNetInterface::DeviceName() const
+{
+    return "AIROC";
+}
+
+WifiAirocNetInterface::WifiAirocNetInterface()
+{
+    init_wifi_airoc();
 }

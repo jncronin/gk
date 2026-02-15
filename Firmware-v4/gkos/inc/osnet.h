@@ -11,6 +11,7 @@
 #include "osmutex.h"
 #include "osringbuffer.h"
 #include "_netinet_in.h"
+#include "osqueue.h"
 
 //#include <driver/include/m2m_types.h>
 
@@ -88,20 +89,94 @@ class IP4Addr
         operator uint32_t() const;
 };
 
+struct netiface_msg
+{
+    enum class netiface_msg_type
+    {
+        Activate,
+        Deactivate,
+        HardwareEvent,
+        Deregister
+    };
+
+    netiface_msg_type msg_type;
+};
+
 class NetInterface
 {
+    protected:
+        FixedQueue<netiface_msg, 32> events;
+        std::string name;
+        bool active = false;
+        bool connected = false;
+        HwAddr hwaddr;
+        virtual int IdleTask();
+        virtual int HardwareEvent();
+        virtual int Activate();
+        virtual int Deactivate();
+
     public:
-        virtual const HwAddr &GetHwAddr() const = 0;
-        virtual bool GetLinkActive() const = 0;
+        virtual const HwAddr &GetHwAddr() const;
+        virtual bool GetDeviceActive() const;
+        virtual bool GetLinkActive() const;
         virtual int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
             bool release_buffer) = 0;
+        virtual std::string DeviceName() const;
+        virtual std::string DeviceType() const;
+        virtual std::string Name() const;
 
         virtual int GetHeaderSize() const;
         virtual int GetFooterSize() const;
 
-        virtual std::vector<std::string> ListNetworks() const;
+        virtual int SetActive(bool active);
+
+        virtual void RunTaskLoop();
+
+        friend std::pair<int, std::string> net_register_interface_internal(NetInterface *iface);
 };
 
+/* Call this to register an interface and create an event loop */
+int net_register_interface(NetInterface *iface);
+
+/* This is called by internal osnet functions to register the event loop with net,
+    assign a net id etc */
+std::pair<int, std::string> net_register_interface_internal(NetInterface *iface);
+
+/* This is called to remove the interface from the known interface list */
+int net_deregister_interface(NetInterface *iface);
+
+/* This is called by internal code to do the actual deregistering */
+int net_deregister_interface_internal(NetInterface *iface);
+
+class WifiNetInterface : public NetInterface
+{
+    public:
+        struct wifi_network
+        {
+            std::string ssid;
+            int ch;
+            int rssi;
+            std::string password = "";
+        };
+
+    protected:
+        kernel_time last_scan_time = kernel_time_invalid();
+        virtual int IdleTask();
+        std::vector<wifi_network> networks;
+        std::vector<wifi_network> try_connect_networks;
+        size_t cur_try_connect_network;
+        kernel_time last_try_connect_time;
+        bool scan_in_progress = false;
+        bool connecting = false;
+        virtual int DoScan();
+        virtual int Connect(const wifi_network &wn);
+
+    public:
+        virtual const std::vector<wifi_network> &ListNetworks() const;
+        virtual std::string DeviceType() const;
+};
+
+/*
 class TUSBNetInterface : public NetInterface
 {
     protected:
@@ -118,7 +193,7 @@ class TUSBNetInterface : public NetInterface
         int GetFooterSize() const;
 
         friend void tud_network_init_cb(void);
-};
+}; */
 
 class IP4Address
 {
@@ -228,7 +303,7 @@ struct net_msg
 #define NET_KEEPPACKET  -8
 
 /* Keep these a multiple of cache line size */
-#define PBUF_SIZE       1600U
+#define PBUF_SIZE       1664U
 #define SPBUF_SIZE      128U
 
 #define NET_SIZE_ETHERNET_HEADER        14U

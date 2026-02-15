@@ -1276,3 +1276,40 @@ int SDIF::sdio_set_func_block_size(unsigned int func, size_t block_size)
     ret = write_cccr(base_addr + 1, (uint8_t)((block_size >> 8) & 0xffU));
     return ret;
 }
+
+void SDIF::IRQ()
+{
+    auto const errors = DCRCFAIL |
+        DTIMEOUT |
+        TXUNDERR | RXOVERR;
+    auto sta = iface->STA & iface->MASK;
+#if DEBUG_SD
+    klog("sd: int: %lx\n", sta);
+#endif
+    if(sta & errors)
+    {
+        iface->DCTRL |= SDMMC_DCTRL_FIFORST;
+        
+        sd_status = sta;
+        sd_dcount = iface->DCOUNT;
+        sd_idmabase = iface->IDMABASER;
+        sd_idmactrl = iface->IDMACTRL;
+        sd_idmasize = iface->IDMABSIZE;
+        sd_dctrl = iface->DCTRL;
+        sd_ready = false;
+    }
+    else if(sta & DATAEND)
+    {
+        sd_status = 0;
+    }
+    else if(sta & SDIOIT)
+    {
+        if(card_interrupt_handler)
+            card_interrupt_handler();
+    }
+    else
+    {
+    }
+
+    iface->ICR = sta & (errors | DATAEND | SDIOIT) & 0x4005ff;
+}

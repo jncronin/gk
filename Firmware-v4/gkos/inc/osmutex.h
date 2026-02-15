@@ -9,6 +9,7 @@
 #include "threadproclist.h"
 #include <memory>
 #include <vector>
+#include <limits>
 
 class Thread;
 using PThread = std::shared_ptr<Thread>;
@@ -88,16 +89,17 @@ class SimpleSignal
 {
     protected:
         uint32_t signal_value = 0;
+        uint32_t max_value = std::numeric_limits<decltype(max_value)>::max();
         Spinlock sl;
 
     public:
         id_t waiting_thread = 0;
-        enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub };
+        enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub, AddIfLessThanMax };
         uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
         uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
         uint32_t Value();
         void Signal(SignalOperation op = Set, uint32_t val = 0x1);
-        SimpleSignal(uint32_t val = 0);
+        SimpleSignal(uint32_t val = 0, uint32_t max_val = std::numeric_limits<decltype(max_value)>::max());
 
     protected:
         void do_op(SignalOperation op, uint32_t vop);

@@ -6,6 +6,8 @@
 #include "syscalls_int.h"
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits>
+#include <algorithm>
 
 static std::vector<std::pair<std::string, std::string>> known_nets;
 static kernel_time last_update;
@@ -76,4 +78,129 @@ std::vector<std::pair<std::string, std::string>> net_get_known_networks()
     }
 
     return known_nets;
+}
+
+const std::vector<WifiNetInterface::wifi_network> &WifiNetInterface::ListNetworks() const
+{
+    return networks;
+}
+
+int WifiNetInterface::IdleTask()
+{
+    if(active && !connected && !connecting && !scan_in_progress &&
+        (!kernel_time_is_valid(last_scan_time) || (clock_cur() >= last_scan_time + kernel_time_from_ms(5000))))
+    {
+        // run a scan
+        scan_in_progress = true;
+        DoScan();
+    }
+
+    if(active && !connected && scan_in_progress)
+    {
+        // timeout scans
+        if(kernel_time_is_valid(last_scan_time) &&
+            (clock_cur() >= last_scan_time + kernel_time_from_ms(5000)))
+        {
+            klog("net: wifi scan failed\n");
+            last_scan_time = clock_cur();
+            scan_in_progress = false;
+        }
+    }
+
+    if(active && !connected && !scan_in_progress && !connecting)
+    {
+        connecting = true;
+        try_connect_networks.clear();
+        cur_try_connect_network = 0;
+        last_try_connect_time = kernel_time_invalid();
+
+        auto _known_nets = net_get_known_networks();
+
+        for(const auto &cur_net : _known_nets)
+        {
+            const auto &ssid = cur_net.first;
+            const auto &pwd = cur_net.second;
+
+            wifi_network wn{};
+            bool found = false;
+
+            /* If we have a recent scan, try and find the best channel for this ssid, else
+                try all channels if not found on scan (it may be a hidden ssid) */
+            for(const auto &cur_wn : networks)
+            {
+                if(cur_wn.ssid == ssid)
+                {
+                    if(found)
+                    {
+                        if(cur_wn.rssi < wn.rssi)
+                            continue;
+                    }
+                    found = true;
+                    wn = cur_wn;
+                    wn.password = pwd;
+                }
+            }
+
+            if(!found)
+            {
+                wn.ch = -1;
+                wn.rssi = std::numeric_limits<decltype(wn.rssi)>::min();
+                wn.ssid = ssid;
+                wn.password = pwd;
+            }
+
+            try_connect_networks.push_back(wn);
+        }
+
+        // sort the networks based on rssi high to low
+        std::sort(try_connect_networks.begin(), try_connect_networks.end(),
+            [](const auto &a, const auto &b) { return a.rssi > b.rssi; });
+
+        if(try_connect_networks.empty())
+        {
+            // no known networks
+            connecting = false;
+        }
+    }
+
+    if(active && !connected && connecting)
+    {
+        // try and connect
+        if(!kernel_time_is_valid(last_try_connect_time) ||
+            clock_cur() >= last_try_connect_time + kernel_time_from_ms(500))
+        {
+            if(cur_try_connect_network >= try_connect_networks.size())
+            {
+                // reached the end of the list - fail
+                connecting = false;
+            }
+            else
+            {
+                const auto &try_network = try_connect_networks[cur_try_connect_network];
+                cur_try_connect_network++;
+                last_try_connect_time = clock_cur();
+
+                Connect(try_network);
+            }
+        }
+    }
+
+    return 0;
+}
+
+int WifiNetInterface::DoScan()
+{
+    klog("wifi: DoScan() requested on generic wifi interface\n");
+    return -1;
+}
+
+int WifiNetInterface::Connect(const wifi_network &wn)
+{
+    klog("wifi: Connect(%s) requested on generic wifi interface\n", wn.ssid.c_str());
+    return -1;
+}
+
+std::string WifiNetInterface::DeviceType() const
+{
+    return "wifi";
 }

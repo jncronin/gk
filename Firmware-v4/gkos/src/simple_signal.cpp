@@ -7,7 +7,7 @@
 
 extern BinarySemaphore klog_updated;
 
-SimpleSignal::SimpleSignal(uint32_t v) : signal_value(v)
+SimpleSignal::SimpleSignal(uint32_t v, uint32_t max_val) : signal_value(v), max_value(max_val)
 {}
 
 uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time tout)
@@ -80,6 +80,10 @@ void SimpleSignal::do_op(SignalOperation op, uint32_t vop)
     {
         case SignalOperation::Add:
             signal_value += vop;
+            break;
+        case SignalOperation::AddIfLessThanMax:
+            if(signal_value < max_value)
+                signal_value += vop;
             break;
         case SignalOperation::And:
             signal_value &= vop;

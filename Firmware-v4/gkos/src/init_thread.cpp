@@ -7,6 +7,7 @@
 #include "fs_provision.h"
 #include "_gk_scancodes.h"
 #include "supervisor.h"
+#include "wifi_airoc_if.h"
 #include <fcntl.h>
 
 PProcess p_gkmenu;
@@ -18,6 +19,9 @@ void *init_thread(void *)
     fs_provision();
     
     usb_process_start();
+    auto airoc_if = new WifiAirocNetInterface();
+    net_register_interface(airoc_if);
+    airoc_if->SetActive(true);
 
     // start supervisor
     init_supervisor();
@@ -62,6 +66,7 @@ void *init_thread(void *)
 
     pid_gkmenu = p_gkmenu->id;
 
+#if 0
     if(ret == 0)
     {
         auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_gkmenu);
@@ -72,6 +77,7 @@ void *init_thread(void *)
             sched.Schedule(t_test);
         }    
     }
+#endif
 
     while(true)
     {

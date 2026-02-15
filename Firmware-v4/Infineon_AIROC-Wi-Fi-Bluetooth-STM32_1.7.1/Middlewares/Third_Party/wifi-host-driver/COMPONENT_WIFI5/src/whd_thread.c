@@ -433,7 +433,7 @@ static void whd_thread_func(cy_thread_arg_t thread_input)
 
         /* Sleep till WLAN do something */
         whd_bus_wait_for_wlan_event(whd_driver, &thread_info->transceive_semaphore);
-        WPRINT_WHD_DATA_LOG( ("whd Thread: Woke\n") );
+        //WPRINT_WHD_DATA_LOG( ("whd Thread: Woke\n") );
     }
 
     /* Set flag before releasing objects */
