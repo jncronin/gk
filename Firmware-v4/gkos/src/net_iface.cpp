@@ -76,6 +76,11 @@ void NetInterface::RunTaskLoop()
                 case netiface_msg::netiface_msg_type::Deactivate:
                     Deactivate();
                     break;
+
+                case netiface_msg::netiface_msg_type::LinkUp:
+                    klog("net: link up\n");
+                    break;
+                    
             }
         }
         if(IdleTask() != 0)

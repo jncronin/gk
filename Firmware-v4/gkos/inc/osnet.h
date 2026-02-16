@@ -96,7 +96,8 @@ struct netiface_msg
         Activate,
         Deactivate,
         HardwareEvent,
-        Deregister
+        Deregister,
+        LinkUp
     };
 
     netiface_msg_type msg_type;
@@ -158,6 +159,7 @@ class WifiNetInterface : public NetInterface
             int ch;
             int rssi;
             std::string password = "";
+            void *dev_data;
         };
 
     protected:

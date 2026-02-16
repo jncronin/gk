@@ -17,6 +17,7 @@ class WifiAirocNetInterface : public WifiNetInterface
         virtual int Activate();
         virtual int Deactivate();
         virtual int DoScan();
+        virtual int Connect(const wifi_network &wn);
 
         whd_driver_t whd_drv;
         whd_interface_t whd_iface;

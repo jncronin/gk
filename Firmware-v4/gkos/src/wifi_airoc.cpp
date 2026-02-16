@@ -280,6 +280,7 @@ void cb_wifi_scan(whd_scan_result_t **result_ptr, void *user_data, whd_scan_stat
                 wn.rssi = (*result_ptr)->signal_strength;
                 wn.ssid = std::string((const char *)(*result_ptr)->SSID.value,
                     (size_t)(*result_ptr)->SSID.length);
+                wn.dev_data = (void *)(*result_ptr)->security;
                 
                 CriticalGuard cg(iface->sl_new_networks);
                 iface->new_networks.push_back(wn);
@@ -304,4 +305,26 @@ int WifiAirocNetInterface::DoScan()
         return -1;
     }
     return 0;
+}
+
+int WifiAirocNetInterface::Connect(const wifi_network &wn)
+{
+    whd_ssid_t ssid;
+    ssid.length = wn.ssid.length();
+    memcpy(ssid.value, wn.ssid.c_str(), std::min(32UL,wn.ssid.length()));
+    auto ret = whd_wifi_join(whd_iface, &ssid, (whd_security_t)(uintptr_t)wn.dev_data,
+        (const uint8_t *)wn.password.c_str(), (uint8_t)wn.password.length());
+    if(ret == WHD_SUCCESS)
+    {
+        klog("airoc: joined network %s\n", wn.ssid.c_str());
+        connecting = false;
+        connected = true;
+        events.Push({ .msg_type = netiface_msg::netiface_msg_type::LinkUp });
+        return 0;
+    }
+    else
+    {
+        klog("airoc: failed to join network %s\n", wn.ssid.c_str());
+        return -1;
+    }
 }
