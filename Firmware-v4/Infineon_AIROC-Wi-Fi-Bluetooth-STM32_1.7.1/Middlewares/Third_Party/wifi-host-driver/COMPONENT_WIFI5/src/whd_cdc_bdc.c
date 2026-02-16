@@ -674,7 +674,8 @@ void whd_process_bdc_event(whd_driver_t whd_driver, whd_buffer_t buffer, uint16_
     bdc_header_t *bdc_header = (bdc_header_t *)whd_buffer_get_current_piece_data_pointer(whd_driver, buffer);
     uint16_t i;
     uint16_t j;
-    uint32_t datalen, addr;
+    uint32_t datalen;
+    uintptr_t addr;
 
     CHECK_PACKET_WITH_NULL_RETURN(bdc_header);
     event = (whd_event_t *)&bdc_header[bdc_header->data_offset + 1];
@@ -764,7 +765,7 @@ void whd_process_bdc_event(whd_driver_t whd_driver, whd_buffer_t buffer, uint16_
 
     datalen = whd_event->datalen;
     /* use memcpy to get aligned event message */
-    addr = (uint32_t )DATA_AFTER_HEADER(event);
+    addr = (uintptr_t )DATA_AFTER_HEADER(event);
     if (aligned_event && (addr & ALIGNED_ADDRESS) )
     {
         memcpy(aligned_event, (whd_event_t *)addr, datalen);
