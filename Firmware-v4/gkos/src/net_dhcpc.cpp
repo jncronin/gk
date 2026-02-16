@@ -72,14 +72,14 @@ static void add_extra_requests(char *buf, size_t *ptr,
 
 static int send_discover(dhcpc_request &dr)
 {
-    auto pbuf = net_allocate_pbuf(PBUF_SIZE);
+    auto pbuf = net_allocate_pbuf(NET_MAX_PACKET_SIZE);
     if(!pbuf)
     {
         return NET_NOMEM;
     }
 
-    memset(pbuf, 0, PBUF_SIZE);
-    auto data = &pbuf[NET_SIZE_UDP_OFFSET];
+    memset(pbuf->Ptr(), 0, NET_MAX_PACKET_SIZE);
+    auto data = pbuf->Ptr(0);
 
     dr.xid = dr.xid + 1UL;
     dr.began_at = clock_cur_ms();
@@ -114,7 +114,9 @@ static int send_discover(dhcpc_request &dr)
     dr.made_at = clock_cur_ms();
     dr.state = dhcpc_request::DiscoverSent;
 
-    return net_udp_decorate_packet(data, datalen, 0xffffffffUL, htons(67),
+    pbuf->SetSize(datalen);
+
+    return net_udp_decorate_packet(pbuf, 0xffffffffUL, htons(67),
         0x00000000U, dr.sck->port, true, &route);
 }
 
@@ -122,14 +124,14 @@ static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
     const IP4Addr &siaddr, const uint32_t *servid,
     const std::string &client_host_name = "")
 {
-    auto pbuf = net_allocate_pbuf(PBUF_SIZE);
+    auto pbuf = net_allocate_pbuf(NET_MAX_PACKET_SIZE);
     if(!pbuf)
     {
         return NET_NOMEM;
     }
 
-    memset(pbuf, 0, PBUF_SIZE);
-    auto data = &pbuf[NET_SIZE_UDP_OFFSET];
+    memset(pbuf->Ptr(), 0, NET_MAX_PACKET_SIZE);
+    auto data = pbuf->Ptr(0);
 
     // build route to force use of broadcast
     //  on this interface
@@ -162,7 +164,9 @@ static int send_request(dhcpc_request &dr, const IP4Addr &yiaddr,
     dr.made_at = clock_cur_ms();
     dr.state = dhcpc_request::RequestSent;
 
-    return net_udp_decorate_packet(data, datalen, 0xffffffffUL, htons(67),
+    pbuf->SetSize(datalen);
+
+    return net_udp_decorate_packet(pbuf, 0xffffffffUL, htons(67),
         0x00000000U, dr.sck->port, true, &route);
 }
 
@@ -267,22 +271,23 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
     auto &dr = iter->second;
 
     // parse common fields
-    auto bprot = pkt.contents[0];
+    auto pc = pkt.contents->Ptr(0);
+    auto bprot = pc[0];
     if(bprot != 2)  // BOOTREPLY
         return NET_NOTSUPP;
     
-    auto xid = *reinterpret_cast<const uint32_t *>(&pkt.contents[OFFSET_XID]);
+    auto xid = *reinterpret_cast<const uint32_t *>(&pc[OFFSET_XID]);
     if(xid != dr.xid)
         return NET_NOTUS;
 
-    if(memcmp(&pkt.contents[OFFSET_CHADDR], dr.iface->GetHwAddr().get(), 6) != 0)
+    if(memcmp(&pc[OFFSET_CHADDR], dr.iface->GetHwAddr().get(), 6) != 0)
         return NET_NOTUS;
 
-    auto yiaddr = IP4Addr(&pkt.contents[OFFSET_YIADDR]);
+    auto yiaddr = IP4Addr(&pc[OFFSET_YIADDR]);
 
     std::map<int, int> opts;
-    auto options = &pkt.contents[OFFSET_OPTIONS];
-    auto opt_len = pkt.n - OFFSET_OPTIONS;
+    auto options = &pc[OFFSET_OPTIONS];
+    auto opt_len = pkt.contents->GetSize() - OFFSET_OPTIONS;
     int msg_type = -1;
 
     if(options[0] == 99 && options[1] == 130 && options[2] == 83 && options[3] == 99)
@@ -345,7 +350,7 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
                 auto oiter = opts.find(54);
                 if(oiter != opts.end())
                 {
-                    pservid = reinterpret_cast<const uint32_t *>(&pkt.contents[oiter->second + 2]);
+                    pservid = reinterpret_cast<const uint32_t *>(&pc[oiter->second + 2]);
                 }
                 char hwaddr_id[16];
                 auto hwaddr = pkt.ippacket.epacket.iface->GetHwAddr().get();
@@ -359,11 +364,11 @@ int net_handle_dhcpc_packet(const UDPPacket &pkt)
             if(msg_type == DHCPACK)
             {
                 auto ip = yiaddr;
-                auto nm = opt_or_empty<IP4Addr>(1, opts, pkt.contents);
-                auto gw = opt_or_empty<IP4Addr>(3, opts, pkt.contents);
-                auto dns = opt_or_empty<IP4Addr>(6, opts, pkt.contents);
-                auto domain = opt_or_empty<std::string>(15, opts, pkt.contents);
-                auto lease = ntohl(opt_or_empty<uint32_t>(51, opts, pkt.contents));
+                auto nm = opt_or_empty<IP4Addr>(1, opts, pc);
+                auto gw = opt_or_empty<IP4Addr>(3, opts, pc);
+                auto dns = opt_or_empty<IP4Addr>(6, opts, pc);
+                auto domain = opt_or_empty<std::string>(15, opts, pc);
+                auto lease = ntohl(opt_or_empty<uint32_t>(51, opts, pc));
 
                 if(nm == 0U) nm = 0xffffffffu;
                 klog("dhcpc: DHCPACK received\n");

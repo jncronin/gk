@@ -199,10 +199,15 @@ int WifiAirocNetInterface::HardwareEvent(const netiface_msg &msg)
     return 0;
 }
 
-int WifiAirocNetInterface::SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
+int WifiAirocNetInterface::SendEthernetPacket(pbuf_t buf, const HwAddr &dest, uint16_t ethertype,
             bool release_buffer)
 {
-    klog("airoc: send_ethernet_packet\n");
+    net_ethernet_decorate_packet(buf, hwaddr, dest, ethertype, true);
+
+    if(!release_buffer)
+        buf->AddReference();
+
+    whd_network_send_ethernet_data(whd_iface, (whd_buffer_t)buf);
     return 0;
 }
 

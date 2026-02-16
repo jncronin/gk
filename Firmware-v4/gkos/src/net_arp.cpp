@@ -5,8 +5,7 @@
 struct arp_request_and_send_data
 {
     uint32_t ip;
-    char *buf;
-    size_t n;
+    pbuf_t buf;
     uint64_t send_time;
     NetInterface *iface;
     bool release_buffer;
@@ -34,16 +33,17 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
         return NET_NOTSUPP;
     if(*reinterpret_cast<const uint16_t *>(&pkt.contents[2]) != htons(IPPROTO_IP))
         return NET_NOTSUPP;
-    if(pkt.contents[4] != 6)
+    auto pc = pkt.contents->Ptr(0);
+    if(pc[4] != 6)
         return NET_NOTSUPP;
-    if(pkt.contents[5] != 4)
+    if(pc[5] != 4)
         return NET_NOTSUPP;
 
-    HwAddr hw_sender(&pkt.contents[8]);
-    IP4Addr ip_sender(&pkt.contents[14]);
-    HwAddr hw_target(&pkt.contents[18]);
-    IP4Addr ip_target(&pkt.contents[24]);
-    auto oper = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[6]));
+    HwAddr hw_sender(&pc[8]);
+    IP4Addr ip_sender(&pc[14]);
+    HwAddr hw_target(&pc[18]);
+    IP4Addr ip_target(&pc[24]);
+    auto oper = ntohs(*reinterpret_cast<const uint16_t *>(&pc[6]));
 
 #ifdef DEBUG_ARP
     {
@@ -90,20 +90,20 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
             for(const auto &areq : local_cache)
             {
                 klog("net: arp: got hwaddr for %s (%s) - sending cached packet of length %d\n",
-                    IP4Addr(areq.ip).ToString().c_str(), hw_sender.ToString().c_str(), areq.n);
-                areq.iface->SendEthernetPacket(areq.buf, areq.n, hw_sender, IPPROTO_IP, areq.release_buffer);
+                    IP4Addr(areq.ip).ToString().c_str(), hw_sender.ToString().c_str(), areq.buf->GetSize());
+                areq.iface->SendEthernetPacket(areq.buf, hw_sender, IPPROTO_IP, areq.release_buffer);
             }
         }
         else if(oper == 1 && ip_target == net_ip_get_address(pkt.iface))
         {
             // build reply packet
-            auto pbuf = net_allocate_pbuf(SPBUF_SIZE);
+            auto pbuf = net_allocate_pbuf(28);
             if(!pbuf)
             {
                 return NET_NOMEM;
             }
 
-            auto data = &pbuf[pkt.iface->GetHeaderSize()];
+            auto data = pbuf->Ptr(0);
             *reinterpret_cast<uint16_t *>(&data[0]) = htons(1);    // ethernet
             *reinterpret_cast<uint16_t *>(&data[2]) = htons(IPPROTO_IP);
             data[4] = 6;
@@ -116,7 +116,7 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
 
             // cannot be within criticalguard as may switch
             cg.~CriticalGuard();        // release the guard here because sending may take some time
-            pkt.iface->SendEthernetPacket(data, 28, hw_sender, 0x0806, true);
+            pkt.iface->SendEthernetPacket(pbuf, hw_sender, 0x0806, true);
         }
     }
     
@@ -150,18 +150,18 @@ void net_arp_handle_request_and_send(const net_msg &m)
     {
         cg.~CriticalGuard();        // release the guard here because sending may take some time
         m.msg_data.arp_request.iface->SendEthernetPacket(m.msg_data.arp_request.buf,
-            m.msg_data.arp_request.n, ret, IPPROTO_IP, m.msg_data.arp_request.release_buffer);
+            ret, IPPROTO_IP, m.msg_data.arp_request.release_buffer);
         return;
     }
 
     // build ARP request
-    auto pbuf = net_allocate_pbuf(SPBUF_SIZE);
+    auto pbuf = net_allocate_pbuf(28);
     if(!pbuf)
     {
         return;
     }
 
-    auto data = &pbuf[m.msg_data.arp_request.iface->GetHeaderSize()];
+    auto data = pbuf->Ptr(0);
     *reinterpret_cast<uint16_t *>(&data[0]) = htons(1);    // ethernet
     *reinterpret_cast<uint16_t *>(&data[2]) = htons(IPPROTO_IP);
     data[4] = 6;
@@ -175,7 +175,6 @@ void net_arp_handle_request_and_send(const net_msg &m)
     // queue that we have made the request
     arp_request_and_send_data arpd;
     arpd.buf = m.msg_data.arp_request.buf;
-    arpd.n = m.msg_data.arp_request.n;
     arpd.ip = m.msg_data.arp_request.addr;
     arpd.iface = m.msg_data.arp_request.iface;
     arpd.send_time = clock_cur_ms();
@@ -184,7 +183,7 @@ void net_arp_handle_request_and_send(const net_msg &m)
 
     // reenable interrupts to allow Winc driver to run
     cg.unlock();
-    m.msg_data.arp_request.iface->SendEthernetPacket(data, 28, HwAddr::multicast, 0x0806, true);
+    m.msg_data.arp_request.iface->SendEthernetPacket(pbuf, HwAddr::multicast, 0x0806, true);
 }
 
 int net_ip_get_hardware_address(const IP4Addr &addr, HwAddr *ret)

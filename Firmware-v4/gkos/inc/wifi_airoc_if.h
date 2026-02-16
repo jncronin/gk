@@ -31,7 +31,7 @@ class WifiAirocNetInterface : public WifiNetInterface
     public:
         WifiAirocNetInterface();
 
-        virtual int SendEthernetPacket(char *buf, size_t n, const HwAddr &dest, uint16_t ethertype,
+        virtual int SendEthernetPacket(pbuf_t buf, const HwAddr &dest, uint16_t ethertype,
             bool release_buffer);
 
         virtual int GetHeaderSize() const;

@@ -18,7 +18,7 @@ SRAM4_DATA static std::vector<IP4Route> routes;
 
 int net_handle_ip4_packet(const EthernetPacket &epkt)
 {
-    auto buf = epkt.contents;
+    auto buf = epkt.contents->Ptr(0);
 
     auto protocol = buf[9];
     auto version = buf[0] >> 4;
@@ -35,10 +35,9 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
         net_arp_add_host(src, epkt.src);
     }
 
-    auto total_len = ntohs(*reinterpret_cast<const uint16_t *>(&buf[2]));
+    [[maybe_unused]] auto total_len = ntohs(*reinterpret_cast<const uint16_t *>(&buf[2]));
     auto ihl = buf[0] & 0xf;
     auto header_len = static_cast<uint16_t>(ihl * 4);
-    auto blen = static_cast<uint16_t>(total_len - header_len);
 
     // checksum
     auto csum_calc = net_ip_complete_checksum(net_ip_calc_checksum(buf, header_len));
@@ -104,9 +103,11 @@ int net_handle_ip4_packet(const EthernetPacket &epkt)
     
     if(!is_us)
         return NET_NOTUS;
+
+    epkt.contents->AdjustStart(header_len);
     
     IP4Packet ipkt { .src = src, .dest = dest, .protocol = protocol,
-        .contents = &buf[header_len], .n = blen, .epacket = epkt };
+        .contents = epkt.contents, .epacket = epkt };
     
     switch(protocol)
     {
@@ -257,7 +258,7 @@ IP4Addr net_ip_get_address(const NetInterface *iface)
     return IP4Addr(0U);
 }
 
-bool net_ip_decorate_packet(char *data, size_t datalen,
+bool net_ip_decorate_packet(pbuf_t buf,
     const IP4Addr &dest, const IP4Addr &src,
     uint8_t protocol,
     bool release_buffer,
@@ -282,6 +283,10 @@ bool net_ip_decorate_packet(char *data, size_t datalen,
         src_val = _route->addr.addr;
     }
 
+    auto datalen = buf->GetSize();
+    buf->AdjustStart(-20);
+    auto data = buf->Ptr(0);
+
     auto hdr = data - 20;
     hdr[0] = (4UL << 4) | 5UL;
     hdr[1] = 0;
@@ -296,12 +301,12 @@ bool net_ip_decorate_packet(char *data, size_t datalen,
 
     *reinterpret_cast<uint16_t *>(&hdr[10]) = net_ip_calc_checksum(hdr, 20);
 
-    net_ip_get_hardware_address_and_send(hdr, datalen + 20, dest, release_buffer, _route);
+    net_ip_get_hardware_address_and_send(buf, dest, release_buffer, _route);
 
     return true;
 }
 
-int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
+int net_ip_get_hardware_address_and_send(pbuf_t buf,
     const IP4Addr &dest,
     bool release_buffer,
     const IP4Route *route)
@@ -312,10 +317,6 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
     if(actdest != dest)
     {
         klog("net: message through gateway (%s via %s):\n", dest.ToString().c_str(), actdest.ToString().c_str());
-        for(unsigned int i = 0; i < datalen; i++)
-        {
-            klog(0, "%02x ", data[i]);
-        }
     }
 
     HwAddr hwaddr;
@@ -323,9 +324,9 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
     {
         // decorate and send direct
 
-        klog("net: send direct size %u to %s as hwaddr is known (%s)\n", datalen,
+        klog("net: send direct size %u to %s as hwaddr is known (%s)\n", buf->GetSize(),
             actdest.ToString().c_str(), hwaddr.ToString().c_str());
-        route->addr.iface->SendEthernetPacket(data, datalen, hwaddr, IPPROTO_IP, release_buffer);
+        route->addr.iface->SendEthernetPacket(buf, hwaddr, IPPROTO_IP, release_buffer);
         return NET_OK;
     }
     else
@@ -334,13 +335,12 @@ int net_ip_get_hardware_address_and_send(char *data, size_t datalen,
         net_msg msg;
         msg.msg_type = net_msg::net_msg_type::ArpRequestAndSend;
         msg.msg_data.arp_request.addr = actdest;
-        msg.msg_data.arp_request.buf = data;
-        msg.msg_data.arp_request.n = datalen;
+        msg.msg_data.arp_request.buf = buf;
         msg.msg_data.arp_request.iface = route->addr.iface;
         msg.msg_data.arp_request.release_buffer = release_buffer;
 
         klog("net: arp request sent for %s, queueing message of length %u\n",
-            actdest.ToString().c_str(), datalen);
+            actdest.ToString().c_str(), buf->GetSize());
 
         net_queue_msg(msg);
 
@@ -472,7 +472,7 @@ void IP4Socket::HandleWaitingReads()
         recv_packet rp;
         while(recv_packets.Peek(&rp))
         {
-            auto pkt_size = rp.nlen - rp.rptr;
+            auto pkt_size = rp.buf->GetSize() - rp.rptr;
             auto buf_addr = &reinterpret_cast<char *>(rwt.buf)[nread];
             auto pkt_addr = &rp.buf[rp.rptr];
             auto buf_size = rwt.n - nread;
@@ -488,10 +488,10 @@ void IP4Socket::HandleWaitingReads()
             from_port = rp.from_port;
 
             rp.rptr += to_read;
-            if(rp.rptr >= rp.nlen)
+            if(rp.rptr >= rp.buf->GetSize())
             {
                 // can remove buf
-                net_deallocate_pbuf(const_cast<char *>(rp.buf));
+                net_deallocate_pbuf(rp.buf);
                 recv_packets.Read(&rp);
             }
 

@@ -10,17 +10,20 @@ SRAM4_DATA static Spinlock s_udp;
 
 int net_handle_udp_packet(const IP4Packet &pkt)
 {
+    auto pc = pkt.contents->Ptr(0);
+
     // todo: checksum
-    auto src_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[0]);
-    auto dest_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[2]);
-    auto len = ntohs(*reinterpret_cast<const uint16_t *>(&pkt.contents[4])) - NET_SIZE_UDP_HEADER;
-    auto data = reinterpret_cast<const char *>(&pkt.contents[8]);
+    auto src_port = *reinterpret_cast<const uint16_t *>(&pc[0]);
+    auto dest_port = *reinterpret_cast<const uint16_t *>(&pc[2]);
+    [[maybe_unused]] auto len = ntohs(*reinterpret_cast<const uint16_t *>(&pc[4])) - NET_SIZE_UDP_HEADER;
+
+    pkt.contents->AdjustStart(NET_SIZE_UDP_HEADER);
 
     // special case dhcpc connections
     if(dest_port == htons(68))
     {
         UDPPacket upkt { .src_port = src_port, .dest_port = dest_port,
-            .contents = &pkt.contents[NET_SIZE_UDP_HEADER], .n = len,
+            .contents = pkt.contents,
             .ippacket = pkt };
         return net_handle_dhcpc_packet(upkt);
     }
@@ -60,7 +63,7 @@ int net_handle_udp_packet(const IP4Packet &pkt)
         }
     }
 
-    return sck->HandlePacket(data, len, pkt.src, src_port);
+    return sck->HandlePacket(pkt.contents, pkt.src, src_port);
 }
 
 int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
@@ -109,13 +112,12 @@ int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
     }
 }
 
-int UDPSocket::HandlePacket(const char *pkt, size_t n, uint32_t src_addr, uint16_t src_port)
+int UDPSocket::HandlePacket(pbuf_t buf, uint32_t src_addr, uint16_t src_port)
 {
     CriticalGuard cg(sl);
 
     recv_packet rp;
-    rp.buf = pkt;
-    rp.nlen = n;
+    rp.buf = buf;
     rp.rptr = 0;
     rp.from = src_addr;
     rp.from_port = src_port;
@@ -203,7 +205,7 @@ bool UDPSocket::SendToInt(const net_msg &m)
     CriticalGuard cg(sl);
 
     const auto &msg = m.msg_data.udpsend;
-    auto pbuf = net_allocate_pbuf(msg.n + NET_SIZE_UDP);
+    auto pbuf = net_allocate_pbuf(msg.n);
     if(!pbuf)
     {
         // deferred return
@@ -213,7 +215,7 @@ bool UDPSocket::SendToInt(const net_msg &m)
         return false;
     }
 
-    auto data = &pbuf[NET_SIZE_UDP_OFFSET];
+    auto data = pbuf->Ptr(0);
     {
         //SharedMemoryGuard(msg.buf, msg.n, true, false);
         memcpy(data, msg.buf, msg.n);
@@ -222,7 +224,7 @@ bool UDPSocket::SendToInt(const net_msg &m)
     bool sret;
     {
         //SharedMemoryGuard(msg.dest_addr, sizeof(sockaddr_in), true, false);
-        sret = net_udp_decorate_packet(data, msg.n,
+        sret = net_udp_decorate_packet(pbuf,
             msg.dest_addr->sin_addr.s_addr, msg.dest_addr->sin_port,
             bound_addr, port, true);
     }
@@ -245,17 +247,18 @@ void net_udp_handle_sendto(const net_msg &m)
     m.msg_data.udpsend.sck->SendToInt(m);
 }
 
-bool net_udp_decorate_packet(char *data, size_t datalen, 
+bool net_udp_decorate_packet(pbuf_t buf, 
     const IP4Addr &dest, uint16_t dest_port,
     const IP4Addr &src, uint16_t src_port,
     bool release_buffer,
     const IP4Route *route)
 {
-    auto hdr = data - 8;
+    buf->AdjustStart(-8);
+    auto hdr = buf->Ptr(0);
     *reinterpret_cast<uint16_t *>(&hdr[0]) = src_port;
     *reinterpret_cast<uint16_t *>(&hdr[2]) = dest_port;
-    *reinterpret_cast<uint16_t *>(&hdr[4]) = htons(8 + datalen);
+    *reinterpret_cast<uint16_t *>(&hdr[4]) = htons(buf->GetSize());
     *reinterpret_cast<uint16_t *>(&hdr[6]) = 0;     // checksum optional for udp in ip4
 
-    return net_ip_decorate_packet(hdr, datalen + 8, dest, src, IPPROTO_UDP, release_buffer, route);
+    return net_ip_decorate_packet(buf, dest, src, IPPROTO_UDP, release_buffer, route);
 }

@@ -9,11 +9,11 @@
 extern NetInterface wifi_if;
 #endif
 
-int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
+int net_handle_ethernet_packet(pbuf_t buf, NetInterface *iface)
 {
     // for now, just examine the sorts of packets we receive
-    HwAddr dest(buf);
-    HwAddr src(&buf[6]);
+    HwAddr dest(buf->Ptr(0));
+    HwAddr src(buf->Ptr(6));
 
 #ifdef DEBUG_WIFI
     if(iface == &wifi_if)
@@ -33,19 +33,22 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     }
 #endif
 
-    bool is_vlan_tagged = (buf[14] == 0x81 && buf[15] == 0x00);
+    bool is_vlan_tagged = (*buf->Ptr(14) == 0x81 && *buf->Ptr(15) == 0x00);
 
     int ptr = 12;
     if(is_vlan_tagged)
         ptr += 4;
     
-    uint16_t ethertype = *reinterpret_cast<const uint16_t *>(&buf[ptr]);
+    uint16_t ethertype = *reinterpret_cast<const uint16_t *>(buf->Ptr(ptr));
     ethertype = __builtin_bswap16(ethertype);
     if(ethertype < 0x0600)
         return NET_NOTSUPP;     // LLC frame or similar
     ptr += 2;
 
     // TODO check CRC
+
+    buf->AdjustStart(ptr);
+    buf->SetSize(buf->GetSize() - 4);   // strip crc
 
 #if DEBUG_ETHERNET
     {
@@ -68,8 +71,8 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     if(to_us || is_multicast)
     {
         EthernetPacket epkt { .src = src, .dest = dest, .ethertype = ethertype,
-            .contents = &buf[ptr], .n = n - ptr - 4,
-            .iface = iface, .link_layer_data = buf, .link_layer_n = n };
+            .contents = buf,
+            .iface = iface };
         switch (ethertype)
         {
             case IPPROTO_IP:
@@ -86,13 +89,12 @@ int net_handle_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
     return NET_NOTUS;
 }
 
-int net_inject_ethernet_packet(const char *buf, size_t n, NetInterface *iface)
+int net_inject_ethernet_packet(pbuf_t buf, NetInterface *iface)
 {
     // add packet to a queue for service by the net thread
     net_msg m;
     m.msg_type = net_msg::net_msg_type::InjectPacket;
-    m.msg_data.packet.buf = const_cast<char *>(buf);
-    m.msg_data.packet.n = n;
+    m.msg_data.packet.buf = buf;
     m.msg_data.packet.iface = iface;
     m.msg_data.packet.release_packet = true;
 
@@ -125,4 +127,37 @@ uint32_t net_ethernet_calc_crc(const char *buf, size_t len)
     }
 
     return (crc ^ 0xFFFFFFFF);
+}
+
+int net_ethernet_decorate_packet(pbuf_t pbuf, const HwAddr &src, const HwAddr &dest,
+    uint16_t ethertype, bool add_crc)
+{
+    pbuf->AdjustStart(-14);
+
+    auto buf = pbuf->Ptr(0);
+    memcpy(&buf[0], dest.get(), 6);
+    memcpy(&buf[6], src.get(), 6);
+    *reinterpret_cast<uint16_t *>(&buf[12]) = htons(ethertype);
+
+    // pad to 60 bytes - upon adding crc (either ourselves or card) this will make 64
+    const size_t min_size = 60U;
+    auto cur_size = pbuf->GetSize();
+
+    if(cur_size < min_size)
+    {
+        pbuf->SetSize(min_size);
+        memset(&buf[cur_size], 0, min_size - cur_size);
+    }
+
+    if(add_crc)
+    {
+        cur_size = pbuf->GetSize();
+        auto crc = net_ethernet_calc_crc(buf, cur_size);
+
+        auto crc_dest = &buf[cur_size];
+        pbuf->SetSize(pbuf->GetSize() + 4);
+        *reinterpret_cast<uint32_t *>(crc_dest) = crc;
+    }
+
+    return 0;
 }

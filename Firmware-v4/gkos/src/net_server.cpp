@@ -104,16 +104,15 @@ bool init_net()
 
 static void handle_inject_packet(const net_msg &m)
 {
-    auto ret = net_handle_ethernet_packet(m.msg_data.packet.buf, m.msg_data.packet.n,
+    auto ret = net_handle_ethernet_packet(m.msg_data.packet.buf,
         m.msg_data.packet.iface);
     if(m.msg_data.packet.release_packet && ret != NET_KEEPPACKET)
-        net_deallocate_pbuf((char *)m.msg_data.packet.buf);
+        net_deallocate_pbuf(m.msg_data.packet.buf);
 }
 
 static void handle_send_packet(const net_msg &m)
 {
     m.msg_data.packet.iface->SendEthernetPacket(m.msg_data.packet.buf,
-        m.msg_data.packet.n,
         m.msg_data.packet.dest,
         m.msg_data.packet.ethertype,
         m.msg_data.packet.release_packet);

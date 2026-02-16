@@ -47,13 +47,14 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
         klog("\n");
     }
 #endif
+    auto pc = pkt.contents->Ptr(0);
 
-    auto src_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[0]);
-    auto dest_port = *reinterpret_cast<const uint16_t *>(&pkt.contents[2]);
-    auto seq_id = ntohl(*reinterpret_cast<const uint32_t *>(&pkt.contents[4]));
-    auto ack_id = ntohl(*reinterpret_cast<const uint32_t *>(&pkt.contents[8]));
-    auto hlen = ((pkt.contents[12] >> 4) & 0xfU) * 4;
-    auto flags = pkt.contents[13];
+    auto src_port = *reinterpret_cast<const uint16_t *>(&pc[0]);
+    auto dest_port = *reinterpret_cast<const uint16_t *>(&pc[2]);
+    auto seq_id = ntohl(*reinterpret_cast<const uint32_t *>(&pc[4]));
+    auto ack_id = ntohl(*reinterpret_cast<const uint32_t *>(&pc[8]));
+    auto hlen = ((pc[12] >> 4) & 0xfU) * 4;
+    auto flags = pc[13];
 
     sockaddr_pair sp;
     sp.src.sin_family = AF_INET;
@@ -63,11 +64,10 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
     sp.dest.sin_addr.s_addr = pkt.dest;
     sp.dest.sin_port = dest_port;
 
-    auto data = reinterpret_cast<const char *>(&pkt.contents[hlen]);
-    auto len = pkt.n - hlen;
-
-    auto opts = reinterpret_cast<const char *>(&pkt.contents[20]);
+    auto opts = reinterpret_cast<const char *>(&pc[20]);
     auto optlen = hlen - 20;
+
+    pkt.contents->AdjustStart(hlen);
 
     // find a listening or connected socket
     TCPSocket *sck = nullptr;
@@ -105,7 +105,7 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
             else if(flags & FLAG_SYN)
             {
                 // actively refuse
-                net_tcp_send_empty_msg(pkt.src, src_port, 0, seq_id + 1 + len,
+                net_tcp_send_empty_msg(pkt.src, src_port, 0, seq_id + 1 + pkt.contents->GetSize(),
                     pkt.dest, dest_port, FLAG_RST | FLAG_ACK, 0);
                 return NET_OK;
             }
@@ -117,7 +117,7 @@ int net_handle_tcp_packet(const IP4Packet &pkt)
         return NET_NOTUS;
     }
 
-    return sck->HandlePacket(data, len, IP4Addr(pkt.src), src_port,
+    return sck->HandlePacket(pkt.contents, IP4Addr(pkt.src), src_port,
         IP4Addr(pkt.dest), dest_port, seq_id, ack_id, flags,
         opts, optlen);
 }
@@ -133,13 +133,11 @@ static void net_tcp_send_empty_msg(const IP4Addr &dest, uint16_t port,
     if(route_ret != NET_OK)
         return;
     
-    auto pbuf = net_allocate_pbuf(NET_SIZE_TCP);
+    auto pbuf = net_allocate_pbuf(0);
     if(!pbuf)
         return;
 
-    auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
-
-    net_tcp_decorate_packet(&pbuf[hdr_size], 0, dest, port, src, src_port,
+    net_tcp_decorate_packet(pbuf, dest, port, src, src_port,
         seq_id, ack_id, flags, nullptr, 0, wnd_size, true, &route);    
 }
 
@@ -199,7 +197,7 @@ int TCPSocket::handle_closed(bool orderly)
     return NET_OK;
 }
 
-int TCPSocket::HandlePacket(const char *pkt, size_t n,
+int TCPSocket::HandlePacket(pbuf_t buf,
             IP4Addr src, uint16_t src_port,
             IP4Addr dest, uint16_t dest_port,
             uint32_t seq_id, uint32_t ack_id,
@@ -216,7 +214,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
     {
         klog("net: tcpsocket: packet: state %d, flags %x, len %u\n", 
-            (int)state, flags, n);
+            (int)state, flags, buf->GetSize());
     }
 
     switch(state)
@@ -233,7 +231,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                 peer_seq_start = seq_id;
                 my_seq_start = rand();
 
-                auto pbuf = net_allocate_pbuf(NET_SIZE_TCP);
+                auto pbuf = net_allocate_pbuf(0);
                 if(!pbuf)
                 {
                     return NET_NOMEM;
@@ -241,8 +239,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
                 n_data_received = 1;
 
-                auto hdr_size = 20 /* TCP header */ + 20 /* IP header */ + route.addr.iface->GetHeaderSize();
-                net_tcp_decorate_packet(&pbuf[hdr_size], 0, src, src_port,
+                net_tcp_decorate_packet(pbuf, src, src_port,
                     dest, dest_port, my_seq_start, peer_seq_start + n_data_received,
                     FLAG_ACK | FLAG_SYN, tcp_opts, sizeof(tcp_opts), get_wnd_size(), true);
                 
@@ -297,7 +294,7 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
 
         case Established:
             ret = NET_OK;
-            if(n)
+            if(buf->GetSize())
             {
                 // packet with data
 
@@ -310,15 +307,14 @@ int TCPSocket::HandlePacket(const char *pkt, size_t n,
                     if(seq_discrepancy == 0)
                     {
                         recv_packet rp;
-                        rp.buf = pkt;
-                        rp.nlen = n;
+                        rp.buf = buf;
                         rp.rptr = 0;
                         rp.from = peer_addr;
                         rp.from_port = peer_port;
 
                         if(recv_packets.Write(rp))
                         {
-                            n_data_received += n;
+                            n_data_received += buf->GetSize();
 
                             HandleWaitingReads();
                             ret = NET_KEEPPACKET;
@@ -766,9 +762,9 @@ bool TCPSocket::SendToInt(const net_msg &m)
     while(n_sent < msg.n)
     {
         unsigned int n_left = msg.n - n_sent;
-        unsigned int n_packet = std::min(n_left, PBUF_SIZE - NET_SIZE_TCP);
+        unsigned int n_packet = std::min(n_left, 1460U);
 
-        auto pbuf = net_allocate_pbuf(n_packet + NET_SIZE_TCP);
+        auto pbuf = net_allocate_pbuf(n_packet);
         if(!pbuf)
         {
             // deferred return
@@ -787,7 +783,7 @@ bool TCPSocket::SendToInt(const net_msg &m)
         }
 
         // copy data to packet
-        auto data = &pbuf[NET_SIZE_TCP_OFFSET];
+        auto data = pbuf->Ptr(0);
 
         {
             //SharedMemoryGuard(&msg.buf[n_sent], n_packet, true, false);
@@ -799,7 +795,7 @@ bool TCPSocket::SendToInt(const net_msg &m)
         cur_wnd_size = std::max(0UL, cur_wnd_size - 4);    // leave us some space
         cur_wnd_size *= PBUF_SIZE - NET_SIZE_TCP;
         cur_wnd_size = std::min(cur_wnd_size, 64000UL);
-        auto sret = net_tcp_decorate_packet(data, n_packet, peer_addr, peer_port,
+        auto sret = net_tcp_decorate_packet(pbuf, peer_addr, peer_port,
             bound_addr, port, seq_id, peer_seq_start + n_data_received, FLAG_ACK,
             nullptr, 0,  cur_wnd_size, false, nullptr);
         if(sret)
@@ -807,8 +803,7 @@ bool TCPSocket::SendToInt(const net_msg &m)
             // store reference to buffer in timeout list
             tcp_sent_packet sp;
             sp.ms = clock_cur_ms();
-            sp.buf = data;
-            sp.nlen = n_packet;
+            sp.buf = pbuf;
             sp.sck = this;
             sp.seq_id = seq_id;
             sp.ntimeouts = 0;
@@ -847,7 +842,7 @@ void net_tcp_handle_sendto(const net_msg &m)
     m.msg_data.tcpsend.sck->SendToInt(m);
 }
 
-bool net_tcp_decorate_packet(char *data, size_t datalen,
+bool net_tcp_decorate_packet(pbuf_t buf,
     const IP4Addr &dest, uint16_t dest_port,
     const IP4Addr &src, uint16_t src_port,
     uint32_t seq_id, uint32_t ack_id,
@@ -858,7 +853,8 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     const IP4Route *route)
 {
     auto actoptlen = ((optlen + 3) / 4) * 4;
-    auto hdr = data - 20 - actoptlen;
+    buf->AdjustStart(-20 - actoptlen);
+    auto hdr = buf->Ptr(0);
     *reinterpret_cast<uint16_t *>(&hdr[0]) = src_port;
     *reinterpret_cast<uint16_t *>(&hdr[2]) = dest_port;
     *reinterpret_cast<uint32_t *>(&hdr[4]) = htonl(seq_id);
@@ -904,15 +900,15 @@ bool net_tcp_decorate_packet(char *data, size_t datalen,
     *(reinterpret_cast<uint32_t *>(&ipph[4])) = dest;
     ipph[8] = 0;
     ipph[9] = IPPROTO_TCP;
-    *(reinterpret_cast<uint16_t *>(&ipph[10])) = htons(20 + actoptlen + datalen);
+    *(reinterpret_cast<uint16_t *>(&ipph[10])) = htons(buf->GetSize());
 
     auto csum = net_ip_complete_checksum(
-        net_ip_calc_partial_checksum(hdr, 20 + actoptlen + datalen,
+        net_ip_calc_partial_checksum(hdr, buf->GetSize(),
             net_ip_calc_partial_checksum(ipph, 12))
     );
     *(reinterpret_cast<uint16_t *>(&hdr[16])) = csum;
 
-    return net_ip_decorate_packet(hdr, datalen + 20 + actoptlen,
+    return net_ip_decorate_packet(buf,
         dest, _src, IPPROTO_TCP, release_buffer, _route);
 }
 
@@ -978,7 +974,7 @@ void net_tcp_handle_timeouts()
                 if(sp.ntimeouts < 10)
                 {
                     // resend packet
-                    net_tcp_decorate_packet(sp.buf, sp.nlen,
+                    net_tcp_decorate_packet(sp.buf,
                         sp.sck->peer_addr, sp.sck->peer_port,
                         sp.sck->bound_addr, sp.sck->port,
                         sp.seq_id, sp.sck->peer_seq_start + sp.sck->n_data_received,
