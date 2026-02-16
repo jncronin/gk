@@ -616,7 +616,7 @@ void whd_process_cdc(whd_driver_t whd_driver, whd_buffer_t buffer)
 void whd_process_bdc(whd_driver_t whd_driver, whd_buffer_t buffer)
 {
     int32_t headers_len_below_payload;
-    uint32_t ip_data_start_add;
+    uintptr_t ip_data_start_add;
     uint32_t bssid_index;
     whd_interface_t ifp;
     whd_result_t result;
@@ -640,7 +640,7 @@ void whd_process_bdc(whd_driver_t whd_driver, whd_buffer_t buffer)
 
     /* It is preferable to have IP data at address aligned to 4 bytes. IP data startes after ethernet header */
     ip_data_start_add =
-        (uint32_t )whd_buffer_get_current_piece_data_pointer(whd_driver, buffer) + WHD_ETHERNET_SIZE;
+        (uintptr_t )whd_buffer_get_current_piece_data_pointer(whd_driver, buffer) + WHD_ETHERNET_SIZE;
     if ( ( (ip_data_start_add >> 2) << 2 ) != ip_data_start_add )
     {
         WPRINT_WHD_DATA_LOG( ("IP data not aligned to 4 bytes %lx\n", ip_data_start_add) );

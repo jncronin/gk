@@ -4935,7 +4935,7 @@ whd_result_t whd_arp_hostip_list_add(whd_interface_t ifp, uint32_t *host_ipv4_li
     whd_result_t whd_ret = WHD_SUCCESS;
     if (host_ipv4_list == NULL)
     {
-        WPRINT_WHD_ERROR( ("%s() BAD ARGS ifp:%p host_ipv4_list:%u count %d\n", __func__, ifp, (int)host_ipv4_list,
+        WPRINT_WHD_ERROR( ("%s() BAD ARGS ifp:%p host_ipv4_list:%lu count %d\n", __func__, ifp, (uintptr_t)host_ipv4_list,
                            (int)count) );
         return WHD_BADARG;
     }
@@ -6000,7 +6000,7 @@ whd_wowl_get_secure_session_status(whd_interface_t ifp, secure_sess_info_t *tls_
     whd_buffer_t response;
     whd_driver_t whd_driver = ifp->whd_driver;
     struct secure_sess_info *sess_info;
-    ret = (whd_result_t)whd_proto_get_iovar_buffer(whd_driver, &buffer, sizeof(struct secure_sess_info),
+    (void)whd_proto_get_iovar_buffer(whd_driver, &buffer, sizeof(struct secure_sess_info),
 	  IOVAR_STR_WOWL_SEC_SESS_INFO);
 
     ret = whd_proto_get_iovar(ifp, buffer, &response);

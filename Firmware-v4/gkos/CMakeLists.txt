@@ -163,6 +163,12 @@ PRIVATE
     WPRINT_ENABLE_WHD_DATA_LOG
 )
 
+target_compile_options(airoc_gk_whd
+PRIVATE
+    -Wpointer-to-int-cast
+    -Werror
+)
+
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         lwext4

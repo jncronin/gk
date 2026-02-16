@@ -48,7 +48,7 @@ extern "C" {
 /**
  * Get the offset (in bytes) of a member within a structure
  */
-#define OFFSET(type, member)                          ( (uint32_t)&( (type *)0 )->member )
+#define OFFSET(type, member)                          ( (uintptr_t)&( (type *)0 )->member )
 
 /**
  * determine size (number of elements) in an array
