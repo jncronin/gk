@@ -85,6 +85,7 @@ void *net_ntpc_thread(void *_p)
 
             timespec ctime;
             clock_get_realtime(&ctime);
+            kernel_time send_time = clock_cur();
 
             req[10] = htonl(ctime.tv_sec + UNIX_NTP_OFFSET);
             req[11] = htonl((uint32_t)((((uint64_t)ctime.tv_nsec) * (uint64_t)std::numeric_limits<uint32_t>::max()) /
@@ -121,12 +122,12 @@ void *net_ntpc_thread(void *_p)
 
                         // set our time to this - TODO ideally use round trip time etc, but we only want a couple
                         //  of seconds accuracy for gk
-                        auto tdiff = ttstamp - ctime;
-                        timespec toffset;
-                        clock_get_timebase(&toffset);
-                        toffset = toffset + tdiff;
-                        clock_set_timebase(&toffset);
-                        clock_set_rtc_from_timespec(&ttstamp);
+                        auto now = clock_cur();
+                        auto half_round_trip_time = (now - send_time) / 2;
+                        auto set_time = ttstamp - half_round_trip_time;
+
+                        clock_set_timebase(&set_time);
+                        clock_set_rtc_from_timespec(&set_time);
 
                         last_ntp_update = clock_cur();
                     }

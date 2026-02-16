@@ -13,7 +13,7 @@
 #include "whd_types.h"
 #include "cyhal.h"
 
-#define DEBUG_WIFI 1
+#define DEBUG_WIFI 0
 
 
 extern "C" void bt_post_reset_cback(void);

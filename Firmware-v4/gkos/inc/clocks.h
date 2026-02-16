@@ -98,5 +98,31 @@ constexpr inline bool operator!=(const timespec &a, const timespec &b)
         return true;
     return a.tv_nsec != b.tv_nsec;
 }
+constexpr inline timespec operator/(const timespec &a, int b)
+{
+    /* ts = A * 10^9 + B 
+
+        long division essentially
+    
+        e.g. 3.5 / 2 (b)
+
+        3 / 2 (b) = 1
+
+         1 * 2 (b) = 2 (call this x)
+         3 - 2 (x) = 1
+
+        1 is remainder from the A/b line
+
+        Add 1 * 10^9 to b
+        Divide by b */
+    auto new_secs = a.tv_sec / b;
+    auto x = new_secs * b;
+    auto rem = a.tv_sec - x;
+
+    auto new_ns = (a.tv_nsec + rem * 1000000000L) / b;
+
+    timespec ret { .tv_sec = new_secs, .tv_nsec = new_ns };
+    return ret;
+}
 
 #endif
