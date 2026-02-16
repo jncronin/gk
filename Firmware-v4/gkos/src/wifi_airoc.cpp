@@ -154,9 +154,23 @@ int WifiAirocNetInterface::wifi_airoc_reset()
     };
     whd_bus_sdio_attach(whd_drv, &whd_sdio_config, nullptr);
 
-    return whd_wifi_on(whd_drv, &whd_iface) == WHD_SUCCESS ? 0 : -1;
+    auto ret = whd_wifi_on(whd_drv, &whd_iface) == WHD_SUCCESS ? 0 : -1;
+    if(ret != 0)
+        return ret;
+    
+    whd_mac_t macaddr;
+    if(whd_wifi_get_mac_address(whd_iface, &macaddr) != WHD_SUCCESS)
+    {
+        klog("airoc: failed to get mac address\n");
+        return -1;
+    }
+
+    hwaddr = HwAddr((const char *)macaddr.octet);
+    klog("airoc: MAC address %s\n", hwaddr.ToString().c_str());
+    klog("airoc: interface up\n");
 
     //bt_post_reset_cback();
+    return 0;
 }
 
 int WifiAirocNetInterface::HardwareEvent()
