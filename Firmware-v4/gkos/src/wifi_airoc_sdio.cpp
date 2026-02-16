@@ -74,6 +74,7 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
     bool is_block = (argument & (1U << 27)) != 0;
     bool is_write = (argument & (1U << 31)) != 0;
     unsigned int byte_block_count = argument & 0x1ffU;
+    unsigned int arg_byte_length = byte_block_count * (is_block ? 64U : 1U);
 
     //klog("cyhal_sdio_bulk_transfer(..., %u, %x, %p, %u)\n",
     //    direction, argument, data, length);
@@ -84,7 +85,7 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
             direction, argument, data, length);
         return CY_FAIL;
     }
-    if(length != (uint16_t)(byte_block_count * (is_block ? 64U : 1U)))
+    if(length > (uint16_t)arg_byte_length)
     {
         klog("cyhal_sdio_bulk_transfer(..., %u, %x, %p, %u) - length mismatch\n",
             direction, argument, data, length);
@@ -101,7 +102,7 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
     }
     
     sdmmc[1].iface->DCTRL = 0;
-    sdmmc[1].iface->DLEN = length;
+    sdmmc[1].iface->DLEN = arg_byte_length;
     sdmmc[1].iface->DCTRL = 
         (is_write ? 0UL : SDMMC_DCTRL_DTDIR) |
         (is_block ? ((6U << SDMMC_DCTRL_DBLOCKSIZE_Pos) |       // TODO: check block size
@@ -134,6 +135,7 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
     if(ret != 0)
     {
         // fail
+        klog("sd_issue_command failed: %d\n", ret);
         return CY_FAIL;
     }
 
@@ -142,20 +144,24 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
         // polling transfer
         sdmmc[1].iface->MASK &= ~SDMMC_MASK_DATAENDIE;
 
-        while(length)
+        while(arg_byte_length)
         {
             if(is_write)
             {
                 while(sdmmc[1].iface->STA & SDMMC_STA_TXFIFOF);
-                sdmmc[1].iface->FIFO = *data++;
+                auto v = length ? *data++ : 0U;
+                sdmmc[1].iface->FIFO = v;
             }
             else
             {
                 while(sdmmc[1].iface->STA & SDMMC_STA_RXFIFOE);
-                *(uint32_t *)data++ = sdmmc[1].iface->FIFO;
+                auto v = sdmmc[1].iface->FIFO;
+                if(length)
+                    *(uint32_t *)data++ = v;
             }
 
             length -= std::min(length, (uint16_t)4U);
+            arg_byte_length -= std::min(arg_byte_length, 4U);
         }
 
         while(!(sdmmc[1].iface->STA & SDMMC_STA_DATAEND))
