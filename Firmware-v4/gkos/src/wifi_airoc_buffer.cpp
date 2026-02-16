@@ -2,6 +2,7 @@
 #include "logger.h"
 #include <cstdlib>
 #include "osnet.h"
+#include "whd_wifi_api.h"
 
 const size_t cy_header = NET_SIZE_ETHERNET_HEADER + NET_SIZE_WIFI_HEADER;
 const size_t cy_footer = NET_SIZE_ETHERNET_FOOTER;
@@ -13,6 +14,8 @@ struct cybuf
     size_t len;
     size_t tot_size;
     bool is_malloced = false;
+
+    char *ptr() { return (char *)this + off; }
 };
 
 whd_result_t cy_host_buffer_get(whd_buffer_t* buffer, whd_buffer_dir_t direction,
@@ -164,5 +167,12 @@ uint16_t cy_buffer_get_current_piece_size(whd_buffer_t buffer)
 
 void cy_network_process_ethernet_data(whd_interface_t interface, whd_buffer_t buffer)
 {
-    klog("cy_network_process_ethernet_data\n");
+    WifiNetInterface *iface;
+    whd_wifi_get_private_data(interface, (void **)&iface);
+
+    auto cb = reinterpret_cast<cybuf *>(buffer);
+
+    net_inject_ethernet_packet(cb->ptr(), cb->len, iface);
+
+    //klog("cy_network_process_ethernet_data\n");
 }

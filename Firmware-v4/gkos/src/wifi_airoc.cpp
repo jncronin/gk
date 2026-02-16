@@ -157,6 +157,8 @@ int WifiAirocNetInterface::wifi_airoc_reset()
     auto ret = whd_wifi_on(whd_drv, &whd_iface) == WHD_SUCCESS ? 0 : -1;
     if(ret != 0)
         return ret;
+
+    whd_wifi_set_private_data(whd_iface, this);
     
     whd_mac_t macaddr;
     if(whd_wifi_get_mac_address(whd_iface, &macaddr) != WHD_SUCCESS)
