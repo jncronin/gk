@@ -78,11 +78,29 @@ void NetInterface::RunTaskLoop()
                     break;
 
                 case netiface_msg::netiface_msg_type::LinkUp:
-                    klog("net: link up\n");
+                    klog("net: %s link up\n", Name());
                     break;
-                    
+
+                case netiface_msg::netiface_msg_type::IPAssigned:
+                    klog("net: %s IP assigned\n", Name());
+                    has_ip = true;
+                    break;
+
             }
         }
+
+        if(connected && !has_ip)
+        {
+            if(!DynamicIP)
+            {
+                events.Push({ .msg_type = netiface_msg::netiface_msg_type::IPAssigned });
+            }
+            else
+            {
+                net_dhcpc_begin_for_iface(this);
+            }
+        }
+
         if(IdleTask() != 0)
         {
             klog("net: IdleTask() failed\n");
@@ -180,4 +198,9 @@ int NetInterface::SetActive(bool _active)
 const HwAddr &NetInterface::GetHwAddr() const
 {
     return hwaddr;
+}
+
+bool NetInterface::SendMessage(const netiface_msg &msg)
+{
+    return events.Push(msg);
 }

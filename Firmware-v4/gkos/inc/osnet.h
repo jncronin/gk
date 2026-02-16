@@ -127,7 +127,8 @@ struct netiface_msg
         Deactivate,
         HardwareEvent,
         Deregister,
-        LinkUp
+        LinkUp,
+        IPAssigned
     };
 
     netiface_msg_type msg_type;
@@ -141,6 +142,7 @@ class NetInterface
         std::string name;
         bool active = false;
         bool connected = false;
+        bool has_ip = false;
         HwAddr hwaddr;
         virtual int IdleTask();
         virtual int HardwareEvent(const netiface_msg &msg);
@@ -163,6 +165,11 @@ class NetInterface
         virtual int SetActive(bool active);
 
         virtual void RunTaskLoop();
+
+        bool DynamicIP = true;
+        IP4Addr StaticIP;
+
+        bool SendMessage(const netiface_msg &msg);
 
         friend std::pair<int, std::string> net_register_interface_internal(NetInterface *iface);
 };

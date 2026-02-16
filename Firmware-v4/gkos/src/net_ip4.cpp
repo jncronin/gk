@@ -208,6 +208,9 @@ void net_ip_handle_set_ip_address(const net_msg &m)
 {
     CriticalGuard cg(s_ips);
     ourips.push_back(m.msg_data.ipaddr);
+    cg.unlock();
+
+    m.msg_data.ipaddr.iface->SendMessage({ .msg_type = netiface_msg::netiface_msg_type::IPAssigned });
 }
 
 int net_delete_ip_address_for_iface(const NetInterface *iface)
@@ -285,9 +288,8 @@ bool net_ip_decorate_packet(pbuf_t buf,
 
     auto datalen = buf->GetSize();
     buf->AdjustStart(-20);
-    auto data = buf->Ptr(0);
+    auto hdr = buf->Ptr(0);
 
-    auto hdr = data - 20;
     hdr[0] = (4UL << 4) | 5UL;
     hdr[1] = 0;
     *reinterpret_cast<uint16_t *>(&hdr[2]) = htons(datalen + 20);
