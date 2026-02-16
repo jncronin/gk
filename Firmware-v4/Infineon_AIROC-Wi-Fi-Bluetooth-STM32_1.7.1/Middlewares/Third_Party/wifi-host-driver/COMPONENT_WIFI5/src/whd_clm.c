@@ -60,13 +60,10 @@ whd_download_wifi_clm_image(whd_interface_t ifp, const char *iovar, uint16_t fla
     whd_assert("dload buffer too large", len < 0xffffffff - 8);
     len = len + 8 - (len % 8);
 
-    klog("clm: pre get iovar buffer\n");
     iov_data = (uint8_t *)whd_proto_get_iovar_buffer(whd_driver, &buffer, (uint16_t)len, iovar);
-    klog("clm: buffer: %p, iov_data: %p\n", buffer, iov_data);
     CHECK_IOCTL_BUFFER(iov_data);
     memcpy(iov_data, (uint8_t *)dload_ptr, len);
     CHECK_RETURN(whd_proto_set_iovar(ifp, buffer, NULL) );
-    klog("clm: after set_iovar\n");
     return WHD_SUCCESS;
 }
 

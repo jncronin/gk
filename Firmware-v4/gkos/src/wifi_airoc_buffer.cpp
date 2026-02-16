@@ -48,8 +48,8 @@ whd_result_t cy_host_buffer_get(whd_buffer_t* buffer, whd_buffer_dir_t direction
 
     *buffer = (void *)cb;
 
-    klog("net: buffer %p: get (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: get (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     return WHD_SUCCESS;
 }
@@ -58,8 +58,8 @@ void cy_buffer_release(whd_buffer_t buffer, whd_buffer_dir_t direction)
 {
     auto cb = reinterpret_cast<cybuf *>(buffer);
     CriticalGuard cg(cb->sl);
-    klog("net: buffer %p: release (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: release (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     if(cb->is_malloced)
     {
@@ -77,8 +77,8 @@ uint8_t* cy_buffer_get_current_piece_data_pointer(whd_buffer_t buffer)
 {
     auto cb = reinterpret_cast<cybuf *>(buffer);
     CriticalGuard cg(cb->sl);
-    klog("net: buffer %p: get_ptr (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: get_ptr (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     return (uint8_t *)buffer + cb->off;
 }
@@ -87,8 +87,8 @@ whd_result_t cy_buffer_set_size(whd_buffer_t buffer, uint16_t size)
 {
     auto cb = reinterpret_cast<cybuf *>(buffer);
     CriticalGuard cg(cb->sl);
-    klog("net: buffer %p: set_size (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: set_size (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     if((cb->off + size) > cb->tot_size)
     {
@@ -101,8 +101,8 @@ whd_result_t cy_buffer_set_size(whd_buffer_t buffer, uint16_t size)
         cb->len = size;
     }
 
-    klog("net: buffer %p: new_size (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: new_size (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     return WHD_SUCCESS;
 }
@@ -112,8 +112,8 @@ whd_result_t cy_buffer_add_remove_at_front(whd_buffer_t* buffer, int32_t add_rem
     auto pcb = reinterpret_cast<cybuf **>(buffer);
     auto cb = *pcb;
     CriticalGuard cg(cb->sl);
-    klog("net: buffer %p: add_remove_at_front (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: add_remove_at_front (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     if(add_remove_amount > 0)
     {
@@ -125,8 +125,8 @@ whd_result_t cy_buffer_add_remove_at_front(whd_buffer_t* buffer, int32_t add_rem
         }
         cb->off += decr_amount;
         cb->len -= decr_amount;
-        klog("net: buffer %p: new_front (off: %lu, len: %lu, tot_size: %lu)\n",
-            cb, cb->off, cb->len, cb->tot_size);
+        //klog("net: buffer %p: new_front (off: %lu, len: %lu, tot_size: %lu)\n",
+        //    cb, cb->off, cb->len, cb->tot_size);
 
         return WHD_SUCCESS;
     }
@@ -144,8 +144,8 @@ whd_result_t cy_buffer_add_remove_at_front(whd_buffer_t* buffer, int32_t add_rem
         {
             cb->off -= incr_amount;
             cb->len += incr_amount;
-            klog("net: buffer %p: new_front (off: %lu, len: %lu, tot_size: %lu)\n",
-                cb, cb->off, cb->len, cb->tot_size);
+            //klog("net: buffer %p: new_front (off: %lu, len: %lu, tot_size: %lu)\n",
+            //    cb, cb->off, cb->len, cb->tot_size);
 
             return WHD_SUCCESS;
         }
@@ -156,8 +156,8 @@ uint16_t cy_buffer_get_current_piece_size(whd_buffer_t buffer)
 {
     auto cb = reinterpret_cast<cybuf *>(buffer);
     CriticalGuard cg(cb->sl);
-    klog("net: buffer %p: get_piece_size (off: %lu, len: %lu, tot_size: %lu)\n",
-        cb, cb->off, cb->len, cb->tot_size);
+    //klog("net: buffer %p: get_piece_size (off: %lu, len: %lu, tot_size: %lu)\n",
+    //    cb, cb->off, cb->len, cb->tot_size);
 
     return (uint16_t)cb->len;
 }

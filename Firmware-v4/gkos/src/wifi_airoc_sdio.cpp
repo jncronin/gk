@@ -75,8 +75,8 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
     bool is_write = (argument & (1U << 31)) != 0;
     unsigned int byte_block_count = argument & 0x1ffU;
 
-    klog("cyhal_sdio_bulk_transfer(..., %u, %x, %p, %u)\n",
-        direction, argument, data, length);
+    //klog("cyhal_sdio_bulk_transfer(..., %u, %x, %p, %u)\n",
+    //    direction, argument, data, length);
 
     if(is_write && direction != cyhal_sdio_transfer_type_t::CYHAL_SDIO_XFER_TYPE_WRITE)
     {
