@@ -109,7 +109,8 @@ whd_result_t cy_buffer_set_size(whd_buffer_t buffer, uint16_t size)
 
 whd_result_t cy_buffer_add_remove_at_front(whd_buffer_t* buffer, int32_t add_remove_amount)
 {
-    auto cb = reinterpret_cast<cybuf *>(buffer);
+    auto pcb = reinterpret_cast<cybuf **>(buffer);
+    auto cb = *pcb;
     CriticalGuard cg(cb->sl);
     klog("net: buffer %p: add_remove_at_front (off: %lu, len: %lu, tot_size: %lu)\n",
         cb, cb->off, cb->len, cb->tot_size);
