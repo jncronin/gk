@@ -173,9 +173,27 @@ int WifiAirocNetInterface::wifi_airoc_reset()
     return 0;
 }
 
-int WifiAirocNetInterface::HardwareEvent()
+int WifiAirocNetInterface::HardwareEvent(const netiface_msg &msg)
 {
-    klog("airoc: hwevent\n");
+    switch(msg.msg_subtype)
+    {
+        case AIROC_MSG_SUBTYPE_SCAN_COMPLETE:
+            {
+                CriticalGuard cg(sl_new_networks);
+                if(new_networks_ready)
+                {
+                    networks = new_networks;
+                    new_networks_ready = false;
+                }
+                scan_in_progress = false;
+                last_scan_time = clock_cur();
+            }
+            break;
+
+        default:
+            klog("airoc: unhandled hwevent %u\n", msg.msg_subtype);
+            break;
+    }
     return 0;
 }
 
@@ -227,4 +245,63 @@ std::string WifiAirocNetInterface::DeviceName() const
 WifiAirocNetInterface::WifiAirocNetInterface()
 {
     init_wifi_airoc();
+}
+
+void cb_wifi_scan(whd_scan_result_t **result_ptr, void *user_data, whd_scan_status_t status)
+{
+    auto iface = (WifiAirocNetInterface *)user_data;
+
+    switch(status)
+    {
+        case whd_scan_status_t::WHD_SCAN_COMPLETED_SUCCESSFULLY:
+            klog("airoc: scan complete\n");
+            {
+                CriticalGuard cg(iface->sl_new_networks);
+                iface->new_networks_ready = true;
+                iface->events.Push({ .msg_type = netiface_msg::netiface_msg_type::HardwareEvent,
+                    .msg_subtype = AIROC_MSG_SUBTYPE_SCAN_COMPLETE });
+            }
+            break;
+
+        case whd_scan_status_t::WHD_SCAN_ABORTED:
+            klog("airoc: scan aborted\n");
+            {
+                CriticalGuard cg(iface->sl_new_networks);
+                iface->new_networks_ready = true;
+                iface->events.Push({ .msg_type = netiface_msg::netiface_msg_type::HardwareEvent,
+                    .msg_subtype = AIROC_MSG_SUBTYPE_SCAN_COMPLETE });
+            }
+            break;
+
+        case whd_scan_status_t::WHD_SCAN_INCOMPLETE:
+            {
+                WifiNetInterface::wifi_network wn;
+                wn.ch = (*result_ptr)->channel;
+                wn.rssi = (*result_ptr)->signal_strength;
+                wn.ssid = std::string((const char *)(*result_ptr)->SSID.value,
+                    (size_t)(*result_ptr)->SSID.length);
+                
+                CriticalGuard cg(iface->sl_new_networks);
+                iface->new_networks.push_back(wn);
+            }
+            break;
+    }
+}
+
+int WifiAirocNetInterface::DoScan()
+{
+    {
+        CriticalGuard cg(sl_new_networks);
+        new_networks_ready = false;
+        new_networks.clear();
+    }
+    auto ret = whd_wifi_scan(whd_iface, whd_scan_type_t::WHD_SCAN_TYPE_ACTIVE,
+        whd_bss_type_t::WHD_BSS_TYPE_INFRASTRUCTURE, nullptr, nullptr,
+        nullptr, nullptr, cb_wifi_scan, &new_networks_result, this);
+    if(ret != WHD_SUCCESS)
+    {
+        klog("airoc: whd_wifi_scan failed: %x\n", ret);
+        return -1;
+    }
+    return 0;
 }

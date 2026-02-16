@@ -100,6 +100,7 @@ struct netiface_msg
     };
 
     netiface_msg_type msg_type;
+    unsigned int msg_subtype;
 };
 
 class NetInterface
@@ -111,7 +112,7 @@ class NetInterface
         bool connected = false;
         HwAddr hwaddr;
         virtual int IdleTask();
-        virtual int HardwareEvent();
+        virtual int HardwareEvent(const netiface_msg &msg);
         virtual int Activate();
         virtual int Deactivate();
 

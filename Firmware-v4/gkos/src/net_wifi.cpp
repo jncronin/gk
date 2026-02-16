@@ -91,6 +91,7 @@ int WifiNetInterface::IdleTask()
         (!kernel_time_is_valid(last_scan_time) || (clock_cur() >= last_scan_time + kernel_time_from_ms(5000))))
     {
         // run a scan
+        last_scan_time = clock_cur();
         scan_in_progress = true;
         DoScan();
     }

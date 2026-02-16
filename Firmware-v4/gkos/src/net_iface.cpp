@@ -62,7 +62,7 @@ void NetInterface::RunTaskLoop()
                     return;
 
                 case netiface_msg::netiface_msg_type::HardwareEvent:
-                    if(HardwareEvent() != 0)
+                    if(HardwareEvent(msg) != 0)
                     {
                         klog("net: HardwareEvent() failed\n");
                         return;
@@ -121,7 +121,7 @@ int NetInterface::IdleTask()
     return 0;
 }
 
-int NetInterface::HardwareEvent()
+int NetInterface::HardwareEvent(const netiface_msg &)
 {
     return 0;
 }
