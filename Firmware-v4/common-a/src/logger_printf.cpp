@@ -139,14 +139,14 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
         int length = 4;
         if(*format == 'l')
         {
-            length = 4;
+            length = sizeof(long);
             format++;
             if(!*format)
                 INVALID();
             
             if(*format == 'l')
             {
-                length = 8;
+                length = sizeof(long long);
                 format++;
             }
         }
