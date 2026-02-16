@@ -29,11 +29,11 @@ int net_handle_arp_packet(const EthernetPacket &pkt)
 {
     // handle incoming packet of type arp request or reply
 
-    if(*reinterpret_cast<const uint16_t *>(&pkt.contents[0]) != htons(1))
-        return NET_NOTSUPP;
-    if(*reinterpret_cast<const uint16_t *>(&pkt.contents[2]) != htons(IPPROTO_IP))
-        return NET_NOTSUPP;
     auto pc = pkt.contents->Ptr(0);
+    if(*reinterpret_cast<const uint16_t *>(&pc[0]) != htons(1))
+        return NET_NOTSUPP;
+    if(*reinterpret_cast<const uint16_t *>(&pc[2]) != htons(IPPROTO_IP))
+        return NET_NOTSUPP;
     if(pc[4] != 6)
         return NET_NOTSUPP;
     if(pc[5] != 4)

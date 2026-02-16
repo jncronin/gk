@@ -48,7 +48,6 @@ int net_handle_ethernet_packet(pbuf_t buf, NetInterface *iface)
     // TODO check CRC
 
     buf->AdjustStart(ptr);
-    buf->SetSize(buf->GetSize() - 4);   // strip crc
 
 #if DEBUG_ETHERNET
     {

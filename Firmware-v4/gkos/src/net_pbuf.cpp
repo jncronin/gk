@@ -207,3 +207,15 @@ int PBuf::SetSize(size_t new_size)
         return 0;
     }
 }
+
+void net_dump_pbuf(const std::string &intro, const pbuf_t buf)
+{
+    char dumpbuf[NET_MAX_PACKET_SIZE * 3 + 256];
+    char *dbptr = dumpbuf;
+    dbptr += sprintf(dbptr, "%s", intro.c_str());
+    for(size_t i = 0u; i < buf->GetSize(); i++)
+    {
+        dbptr += sprintf(dbptr, "%02x ", *buf->Ptr(i));
+    }
+    klog("%s\n", dumpbuf);
+}

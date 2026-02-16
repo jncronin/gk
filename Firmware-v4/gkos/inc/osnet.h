@@ -77,6 +77,7 @@ class PBuf
 
 using pbuf_t = PBuf *;
 
+void net_dump_pbuf(const std::string &intro, const pbuf_t buf);
 class HwAddr
 {
     protected:
@@ -149,6 +150,8 @@ class NetInterface
         virtual int Activate();
         virtual int Deactivate();
 
+        unsigned int ntp_thread_id = 0;
+
     public:
         virtual const HwAddr &GetHwAddr() const;
         virtual bool GetDeviceActive() const;
@@ -168,6 +171,7 @@ class NetInterface
 
         bool DynamicIP = true;
         IP4Addr StaticIP;
+        bool StartNTP = false;
 
         bool SendMessage(const netiface_msg &msg);
 

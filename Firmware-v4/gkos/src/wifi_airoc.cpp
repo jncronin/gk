@@ -13,6 +13,9 @@
 #include "whd_types.h"
 #include "cyhal.h"
 
+#define DEBUG_WIFI 1
+
+
 extern "C" void bt_post_reset_cback(void);
 
 #define GPIOC_VMEM (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE)
@@ -207,19 +210,26 @@ int WifiAirocNetInterface::SendEthernetPacket(pbuf_t buf, const HwAddr &dest, ui
     if(!release_buffer)
         buf->AddReference();
 
-#if 1
-    char dumpbuf[NET_MAX_PACKET_SIZE * 3 + 256];
-    char *dbptr = dumpbuf;
-    dbptr += sprintf(dbptr, "airoc: send packet (%lu)\n", buf->GetSize());
-    for(size_t i = 0u; i < buf->GetSize(); i++)
-    {
-        dbptr += sprintf(dbptr, "%02x ", *buf->Ptr(i));
-    }
-    klog("%s\n", dumpbuf);
+#if DEBUG_WIFI
+    net_dump_pbuf("airoc: send_packet\n", buf);
 #endif
 
     whd_network_send_ethernet_data(whd_iface, (whd_buffer_t)buf);
     return 0;
+}
+
+void cy_network_process_ethernet_data(whd_interface_t interface, whd_buffer_t buffer)
+{
+    WifiNetInterface *iface;
+    whd_wifi_get_private_data(interface, (void **)&iface);
+
+#if DEBUG_WIFI
+    net_dump_pbuf("airoc: receive packet:\n", (pbuf_t)buffer);
+#endif
+
+    net_inject_ethernet_packet((pbuf_t)buffer, iface);
+
+    //klog("cy_network_process_ethernet_data\n");
 }
 
 int WifiAirocNetInterface::GetHeaderSize() const

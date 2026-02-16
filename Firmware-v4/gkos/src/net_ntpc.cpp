@@ -84,7 +84,7 @@ void *net_ntpc_thread(void *_p)
             req[9] = 0;
 
             timespec ctime;
-            clock_get_now(&ctime);
+            clock_get_realtime(&ctime);
 
             req[10] = htonl(ctime.tv_sec + UNIX_NTP_OFFSET);
             req[11] = htonl((uint32_t)((((uint64_t)ctime.tv_nsec) * (uint64_t)std::numeric_limits<uint32_t>::max()) /
@@ -139,7 +139,7 @@ void *net_ntpc_thread(void *_p)
 
         // report deviations between system clock and rtc
         timespec sysclk, rtc;
-        clock_get_now(&sysclk);
+        clock_get_realtime(&sysclk);
         clock_get_timespec_from_rtc(&rtc);
 
         {

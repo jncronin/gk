@@ -79,6 +79,20 @@ void NetInterface::RunTaskLoop()
 
                 case netiface_msg::netiface_msg_type::LinkUp:
                     klog("net: %s link up\n", Name());
+                    if(StartNTP)
+                    {
+                        if(ntp_thread_id)
+                        {
+                            Thread::Kill(ntp_thread_id, nullptr);
+                        }
+                        auto ntp_params = new net_ntpc_thread_params();
+                        ntp_params->myaddr = net_ip_get_address(this);
+                        ntp_params->sockfd = nullptr;// &ntp_socket;
+                        auto t = Thread::Create(Name() + "_ntp", net_ntpc_thread, (void *)ntp_params, true,
+                            GK_PRIORITY_NORMAL, p_net);
+                        ntp_thread_id = t->id;
+                        sched.Schedule(t);
+                    }
                     break;
 
                 case netiface_msg::netiface_msg_type::IPAssigned:

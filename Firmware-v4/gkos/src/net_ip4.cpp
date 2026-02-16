@@ -476,7 +476,7 @@ void IP4Socket::HandleWaitingReads()
         {
             auto pkt_size = rp.buf->GetSize() - rp.rptr;
             auto buf_addr = &reinterpret_cast<char *>(rwt.buf)[nread];
-            auto pkt_addr = &rp.buf[rp.rptr];
+            auto pkt_addr = rp.buf->Ptr(rp.rptr);
             auto buf_size = rwt.n - nread;
 
             auto to_read = std::min(pkt_size, buf_size);

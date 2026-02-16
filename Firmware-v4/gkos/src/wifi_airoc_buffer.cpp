@@ -45,13 +45,3 @@ uint16_t cy_buffer_get_current_piece_size(whd_buffer_t buffer)
 {
     return (uint16_t)((pbuf_t)buffer)->GetSize();
 }
-
-void cy_network_process_ethernet_data(whd_interface_t interface, whd_buffer_t buffer)
-{
-    WifiNetInterface *iface;
-    whd_wifi_get_private_data(interface, (void **)&iface);
-
-    net_inject_ethernet_packet((pbuf_t)buffer, iface);
-
-    //klog("cy_network_process_ethernet_data\n");
-}
