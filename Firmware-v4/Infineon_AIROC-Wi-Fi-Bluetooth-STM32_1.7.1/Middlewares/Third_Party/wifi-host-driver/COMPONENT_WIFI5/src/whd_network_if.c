@@ -95,3 +95,19 @@ whd_result_t whd_network_send_ethernet_data(whd_interface_t ifp, whd_buffer_t bu
 {
     return whd_proto_tx_queue_data(ifp, buffer);
 }
+
+whd_result_t whd_wifi_set_private_data(whd_interface_t ifp, void *data)
+{
+    if(!ifp)
+        return WHD_BADARG;
+    ifp->private_data = data;
+    return WHD_SUCCESS;
+}
+
+whd_result_t whd_wifi_get_private_data(whd_interface_t ifp, void **data)
+{
+    if(!data || !ifp)
+        return WHD_BADARG;
+    *data = ifp->private_data;
+    return WHD_SUCCESS;
+}

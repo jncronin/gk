@@ -82,6 +82,8 @@ struct whd_interface
     whd_mac_t mac_addr;
     uint8_t event_reg_list[WHD_EVENT_ENTRY_MAX];
     whd_bool_t state;
+
+    void *private_data;
 };
 struct whd_bt_dev
 {

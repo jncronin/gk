@@ -1614,6 +1614,11 @@ extern whd_result_t whd_wifi_register_ds_callback(whd_interface_t ifp, whd_ds_ca
  */
 extern whd_result_t whd_wifi_deregister_ds_callback(whd_interface_t ifp, whd_ds_callback_t callback);
 
+/* gk added function.  Associate private data with an interface */
+extern whd_result_t whd_wifi_set_private_data(whd_interface_t ifp, void *data);
+
+/* gk added function.  Get private data associated with an interface */
+extern whd_result_t whd_wifi_get_private_data(whd_interface_t ifp, void **data);
 
 /* @} */
 
