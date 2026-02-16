@@ -33,6 +33,15 @@ uint32_t SimpleSignal::WaitOnce(SignalOperation op, uint32_t vop, kernel_time to
 
     t->blocking.block(this, tout);
     Yield();
+    cg.unlock();
+
+    /* Only one thread can wait on a SimpleSignal.  If we get this far, we have set waiting_thread
+        ourselves, and either been woken by someone else setting the signal, or timedout.
+        In either case, we want to clear waiting_thread so potentially us or another thread can
+        wait. */
+    cg.relock();
+    if(waiting_thread == t->id)
+        waiting_thread = 0;
     return 0;  
 }
 
