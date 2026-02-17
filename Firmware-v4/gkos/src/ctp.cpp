@@ -352,18 +352,8 @@ static void check_mem_data(void)
 	gsl_ts_read(0xb0, read_buf, sizeof(read_buf));
 	if (read_buf[3] != 0x5a || read_buf[2] != 0x5a || read_buf[1] != 0x5a || read_buf[0] != 0x5a)
 	{
-		printk("#########check mem read 0xb0 = %x %x %x %x #########\n", read_buf[3], read_buf[2], read_buf[1], read_buf[0]);
-		CTP_WAKE.clear();
-		msleep(20);
-		CTP_WAKE.set();
-		msleep(20);	
-		//test_i2c();
-		clr_reg();
-		reset_chip();
-		gsl_load_fw();
-		startup_chip();
-		reset_chip();
-		startup_chip();
+		klog("ctp: mem data incorrect - resetting\n");
+		ctp_is_init = false;
 	}
 }
 
@@ -405,8 +395,16 @@ void ctp_poll()
 					startup_chip();
 					check_mem_data();
 
-					ctp_enabled = true;
-					gic_set_enable(305);
+					if(ctp_is_init)
+					{
+						ctp_enabled = true;
+						gic_set_enable(305);
+					}
+					else
+					{
+						// try again
+						ctp_queue.Push(ctp_command::CTP_RESUME);
+					}
 					break;
 
 				case ctp_command::CTP_SLEEP:
@@ -442,7 +440,7 @@ void init_ctp()
 	gic_set_handler(305, exti1_5_handler);
 	gic_set_target(305, GIC_ENABLED_CORES);
 
-	ctp_queue.Push(ctp_command::CTP_RESUME);
+	//ctp_queue.Push(ctp_command::CTP_RESUME);
 
 #if GK_ENABLE_TOUCH
 	Schedule(Thread::Create("ctp", ctp_thread, nullptr, true, GK_PRIORITY_NORMAL, p_kernel));
