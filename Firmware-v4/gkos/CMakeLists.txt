@@ -158,9 +158,9 @@ PRIVATE
 
 target_compile_definitions(airoc_gk_whd
 PRIVATE
-    WPRINT_ENABLE_WHD_INFO
-    WPRINT_ENABLE_WHD_DEBUG
-    WPRINT_ENABLE_WHD_DATA_LOG
+    #WPRINT_ENABLE_WHD_INFO
+    #WPRINT_ENABLE_WHD_DEBUG
+    #WPRINT_ENABLE_WHD_DATA_LOG
 )
 
 target_compile_options(airoc_gk_whd
