@@ -80,6 +80,8 @@ void init_wifi_airoc()
 
 int WifiAirocNetInterface::wifi_airoc_reset()
 {
+    MutexGuard mg(sdmmc[1].m);
+
     if(sdmmc[1].reset() != 0)
         return -1;
     
@@ -138,7 +140,8 @@ int WifiAirocNetInterface::wifi_airoc_reset()
     sdmmc[1].sdio_set_func_block_size(1, 64);
     sdmmc[1].sdio_set_func_block_size(2, 64);
 
-    // These bits should be performed by the wifi connection manager module - for testing run them separately here
+    mg.unlock();
+
     whd_init(&whd_drv, &init_config_default, &resource_ops, &buffer_if_default,
         &netif_if_default);
 
@@ -257,10 +260,24 @@ int WifiAirocNetInterface::Activate()
 
 int WifiAirocNetInterface::Deactivate()
 {
+    if(has_ip)
+    {
+        for(auto &p : OnIPAssign)
+        {
+            p->OnDisconnect(this);
+        }
+    }
+    
     whd_wifi_off(whd_iface);
+    connected = false;
+    connecting = false;
+    has_ip = false;
+
     sdmmc[1].sd_ready = false;
-    sdmmc[1].io_0();
-    sdmmc[1].supply_off();
+    if(sdmmc[1].io_0)
+        sdmmc[1].io_0();
+    if(sdmmc[1].supply_off)
+        sdmmc[1].supply_off();
 
     return NetInterface::Deactivate();
 }
@@ -352,8 +369,9 @@ int WifiAirocNetInterface::Connect(const wifi_network &wn)
     }
     else
     {
-        klog("airoc: failed to join network %s\n", wn.ssid.c_str());
-        connecting = false;
-        return -1;
+        klog("airoc: failed to join network %s (%x)\n", wn.ssid.c_str(), ret);
+        if(ret != WHD_WLAN_NOTFOUND)
+            return NET_TRYAGAIN;
+        return NET_NOTFOUND;
     }
 }

@@ -15,6 +15,8 @@
 class SDIF
 {
     public:
+        Mutex m;
+        
         volatile uint32_t *pwr_valid_reg;
         volatile uint32_t *rcc_reg;
 

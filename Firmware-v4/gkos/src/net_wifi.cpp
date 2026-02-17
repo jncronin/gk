@@ -111,6 +111,7 @@ int WifiNetInterface::IdleTask()
     if(active && !connected && !scan_in_progress && !connecting)
     {
         connecting = true;
+        try_connect_one = false;
         try_connect_networks.clear();
         cur_try_connect_network = 0;
         last_try_connect_time = kernel_time_invalid();
@@ -168,6 +169,7 @@ int WifiNetInterface::IdleTask()
     {
         // try and connect
         if(!kernel_time_is_valid(last_try_connect_time) ||
+            !try_connect_one ||
             clock_cur() >= last_try_connect_time + kernel_time_from_ms(500))
         {
             if(cur_try_connect_network >= try_connect_networks.size())
@@ -180,8 +182,13 @@ int WifiNetInterface::IdleTask()
                 const auto &try_network = try_connect_networks[cur_try_connect_network];
                 cur_try_connect_network++;
                 last_try_connect_time = clock_cur();
+                try_connect_one = true;
 
-                Connect(try_network);
+                if(Connect(try_network) == NET_TRYAGAIN)
+                {
+                    try_connect_one = false;
+                    cur_try_connect_network--;
+                }
             }
         }
     }

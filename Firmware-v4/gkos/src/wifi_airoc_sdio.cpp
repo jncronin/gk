@@ -59,6 +59,7 @@ void cyhal_sdio_register_callback(cyhal_sdio_t *obj, cyhal_sdio_event_callback_t
 
 cy_rslt_t cyhal_sdio_send_cmd(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t direction, cyhal_sdio_command_t command, uint32_t argument, uint32_t* response)
 {
+    MutexGuard mg(sdmmc[1].m);
     if(command == 52)
     {
         // allow command 52, disallow others
@@ -71,6 +72,7 @@ cy_rslt_t cyhal_sdio_send_cmd(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t dire
 
 cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t direction, uint32_t argument, const uint32_t* data, uint16_t length, uint32_t* response)
 {
+    MutexGuard mg(sdmmc[1].m);
     /* check consistency between argument, direction and length parameters */
     bool is_block = (argument & (1U << 27)) != 0;
     bool is_write = (argument & (1U << 31)) != 0;
@@ -226,7 +228,10 @@ void cyhal_gpio_register_callback(cyhal_gpio_t pin, cyhal_gpio_callback_data_t* 
     // only handle GPIOA,6
     if(pin == 0x6)
     {
-        M2_WIFI_WAKE_cb = *callback_data;
+        if(callback_data)
+            M2_WIFI_WAKE_cb = *callback_data;
+        else
+            M2_WIFI_WAKE_cb = { 0 };
     }
     else
     {

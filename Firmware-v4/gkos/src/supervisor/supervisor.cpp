@@ -206,7 +206,7 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
 static void btn_wifi_click(Widget *w, coord_t x, coord_t y)
 {
     extern std::unique_ptr<WifiAirocNetInterface> airoc_if;
-    airoc_if->SetActive(!airoc_if->GetLinkActive());
+    airoc_if->SetActive(!airoc_if->GetDeviceActive());
 }
 
 static void btn_rawsd_click(Widget *w, coord_t x, coord_t y)
@@ -718,11 +718,31 @@ void *supervisor_thread(void *p)
                     i_bt.visible = false;   // TODO
                     */
 
+                    /* Solid for connected, flashing for active but not connected */
                     extern std::unique_ptr<WifiAirocNetInterface> airoc_if;
-                    i_wifi.visible = airoc_if && airoc_if->GetLinkActive();
+                    if(airoc_if && airoc_if->GetDeviceActive())
+                    {
+                        if(airoc_if->GetLinkActive())
+                            i_wifi.visible = true;
+                        else
+                        {
+                            auto now = clock_cur();
+                            if(now.tv_sec & 1)
+                            {
+                                i_wifi.visible = true;
+                            }
+                            else
+                            {
+                                i_wifi.visible = false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        i_wifi.visible = false;
+                    }
 
                     i_charge.visible = pmic_vbus_ok.load();
-                    i_wifi.visible = false;
                     i_usb.visible = false;
                     i_bt.visible = false;
 

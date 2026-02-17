@@ -231,6 +231,7 @@ class WifiNetInterface : public NetInterface
         kernel_time last_try_connect_time;
         bool scan_in_progress = false;
         bool connecting = false;
+        bool try_connect_one = false;
         virtual int DoScan();
         virtual int Connect(const wifi_network &wn);
 
@@ -353,6 +354,7 @@ struct net_msg
 #define NET_DEFER       -6
 #define NET_NOROUTE     -7
 #define NET_KEEPPACKET  -8
+#define NET_NOTFOUND    -9
 
 /* Keep these a multiple of cache line size */
 #define PBUF_SIZE       2048U
