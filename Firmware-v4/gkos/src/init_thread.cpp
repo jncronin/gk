@@ -20,12 +20,14 @@ void *init_thread(void *)
     fs_provision();
     
     usb_process_start();
+#if GK_ENABLE_NETWORK && GK_ENABLE_WIFI
     auto airoc_if = new WifiAirocNetInterface();
     airoc_if->DynamicIP = true;
     airoc_if->OnIPAssign.push_back(std::make_unique<NTPOnConnectScript>());
     airoc_if->OnIPAssign.push_back(std::make_unique<TelnetOnConnectScript>());
     net_register_interface(airoc_if);
     airoc_if->SetActive(true);
+#endif
 
     // start supervisor
     init_supervisor();
