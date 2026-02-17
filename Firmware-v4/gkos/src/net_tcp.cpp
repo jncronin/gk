@@ -36,7 +36,7 @@ static uint16_t get_wnd_size();
 
 int net_handle_tcp_packet(const IP4Packet &pkt)
 {
-#if 1
+#if 0
     net_dump_pbuf("tcp_packet:\n", pkt.contents);
 #endif
     auto pc = pkt.contents->Ptr(0);
