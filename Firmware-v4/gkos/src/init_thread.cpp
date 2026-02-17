@@ -9,6 +9,7 @@
 #include "supervisor.h"
 #include "wifi_airoc_if.h"
 #include <fcntl.h>
+#include "osnet_onconnect_userprocess.h"
 
 PProcess p_gkmenu;
 id_t pid_gkmenu;
@@ -22,6 +23,7 @@ void *init_thread(void *)
     auto airoc_if = new WifiAirocNetInterface();
     airoc_if->DynamicIP = true;
     airoc_if->OnIPAssign.push_back(std::make_unique<NTPOnConnectScript>());
+    airoc_if->OnIPAssign.push_back(std::make_unique<TelnetOnConnectScript>());
     net_register_interface(airoc_if);
     airoc_if->SetActive(true);
 

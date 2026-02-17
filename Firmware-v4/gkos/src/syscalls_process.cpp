@@ -93,7 +93,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
 
     {
         CriticalGuard cg(proc->env.sl);
-        proc->env.cwd = std::string(proc_info->cwd);
+        proc->env.cwd = (proc_info->cwd != nullptr) ? std::string(proc_info->cwd) : "";
         for(auto i = 0; i < proc_info->argc; i++)
         {
             std::string carg(proc_info->argv[i]);

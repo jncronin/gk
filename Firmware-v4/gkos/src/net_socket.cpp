@@ -2,6 +2,25 @@
 #include "syscalls_int.h"
 #include "process.h"
 
+static inline int net_deferred_return(int retval, int *_errno)
+{
+    if(retval == -2)
+    {
+        auto t = GetCurrentThreadForCore();
+        t->blocking.block(&t->ss);
+        if(t->ss_p.ival1 != 0)
+        {
+            if(_errno)
+                *_errno = t->ss_p.ival2;
+        }
+        return t->ss_p.ival1;
+    }
+    else
+    {
+        return retval;
+    }
+}
+
 int Socket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
 {
     *_errno = ENOTSUP;
@@ -233,7 +252,7 @@ int syscall_bind(int sockfd, const sockaddr *addr, socklen_t addrlen, int *_errn
         return -1;
     }
 
-    return sck->BindAsync(addr, addrlen, _errno);
+    return net_deferred_return(sck->BindAsync(addr, addrlen, _errno), _errno);
 }
 
 int bind(int sockfd, const sockaddr *addr, socklen_t addrlen)
@@ -256,7 +275,7 @@ int syscall_recvfrom(int sockfd, void *buf, size_t len, int flags,
         return -1;
     }
 
-    return sck->RecvFromAsync(buf, len, flags, src_addr, addrlen, _errno);
+    return net_deferred_return(sck->RecvFromAsync(buf, len, flags, src_addr, addrlen, _errno), _errno);
 }
 
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
@@ -291,7 +310,7 @@ int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
         return -1;
     }
 
-    return sck->SendToAsync(buf, len, flags, dest_addr, addrlen, _errno);
+    return net_deferred_return(sck->SendToAsync(buf, len, flags, dest_addr, addrlen, _errno), _errno);
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
@@ -314,7 +333,7 @@ int syscall_listen(int sockfd, int backlog, int *_errno)
         return -1;
     }
     
-    return sck->ListenAsync(backlog, _errno);
+    return net_deferred_return(sck->ListenAsync(backlog, _errno), _errno);
 }
 
 int listen(int sockfd, int backlog)
@@ -331,7 +350,7 @@ int syscall_accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int *_
         return -1;
     }
     
-    return sck->AcceptAsync(addr, addrlen, _errno);
+    return net_deferred_return(sck->AcceptAsync(addr, addrlen, _errno), _errno);
 }
 
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)

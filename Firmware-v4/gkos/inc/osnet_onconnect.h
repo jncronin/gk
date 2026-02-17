@@ -9,6 +9,8 @@ class OnConnectScript
     public:
         virtual int OnConnect(NetInterface *, const IP4Addr &addr) = 0;
         virtual int OnDisconnect(NetInterface *);
+
+        virtual ~OnConnectScript() = default;
 };
 
 class NTPOnConnectScript : public OnConnectScript

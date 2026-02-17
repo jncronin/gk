@@ -865,21 +865,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
-#if 0
-        case WaitSimpleSignal:
-            {
-                auto t = GetCurrentThreadForCore();
-                CriticalGuard cg(t->sl);
-                auto wss_ret = t->ss.WaitOnce(SimpleSignal::Set, 0U);
-                if(wss_ret)
-                {
-                    auto p = reinterpret_cast<WaitSimpleSignal_params *>(r2);
-                    *p = t->ss_p;
-                }
-                *reinterpret_cast<uint32_t *>(r1) = wss_ret;
-            }
-            break;
-
         case __syscall_socket:
             {
                 auto p = reinterpret_cast<__syscall_socket_params *>(r2);
@@ -930,147 +915,9 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
-        case __syscall_gettimeofday:
-            {
-                auto p = reinterpret_cast<__syscall_gettimeofday_params *>(r2);
-                int ret = syscall_gettimeofday(p->tv, (timezone *)p->tz, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_clock_gettime:
-            {
-                auto p = reinterpret_cast<__syscall_clock_gettime_params *>(r2);
-                if(!p->tp)
-                {
-                    *reinterpret_cast<int *>(r3) = EINVAL;
-                    *reinterpret_cast<int *>(r1) = -1;
-                }
-                else
-                {
-                    switch(p->clk_id)
-                    {
-                        case CLOCK_REALTIME:
-                            clock_get_now(p->tp);
-                            *reinterpret_cast<int *>(r1) = 0;
-                            break;
-
-                        case 4: // MONOTONIC
-                        case 5: // MONOTONIC_RAW
-                            {
-                                auto curt = clock_cur_us();
-
-                                p->tp->tv_nsec = (curt % 1000000ULL) * 1000ULL;
-                                p->tp->tv_sec = curt / 1000000ULL;
-                                *reinterpret_cast<int *>(r1) = 0;
-                            }
-                            break;
-
-                        default:
-                            *reinterpret_cast<int *>(r3) = EINVAL;
-                            *reinterpret_cast<int *>(r1) = -1;
-                            break;
-                    }
-                }
-            }
-            break;
-
-        case __syscall_memalloc:
-            {
-                auto p = reinterpret_cast<__syscall_memalloc_params *>(r2);
-                int ret = syscall_memalloc(p->len, p->retaddr, p->is_sync, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_memdealloc:
-            {
-                auto p = reinterpret_cast<__syscall_memdealloc_params *>(r2);
-                int ret = syscall_memdealloc(p->len, p->retaddr, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_setprot:
-            {
-                auto p = reinterpret_cast<__syscall_setprot_params *>(r2);
-                int ret = syscall_setprot(p->addr, p->is_read, p->is_write, p->is_exec, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_gpuenqueue:
-            {
-                auto p = reinterpret_cast<__syscall_gpuenqueue_params *>(r2);
-                int ret = syscall_gpuenqueue(p->msgs, p->nmsg, p->nsent, reinterpret_cast<int *>(r3));
-                *reinterpret_cast<int *>(r1) = ret;
-            }
-            break;
-
-        case __syscall_newlibinithook:
-            {
-                auto lr = reinterpret_cast<uint32_t>(r1);
-                auto retaddr = reinterpret_cast<uint32_t *>(r2);
-                handle_newlibinithook(lr, retaddr);
-            }
-            break;
-
-        case __syscall_setwindowtitle:
-            {
-                auto p = reinterpret_cast<const char *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_setwindowtitle(p, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_cacheflush:
-            {
-                auto p = reinterpret_cast<__syscall_cacheflush_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_cacheflush(p->addr, p->len, p->is_exec, reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_read_tp:
-            {
-                *reinterpret_cast<void **>(r1) = (void *)GetCurrentThreadForCore()->mr_tls.address;
-            }
-            break;
-
-        case __syscall_getheap:
-            {
-                syscall_getheap(reinterpret_cast<void **>(r1), reinterpret_cast<size_t *>(r2),
-                    reinterpret_cast<int *>(r3));
-            }
-            break;
-
-        case __syscall_set_leds:
-            {
-                auto p = reinterpret_cast<__syscall_set_led_params *>(r2);
-                switch(p->led_id)
-                {
-                    case GK_LED_MAIN:
-                        btnled_setcolor(p->color);
-                        *reinterpret_cast<int *>(r1) = 0;
-                        break;
-                    default:
-                        *reinterpret_cast<int *>(r3) = EINVAL;
-                        *reinterpret_cast<int *>(r1) = -1;
-                        break;
-                }
-            }
-            break;
-
-        case __syscall_nemaenable:
-            {
-                auto p = reinterpret_cast<__syscall_nemaenable_params *>(r2);
-                *reinterpret_cast<int *>(r1) = syscall_nemaenable(p->mutexes,
-                    p->nmutexes, p->rb, (sem_t *)p->irq_sem,
-                    p->eof_mutex,
-                    p->cl_a,
-                    p->cl_b,
-                    p->ones,
-                    p->zeros,
-                    reinterpret_cast<int *>(r3));
-            }
+        case __syscall_yield:
+            Yield();
+            *reinterpret_cast<int *>(r1) = 0;
             break;
 
         case __syscall_pipe:
@@ -1089,6 +936,8 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+#if 0
+
         case __syscall_setsupervisorvisible:
             {
                 auto p = reinterpret_cast<__syscall_setsupervisorvisible_params *>(r2);
@@ -1103,11 +952,6 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
                 *reinterpret_cast<int *>(r1) = syscall_cmpxchg(p->ptr, p->oldval, p->newval, p->sz,
                     reinterpret_cast<int *>(r3));
             }
-            break;
-
-        case __syscall_yield:
-            Yield();
-            *reinterpret_cast<int *>(r1) = 0;
             break;
 
         case __syscall_icacheinvalidate:

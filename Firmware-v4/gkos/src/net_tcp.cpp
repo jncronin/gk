@@ -36,16 +36,8 @@ static uint16_t get_wnd_size();
 
 int net_handle_tcp_packet(const IP4Packet &pkt)
 {
-#if 0
-    {
-        CriticalGuard cg;
-        klog("net: tcp: received packet:\n");
-        for(unsigned int i = 0; i < pkt.epacket.link_layer_n; i++)
-        {
-            klog("%02X ", pkt.epacket.link_layer_data[i]);
-        }
-        klog("\n");
-    }
+#if 1
+    net_dump_pbuf("tcp_packet:\n", pkt.contents);
 #endif
     auto pc = pkt.contents->Ptr(0);
 
@@ -792,8 +784,8 @@ bool TCPSocket::SendToInt(const net_msg &m)
 
         auto seq_id = my_seq_start + n_data_sent;
         auto cur_wnd_size = net_pbuf_nfree();
-        cur_wnd_size = std::max(0UL, cur_wnd_size - 4);    // leave us some space
-        cur_wnd_size *= PBUF_SIZE - NET_SIZE_TCP;
+        cur_wnd_size = (cur_wnd_size < 4) ? 0UL : (cur_wnd_size - 4UL);    // leave us some space
+        cur_wnd_size *= NET_MAX_PACKET_SIZE;
         cur_wnd_size = std::min(cur_wnd_size, 64000UL);
         auto sret = net_tcp_decorate_packet(pbuf, peer_addr, peer_port,
             bound_addr, port, seq_id, peer_seq_start + n_data_received, FLAG_ACK,
@@ -924,7 +916,10 @@ void TCPSocket::handle_ack(size_t start, size_t end)
     {
         if(iter->first <= end)
         {
-            net_deallocate_pbuf(iter->second.buf);
+            if(iter->second.buf != nullptr)
+            {
+                net_deallocate_pbuf(iter->second.buf);
+            }
             iter = sent_packets.erase(iter);
         }
         else
