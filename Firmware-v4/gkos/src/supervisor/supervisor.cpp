@@ -14,6 +14,7 @@
 #include <array>
 #include "supervisor.h"
 #include "power_images.h"
+#include "wifi_airoc_if.h"
 
 PProcess p_supervisor;
 static bool overlay_visible = false;
@@ -204,8 +205,8 @@ void imb_brightness_click(Widget *w, coord_t x, coord_t y)
 
 static void btn_wifi_click(Widget *w, coord_t x, coord_t y)
 {
-    //extern WincNetInterface wifi_if;
-    //wifi_if.SetLinkActive(!wifi_if.GetLinkActive());
+    extern std::unique_ptr<WifiAirocNetInterface> airoc_if;
+    airoc_if->SetActive(!airoc_if->GetLinkActive());
 }
 
 static void btn_rawsd_click(Widget *w, coord_t x, coord_t y)
@@ -712,12 +713,13 @@ void *supervisor_thread(void *p)
                     }
                     i_charge.visible = pstat.is_charging;
 
-                    extern WincNetInterface wifi_if;
                     extern TUSBNetInterface rndis_if;
-                    i_wifi.visible = wifi_if.GetLinkActive();
                     i_usb.visible = rndis_if.GetLinkActive();
                     i_bt.visible = false;   // TODO
                     */
+
+                    extern std::unique_ptr<WifiAirocNetInterface> airoc_if;
+                    i_wifi.visible = airoc_if && airoc_if->GetLinkActive();
 
                     i_charge.visible = pmic_vbus_ok.load();
                     i_wifi.visible = false;

@@ -13,6 +13,7 @@
 
 PProcess p_gkmenu;
 id_t pid_gkmenu;
+std::unique_ptr<WifiAirocNetInterface> airoc_if;
 
 void *init_thread(void *)
 {
@@ -21,12 +22,11 @@ void *init_thread(void *)
     
     usb_process_start();
 #if GK_ENABLE_NETWORK && GK_ENABLE_WIFI
-    auto airoc_if = new WifiAirocNetInterface();
+    airoc_if = std::make_unique<WifiAirocNetInterface>();
     airoc_if->DynamicIP = true;
     airoc_if->OnIPAssign.push_back(std::make_unique<NTPOnConnectScript>());
     airoc_if->OnIPAssign.push_back(std::make_unique<TelnetOnConnectScript>());
-    net_register_interface(airoc_if);
-    airoc_if->SetActive(true);
+    net_register_interface(airoc_if.get());
 #endif
 
     // start supervisor
@@ -72,7 +72,6 @@ void *init_thread(void *)
 
     pid_gkmenu = p_gkmenu->id;
 
-#if 0
     if(ret == 0)
     {
         auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_gkmenu);
@@ -83,7 +82,6 @@ void *init_thread(void *)
             sched.Schedule(t_test);
         }    
     }
-#endif
 
     while(true)
     {
