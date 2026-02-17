@@ -47,6 +47,7 @@ static void airoc_card_int()
     sdmmc[1].iface->MASK &= ~SDMMC_MASK_SDIOITIE;
     if(sdio_cb)
         sdio_cb(sdio_cb_arg, cyhal_sdio_event_t::CYHAL_SDIO_CARD_INTERRUPT);
+    
 }
 
 void cyhal_sdio_register_callback(cyhal_sdio_t *obj, cyhal_sdio_event_callback_t callback, void *callback_arg)
@@ -112,14 +113,6 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
     sdmmc[1].iface->DTIMER = 0xffffffffU;
     sdmmc[1].iface->CMD = 0;
     sdmmc[1].iface->CMD = SDMMC_CMD_CMDTRANS;
-    if(iten)
-    {
-        sdmmc[1].iface->MASK |= SDMMC_MASK_SDIOITIE;
-    }
-    else
-    {
-        sdmmc[1].iface->MASK &= ~SDMMC_MASK_SDIOITIE;
-    }
 
     if(can_dma)
     {
@@ -129,6 +122,16 @@ cy_rslt_t cyhal_sdio_bulk_transfer(cyhal_sdio_t *obj, cyhal_sdio_transfer_type_t
     else
     {
         sdmmc[1].iface->IDMACTRL = 0;
+    }
+
+
+    if(iten)
+    {
+        sdmmc[1].iface->MASK |= SDMMC_MASK_SDIOITIE;
+    }
+    else
+    {
+        sdmmc[1].iface->MASK &= ~SDMMC_MASK_SDIOITIE;
     }
 
     auto ret = sdmmc[1].sd_issue_command(53, SDIF::resp_type::R5, argument, response, true);
