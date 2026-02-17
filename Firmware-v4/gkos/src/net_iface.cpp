@@ -78,11 +78,11 @@ void NetInterface::RunTaskLoop()
                     break;
 
                 case netiface_msg::netiface_msg_type::LinkUp:
-                    klog("net: %s link up\n", Name());
+                    klog("net: %s link up\n", Name().c_str());
                     break;
 
                 case netiface_msg::netiface_msg_type::IPAssigned:
-                    klog("net: %s IP assigned\n", Name());
+                    klog("net: %s IP assigned\n", Name().c_str());
                     has_ip = true;
 
                     for(auto &cs : OnIPAssign)
