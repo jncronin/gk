@@ -144,6 +144,7 @@ static void startup_chip(void)
 {
 	char buf[4] = {0x00};
 
+#if 0
     buf[3] = 0x01;
 	buf[2] = 0xfe;
 	buf[1] = 0x10;
@@ -155,6 +156,7 @@ static void startup_chip(void)
 	buf[0] = 0x0f;	
 	gsl_ts_write(0x04, buf, sizeof(buf));
 	msleep(20);	
+#endif
 
     gsl_ts_write(0xe0, buf, 4);
 	msleep(10);
