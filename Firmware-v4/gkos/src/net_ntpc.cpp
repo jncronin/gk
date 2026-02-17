@@ -138,6 +138,7 @@ void *net_ntpc_thread(void *_p)
         // try again in a bit
         Block(clock_cur() + kernel_time_from_ms(1000));
 
+#if GK_NET_NTPC_REPORT_DEVIATIONS
         // report deviations between system clock and rtc
         timespec sysclk, rtc;
         clock_get_realtime(&sysclk);
@@ -156,5 +157,40 @@ void *net_ntpc_thread(void *_p)
                 buf2, rtc.tv_nsec,
                 (long)diff.tv_sec, diff.tv_nsec);
         }
+#endif
     }
+}
+
+extern PProcess p_net;
+
+int NTPOnConnectScript::OnConnect(NetInterface *iface, const IP4Addr &addr)
+{
+    OnDisconnect(iface);
+
+    auto ntp_params = new net_ntpc_thread_params();
+    ntp_params->myaddr = addr;
+    ntp_params->sockfd = &ntp_socket;
+    auto t = Thread::Create(iface->Name() + "_ntp", net_ntpc_thread, (void *)ntp_params, true,
+        GK_PRIORITY_NORMAL, p_net);
+    ntp_thread_id = t->id;
+    sched.Schedule(t);
+
+    return 0;
+}
+
+int NTPOnConnectScript::OnDisconnect(NetInterface *)
+{
+    if(ntp_thread_id)
+    {
+        Thread::Kill(ntp_thread_id, nullptr);
+        ntp_thread_id = 0;
+    }
+
+    if(ntp_socket >= 0)
+    {
+        close(ntp_socket);
+        ntp_socket = -1;
+    }
+
+    return 0;
 }

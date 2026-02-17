@@ -210,7 +210,8 @@ void net_ip_handle_set_ip_address(const net_msg &m)
     ourips.push_back(m.msg_data.ipaddr);
     cg.unlock();
 
-    m.msg_data.ipaddr.iface->SendMessage({ .msg_type = netiface_msg::netiface_msg_type::IPAssigned });
+    m.msg_data.ipaddr.iface->SendMessage({ .msg_type = netiface_msg::netiface_msg_type::IPAssigned,
+        .addr = m.msg_data.ipaddr.addr });
 }
 
 int net_delete_ip_address_for_iface(const NetInterface *iface)

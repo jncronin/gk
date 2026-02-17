@@ -12,6 +12,7 @@
 #include "osringbuffer.h"
 #include "_netinet_in.h"
 #include "osqueue.h"
+#include "osnet_onconnect.h"
 
 //#include <driver/include/m2m_types.h>
 
@@ -133,7 +134,22 @@ struct netiface_msg
     };
 
     netiface_msg_type msg_type;
-    unsigned int msg_subtype;
+    union
+    {
+        unsigned int msg_subtype;
+        IP4Addr addr;
+    };
+};
+
+class NetInterface;
+
+class IP4Address
+{
+    public:
+        IP4Addr addr, nm, gw;
+        NetInterface *iface;
+        IP4Addr Broadcast() const;
+        IP4Address() = default;
 };
 
 class NetInterface
@@ -149,8 +165,6 @@ class NetInterface
         virtual int HardwareEvent(const netiface_msg &msg);
         virtual int Activate();
         virtual int Deactivate();
-
-        unsigned int ntp_thread_id = 0;
 
     public:
         virtual const HwAddr &GetHwAddr() const;
@@ -170,8 +184,13 @@ class NetInterface
         virtual void RunTaskLoop();
 
         bool DynamicIP = true;
-        IP4Addr StaticIP;
-        bool StartNTP = false;
+        IP4Address StaticIP{};
+
+        bool StartTelnet = false;
+        int telnet_manager_thread_id = 0;
+        int telnet_process_id = 0;
+
+        std::vector<std::unique_ptr<OnConnectScript>> OnIPAssign;
 
         bool SendMessage(const netiface_msg &msg);
 
@@ -238,15 +257,6 @@ class TUSBNetInterface : public NetInterface
 
         friend void tud_network_init_cb(void);
 }; */
-
-class IP4Address
-{
-    public:
-        IP4Addr addr, nm, gw;
-        NetInterface *iface;
-        IP4Addr Broadcast() const;
-        IP4Address() = default;
-};
 
 class IP4Route
 {

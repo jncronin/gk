@@ -21,7 +21,7 @@ void *init_thread(void *)
     usb_process_start();
     auto airoc_if = new WifiAirocNetInterface();
     airoc_if->DynamicIP = true;
-    airoc_if->StartNTP = true;
+    airoc_if->OnIPAssign.push_back(std::make_unique<NTPOnConnectScript>());
     net_register_interface(airoc_if);
     airoc_if->SetActive(true);
 

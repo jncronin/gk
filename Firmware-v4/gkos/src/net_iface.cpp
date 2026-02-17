@@ -79,25 +79,31 @@ void NetInterface::RunTaskLoop()
 
                 case netiface_msg::netiface_msg_type::LinkUp:
                     klog("net: %s link up\n", Name());
-                    if(StartNTP)
-                    {
-                        if(ntp_thread_id)
-                        {
-                            Thread::Kill(ntp_thread_id, nullptr);
-                        }
-                        auto ntp_params = new net_ntpc_thread_params();
-                        ntp_params->myaddr = net_ip_get_address(this);
-                        ntp_params->sockfd = nullptr;// &ntp_socket;
-                        auto t = Thread::Create(Name() + "_ntp", net_ntpc_thread, (void *)ntp_params, true,
-                            GK_PRIORITY_NORMAL, p_net);
-                        ntp_thread_id = t->id;
-                        sched.Schedule(t);
-                    }
                     break;
 
                 case netiface_msg::netiface_msg_type::IPAssigned:
                     klog("net: %s IP assigned\n", Name());
                     has_ip = true;
+
+                    for(auto &cs : OnIPAssign)
+                    {
+                        cs->OnConnect(this, msg.addr);
+                    }
+                
+                    if(StartTelnet)
+                    {
+                        if(telnet_manager_thread_id)
+                        {
+                            Thread::Kill(telnet_manager_thread_id, nullptr);
+                        }
+                        if(telnet_process_id)
+                        {
+                            Process::Kill(telnet_process_id);
+                        }
+
+                        
+                    }
+
                     break;
 
             }
@@ -107,7 +113,8 @@ void NetInterface::RunTaskLoop()
         {
             if(!DynamicIP)
             {
-                events.Push({ .msg_type = netiface_msg::netiface_msg_type::IPAssigned });
+                StaticIP.iface = this;
+                net_set_ip_address(StaticIP);
             }
             else
             {
@@ -217,4 +224,9 @@ const HwAddr &NetInterface::GetHwAddr() const
 bool NetInterface::SendMessage(const netiface_msg &msg)
 {
     return events.Push(msg);
+}
+
+int OnConnectScript::OnDisconnect(NetInterface *)
+{
+    return 0;
 }
