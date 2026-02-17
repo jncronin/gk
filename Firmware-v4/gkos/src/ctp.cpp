@@ -240,7 +240,7 @@ report_data(
 	y = temp;	
 	if(x>=SCREEN_MAX_X||y>=SCREEN_MAX_Y)
 		return;
-	print_info("x=%d, y=%d, id=%d\n", x, y, id);
+	klog("x=%d, y=%d, id=%d\n", x, y, id);
 
 #if 0
 	input_report_abs(ts.dev, ABS_MT_TRACKING_ID, id);
@@ -262,7 +262,7 @@ gp_multi_touch_work(
 	[[maybe_unused]] int irq_state;
  	char tp_data[(MULTI_TP_POINTS + 1)*4 ];
  	
-	print_info("WQ  gp_multi_touch_work.\n");
+	//print_info("WQ  gp_multi_touch_work.\n");
 
 #if ADJUST_CPU_FREQ
 	clockstatus_configure(CLOCK_STATUS_TOUCH,1);
@@ -395,7 +395,7 @@ void ctp_poll()
 			{
 				case ctp_command::CTP_INT:
 					gp_multi_touch_work();
-					gic_set_enable(305);
+					//gic_set_enable(305);
 					break;
 
 				case ctp_command::CTP_RESUME:
@@ -422,10 +422,11 @@ void ctp_poll()
 
 static void exti1_5_handler(exception_regs *, uint64_t)
 {
-	klog("ctp: irq\n");
-	gic_clear_enable(305);
+	//klog("ctp: irq\n");
+	//gic_clear_enable(305);
 	EXTI1_VMEM->RPR1 = (1U << 5);
 	ctp_queue.Push(ctp_command::CTP_INT);
+	__asm__ volatile("dmb sy\n" ::: "memory");
 }
 
 void init_ctp()
@@ -436,6 +437,7 @@ void init_ctp()
 		(0U << EXTI_EXTICR2_EXTI5_Pos);
 	EXTI1_VMEM->RTSR1 |= (1U << 5);
 	EXTI1_VMEM->FTSR1 &= ~(1U << 5);
+	EXTI1_VMEM->C1IMR1 |= (1U << 5);
 
 	gic_set_handler(305, exti1_5_handler);
 	gic_set_target(305, GIC_ENABLED_CORES);
