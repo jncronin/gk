@@ -11349,10 +11349,6 @@
 		(uuid "9907ecbb-c28f-4f5b-b2dd-aed69160e9bd")
 	)
 	(no_connect
-		(at 34.29 80.01)
-		(uuid "9d57f97a-bdb4-47c1-9526-43861bb28a78")
-	)
-	(no_connect
 		(at 144.78 41.91)
 		(uuid "a27c07df-9863-438a-a8cb-a773dee2255b")
 	)
@@ -13560,6 +13556,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "JOY_THROTTLE"
+		(shape input)
+		(at 34.29 80.01 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "7262b02e-2545-4bab-9126-2559a29e63db")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 17.9396 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
