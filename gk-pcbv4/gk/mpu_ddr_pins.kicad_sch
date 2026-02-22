@@ -8787,10 +8787,6 @@
 		(uuid "e08cc812-4b6d-4575-b693-cfb81b8f49e9")
 	)
 	(no_connect
-		(at 162.56 82.55)
-		(uuid "e256bc40-b7d2-41b3-b0f5-5fcc6f50d4c4")
-	)
-	(no_connect
 		(at 208.28 54.61)
 		(uuid "e96a4025-28aa-4f99-a84c-a365e01078bd")
 	)
@@ -9998,6 +9994,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "USART6_RX"
+		(shape input)
+		(at 162.56 82.55 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "ee0837c8-c756-44fe-bd2d-8caf167da2c1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 149.052 82.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
