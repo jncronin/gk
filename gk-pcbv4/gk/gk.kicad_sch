@@ -308,7 +308,7 @@
 		)
 		(uuid "1a3a5a23-936f-418d-aef3-bef04e914360")
 	)
-	(text "Errata:\n\nSeparate stencils for top/bottom\nMax 260mm wide stencil\n\nAdjust DDR routing based upon internal BGA lengths (see CAD resources)\n - Use KiCad pad properties \"die length\" to assist\n - Reference example uses 0.09 mm traces with 0.2 mm spacing\n - Use JLC impedance calculator for 55 ohm single ended/100 ohm differential\n\nMove LB/RB to main board\n\nMake R54 (LCD LED boost) smaller\n\n"
+	(text "Errata:\n\nSeparate stencils for top/bottom\nMax 260mm wide stencil\n\nAdjust DDR routing based upon internal BGA lengths (see CAD resources)\n - Use KiCad pad properties \"die length\" to assist\n - Reference example uses 0.09 mm traces with 0.2 mm spacing\n - Use JLC impedance calculator for 55 ohm single ended/100 ohm differential\n\nMake R54 (LCD LED boost) smaller\n\n"
 		(exclude_from_sim no)
 		(at 104.648 80.01 0)
 		(effects
