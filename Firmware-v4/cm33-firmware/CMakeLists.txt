@@ -29,6 +29,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Device/ST/STM32MP2xx/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../STM32CubeMP2/Drivers/CMSIS/Core/Include"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
+        "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -41,6 +43,13 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/list.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/queue.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/tasks.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/MemMang/heap_4.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure/port.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure/portasm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure/mpu_wrappers_v2_asm.c
 )
 
 set_target_properties(${PROJECT_NAME}

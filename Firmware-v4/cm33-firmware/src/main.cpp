@@ -8,6 +8,9 @@
 #include "lsm.h"
 #include <cmath>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "interface/cm33_data.h"
 
 __attribute__((section(".sram1"))) cm33_data_userspace d;
@@ -25,6 +28,8 @@ unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
 
 volatile bool ticked = false;
 static void tick();
+
+TaskHandle_t task_readsensors = nullptr;
 
 class ioexp_pin
 {
@@ -215,6 +220,8 @@ Debounce db_JOY_TILT_RIGHT(JOY_TILT_RIGHT, GK_KEYTILTRIGHT);
 Debounce db_JOY_TILT_UP(JOY_TILT_UP, GK_KEYTILTUP);
 Debounce db_JOY_TILT_DOWN(JOY_TILT_DOWN, GK_KEYTILTDOWN);
 
+static void readsensors_task(void *);
+
 int main()
 {
     // load defaults
@@ -264,13 +271,31 @@ int main()
     dk.sr = dk.sr | CM33_DK_SR_OUTPUT_ENABLE | CM33_DK_SR_READY;
     __SEV();
 
+    NVIC_SetPriority(TIM6_IRQn, 8);     // check this - we have 4 priority bits
     NVIC_EnableIRQ(TIM6_IRQn);
     __enable_irq();
 
+    xTaskCreate(readsensors_task, "sensors", 2048, nullptr, configMAX_PRIORITIES - 1,
+        &task_readsensors);
+    vTaskStartScheduler();
+    while(true);
+
+/*
     while(true)
     {
         __WFI();
         if(ticked)
+        {
+            tick();
+        }
+    } */
+}
+
+void readsensors_task(void *)
+{
+    while(true)
+    {
+        if(ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
             tick();
         }
@@ -513,9 +538,15 @@ static void tick()
 
 extern "C" void TIM6_IRQHandler()
 {
+    BaseType_t hpt = pdFALSE;
     clock_tick();
-    ticked = true;
+    if(task_readsensors)
+    {
+        vTaskNotifyGiveFromISR(task_readsensors, &hpt);
+    }
     TIM6->SR = 0;
+
+    portYIELD_FROM_ISR(hpt);
     __DMB();
 }
 
@@ -528,4 +559,9 @@ extern "C" void FailHandler()
     {
         __WFI();
     }
+}
+
+extern "C" void vApplicationIdleHook()
+{
+    __WFI();
 }
