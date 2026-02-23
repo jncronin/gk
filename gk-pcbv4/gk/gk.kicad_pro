@@ -200,86 +200,6 @@
           ""
         ],
         [
-          "solder_mask_bridge|110710000|133977500|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|110710000|136130000|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|110747500|133940000|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|112110000|133489999|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|112156000|137690000|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|113260000|133489999|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|114410000|130190000|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|114410000|133489999|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|115560000|133489999|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|116664000|137690000|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|116710000|133489999|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|118072500|133940000|78cfbcf2-16a4-4b2f-9cc3-2bb8fb79ae84|9640ae4a-d289-4228-9068-cdb1b0a105b4",
-          ""
-        ],
-        [
-          "solder_mask_bridge|85485000|133939439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|86635000|133939439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|87785000|133939439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|88360000|136989439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|88360000|137394439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|88935000|133939439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|90085000|133939439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
-          "solder_mask_bridge|91235000|133939439|19eb79c0-1035-4967-b40b-471541464f2f|57102f9c-f4a7-4e32-bdd6-4212ea7ff16e",
-          ""
-        ],
-        [
           "starved_thermal|61704491|77740439|98e9e9a9-959f-49e1-9046-25abee89c57b|fb3e7bf7-eb2a-47d9-b328-c25f86004d10|B.Cu",
           ""
         ],
@@ -504,16 +424,7 @@
     "equivalence_files": []
   },
   "erc": {
-    "erc_exclusions": [
-      [
-        "pin_to_pin|1270000|368300|6b73b45e-d31b-42eb-a2de-94f61f066cf4|cc5e5743-c220-43a1-b882-a3ffaaa81535|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d|/a049c72e-5361-408c-ab21-661d491fee9d/49d92768-2753-4845-8f5d-30a44b61f9f1",
-        ""
-      ],
-      [
-        "pin_to_pin|1981200|812800|f809132c-18cc-4202-bacf-62652bc9c89b|a927f4d0-8f2b-4e07-9619-bf5c2b797cfd|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d",
-        ""
-      ]
-    ],
+    "erc_exclusions": [],
     "meta": {
       "version": 0
     },
@@ -762,84 +673,94 @@
         "wire_width": 6
       },
       {
+        "clearance": 0.254,
         "name": "DDR_CA",
         "pcb_color": "rgb(41, 255, 0)",
-        "priority": 13,
+        "priority": 14,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.14224
+        "track_width": 0.19812
       },
       {
-        "diff_pair_gap": 0.2032,
-        "diff_pair_width": 0.10414,
+        "clearance": 0.254,
+        "diff_pair_gap": 0.1524,
+        "diff_pair_width": 0.13335,
         "name": "DDR_CLK",
         "pcb_color": "rgb(254, 255, 0)",
-        "priority": 14,
+        "priority": 15,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
+        "clearance": 0.2286,
         "name": "DDR_DATA1",
         "pcb_color": "rgb(0, 241, 255)",
-        "priority": 12,
+        "priority": 13,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.183642
+        "track_width": 0.09525
       },
       {
+        "clearance": 0.2286,
         "name": "DDR_DATA2",
         "pcb_color": "rgb(241, 0, 255)",
-        "priority": 11,
+        "priority": 12,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.183642
+        "track_width": 0.09525
       },
       {
-        "diff_pair_gap": 0.2032,
-        "diff_pair_width": 0.17018,
+        "diff_pair_gap": 0.14732,
+        "diff_pair_width": 0.0889,
         "name": "DDR_DQS1",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 9,
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
+      },
+      {
+        "diff_pair_gap": 0.14732,
+        "diff_pair_width": 0.0889,
+        "name": "DDR_DQS2",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 8,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
-        "diff_pair_gap": 0.2032,
-        "diff_pair_width": 0.17018,
-        "name": "DDR_DQS2",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 7,
-        "schematic_color": "rgba(0, 0, 0, 0.000)"
-      },
-      {
         "name": "LTDC",
         "pcb_color": "rgb(0, 201, 149)",
-        "priority": 4,
+        "priority": 5,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "OCTOSPI1",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 3,
+        "priority": 4,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "SAI2",
         "pcb_color": "rgb(255, 109, 238)",
-        "priority": 0,
+        "priority": 1,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "SAI3",
         "pcb_color": "rgb(255, 109, 238)",
-        "priority": 1,
+        "priority": 2,
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
+      },
+      {
+        "name": "SDMMC1",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 0,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "SPI3",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 2,
+        "priority": 3,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "TRACE",
         "pcb_color": "rgb(210, 255, 122)",
-        "priority": 6,
+        "priority": 7,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.183642
       },
@@ -848,19 +769,19 @@
         "diff_pair_width": 0.2032,
         "name": "USB",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 5,
+        "priority": 6,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "VDD_DDR1",
         "pcb_color": "rgb(188, 124, 255)",
-        "priority": 10,
+        "priority": 11,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
         "name": "VDD_DDR2",
         "pcb_color": "rgb(255, 162, 115)",
-        "priority": 9,
+        "priority": 10,
         "schematic_color": "rgba(0, 0, 0, 0.000)"
       }
     ],
@@ -960,6 +881,10 @@
       {
         "netclass": "SAI3",
         "pattern": "SAI3_*"
+      },
+      {
+        "netclass": "SDMMC1",
+        "pattern": "SDMMC1*"
       }
     ]
   },
