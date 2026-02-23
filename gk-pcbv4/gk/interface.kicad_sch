@@ -2998,6 +2998,14 @@
 		(uuid "15216636-a8c3-470a-b22e-e419fc9b70d7")
 	)
 	(no_connect
+		(at 154.94 170.18)
+		(uuid "4586ef9a-ccbf-40eb-bbc4-fc05c5220957")
+	)
+	(no_connect
+		(at 154.94 167.64)
+		(uuid "65811ffd-ad2b-4fd2-b244-55a0f3623c71")
+	)
+	(no_connect
 		(at 101.6 38.1)
 		(uuid "9578a905-3842-47eb-b56c-1592225be5d8")
 	)
@@ -4083,28 +4091,6 @@
 			)
 		)
 	)
-	(global_label "I2C4_SCL_3V3"
-		(shape input)
-		(at 154.94 170.18 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "4db44e54-4708-4263-93be-b21ae3494f2b")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 171.1694 170.18 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "JOY_A_X"
 		(shape input)
 		(at 86.36 165.1 90)
@@ -4228,28 +4214,6 @@
 		(uuid "85d18a23-c6e1-42ba-94b8-cb847b8bb38b")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 111.76 154.3134 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "I2C4_SDA_3V3"
-		(shape input)
-		(at 154.94 167.64 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "926b2e74-8962-4bf0-bff1-ebeca30796e7")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 171.2299 167.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6107,7 +6071,7 @@
 		(fields_autoplaced yes)
 		(uuid "5494ca3f-a2bd-4c1c-9d68-16cfba1686a3")
 		(property "Reference" "SW_R2"
-			(at 228.6 99.695 90)
+			(at 228.6 99.0599 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6116,7 +6080,7 @@
 			)
 		)
 		(property "Value" "SW_Push"
-			(at 228.6 102.235 90)
+			(at 228.6 101.5999 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6124,7 +6088,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "gk:TouchButton-8x8mm_2"
+		(property "Footprint" "gk-pcbv3:TouchButton-8x8mm_2"
 			(at 222.25 100.33 0)
 			(effects
 				(font
@@ -8436,7 +8400,7 @@
 		(fields_autoplaced yes)
 		(uuid "d35c3415-53ea-46a0-86ad-b98b56b9be13")
 		(property "Reference" "SW_R1"
-			(at 189.23 99.695 90)
+			(at 189.23 99.0599 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8445,7 +8409,7 @@
 			)
 		)
 		(property "Value" "SW_Push"
-			(at 189.23 102.235 90)
+			(at 189.23 101.5999 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8453,7 +8417,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" "gk:TouchButton-8x8mm_2"
+		(property "Footprint" "gk-pcbv3:TouchButton-8x8mm_2"
 			(at 182.88 100.33 0)
 			(effects
 				(font
@@ -8523,7 +8487,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 167.3352 101.6 0)
 			(effects
 				(font
