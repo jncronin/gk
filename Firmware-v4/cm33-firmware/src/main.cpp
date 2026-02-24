@@ -12,6 +12,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "ctp.h"
+
 #include "interface/cm33_data.h"
 
 __attribute__((section(".sram1"))) cm33_data_userspace d;
@@ -278,6 +280,9 @@ int main()
 
     xTaskCreate(readsensors_task, "sensors", 2048, nullptr, configMAX_PRIORITIES - 1,
         &task_readsensors);
+
+    init_ctp();
+
     vTaskStartScheduler();
     while(true);
 
@@ -451,10 +456,16 @@ static void tick()
         switch(dk.cr)
         {
             case CM33_DK_CMD_TILT_ENABLE:
-                dk.sr = dk.sr | CM33_DK_SR_TILT_ENABLE;
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_TILT_ENABLE;
+                }
                 break;
             case CM33_DK_CMD_TILT_DISABLE:
-                dk.sr = dk.sr & ~CM33_DK_SR_TILT_ENABLE;
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_TILT_ENABLE;
+                }
                 break;
         }
         dk.cr = 0;
@@ -471,7 +482,13 @@ static void tick()
 
     joystick_tick();
 
-    if(dk.sr & CM33_DK_SR_TILT_ENABLE)
+    uint32_t sr;
+    {
+        UninterruptibleGuard ug;
+        sr = dk.sr;
+    }
+
+    if(sr & CM33_DK_SR_TILT_ENABLE)
     {
         lsm_ret = lsm_poll();
         if(lsm_ret == 0)
@@ -524,7 +541,7 @@ static void tick()
     db_tick(db_JOY_B_UP);
     db_tick(db_JOY_B_DOWN);
 
-    if(dk.sr & CM33_DK_SR_TILT_ENABLE)
+    if(sr & CM33_DK_SR_TILT_ENABLE)
     {
         db_tick(db_JOY_TILT_LEFT);
         db_tick(db_JOY_TILT_RIGHT);

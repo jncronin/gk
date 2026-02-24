@@ -31,6 +31,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../gkos/inc"
 )
 
 target_compile_definitions(${PROJECT_NAME}

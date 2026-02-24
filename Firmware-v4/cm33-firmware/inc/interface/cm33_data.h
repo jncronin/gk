@@ -47,6 +47,7 @@ static_assert(sizeof(cm33_data_kernel) == 15*4);
 #define CM33_DK_SR_TILT_ENABLE      4
 #define CM33_DK_SR_OUTPUT_ENABLE    8
 #define CM33_DK_SR_OVERFLOW         16
+#define CM33_DK_SR_TOUCH_ENABLE     32
 
 // commands
 #define CM33_DK_CMD_TILT_ENABLE     1

@@ -14,7 +14,7 @@ MEMORY
     SRAM1          (rw)   : ORIGIN = 0x30040000, LENGTH = 0x20000
     SRAM2_HEADER   (rw)   : ORIGIN = 0x30060000, LENGTH = 256
     SRAM2          (rw)   : ORIGIN = 0x30060000 + 256, LENGTH = 0x20000 - 256
-    FLASH          (xr)   : ORIGIN = 0x603f8000, LENGTH = 0x8000
+    FLASH          (xr)   : ORIGIN = 0x60380000, LENGTH = 0x80000
 }
 
 SECTIONS

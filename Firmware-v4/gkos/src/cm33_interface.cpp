@@ -112,7 +112,7 @@ static void reset_cm33()
 
     // Give CM33 secure access to OSPI
     RISAF2_VMEM->REG[0].CFGR = 0;
-    RISAF2_VMEM->REG[0].STARTR = 0x3f8000;
+    RISAF2_VMEM->REG[0].STARTR = 0x380000;
     RISAF2_VMEM->REG[0].ENDR = 0x3fffff;
     RISAF2_VMEM->REG[0].CIDCFGR = 7U;    // TRACE/CPU0/CPU1
     RISAF2_VMEM->REG[0].CFGR = 0xf0101;  // all privilege, secure, enable
@@ -161,12 +161,12 @@ static void reset_cm33()
     BTN_MCU_VOLUP.set_as_input();
     BTN_MCU_VOLDOWN.set_as_input();
 
-    // Start up the CM33 code running from QSPI @ 0x603fc000
+    // Start up the CM33 code running from QSPI @ 0x60380000
     // Boot in secure mode
     RCC_VMEM->SYSCPU1CFGR |= RCC_SYSCPU1CFGR_SYSCPU1EN;
     (void)RCC_VMEM->SYSCPU1CFGR;
     CA35SYSCFG_VMEM->M33_TZEN_CR |= CA35SYSCFG_M33_TZEN_CR_CFG_SECEXT;
-    CA35SYSCFG_VMEM->M33_INITSVTOR_CR = 0x603f8000;
+    CA35SYSCFG_VMEM->M33_INITSVTOR_CR = 0x60380000;
 
     /* Start CPU2 */
     RCC_VMEM->CPUBOOTCR |= RCC_CPUBOOTCR_BOOT_CPU2;
