@@ -6,6 +6,7 @@
 #include "clocks.h"
 #include "adc.h"
 #include "lsm.h"
+#include "guard.h"
 #include <cmath>
 
 #include "FreeRTOS.h"
@@ -304,6 +305,7 @@ void readsensors_task(void *)
 
 static void send_message(uint32_t msg)
 {
+    UninterruptibleGuard ug;
     auto new_w_ptr = dk.rb_w_ptr + 1;
     if(new_w_ptr >= dk.rb_size)
         new_w_ptr = 0;
