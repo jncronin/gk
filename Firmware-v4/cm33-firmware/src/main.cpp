@@ -532,6 +532,7 @@ static void tick()
         db_tick(db_JOY_TILT_DOWN);
     }
 
+    UninterruptibleGuard ug;
     if(dk.rb_r_ptr != dk.rb_w_ptr)
     {
         __SEV();
