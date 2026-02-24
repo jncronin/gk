@@ -16,7 +16,7 @@
 static constexpr const pin SAI2_SD_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 12, 3 };
 static constexpr const pin SAI2_SCK_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 11, 3 };
 static constexpr const pin SAI2_FS_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOG), 2, 4 };
-static constexpr const pin SPKR_NSD { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOB), 7 };   // speaker amp enable
+static constexpr const pin SPKR_NSD { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA), 7 };   // speaker amp enable
 
 #define dma ((DMA_Channel_TypeDef *)PMEM_TO_VMEM(HPDMA1_Channel8_BASE))
 #define SAI2_VMEM ((SAI_TypeDef *)PMEM_TO_VMEM(SAI2_BASE))
