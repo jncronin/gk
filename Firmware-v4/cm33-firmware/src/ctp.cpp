@@ -283,7 +283,6 @@ static void handle_release(unsigned int id, unsigned int x, unsigned int y)
 	return send_message(CM33_DK_MSG_TOUCHRELEASE | touch_encode(id, x, y));
 }
 
-
 static void read_ctp()
 {
 	uint32_t tp_data[MULTI_TP_POINTS + 1];
@@ -473,6 +472,14 @@ static void check_mem_data(void)
 					break;
 
 				case ctp_command::CTP_RESUME:
+					// clear current state
+					for(auto i = 0U; i < MAX_CONTACTS; i++)
+					{
+						curpts[i].pressed = false;
+						curpts[i].x = 0;
+						curpts[i].y = 0;
+					}
+
 					CTP_WAKE.set();
 					msleep(20);
 					reset_chip();			
