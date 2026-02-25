@@ -62,5 +62,8 @@ static_assert(sizeof(cm33_data_kernel) == 15*4);
 #define CM33_DK_MSG_REPEAT          (0x4U << 24)
 #define CM33_DK_MSG_LOGEND          (0x5U << 24)
 #define CM33_DK_MSG_LOG             (0x6U << 24)
+#define CM33_DK_MSG_TOUCHPRESS      (0x7U << 24)
+#define CM33_DK_MSG_TOUCHMOVE       (0x8U << 24)
+#define CM33_DK_MSG_TOUCHRELEASE    (0x9U << 24)
 
 #endif

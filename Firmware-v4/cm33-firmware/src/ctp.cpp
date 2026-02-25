@@ -10,6 +10,7 @@
 #include "guard.h"
 #include "logger.h"
 #include "interface/cm33_data.h"
+#include "message.h"
 #include <atomic>
 
 extern cm33_data_kernel dk;
@@ -254,7 +255,97 @@ report_data(
 #endif
 }
 
-static void
+struct ctp_point
+{
+	int x, y;
+	bool pressed = false;
+};
+
+static ctp_point curpts[MAX_CONTACTS] = { 0 };
+
+static uint32_t touch_encode(unsigned int id, unsigned int x, unsigned int y)
+{
+	return (id << 20) | (y << 10) | (x);
+}
+
+static void handle_press(unsigned int id, unsigned int x, unsigned int y)
+{
+	return send_message(CM33_DK_MSG_TOUCHPRESS | touch_encode(id, x, y));
+}
+
+static void handle_move(unsigned int id, unsigned int x, unsigned int y)
+{
+	return send_message(CM33_DK_MSG_TOUCHMOVE | touch_encode(id, x, y));
+}
+
+static void handle_release(unsigned int id, unsigned int x, unsigned int y)
+{
+	return send_message(CM33_DK_MSG_TOUCHRELEASE | touch_encode(id, x, y));
+}
+
+
+static void read_ctp()
+{
+	uint32_t tp_data[MULTI_TP_POINTS + 1];
+
+	auto ret = gsl_ts_read(0x80, (char *)tp_data, sizeof(tp_data));
+	if( ret < 0) {
+		print_info("gp_tp_get_data fail,return %d\n",ret);
+		//gp_gpio_enable_irq(ts.client, 1);
+		return;
+	}
+
+	auto ntouched = (size_t)tp_data[0];
+	if(ntouched > MULTI_TP_POINTS)
+		ntouched = MULTI_TP_POINTS;
+
+	ctp_point newpts[MAX_CONTACTS] = { 0 };
+
+	for(auto i = 0U; i < ntouched; i++)
+	{
+		auto d = tp_data[i + 1];
+		auto id = d >> 28;
+		auto x = (d & 0xffffU);
+		auto y = (d >> 16) & 0xfffU;
+
+		newpts[id - 1].pressed = true;
+		newpts[id - 1].x = x;
+		newpts[id - 1].y = y;
+	}
+
+	// now look for any changed on pressed or x,y >= 4 pixel movements
+	for(auto i = 0U; i < MAX_CONTACTS; i++)
+	{
+		if(newpts[i].pressed && !curpts[i].pressed)
+		{
+			handle_press(i, newpts[i].x, newpts[i].y);
+			//klog("press\n");
+			curpts[i] = newpts[i];
+		}
+		else if(!newpts[i].pressed && curpts[i].pressed)
+		{
+			handle_release(i, curpts[i].x, curpts[i].y);
+			//klog("release\n");
+			curpts[i] = newpts[i];
+		}
+		else if(newpts[i].pressed && curpts[i].pressed)
+		{
+			// check for movement
+			if(std::abs(newpts[i].x - curpts[i].x) >= 4 ||
+				std::abs(newpts[i].y - curpts[i].y) >= 4)
+			{
+				handle_move(i, newpts[i].x, newpts[i].y);
+				//klog("move\n");
+			}
+			curpts[i] = newpts[i];
+		}
+	}
+
+	//klog("ctp: ntouched: %u\n", ntouched);
+
+}
+
+[[maybe_unused]] static void
 gp_multi_touch_work(
 )
 {
@@ -360,17 +451,6 @@ static void check_mem_data(void)
 	}
 }
 
-void ctp_poll()
-{
-    if(!ctp_is_init)
-    {
-        gsl_reset();
-        ctp_is_init = true;
-    }
-
-    gp_multi_touch_work();
-}
-
 [[maybe_unused]] static void ctp_thread(void *)
 {
 	while(true)
@@ -387,7 +467,8 @@ void ctp_poll()
 			switch(cmd)
 			{
 				case ctp_command::CTP_INT:
-					gp_multi_touch_work();
+					read_ctp();
+					NVIC_EnableIRQ(EXTI1_5_IRQn);
 					//gic_set_enable(305);
 					break;
 
@@ -432,6 +513,7 @@ extern "C" void EXTI1_5_IRQHandler()
 {
 	//klog("ctp: irq\n");
 	//gic_clear_enable(305);
+	NVIC_DisableIRQ(EXTI1_5_IRQn);
 	EXTI1->RPR1 = (1U << 5);
 	auto ctpint = ctp_command::CTP_INT;
 	BaseType_t hpt;
