@@ -195,17 +195,51 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
         }
         else if(*format == 'd')
         {
+#if CM33
+            if(has_width && width == 8)
+            {
+                ret += logger_int(oput, va_arg(va, int64_t), 0, true, 10,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    length, zeropad, false);
+            }
+            else
+            {
+                ret += logger_int(oput, va_arg(va, int32_t), 0, true, 10,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    length, zeropad, false);
+            }
+#else
             ret += logger_int(oput, va_arg(va, int64_t), 0, true, 10,
                 has_width ? width : -1,
                 has_precision ? precision : -1,
                 length, zeropad, false);
+#endif
         }
         else if(*format == 'x' || *format == 'X')
         {
+#if CM33
+            if(has_width && width == 8)
+            {
+                ret += logger_int(oput, 0, va_arg(va, uint64_t), false, 16,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    length, zeropad, false);
+            }
+            else
+            {
+                ret += logger_int(oput, 0, va_arg(va, uint32_t), false, 16,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    length, zeropad, false);
+            }
+#else
             ret += logger_int(oput, 0, va_arg(va, uint64_t), false, 16,
                 has_width ? width : -1,
                 has_precision ? precision : -1,
                 length, zeropad, *format == 'X');
+#endif
         }
         else if(*format == 'p' || *format == 'P')
         {
@@ -217,10 +251,27 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
         }
         else if(*format == 'u')
         {
+#if CM33
+            if(has_width && width == 8)
+            {
+                ret += logger_int(oput, 0, va_arg(va, uint64_t), false, 10,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    length, zeropad, false);
+            }
+            else
+            {
+                ret += logger_int(oput, 0, va_arg(va, uint32_t), false, 10,
+                    has_width ? width : -1,
+                    has_precision ? precision : -1,
+                    length, zeropad, false);
+            }
+#else
             ret += logger_int(oput, 0, va_arg(va, uint64_t), false, 10,
                 has_width ? width : -1,
                 has_precision ? precision : -1,
                 length, zeropad, false);
+#endif
         }
 #if GKOS_FPU
         else if(*format == 'f')
@@ -241,7 +292,7 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
 
 int logger_string(logger_printf_outputter &oput, const char *str, size_t len)
 {
-    if(len == ~0ULL)
+    if(len == size_t_max)
         len = strlen(str);
 #if GK_FLASH_LOADER
     return log_fwrite(str, len);
