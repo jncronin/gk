@@ -543,10 +543,6 @@ void init_ctp()
 	EXTI1->FTSR1 &= ~(1U << 5);
 	EXTI1->C2IMR1 |= (1U << 5);
 
-	// for testing
-	ctp_command cmdresume = ctp_command::CTP_RESUME;
-	xQueueSend(ctp_queue, &cmdresume, 0);
-
 #if GK_ENABLE_TOUCH
 	xTaskCreate(ctp_thread, "ctp", 2048, nullptr, configMAX_PRIORITIES - 1, nullptr);
 #endif
@@ -555,4 +551,16 @@ void init_ctp()
 bool ctp_get_status()
 {
 	return ctp_enabled;
+}
+
+void ctp_enable()
+{
+	ctp_command ctpen = ctp_command::CTP_RESUME;
+	xQueueSend(ctp_queue, &ctpen, 0);
+}
+
+void ctp_disable()
+{
+	ctp_command ctpdis = ctp_command::CTP_SLEEP;
+	xQueueSend(ctp_queue, &ctpdis, 0);
 }

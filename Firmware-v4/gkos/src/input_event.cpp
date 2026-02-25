@@ -6,12 +6,66 @@
 
 extern PMemBlock process_kernel_info_page;
 
+int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsigned int y)
+{
+    // scale to screen coordinates
+    x = (x * screen.screen_w) / GK_SCREEN_WIDTH;
+    y = (y * screen.screen_h) / GK_SCREEN_HEIGHT;
+
+    Event ev;
+    switch(msg_type)
+    {
+        case CM33_DK_MSG_TOUCHPRESS:
+            ev.type = Event::event_type_t::MouseDown;
+            ev.mouse_data.x = x;
+            ev.mouse_data.y = y;
+            ev.mouse_data.buttons = 1;
+            ev.mouse_data.is_rel = true;
+            events.Push(ev);
+            return 0;
+
+        case CM33_DK_MSG_TOUCHMOVE:
+            ev.type = Event::event_type_t::MouseMove;
+            ev.mouse_data.x = x;
+            ev.mouse_data.y = y;
+            ev.mouse_data.buttons = 1;
+            ev.mouse_data.is_rel = true;
+            events.Push(ev);
+            return 0;
+
+        case CM33_DK_MSG_TOUCHRELEASE:
+            ev.type = Event::event_type_t::MouseUp;
+            ev.mouse_data.x = x;
+            ev.mouse_data.y = y;
+            ev.mouse_data.buttons = 1;
+            ev.mouse_data.is_rel = true;
+            events.Push(ev);
+            return 0;
+
+        default:
+            return -1;
+    }
+    
+}
+
 int Process::HandleInputEvent(unsigned int cm33_cmd)
 {
     auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
 
     auto key = cm33_cmd & CM33_DK_MSG_CONTENTS;
     auto action = cm33_cmd & CM33_DK_MSG_MASK;
+
+    switch(action)
+    {
+        case CM33_DK_MSG_TOUCHMOVE:
+        case CM33_DK_MSG_TOUCHPRESS:
+        case CM33_DK_MSG_TOUCHRELEASE:
+            if(keymap.touch_is_mouse)
+                return HandleTouchAsMouseEvent(action, key & 1023U, (key >> 10) & 1023U);
+            else
+                return 0;
+    }
+
     if(key >= GK_NUMKEYS)
     {
         return -1;

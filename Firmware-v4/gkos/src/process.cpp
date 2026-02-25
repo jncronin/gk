@@ -233,6 +233,16 @@ int SetFocusProcess(PProcess p)
         cm33_set_tilt(true);
     }
 
+    // enable/disable ctp
+    if(p->keymap.touch_is_mouse)
+    {
+        cm33_set_touch(true);
+    }
+    else
+    {
+        cm33_set_touch(false);
+    }
+
     // restore palette if used
 
 

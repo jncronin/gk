@@ -3,5 +3,6 @@
 
 void init_cm33_interface();
 int cm33_set_tilt(bool en);
+int cm33_set_touch(bool en);
 
 #endif

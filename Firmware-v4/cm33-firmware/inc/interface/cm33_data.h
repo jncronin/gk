@@ -52,6 +52,8 @@ static_assert(sizeof(cm33_data_kernel) == 15*4);
 // commands
 #define CM33_DK_CMD_TILT_ENABLE     1
 #define CM33_DK_CMD_TILT_DISABLE    2
+#define CM33_DK_CMD_TOUCH_ENABLE    3
+#define CM33_DK_CMD_TOUCH_DISABLE   4
 
 // messages
 #define CM33_DK_MSG_MASK            (0xffU << 24)

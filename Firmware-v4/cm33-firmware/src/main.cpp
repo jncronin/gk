@@ -469,6 +469,16 @@ static void tick()
                     dk.sr = dk.sr & ~CM33_DK_SR_TILT_ENABLE;
                 }
                 break;
+            case CM33_DK_CMD_TOUCH_ENABLE:
+                {
+                    ctp_enable();
+                }
+                break;
+            case CM33_DK_CMD_TOUCH_DISABLE:
+                {
+                    ctp_disable();
+                }
+                break;
         }
         dk.cr = 0;
         __SEV();

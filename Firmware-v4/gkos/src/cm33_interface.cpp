@@ -41,6 +41,7 @@ cm33_joy_calib input_joy_calib[2] =
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
 };
 static bool input_tilt_enable = false;
+static bool input_touch_enable = false;
 
 static void cm33_irq(exception_regs *, uint64_t);
 
@@ -216,6 +217,18 @@ static void cm33_handle_message(uint32_t msg)
             }
             break;
 
+        case CM33_DK_MSG_TOUCHPRESS:
+        case CM33_DK_MSG_TOUCHRELEASE:
+        case CM33_DK_MSG_TOUCHMOVE:
+            {
+                auto p = (supervisor_is_active() && p_supervisor) ? p_supervisor : GetFocusProcess();
+                if(p && p->keymap.touch_is_mouse)
+                {
+                    p->HandleInputEvent(msg);
+                }
+            }
+            break;
+
         case CM33_DK_MSG_LOG:
             cm33_log_buffer.push_back((char)(msg & ~CM33_DK_MSG_MASK));
             break;
@@ -276,6 +289,14 @@ static void *cm33_manager_thread(void *)
         else if(!input_tilt_enable && (dk->sr & CM33_DK_SR_TILT_ENABLE))
         {
             cm33_send_cmd(CM33_DK_CMD_TILT_DISABLE);
+        }
+        if(input_touch_enable && !(dk->sr & CM33_DK_SR_TOUCH_ENABLE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_TOUCH_ENABLE);
+        }
+        else if(!input_touch_enable && (dk->sr & CM33_DK_SR_TOUCH_ENABLE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_TOUCH_DISABLE);
         }
         if(dk->joy_a_calib.left != input_joy_calib[0].left)
             dk->joy_a_calib.left = input_joy_calib[0].left;
@@ -341,5 +362,11 @@ void init_cm33_interface()
 int cm33_set_tilt(bool en)
 {
     input_tilt_enable = en;
+    return 0;
+}
+
+int cm33_set_touch(bool en)
+{
+    input_touch_enable = en;
     return 0;
 }

@@ -164,6 +164,7 @@ class Process
         prockeymap_t keymap;
         std::string window_title;
         int HandleInputEvent(uint32_t cmd);
+        int HandleTouchAsMouseEvent(unsigned int msgtype, unsigned int x, unsigned int y);
         void set_osd(const std::string &_osd_text);
         void delete_osd();
         Widget *get_osd();

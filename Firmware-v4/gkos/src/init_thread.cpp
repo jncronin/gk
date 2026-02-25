@@ -69,6 +69,7 @@ void *init_thread(void *)
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYRIGHT] = 0;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYUP] = GK_SCANCODE_AUDIOPREV;
     p_gkmenu->keymap.gamepad_to_scancode[GK_KEYDOWN] = GK_SCANCODE_AUDIONEXT;
+    p_gkmenu->keymap.touch_is_mouse = 1;
 
     pid_gkmenu = p_gkmenu->id;
 
