@@ -57,6 +57,7 @@
 
 
 .section  .text.Default_Handler,"ax",%progbits
+.type Default_Handler, %function
 Default_Handler:
     bl FailHandler
 .size  Default_Handler, .-Default_Handler
