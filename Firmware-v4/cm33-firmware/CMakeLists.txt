@@ -31,6 +31,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/gk-userlandinterface"
         "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/inc"
         "${CMAKE_CURRENT_SOURCE_DIR}/../gkos/inc"
 )
 
@@ -38,6 +39,7 @@ target_compile_definitions(${PROJECT_NAME}
     PRIVATE
         STM32MP257Fxx
         CORE_CM33
+        CM33=1
         ETH_MODE
 )
 
@@ -51,6 +53,7 @@ target_sources(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure/port.c
         ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure/portasm.c
         ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/GCC/ARM_CM33_NTZ/non_secure/mpu_wrappers_v2_asm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp
 )
 
 set_target_properties(${PROJECT_NAME}

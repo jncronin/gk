@@ -31,6 +31,9 @@
 static volatile cm33_data_kernel *dk = (volatile cm33_data_kernel *)0xfffffd0030060000;
 static SimpleSignal cm33_event;
 
+/* Store current log buffer */
+static std::vector<char> cm33_log_buffer;
+
 static float input_tilt_centre = 30.0f;
 cm33_joy_calib input_joy_calib[2] =
 {
@@ -211,6 +214,15 @@ static void cm33_handle_message(uint32_t msg)
                     p->HandleInputEvent(msg);
                 }
             }
+            break;
+
+        case CM33_DK_MSG_LOG:
+            cm33_log_buffer.push_back((char)(msg & ~CM33_DK_MSG_MASK));
+            break;
+
+        case CM33_DK_MSG_LOGEND:
+            klog("cm33: %.*s", (int)cm33_log_buffer.size(), (const char *)cm33_log_buffer.data());
+            cm33_log_buffer.clear();
             break;
 
         default:

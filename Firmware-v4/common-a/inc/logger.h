@@ -2,8 +2,13 @@
 #define LOGGER_H
 
 // Avoid including unistd.h here because it defines unlink() which dlmalloc tries to redefine
+#if __SIZEOF_SIZE_T__ == 4
+typedef signed int ssize_t;
+typedef unsigned int size_t;
+#else
 typedef signed long int ssize_t;
 typedef unsigned long int size_t;
+#endif
 
 #ifdef __cplusplus
 class logger_printf_outputter

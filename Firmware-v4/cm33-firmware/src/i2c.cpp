@@ -4,12 +4,14 @@
 #include "clocks.h"
 #include "kernel_time.h"
 
-I2C i2cs[1];
+I2C i2cs[7];
 
 static const constexpr pin i2c_pins[]
 {
     { GPIOJ, 10, 9 },                 // I2C1_SDA
     { GPIOA, 3, 10 },                 // I2C1_SCL
+    { GPIOD, 10, 6 },                 // I2C4_SDA (3.3V)
+    { GPIOD, 11, 6 },                 // I2C4_SCL (3.3V)
 };
 
 [[maybe_unused]] static char msg_i2c_init_starting[] = "i2c: init starting\n";
@@ -33,6 +35,11 @@ void init_i2c()
     i2cs[0].SDA = i2c_pins[0];
     i2cs[0].SCL = i2c_pins[1];
     i2cs[0].rcc_reg = &RCC->I2C1CFGR;
+
+    i2cs[3].inst = I2C4;
+    i2cs[3].SDA = i2c_pins[2];
+    i2cs[3].SCL = i2c_pins[3];
+    i2cs[3].rcc_reg = &RCC->I2C4CFGR;
 }
 
 I2C &i2c(unsigned int instance)

@@ -38,8 +38,13 @@ int logger_printf(const timespec &now, const char *format, va_list va)
     int ret = 0;
 
     unsigned int core_id;
+
+#if CM33
+    core_id = 2;
+#else
     __asm__ volatile("mrs %[core_id], mpidr_el1\n" : [core_id] "=r" (core_id) :: "memory");
     core_id &= 0xf;
+#endif
 
     log_fwrite_output fwo;
     ret += logger_string(fwo, "[C", 2);
@@ -92,16 +97,28 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
         // width?
         int width = 0;
         int precision = 0;
-        while(*format >= '0' && *format <= '9')
+        if(*format == '*')
         {
-            int cur_digit = *format - '0';
-            width *= 10;
-            width += cur_digit;
+            width = va_arg(va, int);
             has_width = true;
 
             format++;
             if(!*format)
                 INVALID();
+        }
+        else
+        {
+            while(*format >= '0' && *format <= '9')
+            {
+                int cur_digit = *format - '0';
+                width *= 10;
+                width += cur_digit;
+                has_width = true;
+
+                format++;
+                if(!*format)
+                    INVALID();
+            }
         }
 
         if(*format == '.')
@@ -112,7 +129,7 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
             
             if(*format == '*')
             {
-                precision = -1;
+                precision = va_arg(va, int);
                 has_precision = true;
 
                 format++;
@@ -169,8 +186,7 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
             auto str = va_arg(va, const char *);
             if(has_precision)
             {
-                auto prec = (precision >= 0) ? precision : (int)va_arg(va, size_t);
-                ret += logger_string(oput, str, prec);
+                ret += logger_string(oput, str, precision);
             }
             else
             {

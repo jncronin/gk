@@ -21,7 +21,7 @@ ssize_t UARTFile::Write(const char *buf, size_t count, int *_errno)
         if(*buf == '\n' || line_buf.size() >= 1024)
         {
             klog("%s:%s: %.*s\n", t->name.c_str(), p->name.c_str(),
-                line_buf.data(), line_buf.size());
+                line_buf.size(), line_buf.data());
             line_buf.clear();
         }
         else

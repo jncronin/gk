@@ -33,6 +33,7 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
+  Project.SetOSPlugin ("FreeRTOSPlugin_Cortex-M");
   Edit.SysVar (VAR_HSS_SPEED, 1000000);
   File.Open ("$(ProjectDir)/build/gkv4_cm33.elf");
 }
