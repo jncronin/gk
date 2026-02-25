@@ -2,7 +2,9 @@
 .cpu cortex-m33
 .thumb
 
-.section .vtors
+.global Default_Handler
+
+.section .vtors,"a",%progbits
 .word _estack
 .word Reset_Handler
 .word  NMI_Handler
@@ -22,8 +24,8 @@
 
 .zero 128*4
 .word  TIM6_IRQHandler
-
-
+.zero (273-128-1)*4
+.word EXTI1_5_IRQHandler
 
 .weak      NMI_Handler
 .thumb_set NMI_Handler,Default_Handler
@@ -51,6 +53,7 @@
 
 .weak      SysTick_Handler
 .thumb_set SysTick_Handler,Default_Handler
+
 
 
 .section  .text.Default_Handler,"ax",%progbits

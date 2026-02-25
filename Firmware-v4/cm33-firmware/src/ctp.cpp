@@ -8,6 +8,7 @@
 #include "queue.h"
 #include "gk_conf.h"
 #include "guard.h"
+#include "logger.h"
 #include "interface/cm33_data.h"
 #include <atomic>
 
@@ -27,7 +28,7 @@ static QueueHandle_t ctp_queue;
 static const constexpr pin CTP_WAKE { GPIOA, 2 };
 static const constexpr pin CTP_INT { GPIOA, 5 };
 static const constexpr uint8_t ctp_addr = 0x40;
-#define printk(...) 
+#define printk klog
 #define print_info(...) 
 static bool ctp_is_init = false;
 
@@ -242,7 +243,7 @@ report_data(
 	y = temp;	
 	if(x>=SCREEN_MAX_X||y>=SCREEN_MAX_Y)
 		return;
-	//klog("x=%d, y=%d, id=%d\n", x, y, id);
+	klog("x=%d, y=%d, id=%d\n", x, y, id);
 
 #if 0
 	input_report_abs(ts.dev, ABS_MT_TRACKING_ID, id);
@@ -427,7 +428,7 @@ void ctp_poll()
 	}
 }
 
-void EXTI1_5_IRQHandler()
+extern "C" void EXTI1_5_IRQHandler()
 {
 	//klog("ctp: irq\n");
 	//gic_clear_enable(305);
@@ -443,6 +444,7 @@ void init_ctp()
 {
 	ctp_enabled = false;
 	CTP_INT.set_as_input();
+    NVIC_SetPriority(EXTI1_5_IRQn, 8);     // check this - we have 4 priority bits
 
 	ctp_queue = xQueueCreate(8, sizeof(ctp_command));
 
@@ -451,6 +453,10 @@ void init_ctp()
 	EXTI1->RTSR1 |= (1U << 5);
 	EXTI1->FTSR1 &= ~(1U << 5);
 	EXTI1->C2IMR1 |= (1U << 5);
+
+	// for testing
+	ctp_command cmdresume = ctp_command::CTP_RESUME;
+	xQueueSend(ctp_queue, &cmdresume, 0);
 
 #if GK_ENABLE_TOUCH
 	xTaskCreate(ctp_thread, "ctp", 2048, nullptr, configMAX_PRIORITIES - 1, nullptr);
