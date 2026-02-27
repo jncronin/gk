@@ -15,6 +15,10 @@
 #include "supervisor.h"
 #include "power_images.h"
 #include "wifi_airoc_if.h"
+#include "process_interface.h"
+#include "_gk_memaddrs.h"
+#include "vmem.h"
+#include "pwr.h"
 
 PProcess p_supervisor;
 static bool overlay_visible = false;
@@ -786,5 +790,50 @@ int syscall_setsupervisorvisible(int visible, int screen, int *_errno)
     e.setvis_data.visible = visible;
     e.setvis_data.screen = screen;
     p_supervisor->events.Push(e);
+    return 0;
+}
+
+extern PMemBlock process_kernel_info_page;
+
+int supervisor_update_userspace()
+{
+    auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
+
+    kinfo->brightness = screen_get_brightness();
+    kinfo->volume = sound_get_volume();
+    kinfo->pwr_vbus = pmic_vbus_ok.load();
+    kinfo->soc = soc.load();
+
+    extern std::unique_ptr<WifiAirocNetInterface> airoc_if;
+    if(airoc_if && airoc_if->GetDeviceActive())
+    {
+        if(airoc_if->GetLinkActive())
+        {
+            kinfo->wifi_state = 2;
+        }
+        else
+        {
+            kinfo->wifi_state = 1;
+        }
+    }
+    else
+    {
+        kinfo->wifi_state = 0;
+    }
+
+    // TODO
+    kinfo->usb_state = 0;
+    kinfo->bt_state = 0;
+
+    kinfo->fps = screen_get_fps();
+    kinfo->temp = tavg.load();
+    kinfo->vsys = vsys.load();
+    kinfo->psys = psys.load();
+    kinfo->cpu_usage = sched.CPUUsage();
+
+    extern PProcess p_gkmenu;
+    if(p_gkmenu)
+        p_gkmenu->events.Push({ .type = Event::event_type_t::CaptionChange });
+
     return 0;
 }

@@ -14,4 +14,7 @@ bool supervisor_is_active(unsigned int *x = nullptr, unsigned int *y = nullptr,
 /* Gracefully shuts down the system */
 void supervisor_shutdown_system();
 
+/* Update the userspace info about the system, and ping gk_menu */
+int supervisor_update_userpace();
+
 #endif
