@@ -61,8 +61,14 @@ void *screen_get_overlay_frame_buffer()
     return (void *)overlay_fb;
 }
 
+static void *supervisor_update_userspace_thread(void *);
+extern PProcess p_kernel;
+
 bool init_supervisor()
 {
+    sched.Schedule(Thread::Create("update_userspace", supervisor_update_userspace_thread, nullptr, true,
+        GK_PRIORITY_HIGH, p_kernel));
+    
     p_supervisor = Process::Create("supervisor", true);
     p_supervisor->screen.screen_w = 800;
     p_supervisor->screen.screen_h = 480;
@@ -836,4 +842,13 @@ int supervisor_update_userspace()
         p_gkmenu->events.Push({ .type = Event::event_type_t::CaptionChange });
 
     return 0;
+}
+
+void *supervisor_update_userspace_thread(void *)
+{
+    while(true)
+    {
+        supervisor_update_userspace();
+        Block(clock_cur() + kernel_time_from_ms(1000));
+    }
 }
