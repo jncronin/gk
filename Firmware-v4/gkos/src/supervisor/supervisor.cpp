@@ -801,7 +801,7 @@ int supervisor_update_userspace()
 
     kinfo->brightness = screen_get_brightness();
     kinfo->volume = sound_get_volume();
-    kinfo->pwr_vbus = pmic_vbus_ok.load();
+    kinfo->pwr_vbus = pmic_vbus_ok.load() ? 1 : 0;
     kinfo->soc = soc.load();
 
     extern std::unique_ptr<WifiAirocNetInterface> airoc_if;
