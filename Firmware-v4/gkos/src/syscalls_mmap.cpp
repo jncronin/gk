@@ -140,7 +140,7 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
 
         if(map_direct)
         {
-            vmem_map(vb, map_direct_pmem);
+            vmem_map(vb, map_direct_pmem, p->user_mem->ttbr0);
         }
         return 0;
     }
