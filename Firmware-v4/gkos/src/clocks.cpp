@@ -283,7 +283,12 @@ void clock_set_timebase(const struct timespec *tp)
 {
     CriticalGuard cg(sl_timebase);
     if(tp)
+    {
         timebase = *tp - clock_cur();
+        
+        // hardwired for now because this is what the userspace map expects
+        *(timespec *)(((uintptr_t)_cur_s) + 0x10ULL) = timebase;
+    }
 }
 
 int clock_set_rtc_from_timespec(const timespec *ts)
