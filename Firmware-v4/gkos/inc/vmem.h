@@ -24,6 +24,15 @@ void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr);
 uintptr_t vmem_vaddr_to_paddr(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 uint64_t vmem_get_pte(uintptr_t vaddr, uintptr_t ttbr0 = ~0ULL, uintptr_t ttbr1 = ~0ULL);
 
+static inline uintptr_t vmem_get_ttbr0()
+{
+    uint64_t cur_ttbr0;
+    __asm__ volatile(
+        "mrs %[cur_ttbr0], ttbr0_el1\n"
+        : [cur_ttbr0] "=r" (cur_ttbr0) :: "memory");
+    return cur_ttbr0;
+}
+
 static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr, uint64_t ttbr0 = ~0U)
 {
     uint64_t daif;
