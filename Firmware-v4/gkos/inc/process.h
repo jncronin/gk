@@ -132,6 +132,7 @@ class Process
         Spinlock sl;
 
         bool is_privileged = true;
+        bool priv_overlay_fb = false;       // allow access to overlay framebuffer
         std::unique_ptr<userspace_mem_t> user_mem;
         unsigned int cpu_freq = 1200000000U;
 

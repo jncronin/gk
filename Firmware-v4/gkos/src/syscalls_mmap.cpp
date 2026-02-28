@@ -2,6 +2,7 @@
 #include "process.h"
 #include "osspinlock.h"
 #include "vmem.h"
+#include "screen.h"
 
 int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     int is_read, int is_write, int is_exec, int fd, int is_fixed, size_t foffset, int *_errno)
@@ -30,6 +31,10 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     MutexGuard mg(p->user_mem->m);
     MemBlock pmb;
 
+    // Whether to map memory that already exists directly
+    bool map_direct = false;
+    PMemBlock map_direct_pmem = InvalidPMemBlock();
+
     if(fd >= 0)
     {
         CriticalGuard cgf(p->open_files.sl);
@@ -53,6 +58,44 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
         {
             pmb = MemBlock::FileBackedReadOnlyMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
                 ~0, true, is_exec != 0);
+        }
+    }
+    else if(fd < 0)
+    {
+        switch(fd)
+        {
+            case GK_MMAP_FD_OVERLAY_FB1:
+            case GK_MMAP_FD_OVERLAY_FB2:
+            case GK_MMAP_FD_OVERLAY_FB3:
+                if(p->priv_overlay_fb)
+                {
+                    if(len < scr_layer_size_bytes)
+                    {
+                        klog("mmap: overlay screen buffer: size too small %llu vs %llu\n",
+                            len, scr_layer_size_bytes);
+                        return -1;
+                    }
+
+                    auto scr = -(fd - GK_MMAP_FD_OVERLAY_FB1);
+                    auto bb = screen_get_buf(1, scr);
+
+                    map_direct = true;
+                    map_direct_pmem = bb;
+
+                    // for the rest of the mmap area, just zero out
+                    pmb = MemBlock::ZeroBackedReadWriteMemory((uintptr_t)*retaddr, len, true, is_exec != 0, 0,
+                        is_sync ? MT_NORMAL_WT : MT_NORMAL);
+                }
+                else
+                {
+                    klog("mmap: unauthorised request to access overlay screen buffer\n");
+                    return -1;
+                }
+                break;
+
+            default:
+                klog("mmap: unknown fd: %d\n", fd);
+                return -1;
         }
     }
     else
@@ -94,6 +137,11 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     if(vb.valid)
     {
         *retaddr = (void *)vb.data_start();
+
+        if(map_direct)
+        {
+            vmem_map(vb, map_direct_pmem);
+        }
         return 0;
     }
     else

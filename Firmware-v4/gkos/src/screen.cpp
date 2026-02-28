@@ -100,6 +100,7 @@ class TripleBufferScreenLayer
         unsigned int pfs[scr_n_bufs] = { 0, 0, 0 };
         unsigned int lws[scr_n_bufs] = { GK_SCREEN_WIDTH, GK_SCREEN_WIDTH, GK_SCREEN_WIDTH };
         unsigned int lhs[scr_n_bufs] = { GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT };
+        unsigned int lalphas[scr_n_bufs] = { 255, 255, 255 };
         pid_t pids[scr_n_bufs] = { 0, 0, 0 };
 
         // which buffer is being shown/queued/updated
@@ -111,12 +112,12 @@ class TripleBufferScreenLayer
         struct layer_details
         {
             uintptr_t paddr;
-            unsigned int pf, lw, lh;
+            unsigned int pf, lw, lh, alpha;
             bool new_clut;
             std::vector<uint32_t> clut;
         };
 
-        unsigned int update();
+        unsigned int update(unsigned int alpha = 255);
         layer_details vsync();
         std::pair<unsigned int, unsigned int> current();
 
@@ -410,6 +411,24 @@ uintptr_t screen_update()
     return screen_buf_to_vaddr(layer, buf);
 }
 
+int syscall_screenflip(unsigned int layer, unsigned int alpha, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    if(layer >= 2)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(layer == 1 && p->priv_overlay_fb == false)
+    {
+        *_errno = EPERM;
+        return -1;
+    }
+    auto buf = scrs[layer].update(alpha);
+    fpsc[layer].Tick();
+    return buf;
+}
+
 PMemBlock screen_get_buf(unsigned int layer, unsigned int buf)
 {
     if(layer >= 2 || buf >= 3)
@@ -418,7 +437,7 @@ PMemBlock screen_get_buf(unsigned int layer, unsigned int buf)
     return scrs[layer].pm[buf];
 }
 
-unsigned int TripleBufferScreenLayer::update()
+unsigned int TripleBufferScreenLayer::update(unsigned int alpha)
 {
     CriticalGuard cg(sl);
     last_updated = cur_update;
@@ -437,7 +456,7 @@ unsigned int TripleBufferScreenLayer::update()
         lws[last_updated] = p->screen.screen_w;
         lhs[last_updated] = p->screen.screen_h;
         pids[last_updated] = p->id;
-
+        lalphas[last_updated] = alpha;
         
         if(p->screen.updates_each_frame != GK_SCREEN_UPDATE_FULL)
         {
@@ -532,6 +551,8 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
         auto lw = lws[last_updated];
         auto lh = lhs[last_updated];
         auto pf = pfs[last_updated];
+        auto alpha = lalphas[last_updated];
+
         cg.unlock();
 
         bool new_clut = false;
@@ -548,11 +569,11 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
                 p->screen.clut.clear();
             }
         }
-        return { paddr, pf, lw, lh, new_clut, clut };
+        return { paddr, pf, lw, lh, alpha, new_clut, clut };
     }
     else
     {
-        return { 0, 0, 0, 0, false, std::vector<uint32_t>() };
+        return { 0, 0, 0, 0, 0, false, std::vector<uint32_t>() };
     }
 }
 
@@ -574,6 +595,9 @@ void LTDC_IRQHandler()
                 auto lw = ldetails.lw;
                 auto lh = ldetails.lh;
                 auto lpf = ldetails.pf;
+                auto lalpha = ldetails.alpha;
+
+                auto len = (lalpha > 0) ? LTDC_LxCR_LEN : 0U;
 
                 auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
 
@@ -649,7 +673,7 @@ void LTDC_IRQHandler()
                         }
                     }
                 }
-                l->CACR = 0xffUL;
+                l->CACR = lalpha;
                 l->DCCR = 0UL;
                 l->BFCR = (layer == 0) ?
                     ((4U << LTDC_LxBFCR_BF1_Pos) | (5U << LTDC_LxBFCR_BF2_Pos)) // constant alpha for L0
@@ -678,7 +702,7 @@ void LTDC_IRQHandler()
                     //l->SVSPR = 0;
                 }
 
-                l->CR = LTDC_LxCR_LEN | scen | cluten;
+                l->CR = len | scen | cluten;
 
                 screen_flip_in_progress = true;
                 LTDC_VMEM->SRCR = LTDC_SRCR_IMR;

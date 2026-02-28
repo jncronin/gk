@@ -14,6 +14,8 @@ PMemBlock screen_get_buf(unsigned int layer, unsigned int buf);
 size_t screen_get_bpp_for_pf(unsigned int pf);
 void screen_clear_all_userspace();
 
+int syscall_screenflip(unsigned int layer, unsigned int alpha, int *_errno);
+
 int screen_get_brightness();
 int screen_set_brightness(int brightness);
 double screen_get_fps(unsigned int layer = 0);
