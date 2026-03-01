@@ -60,7 +60,7 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
                 ~0, true, is_exec != 0);
         }
     }
-    else if(fd < 0)
+    else if(fd < -1)
     {
         switch(fd)
         {
