@@ -32,7 +32,13 @@ const unsigned int scr_h = GK_SCREEN_HEIGHT;
 #define LTDC_Layer2_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer2_BASE))
 #define LTDC_Layer3_VMEM ((LTDC_Layer_TypeDef *)PMEM_TO_VMEM(LTDC_Layer3_BASE))
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
-#define dma ((DMA_Channel_TypeDef *)PMEM_TO_VMEM(HPDMA1_Channel12_BASE))
+
+static DMA_Channel_TypeDef *dmas[] =
+{
+    (DMA_Channel_TypeDef *)PMEM_TO_VMEM(HPDMA1_Channel12_BASE),
+    (DMA_Channel_TypeDef *)PMEM_TO_VMEM(HPDMA1_Channel13_BASE)
+};
+
 #define HPDMA1_VMEM ((DMA_TypeDef *)PMEM_TO_VMEM(HPDMA1_BASE))
 #define TIM2_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM2_BASE))
 
@@ -131,12 +137,12 @@ VMemBlock l1_priv[3] = { InvalidVMemBlock(), InvalidVMemBlock(), InvalidVMemBloc
 
 void init_screen()
 {
-    // Enable HPDMA1 channel1
+    // Enable HPDMA1 channels 12 and 13
     RCC_VMEM->HPDMA1CFGR |= RCC_HPDMA1CFGR_HPDMA1EN;
     RCC_VMEM->HPDMA1CFGR &= ~RCC_HPDMA1CFGR_HPDMA1RST;
 
-    HPDMA1_VMEM->SECCFGR |= (1U << 12);
-    HPDMA1_VMEM->PRIVCFGR |= (1U << 12);
+    HPDMA1_VMEM->SECCFGR |= (1U << 12) | (1U << 13);
+    HPDMA1_VMEM->PRIVCFGR |= (1U << 12) | (1U << 13);
 
     // Enable backlight on TIM2 CH1 PA4 AF8
     RCC_VMEM->TIM2CFGR |= RCC_TIM2CFGR_TIM2EN;
@@ -487,6 +493,8 @@ unsigned int TripleBufferScreenLayer::update(unsigned int alpha)
     }
     else if(update_type == GK_SCREEN_UPDATE_PARTIAL_NOREADBACK)
     {
+        auto dma = dmas[p_layer];
+
         // Use HPDMA so we return to the app quicker
         while(dma->CCR & DMA_CCR_EN);
 
