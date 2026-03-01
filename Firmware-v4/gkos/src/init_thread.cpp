@@ -51,8 +51,8 @@ void *init_thread(void *)
     p_gkmenu->env.args.clear();
     //p_gkmenu->env.args.push_back("Doom");
 
-    p_gkmenu->screen.screen_pf = GK_PIXELFORMAT_RGB565;
-    p_gkmenu->screen.screen_w = 640;
+    p_gkmenu->screen.screen_pf = GK_PIXELFORMAT_ARGB8888;
+    p_gkmenu->screen.screen_w = 800;
     p_gkmenu->screen.screen_h = 480;
     p_gkmenu->screen.updates_each_frame = GK_SCREEN_UPDATE_PARTIAL_NOREADBACK;
     p_gkmenu->priv_overlay_fb = true;
