@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "_netinet_in.h"
 #include "_gk_event.h"
+#include "_gk_proccreate.h"
 #include "_sys_dirent.h"
 #include "clocks.h"
 #include "gic.h"
@@ -140,6 +141,7 @@ int syscall_get_pid_valid(pid_t pid, int *_errno);
 int syscall_setsupervisorvisible(int visible, int screen, int *_errno);
 int syscall_getscreenmodeforprocess(pid_t pid, size_t *w, size_t *h, unsigned int *pf, int *refresh, int *_errno);
 int syscall_getprocessname(pid_t pid, char *name, size_t len, int *_errno);
+int syscall_setsupervisorvisibleex(int visible, const gk_supervisor_visible_region *regs, size_t nregs, int *_errno);
 
 // environment variable support
 int syscall_get_env_count(int *_errno);

@@ -9,6 +9,7 @@
 #include "_gk_memaddrs.h"
 #include "_gk_scancodes.h"
 #include "syscalls_int.h"
+#include "supervisor.h"
 #include "cm33_interface.h"
 #include <atomic>
 
@@ -235,7 +236,7 @@ int SetFocusProcess(PProcess p)
     }
 
     // enable/disable ctp
-    if(p->keymap.touch_is_mouse)
+    if(p->keymap.touch_is_mouse || supervisor_is_active())
     {
         cm33_set_touch(true);
     }

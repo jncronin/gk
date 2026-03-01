@@ -31,6 +31,8 @@
 static volatile cm33_data_kernel *dk = (volatile cm33_data_kernel *)0xfffffd0030060000;
 static SimpleSignal cm33_event;
 
+extern PProcess p_gksupervisor;
+
 /* Store current log buffer */
 static std::vector<char> cm33_log_buffer;
 
@@ -209,7 +211,7 @@ static void cm33_handle_message(uint32_t msg)
         case CM33_DK_MSG_LONGPRESS:
         case CM33_DK_MSG_REPEAT:
             {
-                auto p = (supervisor_is_active() && p_supervisor) ? p_supervisor : GetFocusProcess();
+                auto p = (supervisor_is_active() && p_gksupervisor) ? p_gksupervisor : GetFocusProcess();
                 if(p)
                 {
                     p->HandleInputEvent(msg);
@@ -221,7 +223,10 @@ static void cm33_handle_message(uint32_t msg)
         case CM33_DK_MSG_TOUCHRELEASE:
         case CM33_DK_MSG_TOUCHMOVE:
             {
-                auto p = (supervisor_is_active() && p_supervisor) ? p_supervisor : GetFocusProcess();
+                auto key = msg & CM33_DK_MSG_CONTENTS;
+                auto x = key & 1023U;
+                auto y = (key >> 10) & 1023U;
+                auto p = (supervisor_is_active_for_point(x, y) && p_gksupervisor) ? p_gksupervisor : GetFocusProcess();
                 if(p && p->keymap.touch_is_mouse)
                 {
                     p->HandleInputEvent(msg);

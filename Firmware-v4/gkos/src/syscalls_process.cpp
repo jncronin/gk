@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include "gk_conf.h"
+#include "supervisor.h"
 
 int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *pid, int *_errno)
 {
@@ -343,5 +344,35 @@ int syscall_getprocessname(pid_t pid, char *name, size_t len, int *_errno)
     ADDR_CHECK_BUFFER_W(name, len);
     strncpy(name, p.v->name.c_str(), len);
 
+    return 0;
+}
+
+int syscall_setsupervisorvisibleex(int visible, const gk_supervisor_visible_region *regs, size_t nregs,
+    int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    if(!p)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(!p->priv_overlay_fb)
+    {
+        *_errno = EPERM;
+        return -1;
+    }
+
+    if(regs)
+    {
+        if(!visible)
+        {
+            *_errno = EINVAL;
+            return -1;
+        }
+
+        ADDR_CHECK_BUFFER_R(regs, sizeof(regs[0]) * nregs);
+    }
+
+    supervisor_set_active(visible != 0, regs, nregs);
     return 0;
 }

@@ -5,6 +5,7 @@
 #include "vmem.h"
 
 extern PMemBlock process_kernel_info_page;
+extern PProcess p_gksupervisor;
 
 int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsigned int y)
 {
@@ -103,7 +104,7 @@ int Process::HandleInputEvent(unsigned int cm33_cmd)
             ev.type = (action == CM33_DK_MSG_RELEASE) ? Event::event_type_t::KeyUp :
                 Event::event_type_t::KeyDown;
             ev.key = sc;
-            p_supervisor->events.Push(ev);
+            p_gksupervisor->events.Push(ev);
         }
 
         return 0;

@@ -2,14 +2,16 @@
 #define SUPERVISOR_H
 
 #include "process.h"
+#include "_gk_proccreate.h"
 extern PProcess p_supervisor;
 
 bool init_supervisor();
 
-/* Returns whether or not the supervisor is active (and therefore intercepting events)
-    If it is, also optionally returns the screen coordinates the supervisor is active over */
-bool supervisor_is_active(unsigned int *x = nullptr, unsigned int *y = nullptr,
-    unsigned int *w = nullptr, unsigned int *h = nullptr);
+/* Returns whether or not the supervisor is active (and therefore intercepting events) */
+bool supervisor_is_active();
+bool supervisor_is_active_for_point(unsigned int x, unsigned int y);
+
+void supervisor_set_active(bool active, const gk_supervisor_visible_region *regs, size_t nregs);
 
 /* Gracefully shuts down the system */
 void supervisor_shutdown_system();

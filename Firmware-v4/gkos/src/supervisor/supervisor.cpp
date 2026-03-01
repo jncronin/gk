@@ -18,6 +18,7 @@
 #include "process_interface.h"
 #include "_gk_memaddrs.h"
 #include "vmem.h"
+#include "cm33_interface.h"
 #include "pwr.h"
 
 PProcess p_supervisor;
@@ -777,16 +778,50 @@ void *supervisor_thread(void *p)
     return nullptr;
 }
 
-bool supervisor_is_active(unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h)
+Spinlock sl_sup_active;
+static bool sup_active = false;
+static std::vector<gk_supervisor_visible_region> sup_regs;
+void supervisor_set_active(bool active, const gk_supervisor_visible_region *regs, size_t nregs)
 {
-    if(overlay_visible)
+    CriticalGuard cg(sl_sup_active);
+    sup_active = active;
+    sup_regs.clear();
+    if(active)
     {
-        if(x) *x = 0;
-        if(y) *y = 240;
-        if(w) *w = 800;
-        if(h) *h = 240;
+        for(auto i = 0U; i < nregs; i++)
+        {
+            sup_regs.push_back(regs[i]);
+        }
     }
-    return overlay_visible; 
+    else
+    {
+        auto p = GetCurrentProcessForCore();
+        if(p->keymap.touch_is_mouse == false)
+        {
+            cm33_set_touch(false);
+        }
+    }
+}
+
+bool supervisor_is_active()
+{
+    CriticalGuard cg(sl_sup_active);
+    return sup_active;
+}
+
+bool supervisor_is_active_for_point(unsigned int x, unsigned int y)
+{
+    CriticalGuard cg(sl_sup_active);
+    if(!sup_active)
+        return false;
+    for(const auto &p : sup_regs)
+    {
+        if((x >= p.x) && (x < (p.x + p.w)) && (y >= p.y) && (y < (p.y + p.h)))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 int syscall_setsupervisorvisible(int visible, int screen, int *_errno)

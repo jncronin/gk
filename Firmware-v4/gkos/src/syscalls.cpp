@@ -963,6 +963,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_setsupervisorvisibleex:
+            {
+                auto p = reinterpret_cast<__syscall_setsupervisorvisibleex_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setsupervisorvisibleex(p->visible,
+                    p->regs, p->nregs, reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:
