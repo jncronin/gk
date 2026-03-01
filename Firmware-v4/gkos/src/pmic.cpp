@@ -487,7 +487,7 @@ int pmic_set_power_target(pmic_vreg::_type type, unsigned int id, unsigned int v
 }
 
 static BinarySemaphore sem_pmic_irq;
-extern PProcess p_supervisor;
+extern PProcess p_gksupervisor;
 #define GPIOA_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOA_BASE))
 #define EXTI1_VMEM ((EXTI_TypeDef *)PMEM_TO_VMEM(EXTI1_BASE))
 
@@ -574,7 +574,7 @@ static void *pmic_thread(void *)
                 ev.type = ponkeyn_val ? Event::event_type_t::KeyUp :
                     Event::event_type_t::KeyDown;
                 ev.key = GK_SCANCODE_POWER;
-                p_supervisor->events.Push(ev);
+                p_gksupervisor->events.Push(ev);
             }
             if(new_wakeupn)
             {

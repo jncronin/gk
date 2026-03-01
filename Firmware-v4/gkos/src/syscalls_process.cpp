@@ -239,10 +239,10 @@ int syscall_setwindowtitle(const char *title, int *_errno)
         p->window_title = std::string(title);
         cg.unlock();
 
-        extern PProcess p_supervisor;
+        extern PProcess p_gksupervisor;
         Event ev;
         ev.type = Event::event_type_t::CaptionChange;
-        p_supervisor->events.Push(ev);
+        p_gksupervisor->events.Push(ev);
     }
 
     return 0;
