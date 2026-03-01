@@ -51,9 +51,10 @@ void *init_thread(void *)
     p_gksupervisor->env.args.clear();
     //p_gksupervisor->env.args.push_back("Doom");
 
-    p_gksupervisor->screen.screen_pf = GK_PIXELFORMAT_ARGB8888;
+    p_gksupervisor->screen.screen_pf = GK_PIXELFORMAT_RGB565;
     p_gksupervisor->screen.screen_w = 800;
     p_gksupervisor->screen.screen_h = 480;
+    p_gksupervisor->screen.color_key = 0x848200U;
     p_gksupervisor->screen.updates_each_frame = GK_SCREEN_UPDATE_PARTIAL_NOREADBACK;
     p_gksupervisor->priv_overlay_fb = true;
     p_gksupervisor->cpu_freq = 800000000U;

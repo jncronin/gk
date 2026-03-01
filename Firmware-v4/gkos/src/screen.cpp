@@ -107,6 +107,7 @@ class TripleBufferScreenLayer
         unsigned int lws[scr_n_bufs] = { GK_SCREEN_WIDTH, GK_SCREEN_WIDTH, GK_SCREEN_WIDTH };
         unsigned int lhs[scr_n_bufs] = { GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT, GK_SCREEN_HEIGHT };
         unsigned int lalphas[scr_n_bufs] = { 255, 255, 255 };
+        uint32_t ckeys[scr_n_bufs] = { 0xfffffffU, 0xffffffffU, 0xffffffffU };
         pid_t pids[scr_n_bufs] = { 0, 0, 0 };
 
         // which buffer is being shown/queued/updated
@@ -119,6 +120,7 @@ class TripleBufferScreenLayer
         {
             uintptr_t paddr;
             unsigned int pf, lw, lh, alpha;
+            uint32_t ckey;
             bool new_clut;
             std::vector<uint32_t> clut;
         };
@@ -463,6 +465,7 @@ unsigned int TripleBufferScreenLayer::update(unsigned int alpha)
         lhs[last_updated] = p->screen.screen_h;
         pids[last_updated] = p->id;
         lalphas[last_updated] = alpha;
+        ckeys[last_updated] = p->screen.color_key;
         
         if(p->screen.updates_each_frame != GK_SCREEN_UPDATE_FULL)
         {
@@ -560,6 +563,7 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
         auto lh = lhs[last_updated];
         auto pf = pfs[last_updated];
         auto alpha = lalphas[last_updated];
+        auto ckey = ckeys[last_updated];
 
         cg.unlock();
 
@@ -577,11 +581,11 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
                 p->screen.clut.clear();
             }
         }
-        return { paddr, pf, lw, lh, alpha, new_clut, clut };
+        return { paddr, pf, lw, lh, alpha, ckey, new_clut, clut };
     }
     else
     {
-        return { 0, 0, 0, 0, 0, false, std::vector<uint32_t>() };
+        return { 0, 0, 0, 0, 0, 0xffffffffu, false, std::vector<uint32_t>() };
     }
 }
 
@@ -604,8 +608,10 @@ void LTDC_IRQHandler()
                 auto lh = ldetails.lh;
                 auto lpf = ldetails.pf;
                 auto lalpha = ldetails.alpha;
+                auto ckey = ldetails.ckey;
 
                 auto len = (lalpha > 0) ? LTDC_LxCR_LEN : 0U;
+                auto cken = (ckey == 0xffffffffU) ? 0U : LTDC_LxCR_CKEN;
 
                 auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
 
@@ -630,6 +636,7 @@ void LTDC_IRQHandler()
                     ((hstart + disp_w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
                 l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
                     ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+                l->CKCR = ckey;
                 
                 uint32_t cluten = 0;
                 if(lpf < 7)
@@ -714,7 +721,7 @@ void LTDC_IRQHandler()
                     //l->SVSPR = 0;
                 }
 
-                l->CR = len | scen | cluten;
+                l->CR = len | scen | cluten | cken;
 
                 screen_flip_in_progress = true;
                 LTDC_VMEM->SRCR = LTDC_SRCR_IMR;

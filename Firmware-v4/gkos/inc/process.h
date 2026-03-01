@@ -90,6 +90,7 @@ class Process
                 uint16_t screen_w = GK_SCREEN_WIDTH;
                 uint16_t screen_h = GK_SCREEN_HEIGHT;
                 uint8_t screen_pf = 0;
+                uint32_t color_key = 0xffffffffU;
                 unsigned int screen_refresh = 60;
                 int updates_each_frame = GK_SCREEN_UPDATE_FULL;
 
