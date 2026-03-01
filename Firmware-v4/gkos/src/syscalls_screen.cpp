@@ -571,3 +571,19 @@ void fill3(char *dest, uint32_t c, size_t len)
         dest += 3;
     }
 }
+
+int syscall_setbrightness(unsigned int bright, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    if(p->priv_set_brightness == false)
+    {
+        *_errno = EPERM;
+        return -1;
+    }
+    if(bright > 100)
+    {
+        bright = 100;
+    }
+    screen_set_brightness((int)bright);
+    return 0;
+}
