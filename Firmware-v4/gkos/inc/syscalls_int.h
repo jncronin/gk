@@ -138,6 +138,8 @@ pid_t syscall_get_focus_pid(int *_errno);
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno);
 int syscall_get_pid_valid(pid_t pid, int *_errno);
 int syscall_setsupervisorvisible(int visible, int screen, int *_errno);
+int syscall_getscreenmodeforprocess(pid_t pid, size_t *w, size_t *h, unsigned int *pf, int *refresh, int *_errno);
+int syscall_getprocessname(pid_t pid, char *name, size_t len, int *_errno);
 
 // environment variable support
 int syscall_get_env_count(int *_errno);

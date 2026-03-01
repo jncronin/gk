@@ -246,3 +246,102 @@ int syscall_setwindowtitle(const char *title, int *_errno)
 
     return 0;
 }
+
+bool is_parent_of(id_t child, id_t parent)
+{
+    auto p = ProcessList.Get(child);
+    if(!p.v)
+        return false;
+    if(parent == p.v->id)
+    {
+        return true;
+    }
+    return is_parent_of(p.v->ppid, parent);
+}
+
+int syscall_getscreenmodeforprocess(pid_t pid, size_t *w, size_t *h, unsigned int *pf, int *refresh, int *_errno)
+{
+    // ensure we are a parent of pid
+    auto pp = GetCurrentProcessForCore();
+    if(pp == nullptr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(pid < 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if((id_t)pid != pp->id && !is_parent_of(pid, pp->id))
+    {
+        *_errno = EPERM;
+        klog("syscall: invalid request for pid %d which is not a child of %d\n", pid, pp->id);
+        return -1;
+    }
+
+    auto p = ProcessList.Get(pid);
+    if(!p.v)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    CriticalGuard cg(p.v->screen.sl);
+    if(w)
+    {
+        ADDR_CHECK_STRUCT_W(w);
+        *w = p.v->screen.screen_w;
+    }
+    if(h)
+    {
+        ADDR_CHECK_STRUCT_W(h);
+        *h = p.v->screen.screen_h;
+    }
+    if(pf)
+    {
+        ADDR_CHECK_STRUCT_W(pf);
+        *pf = p.v->screen.screen_pf;
+    }
+    if(refresh)
+    {
+        ADDR_CHECK_STRUCT_W(refresh);
+        *refresh = p.v->screen.screen_refresh;
+    }
+
+    return 0;    
+}
+
+int syscall_getprocessname(pid_t pid, char *name, size_t len, int *_errno)
+{
+    // ensure we are a parent of pid
+    auto pp = GetCurrentProcessForCore();
+    if(pp == nullptr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(pid < 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if((id_t)pid != pp->id && !is_parent_of(pid, pp->id))
+    {
+        *_errno = EPERM;
+        klog("syscall: invalid request for pid %d which is not a child of %d\n", pid, pp->id);
+        return -1;
+    }
+
+    auto p = ProcessList.Get(pid);
+    if(!p.v)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    ADDR_CHECK_BUFFER_W(name, len);
+    strncpy(name, p.v->name.c_str(), len);
+
+    return 0;
+}

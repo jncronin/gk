@@ -943,6 +943,26 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_getfocusprocess:
+            *reinterpret_cast<id_t *>(r1) = GetFocusPid();
+            break;
+
+        case __syscall_getscreenmodeforprocess:
+            {
+                auto p = reinterpret_cast<__syscall_getscreenmodeforprocess_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_getscreenmodeforprocess(p->pid,
+                    p->w, p->h, p->pf, p->refresh, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_getprocessname:
+            {
+                auto p = reinterpret_cast<__syscall_getprocessname_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_getprocessname(p->pid,
+                    p->name, p->len, reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:
