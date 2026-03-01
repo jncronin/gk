@@ -647,6 +647,10 @@ void LTDC_IRQHandler()
                             l->FPF0R = (4U << 14) | (8U << 9) | (4U << 5) | (12U << 0);
                             l->FPF1R = (2U << 18) | (4U << 14) | (0U << 9) | (4U << 5) | (4U << 0);
                             break;
+                        case GK_PIXELFORMAT_RGB565A8:
+                            l->FPF0R = (5U << 14) | (11U << 9) | (8U << 5) | (16U << 0);
+                            l->FPF1R = (3U << 18) | (5U << 14) | (0U << 9) | (6U << 5) | (5U << 0);
+                            break;
                         default:
                             klog("screen: unsupported pixel format: %u\n", lpf);
                             break;

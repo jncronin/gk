@@ -329,6 +329,7 @@ static inline size_t get_bpp(int pf)
         case GK_PIXELFORMAT_BGRA8888:
             return 4;
         case GK_PIXELFORMAT_RGB888:
+        case GK_PIXELFORMAT_RGB565A8:
             return 3;
         case GK_PIXELFORMAT_RGB565:
         case GK_PIXELFORMAT_BGR565:
@@ -450,6 +451,12 @@ static inline col to_col(unsigned int pf_from, uint32_t from, Process::screen_t 
             g = ((from >> 5) & 0x3fU) << 2;
             r = ((from >> 11) & 0x1fU) << 3;
             break;
+        case GK_PIXELFORMAT_RGB565A8:
+            a = (from >> 16) & 0xffU;
+            b = (from & 0x1fU) << 3;
+            g = ((from >> 5) & 0x3fU) << 2;
+            r = ((from >> 11) & 0x1fU) << 3;
+            break;
         case GK_PIXELFORMAT_BGR565:
             a = 255;
             r = (from & 0x1fU) << 3;
@@ -529,6 +536,11 @@ static inline uint32_t from_col(unsigned int pf_to, col &from, Process::screen_t
             return (from.b >> 3) ||
                 ((from.g & 0xfcU) << 3) ||
                 ((from.r & 0xf8U << 8));
+        case GK_PIXELFORMAT_RGB565A8:
+            return (from.b >> 3) ||
+                ((from.g & 0xfcU) << 3) ||
+                ((from.r & 0xf8U << 8)) ||
+                (from.a << 16);
         case GK_PIXELFORMAT_BGR565:
             return (from.r >> 3) ||
                 ((from.g & 0xfcU) << 3) ||
