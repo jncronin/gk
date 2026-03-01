@@ -837,9 +837,9 @@ int supervisor_update_userspace()
     kinfo->psys = psys.load();
     kinfo->cpu_usage = sched.CPUUsage();
 
-    extern PProcess p_gkmenu;
-    if(p_gkmenu)
-        p_gkmenu->events.Push({ .type = Event::event_type_t::CaptionChange });
+    extern PProcess p_gksupervisor;
+    if(p_gksupervisor)
+        p_gksupervisor->events.Push({ .type = Event::event_type_t::RefreshScreen });
 
     return 0;
 }

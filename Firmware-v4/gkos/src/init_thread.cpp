@@ -11,8 +11,8 @@
 #include <fcntl.h>
 #include "osnet_onconnect_userprocess.h"
 
-PProcess p_gkmenu;
-id_t pid_gkmenu;
+PProcess p_gksupervisor;
+id_t pid_gksupervisor;
 std::unique_ptr<WifiAirocNetInterface> airoc_if;
 
 void *init_thread(void *)
@@ -32,54 +32,44 @@ void *init_thread(void *)
     // start supervisor
     init_supervisor();
 
-    // start gkmenu
-    auto proc_fd = syscall_open("/gkmenu-0.1.1-gk/bin/gkmenu", O_RDONLY, 0, &errno);
+    // start gksupervisor
+    auto proc_fd = syscall_open("/gksupervisor-0.1.1-gk/bin/gksupervisor", O_RDONLY, 0, &errno);
     //auto proc_fd = syscall_open("/glgears-0.1.1-gkv4/bin/glgears", O_RDONLY, 0, &errno);
     if(proc_fd < 0)
     {
         klog("init: failed to open test process\n");
     }
 
-    klog("init: opened gkmenu process fd %d\n", proc_fd);
-    p_gkmenu = Process::Create("gkmenu", false, GetCurrentProcessForCore());
+    klog("init: opened gksupervisor process fd %d\n", proc_fd);
+    p_gksupervisor = Process::Create("gksupervisor", false, GetCurrentProcessForCore());
 
     Thread::threadstart_t test_ep;
-    auto ret = elf_load_fildes(proc_fd, p_gkmenu, &test_ep);
+    auto ret = elf_load_fildes(proc_fd, p_gksupervisor, &test_ep);
     klog("init: elf_load_fildes: ret: %d, ep: %llx\n", ret, test_ep);
 
-    p_gkmenu->env.cwd = "/gkmenu-0.1.1-gk";
-    p_gkmenu->env.args.clear();
-    //p_gkmenu->env.args.push_back("Doom");
+    p_gksupervisor->env.cwd = "/gksupervisor-0.1.1-gk";
+    p_gksupervisor->env.args.clear();
+    //p_gksupervisor->env.args.push_back("Doom");
 
-    p_gkmenu->screen.screen_pf = GK_PIXELFORMAT_ARGB8888;
-    p_gkmenu->screen.screen_w = 800;
-    p_gkmenu->screen.screen_h = 480;
-    p_gkmenu->screen.updates_each_frame = GK_SCREEN_UPDATE_PARTIAL_NOREADBACK;
-    p_gkmenu->priv_overlay_fb = true;
-    p_gkmenu->cpu_freq = 800000000U;
+    p_gksupervisor->screen.screen_pf = GK_PIXELFORMAT_ARGB8888;
+    p_gksupervisor->screen.screen_w = 800;
+    p_gksupervisor->screen.screen_h = 480;
+    p_gksupervisor->screen.updates_each_frame = GK_SCREEN_UPDATE_PARTIAL_NOREADBACK;
+    p_gksupervisor->priv_overlay_fb = true;
+    p_gksupervisor->cpu_freq = 800000000U;
 
-    // gkmenu keymap
-    memset(&p_gkmenu->keymap, 0, sizeof(p_gkmenu->keymap));
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYA] = GK_SCANCODE_RETURN;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYB] = GK_SCANCODE_ESCAPE;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGILEFT] = 0;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIRIGHT] = 0;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIUP] = GK_SCANCODE_AUDIOPREV;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYJOYDIGIDOWN] = GK_SCANCODE_AUDIONEXT;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYLEFT] = 0;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYRIGHT] = 0;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYUP] = GK_SCANCODE_AUDIOPREV;
-    p_gkmenu->keymap.gamepad_to_scancode[GK_KEYDOWN] = GK_SCANCODE_AUDIONEXT;
-    p_gkmenu->keymap.touch_is_mouse = 1;
+    // gksupervisor keymap
+    memset(&p_gksupervisor->keymap, 0, sizeof(p_gksupervisor->keymap));
+    p_gksupervisor->keymap.touch_is_mouse = 1;
 
-    pid_gkmenu = p_gkmenu->id;
+    pid_gksupervisor = p_gksupervisor->id;
 
     if(ret == 0)
     {
-        auto t_test = Thread::Create("gkmenu", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_gkmenu);
+        auto t_test = Thread::Create("gksupervisor", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_gksupervisor);
         if(t_test)
         {
-            SetFocusProcess(p_gkmenu);
+            SetFocusProcess(p_gksupervisor);
             klog("init: thread created, scheduling it\n");
             sched.Schedule(t_test);
         }    

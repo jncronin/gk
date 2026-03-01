@@ -13,6 +13,7 @@
 #include <atomic>
 
 static std::atomic<pid_t> focus_process = 0;
+extern PProcess p_gksupervisor;
 
 PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
 {
@@ -250,6 +251,12 @@ int SetFocusProcess(PProcess p)
     if(p->cpu_freq != clock_get_cpu())
     {
         clock_set_cpu_and_vddcpu(p->cpu_freq);
+    }
+
+    // tell p_supervisor about it
+    if(p_gksupervisor)
+    {
+        p_gksupervisor->events.Push({ .type = Event::event_type_t::CaptionChange });
     }
 
     return 0;

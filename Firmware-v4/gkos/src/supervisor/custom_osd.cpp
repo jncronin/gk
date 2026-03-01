@@ -57,10 +57,10 @@ static void btn_exit_click(Widget *w, coord_t x, coord_t y)
     if(focus_process)
     {
         auto fppid = focus_process->ppid;
-        extern id_t pid_gkmenu;
+        extern id_t pid_gksupervisor;
 
-        // only quit processes started by gkmenu
-        if(fppid > 0 && fppid == pid_gkmenu)
+        // only quit processes started by gksupervisor
+        if(fppid > 0 && fppid == pid_gksupervisor)
         {
             Process::Kill(focus_process->id, 128 + SIGKILL);
         }
@@ -92,7 +92,7 @@ GridWidget *default_osd()
         lab_caption.h = 32;
         lab_caption.bg_inactive_color = 0xd4;
         lab_caption.border_width = 0;
-        lab_caption.text = "GKMenu";
+        lab_caption.text = "gksupervisor";
         _def_osd.AddChild(lab_caption);
 
         bw_exit.w = 80;
