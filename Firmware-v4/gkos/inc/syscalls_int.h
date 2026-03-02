@@ -143,6 +143,7 @@ int syscall_getscreenmodeforprocess(pid_t pid, size_t *w, size_t *h, unsigned in
 int syscall_getprocessname(pid_t pid, char *name, size_t len, int *_errno);
 int syscall_setsupervisorvisibleex(int visible, const gk_supervisor_visible_region *regs, size_t nregs, int *_errno);
 int syscall_setbrightness(unsigned int bright, int *_errno);
+int syscall_wifienable(int en, int *_errno);
 
 // environment variable support
 int syscall_get_env_count(int *_errno);
