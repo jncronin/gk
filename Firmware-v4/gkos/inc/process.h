@@ -135,6 +135,7 @@ class Process
         bool is_privileged = true;
         bool priv_overlay_fb = false;       // allow access to overlay framebuffer
         bool priv_set_brightness = false;   // allow to set brightness
+        bool priv_control_devices = false;  // allow to stop/start devices
         std::unique_ptr<userspace_mem_t> user_mem;
         unsigned int cpu_freq = 1200000000U;
 

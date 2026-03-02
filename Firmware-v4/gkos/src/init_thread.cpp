@@ -58,6 +58,7 @@ void *init_thread(void *)
     p_gksupervisor->screen.updates_each_frame = GK_SCREEN_UPDATE_PARTIAL_NOREADBACK;
     p_gksupervisor->priv_overlay_fb = true;
     p_gksupervisor->priv_set_brightness = true;
+    p_gksupervisor->priv_control_devices = true;
     p_gksupervisor->cpu_freq = 800000000U;
 
     // gksupervisor keymap
