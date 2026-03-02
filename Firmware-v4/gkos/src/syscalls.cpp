@@ -987,6 +987,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_audiosetvolume:
+            {
+                auto newvol = (int)(intptr_t)r2;
+                sound_set_volume(newvol);
+                *reinterpret_cast<int *>(r1) = sound_get_volume();
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:

@@ -763,6 +763,8 @@ int sound_set_volume(int new_vol_pct)
     tad_write(0x67, pcm1753_volume(new_vol_pct));
     tad_write(0x69, pcm1753_volume(new_vol_pct));
 
+    // update userspace
+
     return 0;
 }
 
