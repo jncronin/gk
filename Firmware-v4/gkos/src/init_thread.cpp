@@ -47,7 +47,7 @@ void *init_thread(void *)
     auto ret = elf_load_fildes(proc_fd, p_gksupervisor, &test_ep);
     klog("init: elf_load_fildes: ret: %d, ep: %llx\n", ret, test_ep);
 
-    p_gksupervisor->env.cwd = "/gksupervisor-0.1.1-gk";
+    p_gksupervisor->env.cwd = "/gkmenu-0.1.1-gk";   // run in gkmenu dir so we can load osd files from there
     p_gksupervisor->env.args.clear();
     //p_gksupervisor->env.args.push_back("Doom");
 
