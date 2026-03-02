@@ -41,6 +41,7 @@ void supervisor_set_active(bool active, const gk_supervisor_visible_region *regs
         {
             sup_regs.push_back(regs[i]);
         }
+        cm33_set_touch(true);
     }
     else
     {
