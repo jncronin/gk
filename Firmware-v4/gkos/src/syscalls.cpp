@@ -995,6 +995,22 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_setprocessdata:
+            {
+                auto p = reinterpret_cast<__syscall_setprocessdata_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setprocessdata(p->pid, p->buf, p->len,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_getprocessdata:
+            {
+                auto p = reinterpret_cast<__syscall_getprocessdata_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_getprocessdata(p->pid, p->buf, p->len,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:

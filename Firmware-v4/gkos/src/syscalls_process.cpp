@@ -128,6 +128,16 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
         return -1;
     }
 
+    // Preload processdata, if set
+    if(proc_info->processdata && proc_info->nprocessdata && proc_info->nprocessdata < GK_PROCESS_DATA_MAX)
+    {
+        ADDR_CHECK_BUFFER_R(proc_info->processdata, proc_info->nprocessdata);
+        for(auto i = 0U; i < proc_info->nprocessdata; i++)
+        {
+            proc->userspace_data.d.push_back(proc_info->processdata[i]);
+        }
+    }
+
     // Return pid, if requested
     if(pid)
         *pid = proc->id;
@@ -375,4 +385,101 @@ int syscall_setsupervisorvisibleex(int visible, const gk_supervisor_visible_regi
 
     supervisor_set_active(visible != 0, regs, nregs);
     return 0;
+}
+
+int syscall_setprocessdata(pid_t pid, const char *d, size_t len, int *_errno)
+{
+    if(!d)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(len > GK_PROCESS_DATA_MAX)
+    {
+        *_errno = E2BIG;
+        return -1;
+    }
+
+    auto pp = GetCurrentProcessForCore();
+    if(pp == nullptr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(pid < 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if((id_t)pid != pp->id && !is_parent_of(pid, pp->id))
+    {
+        *_errno = EPERM;
+        klog("syscall: invalid request for pid %d which is not a child of %d\n", pid, pp->id);
+        return -1;
+    }
+
+    auto p = ProcessList.Get(pid);
+    if(!p.v)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    ADDR_CHECK_BUFFER_R(d, len);
+
+    CriticalGuard cg(p.v->userspace_data.sl);
+    p.v->userspace_data.d.clear();
+    while(len--)
+        p.v->userspace_data.d.push_back(*d++);
+    return 0;
+}
+
+int syscall_getprocessdata(pid_t pid, char *d, size_t len, int *_errno)
+{
+    if(!d)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(len > GK_PROCESS_DATA_MAX)
+    {
+        *_errno = E2BIG;
+        return -1;
+    }
+
+    auto pp = GetCurrentProcessForCore();
+    if(pp == nullptr)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(pid < 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if((id_t)pid != pp->id && !is_parent_of(pid, pp->id))
+    {
+        *_errno = EPERM;
+        klog("syscall: invalid request for pid %d which is not a child of %d\n", pid, pp->id);
+        return -1;
+    }
+
+    auto p = ProcessList.Get(pid);
+    if(!p.v)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    ADDR_CHECK_BUFFER_W(d, len);
+
+    CriticalGuard cg(p.v->userspace_data.sl);
+    if(len > p.v->userspace_data.d.size())
+        len = p.v->userspace_data.d.size();
+    memcpy(d, p.v->userspace_data.d.data(), len);
+
+    return (int)len;
 }

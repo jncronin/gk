@@ -127,6 +127,12 @@ class Process
             std::string osd_text;
         };
 
+        struct userspace_data_t
+        {
+            Spinlock sl;
+            std::vector<uint8_t> d;
+        };
+
         std::string name;
         std::vector<id_t> threads;
         id_t id, ppid;
@@ -146,6 +152,7 @@ class Process
         screen_t screen{};
         audio_conf_t audio{};
         osd_t osd{};
+        userspace_data_t userspace_data{};
 
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);
@@ -169,9 +176,6 @@ class Process
         std::string window_title;
         int HandleInputEvent(uint32_t cmd);
         int HandleTouchAsMouseEvent(unsigned int msgtype, unsigned int x, unsigned int y);
-        void set_osd(const std::string &_osd_text);
-        void delete_osd();
-        Widget *get_osd();
 
         /* create a process */
         static PProcess Create(const std::string &name, bool is_privileged = false,
