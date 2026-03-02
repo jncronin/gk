@@ -545,6 +545,9 @@ unsigned int TripleBufferScreenLayer::update(unsigned int alpha)
         dma->CDAR = pm[cur_update].base;
         dma->CLLR = 0U;
         dma->CCR = DMA_CCR_EN;
+
+        __asm__ volatile("dsb sy\n" ::: "memory");
+        while(dma->CCR & DMA_CCR_EN);
     }
 
     return cur_update;
