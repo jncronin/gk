@@ -63,6 +63,19 @@ void *init_thread(void *)
     // gksupervisor keymap
     memset(&p_gksupervisor->keymap, 0, sizeof(p_gksupervisor->keymap));
     p_gksupervisor->keymap.touch_is_mouse = 1;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYA] = GK_SCANCODE_RETURN;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYB] = GK_SCANCODE_ESCAPE;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYJOYDIGILEFT] = 0;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYJOYDIGIRIGHT] = 0;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYJOYDIGIUP] = GK_SCANCODE_AUDIOPREV;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYJOYDIGIDOWN] = GK_SCANCODE_AUDIONEXT;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYLEFT] = 0;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYRIGHT] = 0;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYUP] = GK_SCANCODE_AUDIOPREV;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYDOWN] = GK_SCANCODE_AUDIONEXT;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYMENU] = GK_SCANCODE_MENU;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYVOLUP] = GK_SCANCODE_VOLUMEUP;
+    p_gksupervisor->keymap.gamepad_to_scancode[GK_KEYVOLDOWN] = GK_SCANCODE_VOLUMEDOWN;
 
     pid_gksupervisor = p_gksupervisor->id;
 
