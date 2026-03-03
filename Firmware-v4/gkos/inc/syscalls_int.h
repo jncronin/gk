@@ -146,6 +146,7 @@ int syscall_setbrightness(unsigned int bright, int *_errno);
 int syscall_wifienable(int en, int *_errno);
 int syscall_setprocessdata(pid_t pid, const char *d, size_t len, int *_errno);
 int syscall_getprocessdata(pid_t pid, char *d, size_t len, int *_errno);
+int syscall_eventsend(pid_t pid, const Event *ev, int *_errno);
 
 // environment variable support
 int syscall_get_env_count(int *_errno);

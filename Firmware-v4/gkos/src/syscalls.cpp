@@ -1011,6 +1011,14 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_sendevent:
+            {
+                auto p = reinterpret_cast<__syscall_sendevent_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_eventsend(p->pid, (const Event *)p->ev,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:
