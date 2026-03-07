@@ -39,6 +39,17 @@ int main(uint32_t bootrom_val)
     
     EV_BLUE.set_as_output();
 
+    /* We use certain ADC channels that can come from several pins.  To stop them being connected
+        together internally (default pin mode is analog) we set them as input here */
+    const constexpr pin analog_pins[] {
+        { GPIOG, 6 },
+        { GPIOH, 9 },
+        { GPIOH, 10 },
+        { GPIOC, 9 }
+    };
+    for(const auto &p : analog_pins)
+        p.set_as_input();
+
     // say hi
     for(int n = 0; n < 10; n++)
     {
