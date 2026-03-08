@@ -59,9 +59,9 @@ void init_adc()
         ADC_CFGR1_OVRMOD |
         (0x3U << ADC_CFGR1_DMNGT_Pos);
 
-    // x4 oversampling
-    ADC1->CFGR2 = (0U << ADC_CFGR2_OVSS_Pos) |
-        (3U << ADC_CFGR2_OVSR_Pos) |
+    // x8/2 oversampling
+    ADC1->CFGR2 = (1U << ADC_CFGR2_OVSS_Pos) |
+        (7U << ADC_CFGR2_OVSR_Pos) |
         ADC_CFGR2_ROVSE;
     ADC1->PCSEL = (1U << 0) | (1U << 1) | (1U << 8) | (1U << 4);
     ADC1->SQR1 = (3U << ADC_SQR1_L_Pos) |   // 4 conversions
@@ -74,7 +74,8 @@ void init_adc()
     ADC1->SQR4 = 0;
 
     // 246.5 clock cycles/conversion
-    // for 2 MHz, 4 channels, x4 oversampling this gives 507 Hz update frequency
+    // for 2 MHz, 4 channels, x8 oversampling this gives 253 Hz update frequency
+    // Sampling time for an individual conversion is 123 us.
     const unsigned smpr = 6u;
     ADC1->SMPR1 = (smpr << ADC_SMPR1_SMP0_Pos) |
         (smpr << ADC_SMPR1_SMP1_Pos) |

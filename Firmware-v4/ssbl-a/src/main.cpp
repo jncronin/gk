@@ -42,7 +42,7 @@ int main(uint32_t bootrom_val)
     /* We use certain ADC channels that can come from several pins.  To stop them being connected
         together internally (default pin mode is analog) we set them as input here */
     const constexpr pin analog_pins[] {
-        { GPIOG, 6 },
+        { GPIOG, 4 },
         { GPIOH, 9 },
         { GPIOH, 10 },
         { GPIOC, 9 }
