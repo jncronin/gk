@@ -1,6 +1,6 @@
 # File created using '.gitignore Generator' for Visual Studio Code: https://bit.ly/vscode-gig
-# Created by https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,kicad,cmake,c++,c,visualstudio
-# Edit at https://www.toptal.com/developers/gitignore?templates=windows,visualstudiocode,kicad,cmake,c++,c,visualstudio
+# Created by https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,visualstudio,kicad,cmake,c++,c,ltspice
+# Edit at https://www.toptal.com/developers/gitignore?templates=windows,visualstudiocode,visualstudio,kicad,cmake,c++,c,ltspice
 
 ### C ###
 # Prerequisites
@@ -134,6 +134,19 @@ bom/
 # Gerber export output
 out/
 
+### LTspice ###
+# gitignore template for LTspice
+# website: https://www.analog.com/en/design-center/design-tools-and-calculators/ltspice-simulator.html
+
+# Logfile
+*.log
+
+# Simulation Outputs
+*.raw
+*.fft
+
+# Netlist
+
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json
@@ -266,7 +279,6 @@ StyleCopReport.xml
 *.tlh
 *.tmp_proj
 *_wpftmp.csproj
-*.log
 *.tlog
 *.vspscc
 *.vssscc
@@ -563,7 +575,7 @@ FodyWeavers.xsd
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 
-# End of https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,kicad,cmake,c++,c,visualstudio
+# End of https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,visualstudio,kicad,cmake,c++,c,ltspice
 
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
 
