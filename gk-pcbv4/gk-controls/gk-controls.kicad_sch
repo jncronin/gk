@@ -7605,6 +7605,15 @@
 				(hide yes)
 			)
 		)
+		(property "Field2" ""
+			(at 217.17 45.72 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "259bbcc6-dbdf-4bd1-8531-c8d09b784739")
 		)
@@ -7768,6 +7777,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 217.17 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Field2" ""
 			(at 217.17 95.25 0)
 			(effects
 				(font
