@@ -23,7 +23,9 @@
 #define RAMCFG_SRAM1_VMEM ((RAMCFG_TypeDef *)PMEM_TO_VMEM(RAMCFG_SRAM1_BASE))
 #define RAMCFG_SRAM2_VMEM ((RAMCFG_TypeDef *)PMEM_TO_VMEM(RAMCFG_SRAM2_BASE))
 
+#define GPIOB_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOB_BASE))
 #define GPIOC_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOC_BASE))
+#define GPIOF_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOF_BASE))
 #define GPIOG_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOG_BASE))
 #define GPIOH_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOH_BASE))
 #define GPIOJ_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ_BASE))
@@ -146,15 +148,24 @@ static void reset_cm33()
         JOY_B_X             PC9         U8          ADC1_INP8, ADC2_INP8
         JOY_B_Y             PG4         AA4         ADC1_INP4, ADC2_INP4
 
+        THROTTLE            PF0         V12         ADC[123]_INP11
+
         BTN_MCU_VOLUP       PH2         V13
         BTN_MCU_VOLDOWN     PJ0         U15
+        BTN_MCU_LB          PB0         C11
+        BTN_MCU_RB          PB10        A11
     */
     const pin JOY_B_X { GPIOC_VMEM, 9 };
     const pin JOY_B_Y { GPIOG_VMEM, 4 };
+    const pin THROTTLE { GPIOF_VMEM, 0 };
     const pin BTN_MCU_VOLUP { GPIOH_VMEM, 2 };
     const pin BTN_MCU_VOLDOWN { GPIOJ_VMEM, 0 };
+    const pin BTN_MCU_LB { GPIOB_VMEM, 0 };
+    const pin BTN_MCU_RB { GPIOB_VMEM, 10 };
 
+    RCC_VMEM->GPIOBCFGR |= RCC_GPIOBCFGR_GPIOxEN;
     RCC_VMEM->GPIOCCFGR |= RCC_GPIOCCFGR_GPIOxEN;
+    RCC_VMEM->GPIOFCFGR |= RCC_GPIOFCFGR_GPIOxEN;
     RCC_VMEM->GPIOGCFGR |= RCC_GPIOGCFGR_GPIOxEN;
     RCC_VMEM->GPIOHCFGR |= RCC_GPIOHCFGR_GPIOxEN;
     RCC_VMEM->GPIOJCFGR |= RCC_GPIOJCFGR_GPIOxEN;
@@ -162,10 +173,14 @@ static void reset_cm33()
 
     JOY_B_X.set_secure(false);
     JOY_B_Y.set_secure(false);
+    THROTTLE.set_secure(false);
     JOY_B_X.set_as_analog();
     JOY_B_Y.set_as_analog();
+    THROTTLE.set_as_analog();
     BTN_MCU_VOLUP.set_as_input();
     BTN_MCU_VOLDOWN.set_as_input();
+    BTN_MCU_LB.set_as_input();
+    BTN_MCU_RB.set_as_input();
 
     // Start up the CM33 code running from QSPI @ 0x60380000
     // Boot in secure mode

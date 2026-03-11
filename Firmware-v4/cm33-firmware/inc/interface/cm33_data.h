@@ -16,9 +16,10 @@ struct cm33_data_userspace
     volatile float yaw, pitch, roll;
     volatile float acc[3], gyr[3];
     volatile cm33_joystick joy_a_raw, joy_b_raw;    // for calibration purposes
+    volatile int16_t throttle, throttle_raw;
 };
 
-static_assert(sizeof(cm33_data_userspace) == 20*4);
+static_assert(sizeof(cm33_data_userspace) == 21*4);
 
 struct cm33_joy_calib
 {

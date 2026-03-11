@@ -11,7 +11,7 @@ void init_adc()
 {
     // Set up ADC1/HPDMA2 to sample the joystick axes continuously
 
-    // ADC1 is clocked at 200 MHz.  We need 4 conversions every 5 ms or so.
+    // ADC1 is clocked with HSI64.  We need 5 conversions every 5 ms or so.
 
     // Disable deep power down
     ADC1->CR = 0;
@@ -63,18 +63,18 @@ void init_adc()
     ADC1->CFGR2 = (1U << ADC_CFGR2_OVSS_Pos) |
         (7U << ADC_CFGR2_OVSR_Pos) |
         ADC_CFGR2_ROVSE;
-    ADC1->PCSEL = (1U << 0) | (1U << 1) | (1U << 8) | (1U << 4);
-    ADC1->SQR1 = (3U << ADC_SQR1_L_Pos) |   // 4 conversions
+    ADC1->PCSEL = (1U << 0) | (1U << 1) | (1U << 8) | (1U << 4) | (1U << 11);
+    ADC1->SQR1 = (4U << ADC_SQR1_L_Pos) |   // 5 conversions
         (0U << ADC_SQR1_SQ1_Pos) |          // JOY_A_X
         (1U << ADC_SQR1_SQ2_Pos) |          // JOY_A_Y
         (8U << ADC_SQR1_SQ3_Pos) |          // JOY_B_X
         (4U << ADC_SQR1_SQ4_Pos);           // JOY_B_Y
-    ADC1->SQR2 = 0;
+    ADC1->SQR2 = (11U << ADC_SQR2_SQ5_Pos); // Throttle
     ADC1->SQR3 = 0;
     ADC1->SQR4 = 0;
 
     // 246.5 clock cycles/conversion
-    // for 2 MHz, 4 channels, x8 oversampling this gives 253 Hz update frequency
+    // for 2 MHz, 4 channels, x8 oversampling this gives 202 Hz update frequency
     // Sampling time for an individual conversion is 123 us.
     const unsigned smpr = 6u;
     ADC1->SMPR1 = (smpr << ADC_SMPR1_SMP0_Pos) |
@@ -118,12 +118,12 @@ void init_adc()
         (1U << DMA_CTR1_SDW_LOG2_Pos);
     dma->CTR2 = (81U << DMA_CTR2_REQSEL_Pos);
     dma->CTR3 = 0;
-    dma->CBR1 = 8U |
+    dma->CBR1 = 10U |
         DMA_CBR1_BRDDEC |
         (0U << DMA_CBR1_BRC_Pos);
     dma->CSAR = (uint32_t)(uintptr_t)&ADC1->DR;
     dma->CDAR = (uint32_t)(uintptr_t)adc_vals;
-    dma->CBR2 = (16U << DMA_CBR2_BRDAO_Pos);     // -16 every block
+    dma->CBR2 = (20U << DMA_CBR2_BRDAO_Pos);     // -20 every block
     dma->CLLR = 4U; // anything not zero
     dma->CCR |= DMA_CCR_EN;
 
