@@ -3,6 +3,7 @@
 #include "pins.h"
 #include "clocks.h"
 #include "kernel_time.h"
+#include "logger.h"
 
 I2C i2cs[7];
 
@@ -25,8 +26,6 @@ static const constexpr pin i2c_pins[]
 [[maybe_unused]] static char msg_i2c_ack_for_write[] = "i2c: ACK for write\n";
 [[maybe_unused]] static char msg_i2c_write_success[] = "i2c: write success\n";
 [[maybe_unused]] static char msg_i2c_write_early_finish[] = "i2c: early finish during write\n";
-
-#define klog(x) 
 
 void init_i2c()
 {
