@@ -23,6 +23,8 @@ __attribute__((section(".sram2_header"))) cm33_data_kernel dk;
 
 const pin BTN_MCU_VOLUP { GPIOH, 2 };
 const pin BTN_MCU_VOLDOWN { GPIOJ, 0 };
+const pin BTN_MCU_RB { GPIOB, 10 };
+const pin BTN_MCU_LB { GPIOB, 0 };
 
 const uint32_t rb_size = 256;
 __attribute__((section(".sram2"))) volatile uint32_t rb[rb_size];
@@ -197,6 +199,8 @@ const joy_pin JOY_TILT_DOWN(dj_TILT, digi_joy::up);
 
 Debounce db_VOLUP(BTN_MCU_VOLUP, GK_KEYVOLUP);
 Debounce db_VOLDOWN(BTN_MCU_VOLDOWN, GK_KEYVOLDOWN);
+Debounce db_LB(BTN_MCU_LB, GK_KEYLB);
+Debounce db_RB(BTN_MCU_RB, GK_KEYRB);
 Debounce db_A(BTN_MCU_A, GK_KEYA);
 Debounce db_B(BTN_MCU_B, GK_KEYB);
 Debounce db_X(BTN_MCU_X, GK_KEYX);
@@ -529,6 +533,8 @@ static void tick()
 
     db_tick(db_VOLUP);
     db_tick(db_VOLDOWN);
+    db_tick(db_LB);
+    db_tick(db_RB);
     db_tick(db_A);
     db_tick(db_B);
     db_tick(db_X);
