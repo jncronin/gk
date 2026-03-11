@@ -25,7 +25,7 @@ extern cm33_data_userspace d;
 void init_lsm()
 {
     is_init = false;
-    LSM6DSL_EN.clear();
+    LSM6DSL_EN.set();
     LSM6DSL_EN.set_as_output();
 
     FusionAhrsInitialise(&filter);
@@ -33,7 +33,7 @@ void init_lsm()
 
 void lsm_disable()
 {
-    LSM6DSL_EN.clear();
+    //LSM6DSL_EN.clear();
     is_init = false;
     lsm_reset_state = 0;
 }
