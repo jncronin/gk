@@ -782,6 +782,183 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Device:Battery_Cell"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "BT"
+				(at 2.54 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "Battery_Cell"
+				(at 2.54 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 1.524 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 1.524 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Single-cell battery"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "battery cell"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "Battery_Cell_0_1"
+				(rectangle
+					(start -2.286 1.778)
+					(end 2.286 1.524)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(rectangle
+					(start -1.5748 1.1938)
+					(end 1.4732 0.6858)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 1.778) (xy 0 2.54)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0 0.762) (xy 0 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.508 3.429) (xy 1.524 3.429)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.016 3.937) (xy 1.016 2.921)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "Battery_Cell_1_1"
+				(pin passive line
+					(at 0 5.08 270)
+					(length 2.54)
+					(name "+"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -2.54 90)
+					(length 2.54)
+					(name "-"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:C"
 			(pin_numbers
 				(hide yes)
@@ -3781,6 +3958,12 @@
 		(uuid "c6fda771-c75f-407c-b4f2-f605d145553e")
 	)
 	(junction
+		(at 190.5 123.19)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "cb45f34f-3145-4813-81d3-a477a55ea52e")
+	)
+	(junction
 		(at 45.72 53.34)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3817,16 +4000,18 @@
 		(uuid "e9f93a3a-f2ef-4775-b259-dbcb92c9bdbd")
 	)
 	(junction
-		(at 190.5 123.19)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "ed9e5fc9-7b51-43ed-abd7-326656c0d67b")
-	)
-	(junction
 		(at 215.9 113.03)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f354e21b-31ee-47b5-9b57-a0bd87ff1bc4")
+	)
+	(no_connect
+		(at 101.6 39.37)
+		(uuid "3dd82481-94e0-4b70-b15c-f8f28b7cd3d4")
+	)
+	(no_connect
+		(at 101.6 36.83)
+		(uuid "a4a0da7b-5a14-4dff-a91d-973600f66e68")
 	)
 	(no_connect
 		(at 43.18 109.22)
@@ -3845,16 +4030,6 @@
 			(type default)
 		)
 		(uuid "05606bbf-b294-42c5-9795-9e6696316a52")
-	)
-	(wire
-		(pts
-			(xy 186.69 123.19) (xy 190.5 123.19)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0678342f-eb84-434c-9ac5-aa9cfacea287")
 	)
 	(wire
 		(pts
@@ -3978,16 +4153,6 @@
 	)
 	(wire
 		(pts
-			(xy 175.26 142.24) (xy 176.53 142.24)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "209371d7-940b-4512-a5ed-d1c030e35152")
-	)
-	(wire
-		(pts
 			(xy 229.87 40.64) (xy 229.87 33.02)
 		)
 		(stroke
@@ -4008,6 +4173,16 @@
 	)
 	(wire
 		(pts
+			(xy 175.26 118.11) (xy 176.53 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2645f0ac-fc83-436f-aa3d-a47b3da418ab")
+	)
+	(wire
+		(pts
 			(xy 213.36 113.03) (xy 215.9 113.03)
 		)
 		(stroke
@@ -4015,6 +4190,16 @@
 			(type default)
 		)
 		(uuid "26e015dc-81cf-445c-9fec-f14c85ca46bc")
+	)
+	(wire
+		(pts
+			(xy 106.68 64.77) (xy 106.68 67.31)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "28190279-c364-45ee-add1-5ce5abc2dbb1")
 	)
 	(wire
 		(pts
@@ -4145,6 +4330,26 @@
 			(type default)
 		)
 		(uuid "4350375c-f1bb-4b17-9344-138bfc72ac35")
+	)
+	(wire
+		(pts
+			(xy 186.69 123.19) (xy 190.5 123.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "43dd78e4-bf91-408f-9f6a-0655515d5520")
+	)
+	(wire
+		(pts
+			(xy 190.5 123.19) (xy 190.5 147.32)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "45b35c38-b40c-461b-9058-dd16534be628")
 	)
 	(wire
 		(pts
@@ -4338,16 +4543,6 @@
 	)
 	(wire
 		(pts
-			(xy 175.26 128.27) (xy 176.53 128.27)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "74b7cf20-96a9-449d-ba07-7953c02ed3ef")
-	)
-	(wire
-		(pts
 			(xy 175.26 154.94) (xy 175.26 152.4)
 		)
 		(stroke
@@ -4458,16 +4653,6 @@
 	)
 	(wire
 		(pts
-			(xy 175.26 118.11) (xy 176.53 118.11)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8d8ed4d9-2e79-4126-a549-b856714d1c28")
-	)
-	(wire
-		(pts
 			(xy 116.84 129.54) (xy 121.92 129.54)
 		)
 		(stroke
@@ -4478,13 +4663,33 @@
 	)
 	(wire
 		(pts
-			(xy 190.5 147.32) (xy 190.5 123.19)
+			(xy 190.5 107.95) (xy 190.5 123.19)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "9002ee73-ebab-4b13-b039-5e1d4712cbb6")
+	)
+	(wire
+		(pts
+			(xy 172.72 123.19) (xy 176.53 123.19)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "93cb2ad0-6f0e-4998-a716-a23eb16061ba")
+	)
+	(wire
+		(pts
+			(xy 101.6 57.15) (xy 106.68 57.15)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9547734d-6f8d-4885-adaa-c5928722e859")
 	)
 	(wire
 		(pts
@@ -4598,23 +4803,13 @@
 	)
 	(wire
 		(pts
-			(xy 186.69 147.32) (xy 190.5 147.32)
+			(xy 172.72 147.32) (xy 176.53 147.32)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "a4eff60a-50eb-489b-8e74-95e11204709c")
-	)
-	(wire
-		(pts
-			(xy 172.72 123.19) (xy 176.53 123.19)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a52bfd8e-6dd2-4ceb-a96b-13cecc9fcf22")
+		(uuid "a03e3b5c-e3fd-4f28-a456-ce85f86e798a")
 	)
 	(wire
 		(pts
@@ -4675,6 +4870,16 @@
 			(type default)
 		)
 		(uuid "a9c066e5-206b-4cdf-8f8d-0bb7725b3b77")
+	)
+	(wire
+		(pts
+			(xy 175.26 128.27) (xy 176.53 128.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a9c0da71-5331-4cd6-a3d4-71161da7d6bb")
 	)
 	(wire
 		(pts
@@ -4768,16 +4973,6 @@
 	)
 	(wire
 		(pts
-			(xy 190.5 123.19) (xy 190.5 107.95)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ba5b95bd-947c-4447-8000-41e6c29ca91a")
-	)
-	(wire
-		(pts
 			(xy 121.92 139.7) (xy 125.73 139.7)
 		)
 		(stroke
@@ -4798,16 +4993,6 @@
 	)
 	(wire
 		(pts
-			(xy 175.26 152.4) (xy 176.53 152.4)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "cc3eb9ec-fb4e-4599-81a0-038c671a501c")
-	)
-	(wire
-		(pts
 			(xy 220.98 111.76) (xy 220.98 113.03)
 		)
 		(stroke
@@ -4815,6 +5000,16 @@
 			(type default)
 		)
 		(uuid "cfa37b67-455b-4ec9-948c-37e08ef1563d")
+	)
+	(wire
+		(pts
+			(xy 175.26 142.24) (xy 176.53 142.24)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d07f94fd-19b7-4338-9b30-383a8e3e0158")
 	)
 	(wire
 		(pts
@@ -4908,6 +5103,16 @@
 	)
 	(wire
 		(pts
+			(xy 175.26 152.4) (xy 176.53 152.4)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e325ce91-e6a0-46fb-8c4e-738caf6e7e36")
+	)
+	(wire
+		(pts
 			(xy 71.12 53.34) (xy 58.42 53.34)
 		)
 		(stroke
@@ -4938,13 +5143,13 @@
 	)
 	(wire
 		(pts
-			(xy 172.72 147.32) (xy 176.53 147.32)
+			(xy 186.69 147.32) (xy 190.5 147.32)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "e73ce274-b87a-4fa1-b91a-32118f43cb31")
+		(uuid "e8027b85-da69-4b1b-80de-d2d072f7bd17")
 	)
 	(wire
 		(pts
@@ -5172,7 +5377,7 @@
 			)
 		)
 	)
-	(global_label "BTNLED_R"
+	(global_label "BTNLED_B"
 		(shape input)
 		(at 116.84 124.46 180)
 		(fields_autoplaced yes)
@@ -5184,7 +5389,7 @@
 		)
 		(uuid "2ac3a588-f1e9-45dd-a3c5-23c93c95e997")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 104.6814 124.46 0)
+			(at 104.602 124.46 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5348,7 +5553,7 @@
 			)
 		)
 	)
-	(global_label "BTNLED_B"
+	(global_label "BTNLED_R"
 		(shape input)
 		(at 116.84 134.62 180)
 		(fields_autoplaced yes)
@@ -5360,7 +5565,7 @@
 		)
 		(uuid "5b86cbad-1704-4b00-9fa3-63cbe1066ed7")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 104.6814 134.62 0)
+			(at 104.602 134.62 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5612,7 +5817,7 @@
 			)
 		)
 	)
-	(global_label "BTN_MCU_RB"
+	(global_label "BTN_MCU_SELECT"
 		(shape input)
 		(at 68.58 129.54 0)
 		(fields_autoplaced yes)
@@ -5624,7 +5829,7 @@
 		)
 		(uuid "9932ef27-a6d8-441c-8449-042950e842a8")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 83.6604 129.54 0)
+			(at 87.8936 129.54 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5744,7 +5949,7 @@
 			)
 		)
 	)
-	(global_label "BTN_MCU_LB"
+	(global_label "BTN_MCU_START"
 		(shape input)
 		(at 68.58 127 0)
 		(fields_autoplaced yes)
@@ -5756,7 +5961,7 @@
 		)
 		(uuid "abaaf10b-21b9-4a77-8d55-e780a73bf16e")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 83.4185 127 0)
+			(at 86.6237 127 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5779,28 +5984,6 @@
 		(uuid "afdf58ed-bf6c-4e5b-8067-be524eafed29")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 45.72 23.8057 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "I2C4_SDA_3V3"
-		(shape input)
-		(at 101.6 36.83 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "b231c3e3-428f-42e5-93b7-caca13615c19")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 117.8899 36.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5876,28 +6059,6 @@
 			)
 		)
 	)
-	(global_label "I2C4_SCL_3V3"
-		(shape input)
-		(at 101.6 39.37 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "e57e14ea-7830-4be2-b53c-ba95f1ab4d48")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 117.8294 39.37 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "I2C1_SDA"
 		(shape input)
 		(at 88.9 52.07 180)
@@ -5917,6 +6078,70 @@
 				)
 				(justify right)
 				(hide yes)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole")
+		(at 99.06 170.18 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "013e4d8c-1d84-48a8-9bde-56e7745248e8")
+		(property "Reference" "H4"
+			(at 101.6 169.545 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 101.6 172.085 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
+			(at 99.06 170.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 99.06 170.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 99.06 170.18 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(instances
+			(project "gk-controls"
+				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
+					(reference "H4")
+					(unit 1)
+				)
 			)
 		)
 	)
@@ -6937,15 +7162,15 @@
 	(symbol
 		(lib_id "Device:LED_ARGB")
 		(at 181.61 147.32 0)
+		(mirror x)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "2d61528a-f68e-48d5-841b-aaf2141139c9")
 		(property "Reference" "D2"
-			(at 181.61 134.62 0)
+			(at 181.61 160.02 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6953,7 +7178,7 @@
 			)
 		)
 		(property "Value" "LED_ARGB"
-			(at 181.61 137.16 0)
+			(at 181.61 157.48 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6961,7 +7186,7 @@
 			)
 		)
 		(property "Footprint" "LED_SMD:LED_ASMB-KTF0-0A306"
-			(at 181.61 148.59 0)
+			(at 181.61 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6970,7 +7195,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 181.61 148.59 0)
+			(at 181.61 146.05 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7077,7 +7302,7 @@
 	)
 	(symbol
 		(lib_id "Mechanical:MountingHole")
-		(at 123.19 163.83 0)
+		(at 77.47 163.83 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -7086,7 +7311,7 @@
 		(fields_autoplaced yes)
 		(uuid "2eb24f16-4a90-4127-b412-8922afec58e4")
 		(property "Reference" "H1"
-			(at 125.73 163.195 0)
+			(at 80.01 163.195 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7095,7 +7320,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 125.73 165.735 0)
+			(at 80.01 165.735 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7104,7 +7329,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
-			(at 123.19 163.83 0)
+			(at 77.47 163.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7113,7 +7338,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 123.19 163.83 0)
+			(at 77.47 163.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7122,7 +7347,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 123.19 163.83 0)
+			(at 77.47 163.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7677,7 +7902,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "4206697d-6d6f-4e65-9883-c7a158e00374")
-		(property "Reference" "#PWR088"
+		(property "Reference" "#PWR039"
 			(at 142.24 189.23 0)
 			(effects
 				(font
@@ -7727,7 +7952,7 @@
 		(instances
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
-					(reference "#PWR088")
+					(reference "#PWR039")
 					(unit 1)
 				)
 			)
@@ -7933,6 +8158,76 @@
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
 					(reference "C8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:Battery_Cell")
+		(at 106.68 62.23 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "47cf4d27-3fa0-444d-83ae-da08dad3fc04")
+		(property "Reference" "BT1"
+			(at 110.49 59.563 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Battery_Cell"
+			(at 110.49 62.103 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Battery:BatteryHolder_Keystone_3002_1x2032"
+			(at 106.68 60.706 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 106.68 60.706 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 106.68 62.23 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "ad68fdb9-569e-4c0d-83aa-ce668b633dc7")
+		)
+		(pin "2"
+			(uuid "dc0d9e13-7a91-44b0-a6cd-ec650df8225c")
+		)
+		(instances
+			(project "gk-controls"
+				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
+					(reference "BT1")
 					(unit 1)
 				)
 			)
@@ -8621,7 +8916,7 @@
 	)
 	(symbol
 		(lib_id "Mechanical:MountingHole")
-		(at 123.19 176.53 0)
+		(at 77.47 176.53 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -8629,8 +8924,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "699e9cca-c85e-4090-af12-cf8a4fca180f")
-		(property "Reference" "H3"
-			(at 125.73 175.895 0)
+		(property "Reference" "H6"
+			(at 80.01 175.895 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8639,7 +8934,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 125.73 178.435 0)
+			(at 80.01 178.435 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8648,7 +8943,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
-			(at 123.19 176.53 0)
+			(at 77.47 176.53 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8657,7 +8952,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 123.19 176.53 0)
+			(at 77.47 176.53 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8666,7 +8961,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 123.19 176.53 0)
+			(at 77.47 176.53 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8677,7 +8972,7 @@
 		(instances
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
-					(reference "H3")
+					(reference "H6")
 					(unit 1)
 				)
 			)
@@ -8685,8 +8980,8 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 101.6 57.15 90)
-		(mirror x)
+		(at 106.68 67.31 0)
+		(mirror y)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -8695,7 +8990,7 @@
 		(fields_autoplaced yes)
 		(uuid "732ca2df-1a59-42f4-8622-c342b4fb130d")
 		(property "Reference" "#PWR020"
-			(at 107.95 57.15 0)
+			(at 106.68 73.66 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8704,7 +8999,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 105.41 57.1501 90)
+			(at 109.22 68.5799 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8713,7 +9008,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 101.6 57.15 0)
+			(at 106.68 67.31 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8722,7 +9017,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 101.6 57.15 0)
+			(at 106.68 67.31 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8731,7 +9026,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 101.6 57.15 0)
+			(at 106.68 67.31 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8816,6 +9111,70 @@
 			(project ""
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
 					(reference "R5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole")
+		(at 99.06 163.83 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "74d5e1b4-ad1d-43c2-8f63-63c1183566b7")
+		(property "Reference" "H2"
+			(at 101.6 163.195 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 101.6 165.735 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
+			(at 99.06 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 99.06 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 99.06 163.83 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(instances
+			(project "gk-controls"
+				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
+					(reference "H2")
 					(unit 1)
 				)
 			)
@@ -9159,6 +9518,70 @@
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
 					(reference "#PWR024")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Mechanical:MountingHole")
+		(at 99.06 176.53 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "82a79396-7e94-478d-bb62-7ae65d0ad033")
+		(property "Reference" "H9"
+			(at 101.6 175.895 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 101.6 178.435 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
+			(at 99.06 176.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 99.06 176.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 99.06 176.53 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(instances
+			(project "gk-controls"
+				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
+					(reference "H9")
 					(unit 1)
 				)
 			)
@@ -9955,7 +10378,7 @@
 	)
 	(symbol
 		(lib_id "Mechanical:MountingHole")
-		(at 123.19 170.18 0)
+		(at 77.47 170.18 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -9963,8 +10386,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c4e3d28c-ce12-46c0-af0f-2967361ba4e0")
-		(property "Reference" "H2"
-			(at 125.73 169.545 0)
+		(property "Reference" "H3"
+			(at 80.01 169.545 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9973,7 +10396,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 125.73 172.085 0)
+			(at 80.01 172.085 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9982,7 +10405,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
-			(at 123.19 170.18 0)
+			(at 77.47 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9991,7 +10414,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 123.19 170.18 0)
+			(at 77.47 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10000,7 +10423,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 123.19 170.18 0)
+			(at 77.47 170.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10011,7 +10434,7 @@
 		(instances
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
-					(reference "H2")
+					(reference "H3")
 					(unit 1)
 				)
 			)
@@ -10290,7 +10713,7 @@
 	)
 	(symbol
 		(lib_id "Mechanical:MountingHole")
-		(at 123.19 182.88 0)
+		(at 77.47 182.88 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -10298,8 +10721,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "ccc4f9ff-56c5-4d8e-9415-d8ae1958b306")
-		(property "Reference" "H4"
-			(at 125.73 182.245 0)
+		(property "Reference" "H8"
+			(at 80.01 182.245 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10308,7 +10731,7 @@
 			)
 		)
 		(property "Value" "MountingHole"
-			(at 125.73 184.785 0)
+			(at 80.01 184.785 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10317,7 +10740,7 @@
 			)
 		)
 		(property "Footprint" "MountingHole:MountingHole_3.2mm_M3"
-			(at 123.19 182.88 0)
+			(at 77.47 182.88 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10326,7 +10749,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 123.19 182.88 0)
+			(at 77.47 182.88 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10335,7 +10758,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 123.19 182.88 0)
+			(at 77.47 182.88 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10346,7 +10769,7 @@
 		(instances
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
-					(reference "H4")
+					(reference "H8")
 					(unit 1)
 				)
 			)
@@ -10490,15 +10913,15 @@
 	(symbol
 		(lib_id "Device:LED_ARGB")
 		(at 181.61 123.19 0)
+		(mirror x)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "ddcddce9-cdbf-4203-9afc-6d1cb8062eae")
 		(property "Reference" "D1"
-			(at 181.61 110.49 0)
+			(at 181.61 135.89 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10506,7 +10929,7 @@
 			)
 		)
 		(property "Value" "LED_ARGB"
-			(at 181.61 113.03 0)
+			(at 181.61 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10514,7 +10937,7 @@
 			)
 		)
 		(property "Footprint" "LED_SMD:LED_ASMB-KTF0-0A306"
-			(at 181.61 124.46 0)
+			(at 181.61 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10523,7 +10946,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 181.61 124.46 0)
+			(at 181.61 121.92 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10978,7 +11401,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "e67321b9-d0a5-4a72-b6cd-485be2e8679c")
-		(property "Reference" "H6"
+		(property "Reference" "H7"
 			(at 152.4 178.435 0)
 			(effects
 				(font
@@ -11029,7 +11452,7 @@
 		(instances
 			(project "gk-controls"
 				(path "/c0d0aaf9-05d9-40e1-957a-689bd7466176"
-					(reference "H6")
+					(reference "H7")
 					(unit 1)
 				)
 			)
