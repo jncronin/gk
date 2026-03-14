@@ -9,6 +9,7 @@
 #include "vmem.h"
 #include <atomic>
 #include "_gk_scancodes.h"
+#include "supervisor.h"
 
 #define I2C_ADDR 0x33
 
@@ -575,6 +576,11 @@ static void *pmic_thread(void *)
                     Event::event_type_t::KeyDown;
                 ev.key = GK_SCANCODE_POWER;
                 p_gksupervisor->events.Push(ev);
+
+                if(ponkeyn_val)
+                {
+                    supervisor_pwrbtn_release();
+                }
             }
             if(new_wakeupn)
             {

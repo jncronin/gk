@@ -19,12 +19,34 @@
 #include "pwr.h"
 
 static void *supervisor_update_userspace_thread(void *);
+static void *supervisor_pwrbtn_thread(void *);
 
 bool init_supervisor()
 {
     sched.Schedule(Thread::Create("update_userspace", supervisor_update_userspace_thread, nullptr, true,
         GK_PRIORITY_HIGH, p_kernel));
+    sched.Schedule(Thread::Create("pwrbtn", supervisor_pwrbtn_thread, nullptr, true,
+        GK_PRIORITY_VERYHIGH, p_kernel));
     return true;
+}
+
+static BinarySemaphore sem_pwrbtn;
+
+void *supervisor_pwrbtn_thread(void *)
+{
+    while(true)
+    {
+        if(sem_pwrbtn.Wait())
+        {
+            supervisor_shutdown_system();
+        }
+    }
+}
+
+int supervisor_pwrbtn_release()
+{
+    sem_pwrbtn.Signal();
+    return 0;
 }
 
 Spinlock sl_sup_active;

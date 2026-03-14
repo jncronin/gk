@@ -19,4 +19,7 @@ void supervisor_shutdown_system();
 /* Update the userspace info about the system, and ping gk_menu */
 int supervisor_update_userpace();
 
+/* On power button release, shutdown system. */
+int supervisor_pwrbtn_release();
+
 #endif
