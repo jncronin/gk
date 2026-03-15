@@ -427,14 +427,37 @@ static void joy_apply_calibration(const volatile cm33_joystick *in,
 
     if(squircle)
     {
-        auto u = (float)x;
-        auto v = (float)y;
+        auto u = (float)x / 32768.0f;
+        auto v = (float)y / 32768.0f;
+
+        if(u > 1.0f) u = 1.0f;
+        if(u < -1.0f) u = -1.0f;
+        if(v > 1.0f) v = 1.0f;
+        if(v < -1.0f) v = -1.0f;
 
         // https://squircular.blogspot.com/2015/09/mapping-circle-to-square.html
-        x = (int16_t)std::round(0.5f * std::sqrt(2.0f + 2.0f * u * (float)M_SQRT2 + u * u - v * v) -
-            0.5f * std::sqrt(2.0f - 2.0f * u * (float)M_SQRT2 + u * u - v * v));
-        y = (int16_t)std::round(0.5f * std::sqrt(2.0f + 2.0f * v * (float)M_SQRT2 - u * u + v * v) -
-            0.5f * std::sqrt(2.0f - 2.0f * v * (float)M_SQRT2 - u * u + v * v));
+
+        // handle case where u2 + v2 > 1, which translates to a sqrt of negative number
+        auto x2_a = 2.0f + 2.0f * u * (float)M_SQRT2 + u * u - v * v;
+        auto x2_b = 2.0f - 2.0f * u * (float)M_SQRT2 + u * u - v * v;
+        if(x2_a < 0.0f) x2_a = 0.0f;
+        if(x2_b < 0.0f) x2_b = 0.0f;
+        auto x2 = (int)((0.5f * std::sqrt(x2_a) - 0.5f * std::sqrt(x2_b)) * 32767.0f);
+
+        auto y2_a = 2.0f + 2.0f * v * (float)M_SQRT2 - u * u + v * v;
+        auto y2_b = 2.0f - 2.0f * v * (float)M_SQRT2 - u * u + v * v;
+        if(y2_a < 0.0f) y2_a = 0.0f;
+        if(y2_b < 0.0f) y2_b = 0.0f;
+        auto y2 = (int)((0.5f * std::sqrt(y2_a) - 0.5f * std::sqrt(y2_b)) * 32767.0f);
+
+        if(x2 > 32767) x2 = 32767;
+        if(x2 < -32767) x2 = -32767;
+        if(y2 > 32767) y2 = 32767;
+        if(y2 < -32767) y2 = -32767;
+
+
+        x = x2;
+        y = y2;
     }
 
     out->x = x;
@@ -464,8 +487,8 @@ static void joystick_tick()
     d.throttle_raw.x = 8192;
     d.throttle_raw.y = joy_scale(adc_vals[4] & 0x3fffU, false);
 
-    joy_apply_calibration(&d.joy_a_raw, &d.joy_a, &dk.joy_a_calib);
-    joy_apply_calibration(&d.joy_b_raw, &d.joy_b, &dk.joy_b_calib);
+    joy_apply_calibration(&d.joy_a_raw, &d.joy_a, &dk.joy_a_calib, true);
+    joy_apply_calibration(&d.joy_b_raw, &d.joy_b, &dk.joy_b_calib, true);
     joy_apply_calibration(&d.throttle_raw, &d.throttle, &dk.throttle_calib);
 
     dj_A.tick();
