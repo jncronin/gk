@@ -1,7 +1,8 @@
 #include "syscalls_int.h"
 #include "cm33_data.h"
 
-extern cm33_joy_calib input_joy_calib[2];
+extern cm33_joy_calib input_joy_calib[3];
+extern float input_tilt_centre;
 
 int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
     int top, int bottom, int middle_x, int middle_y, int *_errno)
@@ -11,7 +12,7 @@ int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
 
     //joystick: calib: axis_pair: 1, left: -32764, right: 19552, top: 20868, bottom: -32768, middle_x: -1200, middle_y: -1008
     
-    if(axis_pair >= 2)
+    if(axis_pair >= 4)
     {
         *_errno = EINVAL;
         return -1;
@@ -90,12 +91,24 @@ int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
     }
 
     klog("joystick: acceptable\n");
-    input_joy_calib[axis_pair].left = (int16_t)left;
-    input_joy_calib[axis_pair].right = (int16_t)right;
-    input_joy_calib[axis_pair].top = (int16_t)top;
-    input_joy_calib[axis_pair].bottom = (int16_t)bottom;
-    input_joy_calib[axis_pair].middle_x = (int16_t)middle_x;
-    input_joy_calib[axis_pair].middle_y = (int16_t)middle_y;
+    if(axis_pair == 2)
+    {
+        // for tilt, just calibrate the centre point
+        input_tilt_centre = (float)middle_y;
+    }
+    else
+    {
+        // throttle is the fourth userspace pair but we only store calibration for 3
+        if(axis_pair == 3)
+            axis_pair = 2;
+        
+        input_joy_calib[axis_pair].left = (int16_t)left;
+        input_joy_calib[axis_pair].right = (int16_t)right;
+        input_joy_calib[axis_pair].top = (int16_t)top;
+        input_joy_calib[axis_pair].bottom = (int16_t)bottom;
+        input_joy_calib[axis_pair].middle_x = (int16_t)middle_x;
+        input_joy_calib[axis_pair].middle_y = (int16_t)middle_y;
+    }
 
     return 0;
 }

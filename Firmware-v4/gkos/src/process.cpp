@@ -166,7 +166,7 @@ static void set_joystick_mapping(char stick_map, int16_t *x, int16_t *y)
 {
     auto kinfo = (gk_kernel_info *)PMEM_TO_VMEM(process_kernel_info_page.base);
 
-    if((stick_map >= GK_STICK_JOY0) && (stick_map <= GK_STICK_JOY2))
+    if((stick_map >= GK_STICK_JOY0) && (stick_map <= GK_STICK_JOY3))
     {
         auto stick_id = (unsigned int)(stick_map - GK_STICK_JOY0);
         auto x_axis_id = stick_id * 2;
@@ -204,6 +204,9 @@ int SetFocusProcess(PProcess p)
     set_joystick_mapping(p->keymap.tilt_stick,
         (int16_t *)(GK_TILT_ADDRESS),
         (int16_t *)(GK_TILT_ADDRESS + 4));
+    set_joystick_mapping(p->keymap.throttle_stick,
+        (int16_t *)(GK_THROTTLE_ADDRESS + 4),
+        (int16_t *)(GK_THROTTLE_ADDRESS + 4));
 
     unsigned int nbuttons = 0;
     for(auto i = 0U; i < GK_NUMKEYS; i++)

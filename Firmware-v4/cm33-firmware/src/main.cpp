@@ -445,9 +445,12 @@ static void joystick_tick()
     d.joy_a_raw.y = joy_scale(adc_vals[1] & 0x3fffU, true);
     d.joy_b_raw.x = joy_scale(adc_vals[3] & 0x3fffU, false);
     d.joy_b_raw.y = joy_scale(adc_vals[2] & 0x3fffU, false);
+    d.throttle_raw.x = 8192;
+    d.throttle_raw.y = joy_scale(adc_vals[4] & 0x3fffU, false);
 
     joy_apply_calibration(&d.joy_a_raw, &d.joy_a, &dk.joy_a_calib);
     joy_apply_calibration(&d.joy_b_raw, &d.joy_b, &dk.joy_b_calib);
+    joy_apply_calibration(&d.throttle_raw, &d.throttle, &dk.throttle_calib);
 
     dj_A.tick();
     dj_B.tick();

@@ -38,9 +38,10 @@ extern PProcess p_gksupervisor;
 /* Store current log buffer */
 static std::vector<char> cm33_log_buffer;
 
-static float input_tilt_centre = 30.0f;
-cm33_joy_calib input_joy_calib[2] =
+float input_tilt_centre = 30.0f;
+cm33_joy_calib input_joy_calib[3] =
 {
+    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
     { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
 };
@@ -343,6 +344,19 @@ static void *cm33_manager_thread(void *)
             dk->joy_b_calib.middle_x = input_joy_calib[1].middle_x;
         if(dk->joy_b_calib.middle_y != input_joy_calib[1].middle_y)
             dk->joy_b_calib.middle_y = input_joy_calib[1].middle_y;
+
+        if(dk->throttle_calib.left != input_joy_calib[2].left)
+            dk->throttle_calib.left = input_joy_calib[2].left;
+        if(dk->throttle_calib.right != input_joy_calib[2].right)
+            dk->throttle_calib.right = input_joy_calib[2].right;
+        if(dk->throttle_calib.top != input_joy_calib[2].top)
+            dk->throttle_calib.top = input_joy_calib[2].top;
+        if(dk->throttle_calib.bottom != input_joy_calib[2].bottom)
+            dk->throttle_calib.bottom = input_joy_calib[2].bottom;
+        if(dk->throttle_calib.middle_x != input_joy_calib[2].middle_x)
+            dk->throttle_calib.middle_x = input_joy_calib[2].middle_x;
+        if(dk->throttle_calib.middle_y != input_joy_calib[2].middle_y)
+            dk->throttle_calib.middle_y = input_joy_calib[2].middle_y;
 
         if(dk->tilt_zero != input_tilt_centre)
             dk->tilt_zero = input_tilt_centre;
