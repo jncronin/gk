@@ -622,3 +622,9 @@ extern "C" void vApplicationIdleHook()
 {
     __WFI();
 }
+
+// include for LTO purposes - not called
+ssize_t log_fwrite(const void *buf, size_t count)
+{
+    return (ssize_t)count;
+}
