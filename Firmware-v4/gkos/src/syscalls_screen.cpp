@@ -177,7 +177,7 @@ int syscall_gpuenqueue(const gpu_message *msgs, size_t nmsg, size_t *nsent, int 
 
                     syscall_setscreenmode(new_w ? &new_w : nullptr,
                         new_h ? &new_h : nullptr,
-                        new_pf ? &new_pf : nullptr,
+                        &new_pf,
                         new_refr ? &new_refr : nullptr,
                         _errno);
                 }
