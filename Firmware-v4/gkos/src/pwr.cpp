@@ -190,6 +190,18 @@ void *pwr_thread(void *)
         klog(maxbuf);
 #endif
 
+        // BQ25601 charger
+#if GK_ENABLE_PWR_DUMP
+        const unsigned int bq_addr = 0x6b;
+        uint8_t bq_regs[4] = { 0 };
+        i2c_pwr.RegisterRead(bq_addr, (uint8_t)0x08, bq_regs, 4);
+        char bqbuf[256];
+        snprintf(bqbuf, sizeof(bqbuf) - 1,
+            "pwr: bq[8-b]: %02x %02x %02x %02x\n", bq_regs[0], bq_regs[1], bq_regs[2], bq_regs[3]);
+        bqbuf[sizeof(bqbuf) - 1] = 0;
+        klog(bqbuf);
+#endif
+
         Block(clock_cur() + kernel_time_from_ms(1000));
     }
 }
