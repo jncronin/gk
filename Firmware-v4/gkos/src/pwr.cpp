@@ -165,8 +165,8 @@ void *pwr_thread(void *)
         klog("pwr: PSHUNT: %d.%06d W\n", pshunt_w, pshunt_fract);
 #endif
 
-        // MAX17048 on 0x54
-        const unsigned int max_addr = 0x40;
+        // MAX17048
+        const unsigned int max_addr = 0x36;
 
         unsigned int vcell_i = 0, soc_i = 0, crate_i = 0;
         i2c_pwr.RegisterRead(max_addr, (uint8_t)0x02, &vcell_i, 2);
@@ -182,31 +182,12 @@ void *pwr_thread(void *)
         soc = (double)soc_i / 256.0;
         crate = (double)i_crate * 0.208;
 
-#if GK_DUMP_MAX
+#if GK_ENABLE_PWR_DUMP
         char maxbuf[256];
         snprintf(maxbuf, sizeof(maxbuf) - 1,
             "pwr: vcell: %f, soc: %f, crate: %f\n", (double)vcell, (double)soc, (double)crate);
         maxbuf[sizeof(maxbuf) - 1] = 0;
         klog(maxbuf);
-
-
-        uint16_t version, hibrt, config, vreset, status;
-        klog("pwr: version\n");
-        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x08, &version, 2);
-        klog("pwr: hibrt\n");
-        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x0a, &hibrt, 2);
-        klog("pwr: config\n");
-        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x0c, &config, 2);
-        klog("pwr: vreset\n");
-        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x18, &vreset, 2);
-        klog("pwr: status\n");
-        i2c_pwr.RegisterRead(max_addr, (uint8_t)0x1a, &status, 2);
-        klog("pwr: version: %x, hibrt: %x, config: %x, vreset: %x, status: %x\n",
-            __builtin_bswap16(version),
-            __builtin_bswap16(hibrt),
-            __builtin_bswap16(config),
-            __builtin_bswap16(vreset),
-            __builtin_bswap16(status));
 #endif
 
         Block(clock_cur() + kernel_time_from_ms(1000));
