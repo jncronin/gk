@@ -505,45 +505,45 @@ static inline uint32_t from_col(unsigned int pf_to, col &from, Process::screen_t
     switch(pf_to)
     {
         case GK_PIXELFORMAT_ARGB8888:
-            return from.b ||
-                (from.g << 8) ||
-                (from.r << 16) ||
+            return from.b |
+                (from.g << 8) |
+                (from.r << 16) |
                 (from.a << 24);
         case GK_PIXELFORMAT_XRGB8888:
-            return from.b ||
-                (from.g << 8) ||
+            return from.b |
+                (from.g << 8) |
                 (from.r << 16);
         case GK_PIXELFORMAT_ABGR8888:
-            return from.r ||
-                (from.g << 8) ||
-                (from.b << 16) ||
+            return from.r |
+                (from.g << 8) |
+                (from.b << 16) |
                 (from.a << 24);
         case GK_PIXELFORMAT_RGBA8888:
-            return from.a ||
-                (from.b << 8) ||
-                (from.g << 16) ||
+            return from.a |
+                (from.b << 8) |
+                (from.g << 16) |
                 (from.r << 24);
         case GK_PIXELFORMAT_BGRA8888:
-            return from.a ||
-                (from.r << 8) ||
-                (from.g << 16) ||
+            return from.a |
+                (from.r << 8) |
+                (from.g << 16) |
                 (from.b << 24);
         case GK_PIXELFORMAT_RGB888:
-            return from.b ||
-                (from.g << 8) ||
+            return from.b |
+                (from.g << 8) |
                 (from.r << 16);
         case GK_PIXELFORMAT_RGB565:
-            return (from.b >> 3) ||
-                ((from.g & 0xfcU) << 3) ||
+            return (from.b >> 3) |
+                ((from.g & 0xfcU) << 3) |
                 ((from.r & 0xf8U << 8));
         case GK_PIXELFORMAT_RGB565A8:
-            return (from.b >> 3) ||
-                ((from.g & 0xfcU) << 3) ||
-                ((from.r & 0xf8U << 8)) ||
+            return (from.b >> 3) |
+                ((from.g & 0xfcU) << 3) |
+                ((from.r & 0xf8U << 8)) |
                 (from.a << 16);
         case GK_PIXELFORMAT_BGR565:
-            return (from.r >> 3) ||
-                ((from.g & 0xfcU) << 3) ||
+            return (from.r >> 3) |
+                ((from.g & 0xfcU) << 3) |
                 ((from.b & 0xf8U << 8));
         default:
             return 0;
