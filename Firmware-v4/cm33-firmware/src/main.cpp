@@ -410,7 +410,8 @@ static int16_t joy_apply_calibration(int16_t in,
 
 static void joy_apply_calibration(const volatile cm33_joystick *in,
     volatile cm33_joystick *out,
-    const volatile cm33_joy_calib *calib = nullptr)
+    const volatile cm33_joy_calib *calib = nullptr,
+    bool squircle = false)
 {
     out->res0 = 0;
     out->res1 = 0;
@@ -421,8 +422,23 @@ static void joy_apply_calibration(const volatile cm33_joystick *in,
         return;
     }
 
-    out->x = joy_apply_calibration(in->x, calib->left, calib->middle_x, calib->right);
-    out->y = joy_apply_calibration(in->y, calib->bottom, calib->middle_y, calib->top);
+    auto x = joy_apply_calibration(in->x, calib->left, calib->middle_x, calib->right);
+    auto y = joy_apply_calibration(in->y, calib->bottom, calib->middle_y, calib->top);
+
+    if(squircle)
+    {
+        auto u = (float)x;
+        auto v = (float)y;
+
+        // https://squircular.blogspot.com/2015/09/mapping-circle-to-square.html
+        x = (int16_t)std::round(0.5f * std::sqrt(2.0f + 2.0f * u * (float)M_SQRT2 + u * u - v * v) -
+            0.5f * std::sqrt(2.0f - 2.0f * u * (float)M_SQRT2 + u * u - v * v));
+        y = (int16_t)std::round(0.5f * std::sqrt(2.0f + 2.0f * v * (float)M_SQRT2 - u * u + v * v) -
+            0.5f * std::sqrt(2.0f - 2.0f * v * (float)M_SQRT2 - u * u + v * v));
+    }
+
+    out->x = x;
+    out->y = y;
 }
 
 static void joystick_tick()
