@@ -180,6 +180,11 @@ static void set_joystick_mapping(char stick_map, int16_t *x, int16_t *y)
             kinfo->joystick_naxes = y_axis_id + 1;
         }
     }
+    else if(stick_map == GK_STICK_MOUSE)
+    {
+        kinfo->mouse_axes[0] = x;
+        kinfo->mouse_axes[1] = y;
+    }
 }
 
 int SetFocusProcess(PProcess p)
@@ -194,6 +199,7 @@ int SetFocusProcess(PProcess p)
 
     kinfo->joystick_naxes = 0;
     memset(kinfo->joystick_axes, 0, sizeof(kinfo->joystick_axes));
+    memset(kinfo->mouse_axes, 0, sizeof(kinfo->mouse_axes));
 
     set_joystick_mapping(p->keymap.left_stick,
         (int16_t *)(GK_JOYSTICK_ADDRESS),
