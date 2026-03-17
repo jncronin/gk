@@ -248,7 +248,18 @@ int main()
     dk.joy_b_calib.bottom = -32767;
     dk.joy_b_calib.middle_x = 0;
     dk.joy_b_calib.middle_y = 0;
-    dk.tilt_zero = 0.0f;
+    dk.throttle_calib.left = -32767;
+    dk.throttle_calib.right = 32767;
+    dk.throttle_calib.top = 32767;
+    dk.throttle_calib.bottom = -32767;
+    dk.throttle_calib.middle_x = 0;
+    dk.throttle_calib.middle_y = 0;
+    dk.tilt_calib.left = -32767;
+    dk.tilt_calib.right = 32767;
+    dk.tilt_calib.top = 32767;
+    dk.tilt_calib.bottom = -32767;
+    dk.tilt_calib.middle_x = 0;
+    dk.tilt_calib.middle_y = 0;
     dk.rb_r_ptr = 0;
     dk.rb_w_ptr = 0;
     dk.rb_size = rb_size;
@@ -552,20 +563,13 @@ static void tick()
         if(lsm_ret == 0)
         {
             /* convert lsm filtered axes to a joystick
-                "pitch" is -ve left/+ve right - aim for a ~15 deg deadspace
-                "roll" is +ve look up (i.e. stick down), -ve look down, again add 15 deg deadspace, will need calibration
-
-                joy debouncer uses 8000/32000 as its deadspace, therefore scale to +/- 60 degree from the middle
+                "pitch" is -ve left/+ve right
+                "roll" is +ve look up (i.e. stick down), -ve look down
             */
-            auto new_tilt_x = (int32_t)(d.pitch * 32767.0f / 60.0f);
-            auto new_tilt_y = (int32_t)((-d.roll - dk.tilt_zero) * 32767.0f / 60.0f);
-            if(new_tilt_x < -32768) new_tilt_x = -32768;
-            if(new_tilt_x > 32767) new_tilt_x = 32767;
-            if(new_tilt_y < -32768) new_tilt_y = -32768;
-            if(new_tilt_y > 32767) new_tilt_y = 32767;
+            d.tilt_raw.x = (int16_t)std::round(d.pitch * 100.0f);
+            d.tilt_raw.y = (int16_t)std::round(-d.roll * 100.0f);
 
-            d.joy_tilt.x = (int16_t)new_tilt_x;
-            d.joy_tilt.y = (int16_t)new_tilt_y;
+            joy_apply_calibration(&d.tilt_raw, &d.joy_tilt, &dk.tilt_calib, false);
         }
     }
     else
