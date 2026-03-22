@@ -17,7 +17,7 @@ void screen_clear_all_userspace();
 int syscall_screenflip(unsigned int layer, unsigned int alpha, int *_errno);
 
 int screen_get_brightness();
-int screen_set_brightness(int brightness);
+int screen_set_brightness(int brightness, bool persist = true);
 double screen_get_fps(unsigned int layer = 0);
 void *screen_get_overlay_frame_buffer();
 

@@ -12,6 +12,7 @@
 #include "pmem.h"
 #include "pmic.h"
 #include "bootinfo.h"
+#include "persistent.h"
 
 static constexpr const pin SAI2_SD_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 12, 3 };
 static constexpr const pin SAI2_SCK_A { (GPIO_TypeDef *)PMEM_TO_VMEM(GPIOJ), 11, 3 };
@@ -116,6 +117,12 @@ static void pcm_mute_set(bool val)
 {
     // bring up VDD_AUDIO (TODO: could be selectively disabled)
     pmic_set_power(PMIC_Power_Target::Audio, 3300);
+
+    auto persist_vol = persistent[PERSISTENT_ID_VOLUME];
+    if(persist_vol >= 1 && persist_vol <= 101)
+        volume_pct = persist_vol;
+    else
+        volume_pct = 51;
 
 #if GK_SOUND_DUMP
     while(true)
@@ -750,7 +757,7 @@ int sound_set_volume(int new_vol_pct)
 
     const bool pcmz = false;
 
-    if(!pcmz && volume_pct)
+    if(!pcmz && new_vol_pct)
     {
         SPKR_NSD.set();
     }
@@ -762,6 +769,11 @@ int sound_set_volume(int new_vol_pct)
     // set volume on PCM
     tad_write(0x67, pcm1753_volume(new_vol_pct));
     tad_write(0x69, pcm1753_volume(new_vol_pct));
+
+    {
+        PersistentMemoryWriteGuard pmg;
+        persistent[PERSISTENT_ID_VOLUME] = volume_pct;
+    }
 
     // update userspace
 
