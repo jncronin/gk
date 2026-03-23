@@ -166,8 +166,10 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
     auto &reg = p->user_mem->vblocks.IsAllocated((uintptr_t)addr);
     if(reg.b.valid)
     {
-        reg.b.write = is_write != 0;
-        reg.b.exec = is_exec != 0;
+        /* Because we do not allow to mprotect only part of a region, ensure that
+            we only add permissions here */
+        reg.b.write = reg.b.write || (is_write != 0);
+        reg.b.exec = reg.b.exec || (is_exec != 0);
         return 0;
     }
     else
