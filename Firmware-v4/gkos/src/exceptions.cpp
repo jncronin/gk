@@ -57,6 +57,13 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
                     return userspace_fault_code;
             }
         }
+        else if(ec == 0)
+        {
+            if(vmem_vaddr_to_paddr_quick(far))
+            {
+                klog("EXCEPTION: UNKNOWN: *far = %lx\n", *(uint32_t *)far);
+            }
+        }
     }
 
     klog("EXCEPTION: type: %llx, esr: %llx, far: %llx, lr: %llx, sp: %llx, nested elr: %llx\n",
@@ -322,8 +329,9 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
         // decide on the appropriate refill logic
         if(pte != 0)
         {
-            if(((pte & PAGE_PRIV_MASK) == PAGE_PRIV_RW) ||
-                ((pte & PAGE_PRIV_MASK) == PAGE_USER_RW))
+            if((((pte & PAGE_PRIV_MASK) == PAGE_PRIV_RW) ||
+                ((pte & PAGE_PRIV_MASK) == PAGE_USER_RW)) &&
+                ((pte & DT_PAGE) == 0))
             {
                 // pte was already write, so this is a subsequent refill due to DT_PAGE being 0
                 if(!uvblock.FillSubsequent)
