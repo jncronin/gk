@@ -293,6 +293,32 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
             // We do, use it
             paddr = pte & PAGE_PADDR_MASK;
 
+            /* Check permissions - if they are correct then we do not have to alter the page
+                tables.  This can occur if both cores fault on the same page and enter the
+                page fault hander sequentially. */
+            const auto permissions_mask = PAGE_PRIV_MASK | PAGE_XN;
+            uint64_t attr = 0;
+            if(user)
+            {
+                if(write)
+                    attr |= PAGE_USER_RW;
+                else
+                    attr |= PAGE_USER_RO;
+            }
+            else
+            {
+                if(write)
+                    attr |= PAGE_PRIV_RW;
+                else
+                    attr |= PAGE_PRIV_RO;
+            }
+            if(!exec)
+                attr |= PAGE_XN;
+            if((pte & permissions_mask) == attr)
+            {
+                return 0;
+            }
+
             // break before make
             VMemBlock unmap_block;
             unmap_block.base = far & PAGE_VADDR_MASK;
