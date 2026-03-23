@@ -82,7 +82,7 @@ void *init_thread(void *)
 
     if(ret == 0)
     {
-        auto t_test = Thread::Create("gksupervisor", test_ep, nullptr, false, GK_PRIORITY_NORMAL, p_gksupervisor);
+        auto t_test = Thread::Create("gksupervisor", test_ep, nullptr, false, GK_PRIORITY_VERYHIGH, p_gksupervisor);
         if(t_test)
         {
             SetFocusProcess(p_gksupervisor);
