@@ -338,21 +338,7 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
             paddr = pmemret.base;
         }
 
-        /* map as writeable if:
-            If subsequent access (pte != 0) then use block access
-            If first access, only writeable if the current access is a write, else read */
-
-        auto mret = vmem_map(far & PAGE_VADDR_MASK, paddr, uvblock.b.user, 
-            pte ? uvblock.b.write : write,
-            uvblock.b.exec,
-            umem->ttbr0, ~0ULL, nullptr, uvblock.b.memory_type);
-        if(mret != 0)
-        {
-            klog("pf: vmem_map failed %d\n", mret);
-            return user ? UserThreadFault() : SupervisorThreadFault();
-        }
-
-        // decide on the appropriate refill logic
+        /* Fill before map */
         if(pte != 0)
         {
             if((((pte & PAGE_PRIV_MASK) == PAGE_PRIV_RW) ||
@@ -377,6 +363,19 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
                 return user ? UserThreadFault() : SupervisorThreadFault();
             }
             uvblock.FillFirst(far & PAGE_VADDR_MASK, paddr, uvblock);
+        }
+
+        /* map as writeable if:
+            If subsequent access (pte != 0) then use vblock access permissions
+            If first access, only writeable if the current access is a write, else read */
+        auto mret = vmem_map(far & PAGE_VADDR_MASK, paddr, uvblock.b.user, 
+            pte ? uvblock.b.write : write,
+            uvblock.b.exec,
+            umem->ttbr0, ~0ULL, nullptr, uvblock.b.memory_type);
+        if(mret != 0)
+        {
+            klog("pf: vmem_map failed %d\n", mret);
+            return user ? UserThreadFault() : SupervisorThreadFault();
         }
 
 #if DEBUG_PF
