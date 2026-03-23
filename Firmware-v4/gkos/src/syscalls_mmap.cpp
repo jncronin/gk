@@ -138,6 +138,11 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     {
         *retaddr = (void *)vb.data_start();
 
+#if DEBUG_MMAP
+        klog("mmap: %p - %p R%s%s\n", (void *)vb.data_start(), (void *)vb.data_end(),
+            vb.write ? "W" : "", vb.exec ? "X" : "");
+#endif
+
         if(map_direct)
         {
             vmem_map(vb, map_direct_pmem, p->user_mem->ttbr0);
@@ -170,10 +175,15 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
             we only add permissions here */
         reg.b.write = reg.b.write || (is_write != 0);
         reg.b.exec = reg.b.exec || (is_exec != 0);
+
+#if DEBUG_MMAP
+        klog("setprot: %p set to R%s%s\n", addr, reg.b.write ? "W" : "", reg.b.exec ? "X" : "");
+#endif
         return 0;
     }
     else
     {
+        klog("setprot: address not mapped %p\n", addr);
         *_errno = ENOMEM;
         return -1;
     }
