@@ -32,17 +32,8 @@ void supervisor_shutdown_system()
         klog("shutdown: ext4 unmounted: %d\n", ss_ext4.Value());
     }
 
-    sd_request sdr;
-    SimpleSignal ss_sd;
-    int ret_sd;
-    sdr.block_count = 0xffffffff;
-    sdr.block_start = 0xffffffff;
-    sdr.mem_address = (void *)0xffffffff;
-    sdr.completion_event = &ss_sd;
-    sdr.res_out = &ret_sd;
-    sd_perform_transfer_async(sdr);
-    ss_sd.Wait(SimpleSignal::SignalOperation::Noop, 0, clock_cur() + kernel_time_from_ms(500));
-    klog("shutdown: sd disabled: %d\n", ss_sd.Value());
+    sd_unmount();
+    klog("shutdown: sd disabled\n");
     while(!(USART6_VMEM->ISR & USART_ISR_TXFE));
 
     /* Pull the power plug */
