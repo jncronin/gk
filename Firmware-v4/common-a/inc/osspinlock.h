@@ -77,8 +77,10 @@ class CriticalGuard
             {
                 klog("CriticalGuard: nested lock() - potential bug\n");
             }
+            __asm__ volatile("sevl\n" ::: "memory");
             while(true)
             {
+                __asm__ volatile("wfe\n" ::: "memory");
                 size_t i = 0U;
                 disable_interrupts();
                 std::fill(locked.begin(), locked.end(), false);
