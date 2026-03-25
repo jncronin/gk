@@ -134,7 +134,6 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
 
     init_i2c();
     init_sd();
-    init_ext4();
     init_screen();
     init_sound();
     init_pwr();

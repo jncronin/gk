@@ -242,7 +242,6 @@ static std::string parse_fname(const std::string &pname)
 int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 {
     // try and get free process file handle
-    auto t = GetCurrentThreadForCore();
     auto p = GetCurrentProcessForCore();
     bool is_opendir = (mode == S_IFDIR) && (flags == O_RDONLY);
 
@@ -345,21 +344,17 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     klog("syscall_open: %s.%u is LwextFile\n", p->name.c_str(), fd);
 #endif
     cg.unlock();
-    auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
-        fd, t->ss, t->ss_p);
-    if(ext4_send_message(msg))
-    {
-        return deferred_return(_errno);
-    }
-    else
+
+    if(gk_ext4_open(lwf->fname.c_str(), flags, mode, fd, _errno) < 0)
     {
         cg.relock();
         p->open_files.f[fd] = nullptr;
-        *_errno = ENOMEM;
         return -1;
     }
-
-    return -1;
+    else
+    {
+        return fd;
+    }
 }
 
 int syscall_opendir(const char *pathname, int *_errno)
@@ -432,18 +427,7 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
 
     auto act_name = parse_fname(pathname);
 
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_mkdir_message(act_name.c_str(), mode, t->ss, t->ss_p);
-    if(ext4_send_message(msg))
-    {
-        while(!t->ss.Wait(SimpleSignal::Set, 0));
-        return t->ss_p.ival1;
-    }
-    else
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
+    return gk_ext4_mkdir(act_name.c_str(), mode, _errno);
 }
 
 int syscall_unlink(const char *pathname, int *_errno)
@@ -457,18 +441,7 @@ int syscall_unlink(const char *pathname, int *_errno)
 
     auto act_name = parse_fname(pathname);
 
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_unlink_message(act_name.c_str(), t->ss, t->ss_p);
-    if(ext4_send_message(msg))
-    {
-        while(!t->ss.Wait(SimpleSignal::Set, 0));
-        return t->ss_p.ival1;
-    }
-    else
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
+    return gk_ext4_unlink(act_name.c_str(), _errno);
 }
 
 int syscall_chdir(const char *pathname, int *_errno)

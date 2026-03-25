@@ -24,15 +24,7 @@ ssize_t LwextFile::Read(char *buf, size_t count, int *_errno)
         *_errno = EBADF;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_read_message(f, buf, count, t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_read(f, buf, count, _errno);
 }
 
 ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
@@ -47,15 +39,7 @@ ssize_t LwextFile::Write(const char *buf, size_t count, int *_errno)
         *_errno = EBADF;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_write_message(f, const_cast<char *>(buf), count, t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_write(f, buf, count, _errno);
 }
 
 int LwextFile::Fstat(struct stat *buf, int *_errno)
@@ -65,15 +49,7 @@ int LwextFile::Fstat(struct stat *buf, int *_errno)
         *_errno = EBADF;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_fstat_message(f, d, is_dir, buf, fname.c_str(), t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_fstat(f, d, is_dir, buf, fname.c_str(), _errno);
 }
 
 off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
@@ -88,15 +64,7 @@ off_t LwextFile::Lseek(off_t offset, int whence, int *_errno)
         *_errno = EBADF;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_lseek_message(f, offset, whence, t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_lseek(f, offset, whence, _errno);
 }
 
 int LwextFile::Ftruncate(off_t length, int *_errno)
@@ -111,15 +79,7 @@ int LwextFile::Ftruncate(off_t length, int *_errno)
         *_errno = EBADF;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_ftruncate_message(f, length, t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_ftruncate(f, length, _errno);
 }
 
 int LwextFile::Close(int *_errno)
@@ -129,15 +89,7 @@ int LwextFile::Close(int *_errno)
         *_errno = EBADF;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_close_message(is_dir ? d.f : f, t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_close(is_dir ? d.f : f, _errno);
 }
 
 int LwextFile::ReadDir(dirent *de, int *_errno)
@@ -152,13 +104,5 @@ int LwextFile::ReadDir(dirent *de, int *_errno)
         *_errno = EINVAL;
         return -1;
     }
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_readdir_message(d, de, t->ss, t->ss_p);
-    if(!ext4_send_message(msg))
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
-    while(!t->ss.Wait(SimpleSignal::Set, 0));
-    return t->ss_p.ival1;
+    return gk_ext4_readdir(d, de, _errno);
 }

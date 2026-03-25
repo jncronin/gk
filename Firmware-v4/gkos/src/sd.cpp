@@ -283,5 +283,11 @@ bool sd_get_ready()
 uint64_t sd_get_size()
 {
     MutexGuard mg(sdmmc[0].m);
+    if(!sdmmc[0].sd_ready)
+    {
+        sdmmc[0].reset();
+        if(!sdmmc[0].sd_ready)
+            return 0;
+    }
     return sdmmc[0].get_size();
 }
