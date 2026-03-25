@@ -6,6 +6,11 @@
 int syscall_wifienable(int en, int *_errno)
 {
     auto p = GetCurrentProcessForCore();
+    if(!p)
+    {
+        *_errno = EFAULT;
+        return -1;
+    }
     if(!p->priv_control_devices)
     {
         *_errno = EPERM;
