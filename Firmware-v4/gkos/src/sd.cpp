@@ -155,7 +155,13 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
         sdmmc[0].sd_ready = false;
         return ret;
     }
-    sdmmc[0].tfer_complete.Wait();
+    if(!sdmmc[0].tfer_complete.Wait(clock_cur() + kernel_time_from_ms(125)))
+    {
+        klog("sdmmc: TIMEOUT block %u, nblocks %u, is_read: %s, addr: %p\n",
+            block_start, block_count, is_read ? "true" : "false", mem_address);
+        sdmmc[0].sd_ready = false;
+        return -1;
+    }
     if(sdmmc[0].sd_status)
     {
 #if DEBUG_SD
@@ -268,6 +274,10 @@ void SDMMC1_IRQHandler()
     }
     else
     {
+        klog("sdmmc: unexpected interrupt: %x\n", sta);
+        sdmmc[0].sd_ready = false;
+        sdmmc[0].sd_status = sta;
+        sdmmc[0].tfer_complete.Signal();
     }
 
     SDMMC1_VMEM->ICR = sta & (errors | DATAEND) & 0x4005ff;
