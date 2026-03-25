@@ -748,7 +748,7 @@ void dma_irqhandler(exception_regs *, uint64_t)
     __DMB();
 }
 
-int sound_set_volume(int new_vol_pct)
+int sound_set_volume(int new_vol_pct, bool persist)
 {
     if(new_vol_pct < 0 || new_vol_pct > 100)
         return -1;
@@ -770,6 +770,7 @@ int sound_set_volume(int new_vol_pct)
     tad_write(0x67, pcm1753_volume(new_vol_pct));
     tad_write(0x69, pcm1753_volume(new_vol_pct));
 
+    if(persist)
     {
         PersistentMemoryWriteGuard pmg;
         persistent[PERSISTENT_ID_VOLUME] = volume_pct;

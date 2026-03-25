@@ -12,8 +12,10 @@
 
 void supervisor_shutdown_system()
 {
-    /* First, switch off the screen */
-    screen_set_brightness(0);
+    /* First, switch off the screen and sound */
+    screen_set_brightness(0, false);
+    sound_set_volume(0, false);
+    
     //LTDC->GCR = 0;
     klog("shutdown: screen off\n");
 
