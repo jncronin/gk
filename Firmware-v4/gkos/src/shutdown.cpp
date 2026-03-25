@@ -4,6 +4,7 @@
 #include "sd.h"
 #include "pwr.h"
 #include "pmic.h"
+#include "sound.h"
 //#include "reset.h"
 #include "vmem.h"
 #include <stm32mp2xx.h>
