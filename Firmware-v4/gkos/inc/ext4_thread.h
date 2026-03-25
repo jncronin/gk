@@ -20,7 +20,8 @@ int gk_ext4_fstat(ext4_file &e4f, ext4_dir &e4d, bool is_dir, struct stat *st, c
 int gk_ext4_close(ext4_file &e4f, int *_errno);
 int gk_ext4_readdir(ext4_dir &e4d, struct dirent *de, int *_errno);
 int gk_ext4_unlink(const char *pathname, int *_errno);
-int gk_ext4_unmount(int *_errno);    
+int gk_ext4_unmount(int *_errno);
+int gk_ext4_link(const char *oldpath, const char *newpath, int *_errno);
 
 class LwextFile : public File
 {

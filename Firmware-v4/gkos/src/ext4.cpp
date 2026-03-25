@@ -592,6 +592,27 @@ int gk_ext4_unlink(const char *pathname, int *_errno)
     }
 }
 
+int gk_ext4_link(const char *oldname, const char *newname, int *_errno)
+{
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto extret = ext4_flink(oldname, newname);
+    if(extret == EOK)
+    {
+        return 0;
+    }
+    else
+    {
+        *_errno = extret;
+        return -1;
+    }
+}
+
 int gk_ext4_unmount(int *_errno)    
 {
     MutexGuard mg(m_ext4);

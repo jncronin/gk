@@ -444,6 +444,27 @@ int syscall_unlink(const char *pathname, int *_errno)
     return gk_ext4_unlink(act_name.c_str(), _errno);
 }
 
+int syscall_link(const char *oldname, const char *newname, int *_errno)
+{
+    if(!oldname)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(!newname)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    ADDR_CHECK_BUFFER_R(oldname, 1);
+    ADDR_CHECK_BUFFER_W(newname, 1);
+
+    auto act_oldname = parse_fname(oldname);
+    auto act_newname = parse_fname(newname);
+
+    return gk_ext4_link(act_oldname.c_str(), act_newname.c_str(), _errno);
+}
+
 int syscall_chdir(const char *pathname, int *_errno)
 {
     if(!pathname)
