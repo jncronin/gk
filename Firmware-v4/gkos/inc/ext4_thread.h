@@ -38,6 +38,8 @@ class LwextFile : public File
 
         int Close(int *_errno);
 
+        size_t Flen(int *_errno);
+
         LwextFile(ext4_file fildes, std::string fname);
         ext4_file f;
         ext4_dir d;

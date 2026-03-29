@@ -45,9 +45,13 @@ class File
         virtual int Listen(int backlog, int *_errno);
         virtual int Accept(void *addr, unsigned int *addrlen, int *_errno);
 
+        virtual size_t Flen(int *_errno);
+
         FileType GetType() const;    // support type checking without rtti
 
         uint32_t opts = 0;
+
+        std::string path;
 
         virtual ~File() noexcept = default;
 };

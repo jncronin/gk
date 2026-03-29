@@ -1,5 +1,10 @@
 #include "osfile.h"
 
+size_t File::Flen(int *_errno)
+{
+    return 0;
+}
+
 int File::Isatty(int *_errno)
 {
     *_errno = ENOTTY;

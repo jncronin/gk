@@ -115,6 +115,9 @@ int syscall_chdir(const char *path, int *_errno);
 int syscall_getcwd(char *path, size_t bufsize, int *_errno);
 int syscall_link(const char *oldpath, const char *newpath, int *_errno);
 
+int syscall_getndl(int *_errno);
+int syscall_getdl(int dl_id, int *fd, char *name, size_t *namelen, void **img, void **baseaddr, int *_errno);
+
 int syscall_peekevent(Event *ev, int *_errno);
 int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno);
 

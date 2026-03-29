@@ -265,6 +265,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = std::make_shared<UARTFile>(true, false);
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
     if(act_name == "/dev/stdout")
@@ -275,6 +276,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = std::make_shared<UARTFile>(false, true);
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
     if(act_name == "/dev/stderr")
@@ -285,6 +287,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = std::make_shared<UARTFile>(false, true);
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
     if(act_name.starts_with("/dev/ramdisk/"))
@@ -297,7 +300,10 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         auto rdret = ramdisk_open(act_name.substr(13), &p->open_files.f[fd],
             (flags & 3) != O_WRONLY, (flags & 3) != O_RDONLY);
         if(rdret == 0)
+        {
+            p->open_files.f[fd]->path = act_name;
             return fd;
+        }
         else
         {
             *_errno = ENOENT;
@@ -314,7 +320,10 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         auto ffret = fatfs_open(act_name.substr(9), &p->open_files.f[fd],
             (flags & 3) != O_WRONLY, (flags & 3) != O_RDONLY);
         if(ffret == 0)
+        {
+            p->open_files.f[fd]->path = act_name;
             return fd;
+        }
         else
         {
             *_errno = ENOENT;
@@ -331,6 +340,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = new USBTTYFile();
+        p->open_files.f[fd]->path = act_name;
         return fd;
 #endif
         return -1;
@@ -353,6 +363,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
     else
     {
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
 }

@@ -92,6 +92,13 @@ int LwextFile::Close(int *_errno)
     return gk_ext4_close(is_dir ? d.f : f, _errno);
 }
 
+size_t LwextFile::Flen(int *_errno)
+{
+    if(is_dir)
+        return 0;
+    return f.fsize;
+}
+
 int LwextFile::ReadDir(dirent *de, int *_errno)
 {
     if(!is_dir)
