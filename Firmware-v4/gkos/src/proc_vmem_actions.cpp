@@ -1,6 +1,7 @@
 #include "proc_vmem.h"
 #include <cstring>
 #include "vmem.h"
+#include "cache.h"
 #include "syscalls_int.h"
 
 static int action_zerofill(uintptr_t page_vaddr, uintptr_t page_paddr, MemBlock &mb);
@@ -144,7 +145,10 @@ MemBlock MemBlock::TLSMemory(uintptr_t src_len,
 
 static int action_zerofill(uintptr_t page_vaddr, uintptr_t page_paddr, MemBlock &mb)
 {
-    memset((void *)PMEM_TO_VMEM(page_paddr), 0, VBLOCK_64k);
+    for(uint64_t ptr = 0; ptr < VBLOCK_64k; ptr += CACHE_LINE_SIZE)
+    {
+        __asm__ volatile("dc zva, %[addr]\n" : : [addr] "r" (ptr + PMEM_TO_VMEM(page_paddr)) : "memory");
+    }
     return 0;
 }
 

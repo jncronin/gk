@@ -86,7 +86,13 @@ unsigned int clock_set_cpu_and_vddcpu(unsigned int freq)
         freq = min_freq;
     }
 
-    if(freq > 1200000000U)
+    if(freq > 1500000000U)
+    {
+        // set vddcpu to 0.93V (max VDDCPU is 0.935)
+        pmic_set_power(PMIC_Power_Target::CPU, 930U);
+        udelay(5000);
+    }
+    else if(freq > 1200000000U)
     {
         // set vddcpu to 0.91V
         pmic_set_power(PMIC_Power_Target::CPU, 910U);

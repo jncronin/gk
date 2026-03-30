@@ -173,6 +173,8 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
 
     pt[l3_addr] = (paddr & ~0xffffULL) | attr;
 
+    __asm__ volatile("dsb ish\n" ::: "memory");
+
     if(paddr_out)
         *paddr_out = paddr;
 
@@ -369,8 +371,8 @@ void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr)
 {
     // All ttbr1 pages are marked as global, vae1s ignores the asid here and instead acts like vaae1s
     __asm__ volatile(
-        "dsb ishst\n"
-        "tlbi vae1is, %[addr_enc]\n"
+        "dsb ish\n"
+        "tlbi vae1, %[addr_enc]\n"
         "dsb ish\n"
         "isb\n"
         : :

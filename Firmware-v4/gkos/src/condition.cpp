@@ -53,7 +53,6 @@ void Condition::Signal(bool signal_all)
     klog("cond: %u (%p) signalled%s\n", id, this, signal_all ? " (signal all)" : "");
 #endif
 
-
     if(signal_all)
     {
         for(auto &bt : waiting_threads)

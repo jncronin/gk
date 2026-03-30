@@ -20,6 +20,8 @@ class SDIF
         volatile uint32_t *pwr_valid_reg;
         volatile uint32_t *rcc_reg;
 
+        BinarySemaphore tfer_complete;
+
         int (*supply_on)() = nullptr;
         int (*supply_off)() = nullptr;
         int (*io_3v3)() = nullptr;

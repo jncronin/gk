@@ -3,7 +3,7 @@
 
 #define GK_NUM_CORES                2
 
-#define GK_OVERCLOCK_MHZ            1800
+#define GK_OVERCLOCK_MHZ            2200
 
 #define GK_ENABLE_NETWORK           1
 #define GK_ENABLE_WIFI              1

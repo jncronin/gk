@@ -8,13 +8,12 @@
 #include "cache.h"
 #include "process.h"
 
-int sd_perform_transfer_async(const sd_request &req);
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries = 10);
 
 int sd_cache_init();
 
-/* Implements a cache on 64 kIb SD card blocks */
+/* Implements a cache on 64 kiB SD card blocks */
 static VMemBlock vb_cache;
 static const constexpr unsigned int n_entries = 1024;
 static unsigned int next_entry = 0;

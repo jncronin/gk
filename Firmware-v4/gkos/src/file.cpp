@@ -1,5 +1,10 @@
 #include "osfile.h"
 
+size_t File::Flen(int *_errno)
+{
+    return 0;
+}
+
 int File::Isatty(int *_errno)
 {
     *_errno = ENOTTY;
@@ -62,5 +67,11 @@ int File::ReadDir(dirent *de, int *_errno)
 int File::Ftruncate(off_t length, int *_errno)
 {
     *_errno = EROFS;
+    return -1;
+}
+
+int File::Ioctl(unsigned int, void *, size_t len, int *_errno)
+{
+    *_errno = EINVAL;
     return -1;
 }

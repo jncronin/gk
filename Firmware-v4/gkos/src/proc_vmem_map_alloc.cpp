@@ -132,6 +132,25 @@ VMemBlock MapVBlockAllocator::AllocAny(MemBlock region, bool lowest_first)
     auto len = (uintptr_t)region.b.length;
     region.b.valid = true;
 
+    // The following logic does not work with an empty map, special case this
+    if(l.size() == 0)
+    {
+        if(len > length)
+        {
+            return InvalidVMemBlock();
+        }
+        if(lowest_first)
+        {
+            region.b.base = base;
+        }
+        else
+        {
+            region.b.base = base + length - len;
+        }
+        l.insert_or_assign(region.b.base, region);
+        return region.b;
+    }
+
     // for a map with 'n' used entries, there are potentially 'n+1' empty spaces
     //  either side/between the used entries.  Iterate to check all of them
     

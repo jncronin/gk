@@ -37,7 +37,7 @@ static_assert(EXT4_DE_SYMLINK == DT_LNK);
 
 extern char _sext4_data, _eext4_data;
 
-static bool unmounted = false;
+static bool unmounted = true;
 
 static int sd_open(struct ext4_blockdev *bdev);
 static int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
@@ -53,8 +53,7 @@ EXT4_BLOCKDEV_STATIC_INSTANCE(sd, 512, 0, sd_open, sd_bread, sd_bwrite, sd_close
 
 static ext4_blockdev sd_part;
 
-/* message queue */
-static FixedQueue<ext4_message, 8> ext4_queue;
+static Mutex m_ext4;
 
 extern "C" void *ext4_user_buf_alloc(size_t n)
 {
@@ -228,25 +227,35 @@ static int do_mount()
     }
 }
 
-static void handle_open_message(ext4_message &msg)
+static int check_mounted()
 {
+    if(unmounted)
+        prepare_ext4();
+    if(unmounted)
+        return -1;
+    else
+        return 0;
+}
+
+int gk_ext4_open(const char *pathname, int flags, int mode, int fd, int *_errno)
+{
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
     // try and load in file system
     ext4_file f;
     ext4_dir d;
 
-    auto call_t = ThreadList.Get(msg.tid).v;
-    if(!call_t)
-    {
-        // message from zombie process - ignore it
-        klog("ext4: open without tid\n");
-        return;
-    }
-    auto p = ProcessList.Get(call_t->p).v;
+    auto p = GetCurrentProcessForCore();
 
     // convert newlib flags to lwext4 flags
-    bool is_opendir = (msg.params.open_params.mode == S_IFDIR) && (msg.params.open_params.f == O_RDONLY);
+    bool is_opendir = (mode == S_IFDIR) && (flags == O_RDONLY);
 
-    auto extret = ext4_fopen2(&f, msg.params.open_params.pathname, msg.params.open_params.flags);
+    auto extret = ext4_fopen2(&f, pathname, flags);
     {
         if(extret == EOK)
         {
@@ -254,27 +263,25 @@ static void handle_open_message(ext4_message &msg)
 
             if(is_opendir)
             {
-                p->open_files.f[msg.params.open_params.f] = nullptr;
+                p->open_files.f[fd] = nullptr;
 
-                msg.ss_p->ival1 = -1;
-                msg.ss_p->ival2 = ENOTDIR;
-                msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                *_errno = ENOTDIR;
+                return -1;
             }
             auto lwfile = reinterpret_cast<LwextFile *>(
-                p->open_files.f[msg.params.open_params.f].get());
+                p->open_files.f[fd].get());
             lwfile->f = f;
-            msg.ss_p->ival1 = msg.params.open_params.f;
 #if EXT4_DEBUG
-            klog("ext4: opened %s\n", msg.params.open_params.pathname);
+            klog("ext4: opened %s\n", pathname);
 #endif
-            msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+            return fd;
         }
         else
         {
             if(extret == ENOENT)
             {
                 // try and open as directory
-                extret = ext4_dir_open(&d, msg.params.open_params.pathname);
+                extret = ext4_dir_open(&d, pathname);
             }
             {
                 CriticalGuard cg(p->open_files.sl);
@@ -282,88 +289,87 @@ static void handle_open_message(ext4_message &msg)
                 if(extret == EOK)
                 {
                     auto lwfile = reinterpret_cast<LwextFile *>(
-                        p->open_files.f[msg.params.open_params.f].get());
+                        p->open_files.f[fd].get());
                     lwfile->d = d;
                     lwfile->is_dir = true;
-                    msg.ss_p->ival1 = msg.params.open_params.f;
 #if EXT4_DEBUG
-                    klog("ext4: opened %s as directory\n", msg.params.open_params.pathname);
+                    klog("ext4: opened %s as directory\n", pathname);
 #endif
-                    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                    return fd;
                 }
                 else
                 {
 #if EXT4_DEBUG
                     {
                         klog("ext4_fopen: open(%s) failing with %d\n",
-                            msg.params.open_params.pathname, extret);
+                            pathname, extret);
                     }
 #endif
-                    p->open_files.f[msg.params.open_params.f] = nullptr;
+                    p->open_files.f[fd] = nullptr;
 
-                    msg.ss_p->ival1 = -1;
-                    msg.ss_p->ival2 = extret;
-                    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+                    *_errno = extret;
+                    return -1;
                 }
             }
         }
     }
 }
 
-static void handle_read_message(ext4_message &msg)
+int gk_ext4_read(ext4_file &e4f, char *buf, int nbytes, int *_errno)
 {
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
     size_t br;
     int extret;
 
 #if EXT4_DEBUG
     {
-        klog("ext4: read(%p, %d)\n", (uint32_t)(uintptr_t)msg.params.rw_params.buf,
-            msg.params.rw_params.nbytes);
+        klog("ext4: read(%p, %d)\n", (uint32_t)(uintptr_t)buf,
+            nbytes);
     }
 
 #endif
 
-    {
-        //SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, false, true);
-        extret = ext4_fread(msg.params.rw_params.e4f,
-            msg.params.rw_params.buf, msg.params.rw_params.nbytes,
-            &br);
-    }
+    extret = ext4_fread(&e4f, buf, nbytes, &br);
+
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = static_cast<int>(br);
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return static_cast<int>(br);
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
-static void handle_write_message(ext4_message &msg)
+int gk_ext4_write(ext4_file &e4f, const char *buf, int nbytes, int *_errno)
 {
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
     size_t bw;
     int extret;
 
-    {
-        //SharedMemoryGuard(msg.params.rw_params.buf, msg.params.rw_params.nbytes, true, false);
-        extret = ext4_fwrite(msg.params.rw_params.e4f,
-            msg.params.rw_params.buf, msg.params.rw_params.nbytes,
-            &bw);
-    }
+    extret = ext4_fwrite(&e4f, buf, nbytes, &bw);
 
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = static_cast<int>(bw);
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return static_cast<int>(bw);
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
@@ -375,372 +381,264 @@ struct timespec lwext_time_to_timespec(uint32_t t)
     return ret;
 }
 
-static inline void copy_dmaaware(void *dest, const void *src, size_t n)
+int gk_ext4_ftruncate(ext4_file &e4f, off_t length, int *_errno)
 {
-    memcpy(dest, src, n);
-
-    //BKPT();
-#if 0
-#if DEBUG_EXT
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
     {
-        klog("copy_dmaaware: dest: %x, src: %x, len %d, coreid: %d\n",
-            (uint32_t)(uintptr_t)dest, (uint32_t)(uintptr_t)src, n, GetCoreID());
+        *_errno = ENOSYS;
+        return -1;
     }
-#endif
 
-    // handle M4 copying to M7 DTCM
-    auto pstat = (uint32_t)(uintptr_t)dest;
-    if((pstat >= 0x20000000) && (pstat < 0x20020000) && (GetCoreID() == 1))
-    {
-        SharedMemoryGuard smg(dest, n, false, true, true);
-        const auto dmac = MDMA_Channel4;
-        while(dmac->CCR & MDMA_CCR_EN);
-        dmac->CTCR = MDMA_CTCR_SWRM |
-            ((n - 1U) << MDMA_CTCR_TLEN_Pos) |
-            (2U << MDMA_CTCR_DINCOS_Pos) |
-            (2U << MDMA_CTCR_SINCOS_Pos) |
-            (2U << MDMA_CTCR_DSIZE_Pos) |
-            (2U << MDMA_CTCR_SSIZE_Pos) |
-            (2U << MDMA_CTCR_DINC_Pos) |
-            (2U << MDMA_CTCR_SINC_Pos);
-        dmac->CBNDTR = n;
-        dmac->CSAR = (uint32_t)(uintptr_t)&src;
-        dmac->CDAR = pstat;
-        dmac->CBRUR = 0U;
-        dmac->CLAR = 0U;
-        dmac->CTBR = MDMA_CTBR_DBUS;
-        dmac->CMAR = 0U;
-        dmac->CCR = MDMA_CCR_EN;
-        dmac->CCR = MDMA_CCR_EN | MDMA_CCR_SWRQ;
-        while(!(dmac->CISR & MDMA_CISR_CTCIF)) {}
+    auto extret = ext4_ftruncate(&e4f, length);
 
-        // debug
-#if DEBUG_EXT
-        {
-            klog("copy_dmaaware: cisr: %x\n", dmac->CISR);
-        }
-#endif
-        dmac->CIFCR = 0x1fU;
-    }
-    else
-    {
-        SharedMemoryGuard smg(dest, n, false, true);
-        memcpy(dest, src, n);
-    }
-#endif
-}
-
-static void handle_ftruncate_message(ext4_message &msg)
-{
-    auto extret = ext4_ftruncate(msg.params.ftruncate_params.e4f,
-        msg.params.ftruncate_params.length);
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = 0;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return 0;
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
-static void handle_fstat_message(ext4_message &msg)
+int gk_ext4_fstat(ext4_file &e4f, ext4_dir &e4d, bool is_dir, struct stat *st, const char *pathname, int *_errno)
 {
-    struct stat buf = { 0 };
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
 
     int extret;
 
     uint32_t t;
-    auto fname = msg.params.fstat_params.pathname;
-    auto f = msg.params.fstat_params.e4f;
-    auto d = msg.params.fstat_params.e4d;
+    auto fname = pathname;
+    auto f = is_dir ? nullptr : &e4f;
+    auto d = is_dir ? &e4d : nullptr;
 
     [[maybe_unused]] auto ino = f ? f->inode : d->f.inode;
     {
         if((extret = ext4_atime_get(fname, &t)) != EOK)
             goto _err;
-        buf.st_atim = lwext_time_to_timespec(t);
+        st->st_atim = lwext_time_to_timespec(t);
 
         if((extret = ext4_ctime_get(fname, &t)) != EOK)
             goto _err;
-        buf.st_ctim = lwext_time_to_timespec(t);
+        st->st_ctim = lwext_time_to_timespec(t);
 
         if((extret = ext4_mtime_get(fname, &t)) != EOK)
             goto _err;
-        buf.st_mtim = lwext_time_to_timespec(t);
+        st->st_mtim = lwext_time_to_timespec(t);
 
-        buf.st_dev = 0;
-        buf.st_ino = f ? f->inode : d->f.inode;
-        buf.st_mode = f ? _IFREG : _IFDIR;
+        st->st_dev = 0;
+        st->st_ino = f ? f->inode : d->f.inode;
+        st->st_mode = f ? _IFREG : _IFDIR;
         
         uint32_t mode;
         if((extret = ext4_mode_get(fname, &mode)) != EOK)
             goto _err;
-        buf.st_mode |= mode;
-        buf.st_nlink = 1;
+        st->st_mode |= mode;
+        st->st_nlink = 1;
         
         uint32_t uid;
         uint32_t gid;
         if((extret = ext4_owner_get(fname, &uid, &gid)) != EOK)
             goto _err;
-        buf.st_uid = static_cast<uid_t>(uid);
-        buf.st_gid = static_cast<gid_t>(gid);
+        st->st_uid = static_cast<uid_t>(uid);
+        st->st_gid = static_cast<gid_t>(gid);
 
-        buf.st_rdev = 0;
-        buf.st_size = f ? f->fsize : d->f.fsize;
-        buf.st_blksize = 512;
-        buf.st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
+        st->st_rdev = 0;
+        st->st_size = f ? f->fsize : d->f.fsize;
+        st->st_blksize = 512;
+        st->st_blocks = f ? ((f->fsize + 511) / 512) : 0; // round up
     }
-
-    // handle M4 copying to M7 DTCM
-#if DEBUG_EXT
-    {
-        klog("fstat: precopy\n");
-    }
-#endif
-    copy_dmaaware(msg.params.fstat_params.st, &buf, sizeof(struct stat));
-    msg.ss_p->ival1 = 0;
-    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
 
 #if DEBUG_EXT
     {
         klog("fstat: %s: blksize: %d, blocks: %d, ino: %d, mode: %x, size: %d\n",
-            msg.params.fstat_params.pathname,
-            buf.st_blksize,
-            buf.st_blocks,
-            buf.st_ino,
-            buf.st_mode,
-            buf.st_size);
+            pathname,
+            st->st_blksize,
+            st->st_blocks,
+            st->st_ino,
+            st->st_mode,
+            st->st_size);
     }
 #endif
     
-    return;
+    return 0;
 
 _err:
     {
-        klog("ext4_fstat: fstat(%s) failing\n", msg.params.fstat_params.pathname);
+        klog("ext4_fstat: fstat(%s) failing\n", pathname);
     }
-    msg.ss_p->ival1 = -1;
-    msg.ss_p->ival2 = extret;
-    msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+    *_errno = extret;
+    return -1;
 }
 
-void handle_lseek_message(ext4_message &msg)
+int gk_ext4_lseek(ext4_file &e4f, off_t offset, int whence, int *_errno)
 {
-    auto f = msg.params.lseek_params.e4f;
-    auto extret = ext4_fseek(f,
-        msg.params.lseek_params.offset,
-        msg.params.lseek_params.whence);
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto f = &e4f;
+    auto extret = ext4_fseek(f, offset, whence);
+
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = f->fpos;
-        msg.ss->Signal();
+        return f->fpos;
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
-void handle_close_message(ext4_message &msg)
+int gk_ext4_close(ext4_file &e4f, int *_errno)
 {
-    auto &f = msg.params.close_params.e4f;
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto &f = e4f;
     auto extret = ext4_fclose(&f);
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = 0;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return 0;
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
-void handle_mkdir_message(ext4_message &msg)
+int gk_ext4_mkdir(const char *pathname, int mode, int *_errno)
 {
-    auto extret = ext4_dir_mk(msg.params.open_params.pathname);
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto extret = ext4_dir_mk(pathname);
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = 0;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return 0;
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
-void handle_readdir_message(ext4_message &msg)
+int gk_ext4_readdir(ext4_dir &e4d, struct dirent *de, int *_errno)
 {
-    auto extret = ext4_dir_entry_next(msg.params.readdir_params.e4d);
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto extret = ext4_dir_entry_next(&e4d);
     if(extret == nullptr)
     {
-        msg.ss_p->ival1 = 0;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        // 0 = end of stream without errno set
+        return 0;
     }
     else
     {
-        dirent nde = { 0 };
-        nde.d_ino = extret->inode;
-        nde.d_off = 0;
-        nde.d_reclen = sizeof(dirent);
-        nde.d_type = extret->inode_type;
-        strncpy(nde.d_name, (const char *)extret->name, 255);
-        nde.d_name[255] = 0;
-        copy_dmaaware(msg.params.readdir_params.de, &nde, sizeof(dirent));
-        msg.ss_p->ival1 = 1;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        de->d_ino = extret->inode;
+        de->d_off = 0;
+        de->d_reclen = sizeof(dirent);
+        de->d_type = extret->inode_type;
+        strncpy(de->d_name, (const char *)extret->name, 255);
+        de->d_name[255] = 0;
+        return 1;
     }
 }
 
-void handle_unlink_message(ext4_message &msg)
+int gk_ext4_unlink(const char *pathname, int *_errno)
 {
-    auto extret = ext4_fremove(msg.params.unlink_params.pathname);
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto extret = ext4_fremove(pathname);
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = 0;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return 0;
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
 }
 
-void handle_unmount_message(ext4_message &msg)
+int gk_ext4_link(const char *oldname, const char *newname, int *_errno)
 {
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
+    auto extret = ext4_flink(oldname, newname);
+    if(extret == EOK)
+    {
+        return 0;
+    }
+    else
+    {
+        *_errno = extret;
+        return -1;
+    }
+}
+
+int gk_ext4_unmount(int *_errno)    
+{
+    MutexGuard mg(m_ext4);
+    if(check_mounted() != 0)
+    {
+        *_errno = ENOSYS;
+        return -1;
+    }
+
     auto extret = ext4_umount("/");
     unmounted = true;
     if(extret == EOK)
     {
-        msg.ss_p->ival1 = 0;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        return 0;
     }
     else
     {
-        msg.ss_p->ival1 = -1;
-        msg.ss_p->ival2 = extret;
-        msg.ss->Signal(SimpleSignal::Set, thread_signal_lwext);
+        *_errno = extret;
+        return -1;
     }
-}
-
-void *ext4_thread(void *_p)
-{
-    (void)_p;
-
-    // test lwext4
-    prepare_ext4();
-
-    while(true)
-    {
-        ext4_message msg;
-        if(!ext4_queue.Pop(&msg))
-            continue;
-
-        if(unmounted)
-            continue;
-
-        // if message from a user thread then map its lower half here
-        auto call_t = ThreadList.Get(msg.tid).v;
-        if(!call_t)
-            continue;
-
-        if(call_t->is_privileged == false)
-        {
-            auto ret = GetCurrentThreadForCore()->assume_user_thread_lower_half(call_t);
-            if(ret != 0)
-            {
-                klog("ext4: assume_user_thread_lower_half failed: %d\n", ret);
-                continue;
-            }
-        }
-        
-        switch(msg.type)
-        {
-            case ext4_message::msg_type::Open:
-                handle_open_message(msg);
-                break;
-
-            case ext4_message::msg_type::Read:
-                handle_read_message(msg);
-                break;
-
-            case ext4_message::msg_type::Write:
-                handle_write_message(msg);
-                break;
-
-            case ext4_message::msg_type::Fstat:
-                handle_fstat_message(msg);
-                break;
-
-            case ext4_message::msg_type::Ftruncate:
-                handle_ftruncate_message(msg);
-                break;
-
-            case ext4_message::msg_type::Lseek:
-                handle_lseek_message(msg);
-                break;
-
-            case ext4_message::msg_type::Close:
-                handle_close_message(msg);
-                break;
-
-            case ext4_message::msg_type::Mkdir:
-                handle_mkdir_message(msg);
-                break;
-
-            case ext4_message::msg_type::ReadDir:
-                handle_readdir_message(msg);
-                break;
-
-            case ext4_message::msg_type::Unlink:
-                handle_unlink_message(msg);
-                break;
-
-            case ext4_message::msg_type::Unmount:
-                handle_unmount_message(msg);
-                break;
-        }
-
-        // release lower half thread
-        if(call_t->is_privileged == false)
-        {
-            auto ret = GetCurrentThreadForCore()->release_user_thread_lower_half();
-            if(ret != 0)
-            {
-                klog("ext4: release_user_thread_lower_half failed: %d\n", ret);
-            }
-        }
-    }
-}
-
-void init_ext4()
-{
-    Schedule(Thread::Create("ext4", ext4_thread, nullptr, true, GK_NPRIORITIES - 1, p_kernel));
 }
 
 int sd_open(ext4_blockdev *bdev)
 {
-    while(!sdmmc[0].sd_ready)
-        Yield();
-
-    if(bdev->part_size == 0 || bdev->bdif->ph_bcnt == 0)
-    {
-        bdev->part_size = sdmmc[0].sd_size;
-        bdev->bdif->ph_bcnt = bdev->part_size / bdev->bdif->ph_bsize;
-    }
+    bdev->part_size = sd_get_size();
+    bdev->bdif->ph_bcnt = bdev->part_size / bdev->bdif->ph_bsize;
 
     return EOK;
 }
@@ -760,7 +658,6 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
 #endif
 
     auto sdr = sd_transfer(blk_id, blk_cnt, buf, true);
-    //InvalidateM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
     if(sdr)
     {
         return EIO;
@@ -778,7 +675,6 @@ int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     if(!blk_cnt)
         return EOK;
 
-    //CleanM7Cache((uint32_t)buf, blk_cnt * 512, CacheType_t::Data);
     auto sdr = sd_transfer(blk_id, blk_cnt, (void *)buf, false);
     if(sdr)
     {
@@ -794,10 +690,4 @@ int sd_close(struct ext4_blockdev *bdev)
 {
     (void)bdev;
     return EOK;
-}
-
-bool ext4_send_message(ext4_message &msg)
-{
-    msg.tid = GetCurrentThreadForCore()->id;
-    return ext4_queue.Push(msg);
 }

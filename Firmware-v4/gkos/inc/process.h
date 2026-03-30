@@ -133,6 +133,21 @@ class Process
             std::vector<uint8_t> d;
         };
 
+        struct images_t
+        {
+            Spinlock sl;
+
+            struct img
+            {
+                std::string path;
+                int fd;
+                void *baseaddr;
+                void *img;
+            };
+
+            std::vector<img> imgs;
+        };
+
         std::string name;
         std::vector<id_t> threads;
         id_t id, ppid;
@@ -153,6 +168,7 @@ class Process
         audio_conf_t audio{};
         osd_t osd{};
         userspace_data_t userspace_data{};
+        images_t imgs{};
 
         /* Owned userspace sync primitives */
         owned_sync_list<Mutex> owned_mutexes = owned_sync_list(MutexList);

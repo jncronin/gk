@@ -38,6 +38,7 @@ int syscall_unlink(const char *pathname, int *_errno);
 int syscall_ftruncate(int file, off_t length, int *_errno);
 int syscall_close1(int file, int *_errno);
 int syscall_close2(int file, int *_errno);
+int syscall_ioctl(int file, unsigned int nr, void *ptr, size_t len, int *_errno);
 int syscall_socket(int domain, int type, int protocol, int *_errno);
 int syscall_bind(int sockfd, const sockaddr *addr, socklen_t addrlen, int *_errno);
 int syscall_listen(int sockfd, int backlog, int *_errno);
@@ -113,6 +114,10 @@ int syscall_readdir(int dirfd, dirent *de, int *_errno);
 int syscall_closedir(int dirfd, int *_errno);
 int syscall_chdir(const char *path, int *_errno);
 int syscall_getcwd(char *path, size_t bufsize, int *_errno);
+int syscall_link(const char *oldpath, const char *newpath, int *_errno);
+
+int syscall_getndl(int *_errno);
+int syscall_getdl(int dl_id, int *fd, char *name, size_t *namelen, void **img, void **baseaddr, int *_errno);
 
 int syscall_peekevent(Event *ev, int *_errno);
 int syscall_pushevents(pid_t pid, const Event *e, size_t nevents, int *_errno);

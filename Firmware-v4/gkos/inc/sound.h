@@ -12,7 +12,7 @@ int syscall_audiosetfreq(int freq, int *_errno);
 int syscall_audiogetbufferpos(size_t *nbufs, size_t *curbuf, size_t *buflen, size_t *bufpos,
     int *nchan, int *nbits, int *freq, int *_errno);
 
-int sound_set_volume(int vol_pct);
+int sound_set_volume(int vol_pct, bool persist = true);
 int sound_get_volume();
 int sound_set_extfreq(double freq);
 

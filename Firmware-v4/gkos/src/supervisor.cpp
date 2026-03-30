@@ -68,7 +68,7 @@ void supervisor_set_active(bool active, const gk_supervisor_visible_region *regs
     else
     {
         auto p = GetCurrentProcessForCore();
-        if(p->keymap.touch_is_mouse == false)
+        if(p && p->keymap.touch_is_mouse == false)
         {
             cm33_set_touch(false);
         }

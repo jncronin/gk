@@ -242,7 +242,6 @@ static std::string parse_fname(const std::string &pname)
 int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 {
     // try and get free process file handle
-    auto t = GetCurrentThreadForCore();
     auto p = GetCurrentProcessForCore();
     bool is_opendir = (mode == S_IFDIR) && (flags == O_RDONLY);
 
@@ -266,6 +265,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = std::make_shared<UARTFile>(true, false);
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
     if(act_name == "/dev/stdout")
@@ -276,6 +276,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = std::make_shared<UARTFile>(false, true);
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
     if(act_name == "/dev/stderr")
@@ -286,6 +287,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = std::make_shared<UARTFile>(false, true);
+        p->open_files.f[fd]->path = act_name;
         return fd;
     }
     if(act_name.starts_with("/dev/ramdisk/"))
@@ -298,7 +300,10 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         auto rdret = ramdisk_open(act_name.substr(13), &p->open_files.f[fd],
             (flags & 3) != O_WRONLY, (flags & 3) != O_RDONLY);
         if(rdret == 0)
+        {
+            p->open_files.f[fd]->path = act_name;
             return fd;
+        }
         else
         {
             *_errno = ENOENT;
@@ -315,7 +320,10 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
         auto ffret = fatfs_open(act_name.substr(9), &p->open_files.f[fd],
             (flags & 3) != O_WRONLY, (flags & 3) != O_RDONLY);
         if(ffret == 0)
+        {
+            p->open_files.f[fd]->path = act_name;
             return fd;
+        }
         else
         {
             *_errno = ENOENT;
@@ -332,9 +340,22 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             return -1;
         }
         p->open_files.f[fd] = new USBTTYFile();
+        p->open_files.f[fd]->path = act_name;
         return fd;
 #endif
         return -1;
+    }
+    if(act_name == "/dev/dri")
+    {
+        if(!is_opendir)
+        {
+            klog("open: attempt to open /dev/dri as file\n");
+            *_errno = ENOTDIR;
+            return -1;
+        }
+        p->open_files.f[fd] = std::make_shared<DRIFile>();
+        p->open_files.f[fd]->path = act_name;
+        return fd;
     }
 
     // use lwext4
@@ -345,21 +366,19 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     klog("syscall_open: %s.%u is LwextFile\n", p->name.c_str(), fd);
 #endif
     cg.unlock();
-    auto msg = ext4_open_message(lwf->fname.c_str(), flags, mode,
-        fd, t->ss, t->ss_p);
-    if(ext4_send_message(msg))
+
+    if(gk_ext4_open(lwf->fname.c_str(), flags, mode, fd, _errno) < 0)
     {
-        return deferred_return(_errno);
+        klog("open: failed to open %s\n", act_name.c_str());
+        cg.relock();
+        p->open_files.f[fd] = nullptr;
+        return -1;
     }
     else
     {
-        cg.relock();
-        p->open_files.f[fd] = nullptr;
-        *_errno = ENOMEM;
-        return -1;
+        p->open_files.f[fd]->path = act_name;
+        return fd;
     }
-
-    return -1;
 }
 
 int syscall_opendir(const char *pathname, int *_errno)
@@ -432,18 +451,7 @@ int syscall_mkdir(const char *pathname, mode_t mode, int *_errno)
 
     auto act_name = parse_fname(pathname);
 
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_mkdir_message(act_name.c_str(), mode, t->ss, t->ss_p);
-    if(ext4_send_message(msg))
-    {
-        while(!t->ss.Wait(SimpleSignal::Set, 0));
-        return t->ss_p.ival1;
-    }
-    else
-    {
-        *_errno = ENOMEM;
-        return -1;
-    }
+    return gk_ext4_mkdir(act_name.c_str(), mode, _errno);
 }
 
 int syscall_unlink(const char *pathname, int *_errno)
@@ -457,18 +465,28 @@ int syscall_unlink(const char *pathname, int *_errno)
 
     auto act_name = parse_fname(pathname);
 
-    auto t = GetCurrentThreadForCore();
-    auto msg = ext4_unlink_message(act_name.c_str(), t->ss, t->ss_p);
-    if(ext4_send_message(msg))
+    return gk_ext4_unlink(act_name.c_str(), _errno);
+}
+
+int syscall_link(const char *oldname, const char *newname, int *_errno)
+{
+    if(!oldname)
     {
-        while(!t->ss.Wait(SimpleSignal::Set, 0));
-        return t->ss_p.ival1;
-    }
-    else
-    {
-        *_errno = ENOMEM;
+        *_errno = EINVAL;
         return -1;
     }
+    if(!newname)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+    ADDR_CHECK_BUFFER_R(oldname, 1);
+    ADDR_CHECK_BUFFER_W(newname, 1);
+
+    auto act_oldname = parse_fname(oldname);
+    auto act_newname = parse_fname(newname);
+
+    return gk_ext4_link(act_oldname.c_str(), act_newname.c_str(), _errno);
 }
 
 int syscall_chdir(const char *pathname, int *_errno)
@@ -618,4 +636,27 @@ int syscall_dup2(int oldfd, int newfd, int *_errno)
     }
 
     return newfd;
+}
+
+int syscall_ioctl(int fd, unsigned int nr, void *ptr, size_t len, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    CriticalGuard cg(p->open_files.sl);
+
+    if(fd < 0 || fd >= GK_MAX_OPEN_FILES)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    if(p->open_files.f[fd] == nullptr)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    auto pf = p->open_files.f[fd];
+    cg.unlock();
+
+    return pf->Ioctl(nr, ptr, len, _errno);
 }

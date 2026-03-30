@@ -16,13 +16,13 @@ static inline void signal_thread_woken(const PThread &t)
         if(i == core_id)
             continue;
         
-        if(sched.golden_thread[i] == nullptr && sched.current_thread[i] && t->base_priority >= sched.current_thread[i]->base_priority)
+        if(sched.golden_thread[i] == nullptr && sched.current_thread[i] && t->base_priority > sched.current_thread[i]->base_priority)
         {
             gic_send_sgi(GIC_SGI_YIELD, i);
         }
     }
 
-    if(sched.golden_thread[core_id] == nullptr && t->base_priority >= GetCurrentThreadForCore()->base_priority)
+    if(sched.golden_thread[core_id] == nullptr && t->base_priority > GetCurrentThreadForCore()->base_priority)
         Yield();
 }
 

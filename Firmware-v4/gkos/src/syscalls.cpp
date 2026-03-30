@@ -1019,6 +1019,34 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_link:
+            {
+                auto p = reinterpret_cast<__syscall_link_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_link(p->oldpath, p->newpath,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_getndl:
+            *reinterpret_cast<int *>(r1) = syscall_getndl(reinterpret_cast<int *>(r3));
+            break;
+
+        case __syscall_getdl:
+            {
+                auto p = reinterpret_cast<__syscall_getdl_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_getdl(p->dl_id, p->fd, p->name, p->namelen,
+                    p->img, p->baseaddr, reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_ioctl:
+            {
+                auto p = reinterpret_cast<__syscall_ioctl_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_ioctl(p->fd, p->nr, p->ptr, p->len,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:

@@ -19,6 +19,37 @@ int elf_load_fildes(int fd, PProcess p, Thread::threadstart_t *epoint)
         pf = p->open_files.f[fd];
     }
 
+    {
+        Process::images_t::img img;
+        img.baseaddr = (void *)0;
+        img.fd = fd;
+        img.path = pf->path;
+        img.img = (void *)0;
+
+        int _errno = 0;
+        auto flen = pf->Flen(&_errno);
+
+        {
+            auto pmb = MemBlock::FileBackedReadOnlyMemory(0, (flen + (VBLOCK_64k - 1)) & ~VBLOCK_64k, pf, 0,
+                flen, true, false);
+            MutexGuard cg(p->user_mem->m);
+            auto vb = p->user_mem->vblocks.AllocAny(pmb, false);
+            if(!vb.valid)
+            {
+                klog("elf: unable to allocate vblock of length %u\n", pmb.b.length);
+            }
+            img.img = (void *)vb.base;
+        }
+
+        klog("elf: add process image: %s, fd: %d, baseaddr: %p, elf: %p, elf_len: %u\n", 
+            img.path.c_str(), img.fd, img.baseaddr, img.img, flen);
+
+        {
+            CriticalGuard cg(p->imgs.sl);
+            p->imgs.imgs.push_back(img);
+        }
+    }
+
     // we use syscall_read to write to kernel heap structures here
     ThreadPrivilegeEscalationGuard tpeg;
         

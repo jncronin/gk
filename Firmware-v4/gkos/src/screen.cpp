@@ -8,6 +8,7 @@
 #include "process_interface.h"
 #include "pins.h"
 #include "cache.h"
+#include "persistent.h"
 #include <stm32mp2xx.h>
 #include <atomic>
 #include <cmath>
@@ -50,8 +51,6 @@ static const constexpr unsigned int arr = 4096;
 
 volatile std::atomic_bool screen_flip_in_progress = false;
 Condition scr_vsync;
-
-static int brightness = 50;
 
 class FPSCounter
 {
@@ -205,7 +204,7 @@ void init_screen()
     __asm__ volatile("dsb sy\n");
 
     // turn on backlight
-    screen_set_brightness(screen_get_brightness());
+    screen_set_brightness(screen_get_brightness(), false);
 
     // enable level shifter
     LS_OE_N.set_as_output();
@@ -755,14 +754,23 @@ void screen_clear_all_userspace()
 
 int screen_get_brightness()
 {
-    return brightness;
+    auto persist_bright = persistent[PERSISTENT_ID_BRIGHTNESS];
+    if(persist_bright >= 1 && persist_bright <= 101)
+        return persist_bright - 1;
+    else
+        return 50;
 }
 
-int screen_set_brightness(int bright)
+int screen_set_brightness(int bright, bool persist)
 {
     if(bright > 100) bright = 100;
     if(bright < 0) bright = 0;
-    brightness = bright;
+
+    if(persist)
+    {
+        PersistentMemoryWriteGuard pmg;
+        persistent[PERSISTENT_ID_BRIGHTNESS] = bright + 1;
+    }
 
     // gamma function with minimum set to 2.5% of ARR
     const double minimum = 0.025;
@@ -777,7 +785,7 @@ int screen_set_brightness(int bright)
 
     TIM2_VMEM->CCR1 = vout_sc_i;
 
-    return brightness;
+    return bright;
 }
 
 double screen_get_fps(unsigned int layer)
