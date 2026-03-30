@@ -10,6 +10,7 @@
 #include "wifi_airoc_if.h"
 #include <fcntl.h>
 #include "osnet_onconnect_userprocess.h"
+#include "etnaviv.h"
 
 PProcess p_gksupervisor;
 id_t pid_gksupervisor;
@@ -87,9 +88,11 @@ void *init_thread(void *)
         {
             SetFocusProcess(p_gksupervisor);
             klog("init: thread created, scheduling it\n");
-            sched.Schedule(t_test);
+            //sched.Schedule(t_test);
         }    
     }
+
+    init_etnaviv();
 
     while(true)
     {

@@ -13,6 +13,8 @@
 #include "common.xml.h"
 #include "state.xml.h"
 
+#include "drm_scheduler.h"
+
 struct etnaviv_gem_submit;
 struct etnaviv_vram_mapping;
 
@@ -93,7 +95,7 @@ struct etnaviv_event {
 struct etnaviv_cmdbuf_suballoc;
 struct regulator;
 struct clk;
-struct reset_control;
+class reset_control;
 
 #define ETNA_NR_EVENTS 30
 
@@ -115,7 +117,7 @@ struct etnaviv_gpu {
 	enum etnaviv_sec_mode sec_mode;
 	struct workqueue_struct *wq;
 	std::unique_ptr<Mutex> sched_lock;
-	struct drm_gpu_scheduler sched;
+	std::unique_ptr<DRMScheduler> sched;
 	enum etnaviv_gpu_state state;
 
 	/* 'ring'-buffer: */
@@ -155,11 +157,11 @@ struct etnaviv_gpu {
 	unsigned int flush_seq;
 
 	/* Power Control: */
-	struct clk *clk_bus;
-	struct clk *clk_reg;
-	struct clk *clk_core;
-	struct clk *clk_shader;
-	struct reset_control *rst;
+	std::unique_ptr<clk> clk_bus;
+	std::unique_ptr<clk> clk_reg;
+	std::unique_ptr<clk> clk_core;
+	std::unique_ptr<clk> clk_shader;
+	std::unique_ptr<reset_control> rst;
 
 	unsigned int freq_scale;
 	unsigned int fe_waitcycles;
@@ -204,9 +206,9 @@ static inline u32 gpu_read_power(struct etnaviv_gpu *gpu, u32 reg)
 	return gpu_read(gpu, gpu_fix_power_address(gpu, reg));
 }
 
-int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value);
+int etnaviv_gpu_get_param(struct etnaviv_gpu &gpu, u32 param, u64 *value);
 
-int etnaviv_gpu_init(struct etnaviv_gpu *gpu);
+int etnaviv_gpu_init(struct etnaviv_gpu &gpu);
 bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu);
 
 #ifdef CONFIG_DEBUG_FS

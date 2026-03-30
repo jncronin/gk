@@ -1,5 +1,3 @@
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2025 Etnaviv Project
@@ -10,6 +8,8 @@
 //#include <linux/string.h>
 //#include <linux/types.h>
 
+#include <cstring>
+
 #include "etnaviv_buffer.h"
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_gpu.h"
@@ -18,7 +18,6 @@
 #include "etnaviv_flop_reset.h"
 
 static int etnaviv_force_flop_reset;
-module_param_named(force_flop_reset, etnaviv_force_flop_reset, int, 0);
 
 #define PPU_IMAGE_STRIDE 64
 #define PPU_IMAGE_XSIZE 64
@@ -104,7 +103,7 @@ static void etnaviv_emit_flop_reset_state_ppu(struct etnaviv_cmdbuf *cmdbuf,
 
 static void etnaviv_flop_reset_ppu_fill_input(u32 *buffer, u32 size)
 {
-	memset32(buffer, 0x01010101, size / 4);
+	memset(buffer, 0x01, size);
 }
 
 static void etnaviv_flop_reset_ppu_set_shader(u8 *dest)
@@ -149,7 +148,7 @@ bool etnaviv_flop_reset_ppu_require(const struct etnaviv_chip_identity *chip_id)
 {
 	const struct etnaviv_flop_reset_entry *e = etnaviv_flop_reset_db;
 
-	for (int i = 0; i < ARRAY_SIZE(etnaviv_flop_reset_db); ++i, ++e) {
+	for (auto i = 0u; i < ARRAY_SIZE(etnaviv_flop_reset_db); ++i, ++e) {
 		if (chip_id->model == e->chip_model &&
 		    chip_id->revision == e->revision)
 			return true;
@@ -157,13 +156,13 @@ bool etnaviv_flop_reset_ppu_require(const struct etnaviv_chip_identity *chip_id)
 
 	if (etnaviv_force_flop_reset) {
 		if (!(chip_id->features & chipFeatures_PIPE_3D)) {
-			pr_warn("Etnaviv: model: 0x%04x, revision: 0x%04x does not support PIPE_3D\n",
+			klog("Etnaviv: model: 0x%04x, revision: 0x%04x does not support PIPE_3D\n",
 				chip_id->model, chip_id->revision);
-			pr_warn("Request to force PPU flop reset ignored.\n");
+			klog("Request to force PPU flop reset ignored.\n");
 			return false;
 		}
 
-		pr_info("Force PPU flop reset for model: 0x%04x, revision: 0x%04x\n",
+		klog("Force PPU flop reset for model: 0x%04x, revision: 0x%04x\n",
 			chip_id->model, chip_id->revision);
 		return true;
 	}
@@ -184,15 +183,15 @@ int etnaviv_flop_reset_ppu_init(struct etnaviv_drm_private *priv)
 	 * (input and output image, and shader), we keep this buffer
 	 * for the whole life time the driver is bound
 	 */
-	priv->flop_reset_data_ppu = kzalloc_obj(*priv->flop_reset_data_ppu);
+	priv->flop_reset_data_ppu = std::make_unique<etnaviv_cmdbuf>();
 
 	if (!priv->flop_reset_data_ppu)
 		return -ENOMEM;
 
-	int ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc,
-				      priv->flop_reset_data_ppu, buffer_size);
+	int ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc.get(),
+				      priv->flop_reset_data_ppu.get(), buffer_size);
 	if (ret) {
-		kfree(priv->flop_reset_data_ppu);
+		priv->flop_reset_data_ppu.reset();
 		return ret;
 	}
 
@@ -208,20 +207,18 @@ int etnaviv_flop_reset_ppu_init(struct etnaviv_drm_private *priv)
 
 void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu)
 {
-	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
+	auto &priv = gpu->drm->dev_private;
 
 	if (!priv->flop_reset_data_ppu) {
-		dev_err(gpu->dev,
+		klog(
 			"Oops: Flop reset data was not initialized, skipping\n");
 		return;
 	}
 
-	u32 buffer_base = etnaviv_cmdbuf_get_va(priv->flop_reset_data_ppu,
+	u32 buffer_base = etnaviv_cmdbuf_get_va(priv->flop_reset_data_ppu.get(),
 						&gpu->mmu_context->cmdbuf_mapping);
 
 	etnaviv_emit_flop_reset_state_ppu(&gpu->buffer, buffer_base, 0,
 					  output_offset, shader_offset,
 					  shader_size, shader_register_count);
 }
-
-#endif

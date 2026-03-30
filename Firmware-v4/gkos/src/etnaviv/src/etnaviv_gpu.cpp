@@ -1,3 +1,17 @@
+#include "linux_types.h"
+#include "etnaviv_gpu.h"
+#include "vmem.h"
+#include "gic.h"
+#include <stm32mp2xx.h>
+#include "common.xml.h"
+#include "state.xml.h"
+#include "state_hi.xml.h"
+#include "cmdstream.xml.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_flop_reset.h"
+
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -20,7 +34,6 @@
 
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_dump.h"
-#include "etnaviv_flop_reset.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_gem.h"
 #include "etnaviv_mmu.h"
@@ -40,7 +53,7 @@ static const struct platform_device_id gpu_ids[] = {
  * Driver functions:
  */
 
-int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value)
+int etnaviv_gpu_get_param(struct etnaviv_gpu &gpu, u32 param, u64 *value)
 {
 	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
 
@@ -176,6 +189,8 @@ int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value)
 	return 0;
 }
 
+#endif
+
 static int etnaviv_gpu_reset_deassert(struct etnaviv_gpu *gpu)
 {
 	int ret;
@@ -184,9 +199,9 @@ static int etnaviv_gpu_reset_deassert(struct etnaviv_gpu *gpu)
 	 * 32 core clock cycles (slowest clock) required before deassertion
 	 * 1 microsecond might match all implementations without computation
 	 */
-	usleep_range(1, 2);
+	udelay(1);
 
-	ret = reset_control_deassert(gpu->rst);
+	ret = gpu->rst->Deassert();
 	if (ret)
 		return ret;
 
@@ -194,7 +209,7 @@ static int etnaviv_gpu_reset_deassert(struct etnaviv_gpu *gpu)
 	 * 128 core clock cycles (slowest clock) required before any activity on AHB
 	 * 1 microsecond might match all implementations without computation
 	 */
-	usleep_range(1, 2);
+	udelay(1);
 
 	return 0;
 }
@@ -428,7 +443,7 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 			gpu->identity.eco_id = 1;
 	}
 
-	dev_info(gpu->dev, "model: GC%x, revision: %x\n",
+	klog("model: GC%x, revision: %x\n",
 		 gpu->identity.model, gpu->identity.revision);
 
 	gpu->idle_mask = ~VIVS_HI_IDLE_STATE_AXI_LP;
@@ -499,6 +514,7 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 	etnaviv_hw_specs(gpu);
 }
 
+#if 0
 static void etnaviv_gpu_load_clock(struct etnaviv_gpu *gpu, u32 clock)
 {
 	gpu_write(gpu, VIVS_HI_CLOCK_CONTROL, clock |
@@ -814,41 +830,45 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 	gpu->state = ETNA_GPU_STATE_INITIALIZED;
 }
 
-int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
+#endif
+int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 {
-	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
-	dma_addr_t cmdbuf_paddr;
-	int ret, i;
+	[[maybe_unused]] auto &priv = gpu.drm->dev_private;
+	[[maybe_unused]] dma_addr_t cmdbuf_paddr;
+	[[maybe_unused]] int ret, i;
 
-	ret = pm_runtime_get_sync(gpu->dev);
+	ret = gpu.dev->pm->enable();
 	if (ret < 0) {
-		dev_err(gpu->dev, "Failed to enable GPU power domain\n");
+		klog("Failed to enable GPU power domain\n");
 		goto pm_put;
 	}
 
-	ret = etnaviv_gpu_reset_deassert(gpu);
+	ret = etnaviv_gpu_reset_deassert(&gpu);
 	if (ret) {
-		dev_err(gpu->dev, "GPU reset deassert failed\n");
+		klog("GPU reset deassert failed\n");
 		goto fail;
 	}
 
-	etnaviv_hw_identify(gpu);
+	etnaviv_hw_identify(&gpu);
 
-	if (gpu->identity.model == 0) {
-		dev_err(gpu->dev, "Unknown GPU model\n");
+	if (gpu.identity.model == 0) {
+		klog("Unknown GPU model\n");
 		ret = -ENXIO;
 		goto fail;
 	}
 
-	if (etnaviv_flop_reset_ppu_require(&gpu->identity) &&
+	klog("GPU: etnaviv_gpu_init not fully implemented\n");
+
+	if (etnaviv_flop_reset_ppu_require(&gpu.identity) &&
 	    !priv->flop_reset_data_ppu) {
-		ret = etnaviv_flop_reset_ppu_init(priv);
+		ret = etnaviv_flop_reset_ppu_init(priv.get());
 		if (ret) {
-			dev_err(gpu->dev,
+			klog(
 				"Unable to initialize PPU flop reset data\n");
 			goto fail;
 		}
 	}
+#if 0
 
 	if (gpu->identity.nn_core_count > 0)
 		dev_warn(gpu->dev, "etnaviv has been instantiated on a NPU, "
@@ -931,16 +951,17 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 
 	pm_runtime_mark_last_busy(gpu->dev);
 	pm_runtime_put_autosuspend(gpu->dev);
-
+#endif
 	return 0;
 
 fail:
-	pm_runtime_mark_last_busy(gpu->dev);
+	//pm_runtime_mark_last_busy(gpu->dev);
 pm_put:
-	pm_runtime_put_autosuspend(gpu->dev);
-
+	//pm_runtime_put_autosuspend(gpu->dev);
 	return ret;
 }
+
+#if 0
 
 #ifdef CONFIG_DEBUG_FS
 struct dma_debug {
@@ -1572,8 +1593,14 @@ static void dump_mmu_fault(struct etnaviv_gpu *gpu)
 	}
 }
 
+#endif
+
 static irqreturn_t irq_handler(int irq, void *data)
 {
+	klog("GPU irq not implemented\n");
+	return 0;
+
+#if 0
 	struct etnaviv_gpu *gpu = data;
 	irqreturn_t ret = IRQ_NONE;
 
@@ -1639,40 +1666,31 @@ static irqreturn_t irq_handler(int irq, void *data)
 	}
 
 	return ret;
+#endif
 }
 
-static int etnaviv_gpu_clk_enable(struct etnaviv_gpu *gpu)
+static etnaviv_gpu *gpu_for_irq = nullptr;
+
+static void gk_gpu_irqhandler(exception_regs *, uint64_t)
 {
-	int ret;
+	irq_handler(215, gpu_for_irq);
+}
 
-	ret = clk_prepare_enable(gpu->clk_reg);
-	if (ret)
-		return ret;
-
-	ret = clk_prepare_enable(gpu->clk_bus);
-	if (ret)
-		goto disable_clk_reg;
-
-	ret = clk_prepare_enable(gpu->clk_core);
-	if (ret)
-		goto disable_clk_bus;
-
-	ret = clk_prepare_enable(gpu->clk_shader);
-	if (ret)
-		goto disable_clk_core;
+static int etnaviv_gpu_clk_enable(struct etnaviv_gpu &gpu)
+{
+	if(gpu.clk_reg)
+		gpu.clk_reg->enable();
+	if(gpu.clk_bus)
+		gpu.clk_bus->enable();
+	if(gpu.clk_core)
+		gpu.clk_core->enable();
+	if(gpu.clk_shader)
+		gpu.clk_core->enable();
 
 	return 0;
-
-disable_clk_core:
-	clk_disable_unprepare(gpu->clk_core);
-disable_clk_bus:
-	clk_disable_unprepare(gpu->clk_bus);
-disable_clk_reg:
-	clk_disable_unprepare(gpu->clk_reg);
-
-	return ret;
 }
 
+#if 0
 static int etnaviv_gpu_clk_disable(struct etnaviv_gpu *gpu)
 {
 	clk_disable_unprepare(gpu->clk_shader);
@@ -1782,20 +1800,72 @@ static const struct thermal_cooling_device_ops cooling_ops = {
 	.set_cur_state = etnaviv_gpu_cooling_set_cur_state,
 };
 
-static int etnaviv_gpu_bind(struct device *dev, struct device *master,
+#endif
+
+/* combine dev and gpu probe/bind here */
+int etnaviv_gpu_combined_init(struct device &dev)
+{
+	dev.drm = std::make_unique<drm_device>();
+	dev.pm = std::make_unique<Etnaviv_pm_control>();
+	dev.drm->dev_private = std::make_unique<etnaviv_drm_private>();
+
+	dev.drm->dev_private->num_gpus = 0;
+	dev.drm->dev_private->shm_gfp_mask = 0;
+
+	dev.drm->dev_private->cmdbuf_suballoc = etnaviv_cmdbuf_suballoc_new(&dev);
+
+	auto gpu = std::make_unique<etnaviv_gpu>();
+	gpu->dev = &dev;
+	gpu->drm = dev.drm.get();
+
+	/* Map registers: */
+	gpu->mmio = (volatile void *)PMEM_TO_VMEM(GPU_BASE);
+
+	/* Get Reset: */
+	gpu->rst = std::make_unique<Etnaviv_reset_control>();
+
+	auto err = reset_control_assert(*gpu->rst);
+	if (err)
+	{
+		klog("failed to assert reset\n");
+		return err;
+	}
+
+	/* Get Interrupt: */
+	gpu->irq = 215;
+	gpu_for_irq = gpu.get();
+	gic_set_handler(gpu->irq, gk_gpu_irqhandler);
+	gic_set_target(gpu->irq, GIC_ENABLED_CORES);
+
+	/* Get Clocks: */
+	gpu->clk_reg = nullptr;
+	gpu->clk_bus = std::make_unique<Etnaviv_bus_clock>();
+	gpu->clk_core = std::make_unique<Etnaviv_core_clock>();
+	gpu->clk_shader = nullptr;
+
+	/* Power on */
+	dev.pm->enable();
+
+	/* Clock */
+	etnaviv_gpu_clk_enable(*gpu);
+
+	dev.drm->dev_private->gpu = std::move(gpu);
+
+
+	/* Initial register access to identify chip */
+	etnaviv_gpu_init(*dev.drm->dev_private->gpu);
+
+	return drm_dev_register(*dev.drm, 0);
+}
+
+int etnaviv_gpu_bind(struct device &dev, struct device &master,
 	void *data)
 {
-	struct drm_device *drm = data;
-	struct etnaviv_drm_private *priv = drm->dev_private;
-	struct etnaviv_gpu *gpu = dev_get_drvdata(dev);
-	int ret;
+#if 0
+	auto &drm_device = dev.drm;
+	auto &priv = drm_device->dev_private;
 
-	if (IS_ENABLED(CONFIG_DRM_ETNAVIV_THERMAL)) {
-		gpu->cooling = thermal_of_cooling_device_register(dev->of_node,
-				(char *)dev_name(dev), gpu, &cooling_ops);
-		if (IS_ERR(gpu->cooling))
-			return PTR_ERR(gpu->cooling);
-	}
+	int ret;
 
 	gpu->wq = alloc_ordered_workqueue(dev_name(dev), 0);
 	if (!gpu->wq) {
@@ -1836,7 +1906,11 @@ out_thermal:
 		thermal_cooling_device_unregister(gpu->cooling);
 
 	return ret;
+#endif
+	return 0;
 }
+
+#if 0
 
 static void etnaviv_gpu_unbind(struct device *dev, struct device *master,
 	void *data)
@@ -1884,91 +1958,13 @@ static const struct of_device_id etnaviv_gpu_match[] = {
 };
 MODULE_DEVICE_TABLE(of, etnaviv_gpu_match);
 
-static int etnaviv_gpu_platform_probe(struct platform_device *pdev)
+#endif
+int etnaviv_gpu_platform_probe(struct device &dev)
 {
-	struct device *dev = &pdev->dev;
-	struct etnaviv_gpu *gpu;
-	int err;
-
-	gpu = devm_kzalloc(dev, sizeof(*gpu), GFP_KERNEL);
-	if (!gpu)
-		return -ENOMEM;
-
-	gpu->dev = dev;
-	mutex_init(&gpu->lock);
-	mutex_init(&gpu->sched_lock);
-
-	/* Map registers: */
-	gpu->mmio = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR(gpu->mmio))
-		return PTR_ERR(gpu->mmio);
-
-
-	/* Get Reset: */
-	gpu->rst = devm_reset_control_get_optional_exclusive(&pdev->dev, NULL);
-	if (IS_ERR(gpu->rst))
-		return dev_err_probe(dev, PTR_ERR(gpu->rst),
-				     "failed to get reset\n");
-
-	err = reset_control_assert(gpu->rst);
-	if (err)
-		return dev_err_probe(dev, err, "failed to assert reset\n");
-
-	/* Get Interrupt: */
-	gpu->irq = platform_get_irq(pdev, 0);
-	if (gpu->irq < 0)
-		return gpu->irq;
-
-	err = devm_request_irq(dev, gpu->irq, irq_handler, 0,
-			       dev_name(dev), gpu);
-	if (err) {
-		dev_err(dev, "failed to request IRQ%u: %d\n", gpu->irq, err);
-		return err;
-	}
-
-	/* Get Clocks: */
-	gpu->clk_reg = devm_clk_get_optional(&pdev->dev, "reg");
-	DBG("clk_reg: %p", gpu->clk_reg);
-	if (IS_ERR(gpu->clk_reg))
-		return PTR_ERR(gpu->clk_reg);
-
-	gpu->clk_bus = devm_clk_get_optional(&pdev->dev, "bus");
-	DBG("clk_bus: %p", gpu->clk_bus);
-	if (IS_ERR(gpu->clk_bus))
-		return PTR_ERR(gpu->clk_bus);
-
-	gpu->clk_core = devm_clk_get(&pdev->dev, "core");
-	DBG("clk_core: %p", gpu->clk_core);
-	if (IS_ERR(gpu->clk_core))
-		return PTR_ERR(gpu->clk_core);
-	gpu->base_rate_core = clk_get_rate(gpu->clk_core);
-
-	gpu->clk_shader = devm_clk_get_optional(&pdev->dev, "shader");
-	DBG("clk_shader: %p", gpu->clk_shader);
-	if (IS_ERR(gpu->clk_shader))
-		return PTR_ERR(gpu->clk_shader);
-	gpu->base_rate_shader = clk_get_rate(gpu->clk_shader);
-
-	/* TODO: figure out max mapped size */
-	dev_set_drvdata(dev, gpu);
-
-	/*
-	 * We treat the device as initially suspended.  The runtime PM
-	 * autosuspend delay is rather arbitary: no measurements have
-	 * yet been performed to determine an appropriate value.
-	 */
-	pm_runtime_use_autosuspend(dev);
-	pm_runtime_set_autosuspend_delay(dev, 200);
-	pm_runtime_enable(dev);
-
-	err = component_add(dev, &gpu_ops);
-	if (err < 0) {
-		dev_err(dev, "failed to register component: %d\n", err);
-		return err;
-	}
-
 	return 0;
 }
+
+#if 0
 
 static void etnaviv_gpu_platform_remove(struct platform_device *pdev)
 {
@@ -2042,3 +2038,5 @@ struct platform_driver etnaviv_gpu_driver = {
 	.remove = etnaviv_gpu_platform_remove,
 	.id_table = gpu_ids,
 };
+
+#endif

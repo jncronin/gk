@@ -24,7 +24,24 @@ struct etnaviv_cmdbuf {
 	u32 user_size;
 };
 
-struct etnaviv_cmdbuf_suballoc *
+#define SUBALLOC_SIZE		(512*1024ul)
+#define SUBALLOC_GRANULE	(4*1024ul)
+#define SUBALLOC_GRANULES	(SUBALLOC_SIZE / SUBALLOC_GRANULE)
+
+struct etnaviv_cmdbuf_suballoc {
+	/* suballocated dma buffer properties */
+	struct device *dev;
+	void *vaddr;
+	dma_addr_t paddr;
+
+	/* allocation management */
+	Mutex lock;
+	DECLARE_BITMAP(granule_map, SUBALLOC_GRANULES);
+	int free_space;
+	Condition free_event;
+};
+
+std::unique_ptr<etnaviv_cmdbuf_suballoc>
 etnaviv_cmdbuf_suballoc_new(struct device *dev);
 void etnaviv_cmdbuf_suballoc_destroy(struct etnaviv_cmdbuf_suballoc *suballoc);
 int etnaviv_cmdbuf_suballoc_map(struct etnaviv_cmdbuf_suballoc *suballoc,

@@ -26,20 +26,22 @@ struct etnaviv_gem_object;
 struct etnaviv_gem_submit;
 struct etnaviv_iommu_global;
 
-#define ETNAVIV_SOFTPIN_START_ADDRESS	SZ_4M /* must be >= SUBALLOC_SIZE */
+#define ETNAVIV_SOFTPIN_START_ADDRESS	(4*1024*1024ul) /* must be >= SUBALLOC_SIZE */
 
 struct etnaviv_file_private {
 	int id;
 	struct etnaviv_iommu_context	*mmu;
-	struct drm_sched_entity		sched_entity[ETNA_MAX_PIPES];
+	struct drm_sched_entity		sched_entity;
 };
+
+struct etnaviv_cmdbuf_suballoc;
 
 struct etnaviv_drm_private {
 	int num_gpus;
-	struct etnaviv_gpu *gpu[ETNA_MAX_PIPES];
+	std::unique_ptr<etnaviv_gpu> gpu;
 	gfp_t shm_gfp_mask;
 
-	struct etnaviv_cmdbuf_suballoc *cmdbuf_suballoc;
+	std::unique_ptr<etnaviv_cmdbuf_suballoc> cmdbuf_suballoc;
 	struct etnaviv_iommu_global *mmu_global;
 
 	std::vector<void *> active_contexts;
@@ -50,7 +52,7 @@ struct etnaviv_drm_private {
 	struct list_head gem_list;
 
 	/* ppu flop reset data */
-	struct etnaviv_cmdbuf *flop_reset_data_ppu;
+	std::unique_ptr<etnaviv_cmdbuf> flop_reset_data_ppu;
 };
 
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,

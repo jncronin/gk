@@ -93,7 +93,7 @@ static void *klogbuffer_thread(void *)
 void init_klogbuffer_thread()
 {
     sched.Schedule(Thread::Create("klogbuffer", klogbuffer_thread, nullptr, true,
-        GK_PRIORITY_IDLE + 1, p_kernel));
+        GK_PRIORITY_VERYHIGH, p_kernel));
 }
 
 static Spinlock sl_log;
@@ -113,7 +113,8 @@ int klog(const char *format, ...)
     va_end(args);
     sl_log.unlock();
 
-    klog_updated.Signal();
+    klogbuffer_purge_uart();
+    //klog_updated.Signal();
 
     return ret;
 }

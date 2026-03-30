@@ -11,6 +11,9 @@
 #define PMEM_TO_VMEM_DEVICE(a) (((uintptr_t)(a) + UH_DEVICE_START))
 #define VMEM_TO_PMEM(a) (((uintptr_t)(a) - UH_START))
 
+#ifdef PAGE_SIZE
+#undef PAGE_SIZE
+#endif
 #define PAGE_SIZE 65536UL
 
 #define DEBUG_VTP  1

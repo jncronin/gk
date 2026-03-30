@@ -1,5 +1,3 @@
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2017-2018 Etnaviv Project
@@ -12,52 +10,25 @@
 #include "etnaviv_gpu.h"
 #include "etnaviv_mmu.h"
 
-#define SUBALLOC_SIZE		SZ_512K
-#define SUBALLOC_GRANULE	SZ_4K
-#define SUBALLOC_GRANULES	(SUBALLOC_SIZE / SUBALLOC_GRANULE)
-
-struct etnaviv_cmdbuf_suballoc {
-	/* suballocated dma buffer properties */
-	struct device *dev;
-	void *vaddr;
-	dma_addr_t paddr;
-
-	/* allocation management */
-	struct mutex lock;
-	DECLARE_BITMAP(granule_map, SUBALLOC_GRANULES);
-	int free_space;
-	wait_queue_head_t free_event;
-};
-
-struct etnaviv_cmdbuf_suballoc *
+std::unique_ptr<etnaviv_cmdbuf_suballoc>
 etnaviv_cmdbuf_suballoc_new(struct device *dev)
 {
-	struct etnaviv_cmdbuf_suballoc *suballoc;
-	int ret;
-
-	suballoc = kzalloc_obj(*suballoc);
+	auto suballoc = std::make_unique<etnaviv_cmdbuf_suballoc>();
 	if (!suballoc)
-		return ERR_PTR(-ENOMEM);
+		return nullptr;
 
 	suballoc->dev = dev;
-	mutex_init(&suballoc->lock);
-	init_waitqueue_head(&suballoc->free_event);
+
+	//init_waitqueue_head(&suballoc->free_event);
 
 	BUILD_BUG_ON(ETNAVIV_SOFTPIN_START_ADDRESS < SUBALLOC_SIZE);
 	suballoc->vaddr = dma_alloc_wc(dev, SUBALLOC_SIZE,
 				       &suballoc->paddr, GFP_KERNEL);
 	if (!suballoc->vaddr) {
-		ret = -ENOMEM;
-		goto free_suballoc;
+		return nullptr;
 	}
 
 	return suballoc;
-
-free_suballoc:
-	mutex_destroy(&suballoc->lock);
-	kfree(suballoc);
-
-	return ERR_PTR(ret);
 }
 
 int etnaviv_cmdbuf_suballoc_map(struct etnaviv_cmdbuf_suballoc *suballoc,
@@ -79,8 +50,6 @@ void etnaviv_cmdbuf_suballoc_destroy(struct etnaviv_cmdbuf_suballoc *suballoc)
 {
 	dma_free_wc(suballoc->dev, SUBALLOC_SIZE, suballoc->vaddr,
 		    suballoc->paddr);
-	mutex_destroy(&suballoc->lock);
-	kfree(suballoc);
 }
 
 int etnaviv_cmdbuf_init(struct etnaviv_cmdbuf_suballoc *suballoc,
@@ -93,25 +62,23 @@ int etnaviv_cmdbuf_init(struct etnaviv_cmdbuf_suballoc *suballoc,
 
 	order = order_base_2(ALIGN(size, SUBALLOC_GRANULE) / SUBALLOC_GRANULE);
 retry:
-	mutex_lock(&suballoc->lock);
+	suballoc->lock.lock();
 	granule_offs = bitmap_find_free_region(suballoc->granule_map,
 					SUBALLOC_GRANULES, order);
 	if (granule_offs < 0) {
 		suballoc->free_space = 0;
-		mutex_unlock(&suballoc->lock);
-		ret = wait_event_interruptible_timeout(suballoc->free_event,
-						       suballoc->free_space,
-						       secs_to_jiffies(10));
+		suballoc->lock.unlock();
+		suballoc->free_event.Wait(clock_cur() + kernel_time_from_ms(10000), &ret);
 		if (!ret) {
-			dev_err(suballoc->dev,
+			klog(
 				"Timeout waiting for cmdbuf space\n");
 			return -ETIMEDOUT;
 		}
 		goto retry;
 	}
-	mutex_unlock(&suballoc->lock);
+	suballoc->lock.unlock();
 	cmdbuf->suballoc_offset = granule_offs * SUBALLOC_GRANULE;
-	cmdbuf->vaddr = suballoc->vaddr + cmdbuf->suballoc_offset;
+	cmdbuf->vaddr = (void *)((uintptr_t)suballoc->vaddr + cmdbuf->suballoc_offset);
 
 	return 0;
 }
@@ -125,13 +92,13 @@ void etnaviv_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf)
 	if (!suballoc)
 		return;
 
-	mutex_lock(&suballoc->lock);
+	suballoc->lock.lock();
 	bitmap_release_region(suballoc->granule_map,
 			      cmdbuf->suballoc_offset / SUBALLOC_GRANULE,
 			      order);
 	suballoc->free_space = 1;
-	mutex_unlock(&suballoc->lock);
-	wake_up_all(&suballoc->free_event);
+	suballoc->lock.unlock();
+	suballoc->free_event.Signal();
 }
 
 u32 etnaviv_cmdbuf_get_va(struct etnaviv_cmdbuf *buf,
@@ -144,5 +111,3 @@ dma_addr_t etnaviv_cmdbuf_get_pa(struct etnaviv_cmdbuf *buf)
 {
 	return buf->suballoc->paddr + buf->suballoc_offset;
 }
-
-#endif
