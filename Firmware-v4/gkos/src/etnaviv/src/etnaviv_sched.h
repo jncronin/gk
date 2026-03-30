@@ -6,7 +6,7 @@
 #ifndef __ETNAVIV_SCHED_H__
 #define __ETNAVIV_SCHED_H__
 
-#include <drm/gpu_scheduler.h>
+//#include <drm/gpu_scheduler.h>
 
 struct etnaviv_gpu;
 

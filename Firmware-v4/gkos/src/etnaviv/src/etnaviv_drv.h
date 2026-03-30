@@ -16,7 +16,7 @@
 
 //#include <drm/drm_drv.h>
 //#include <drm/drm_gem.h>
-//#include <drm/etnaviv_drm.h>
+#include "etnaviv_drm.h"
 //#include <drm/gpu_scheduler.h>
 
 struct etnaviv_cmdbuf;
@@ -42,11 +42,11 @@ struct etnaviv_drm_private {
 	struct etnaviv_cmdbuf_suballoc *cmdbuf_suballoc;
 	struct etnaviv_iommu_global *mmu_global;
 
-	struct xarray active_contexts;
+	std::vector<void *> active_contexts;
 	u32 next_context_id;
 
 	/* list of GEM objects: */
-	struct mutex gem_lock;
+	Mutex gem_lock;
 	struct list_head gem_list;
 
 	/* ppu flop reset data */
@@ -91,7 +91,7 @@ void etnaviv_gem_describe_objects(struct etnaviv_drm_private *priv,
 #endif
 
 #define DBG(fmt, ...) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
-#define VERB(fmt, ...) if (0) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
+#define VERB(fmt, ...) if (1) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
 
 /*
  * Return the storage size of a structure with a variable length array.
@@ -103,30 +103,6 @@ static inline size_t size_vstruct(size_t nelem, size_t elem_size, size_t base)
 	if (elem_size && nelem > (SIZE_MAX - base) / elem_size)
 		return 0;
 	return base + nelem * elem_size;
-}
-
-/*
- * Etnaviv timeouts are specified wrt CLOCK_MONOTONIC, not jiffies.
- * We need to calculate the timeout in terms of number of jiffies
- * between the specified timeout and the current CLOCK_MONOTONIC time.
- */
-static inline unsigned long etnaviv_timeout_to_jiffies(
-	const struct drm_etnaviv_timespec *timeout)
-{
-	struct timespec64 ts, to = {
-		.tv_sec = timeout->tv_sec,
-		.tv_nsec = timeout->tv_nsec,
-	};
-
-	ktime_get_ts64(&ts);
-
-	/* timeouts before "now" have already expired */
-	if (timespec64_compare(&to, &ts) <= 0)
-		return 0;
-
-	ts = timespec64_sub(to, ts);
-
-	return timespec64_to_jiffies(&ts);
 }
 
 #endif /* __ETNAVIV_DRV_H__ */

@@ -12,7 +12,6 @@
 #include "etnaviv_mmu.h"
 
 #include "common.xml.h"
-#include "linux/printk.h"
 #include "state.xml.h"
 #include "state_blt.xml.h"
 #include "state_hi.xml.h"

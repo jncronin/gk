@@ -34,7 +34,7 @@ struct etnaviv_vram_mapping {
 struct etnaviv_gem_object {
 	struct drm_gem_object base;
 	const struct etnaviv_gem_ops *ops;
-	struct mutex lock;
+	std::unique_ptr<Mutex> lock;
 
 	/*
 	 * The actual size that is visible to the GPU, not necessarily
@@ -73,7 +73,7 @@ struct etnaviv_gem_ops {
 
 static inline bool is_active(struct etnaviv_gem_object *etnaviv_obj)
 {
-	return atomic_read(&etnaviv_obj->gpu_active) != 0;
+	return etnaviv_obj->gpu_active.load() != 0;
 }
 
 #define MAX_CMDS 4
@@ -91,7 +91,7 @@ struct etnaviv_gem_submit_bo {
  */
 struct etnaviv_gem_submit {
 	struct drm_sched_job sched_job;
-	struct kref refcount;
+	kref refcount;
 	struct etnaviv_file_private *ctx;
 	struct etnaviv_gpu *gpu;
 	struct etnaviv_iommu_context *mmu_context, *prev_mmu_context;

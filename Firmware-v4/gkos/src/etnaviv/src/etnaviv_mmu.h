@@ -34,7 +34,7 @@ struct etnaviv_iommu_ops {
 extern const struct etnaviv_iommu_ops etnaviv_iommuv1_ops;
 extern const struct etnaviv_iommu_ops etnaviv_iommuv2_ops;
 
-#define ETNAVIV_PTA_SIZE	SZ_4K
+#define ETNAVIV_PTA_SIZE	4096u
 #define ETNAVIV_PTA_ENTRIES	(ETNAVIV_PTA_SIZE / sizeof(u64))
 
 struct etnaviv_iommu_global {
@@ -42,7 +42,7 @@ struct etnaviv_iommu_global {
 	enum etnaviv_iommu_version version;
 	const struct etnaviv_iommu_ops *ops;
 	unsigned int use;
-	struct mutex lock;
+	std::unique_ptr<Mutex> lock;
 
 	void *bad_page_cpu;
 	dma_addr_t bad_page_dma;
@@ -67,11 +67,11 @@ struct etnaviv_iommu_global {
 };
 
 struct etnaviv_iommu_context {
-	struct kref refcount;
+	kref refcount;
 	struct etnaviv_iommu_global *global;
 
 	/* memory manager for GPU address area */
-	struct mutex lock;
+	std::unique_ptr<Mutex> lock;
 	struct list_head mappings;
 	struct drm_mm mm;
 	unsigned int flush_seq;
@@ -108,7 +108,7 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 static inline struct etnaviv_iommu_context *
 etnaviv_iommu_context_get(struct etnaviv_iommu_context *ctx)
 {
-	kref_get(&ctx->refcount);
+	ctx->refcount.fetch_add(1);
 	return ctx;
 }
 void etnaviv_iommu_context_put(struct etnaviv_iommu_context *ctx);

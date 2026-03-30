@@ -110,11 +110,11 @@ struct etnaviv_gpu {
 	struct drm_device *drm;
 	struct thermal_cooling_device *cooling;
 	struct device *dev;
-	struct mutex lock;
+	std::unique_ptr<Mutex> lock;
 	struct etnaviv_chip_identity identity;
 	enum etnaviv_sec_mode sec_mode;
 	struct workqueue_struct *wq;
-	struct mutex sched_lock;
+	std::unique_ptr<Mutex> sched_lock;
 	struct drm_gpu_scheduler sched;
 	enum etnaviv_gpu_state state;
 
@@ -126,18 +126,18 @@ struct etnaviv_gpu {
 	DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
 	struct etnaviv_event event[ETNA_NR_EVENTS];
 	struct completion event_free;
-	spinlock_t event_spinlock;
+	Spinlock event_spinlock;
 
 	u32 idle_mask;
 
 	/* Fencing support */
-	struct xarray user_fences;
+	xarray user_fences;
 	u32 next_user_fence;
 	u32 next_fence;
 	u32 completed_fence;
 	wait_queue_head_t fence_event;
 	u64 fence_context;
-	spinlock_t fence_spinlock;
+	Spinlock fence_spinlock;
 
 	/* worker for handling 'sync' points: */
 	struct work_struct sync_point_work;
