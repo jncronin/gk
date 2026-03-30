@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -756,3 +758,5 @@ int etnaviv_gem_new_userptr(struct drm_device *dev, struct drm_file *file,
 	drm_gem_object_put(&etnaviv_obj->base);
 	return ret;
 }
+
+#endif

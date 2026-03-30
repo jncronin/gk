@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2014-2018 Etnaviv Project
@@ -145,3 +147,5 @@ fail:
 
 	return ERR_PTR(ret);
 }
+
+#endif

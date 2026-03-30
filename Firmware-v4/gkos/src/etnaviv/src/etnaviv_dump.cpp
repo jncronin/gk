@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -231,3 +233,5 @@ void etnaviv_core_dump(struct etnaviv_gem_submit *submit)
 
 	dev_coredumpv(gpu->dev, iter.start, iter.data - iter.start, GFP_NOWAIT);
 }
+
+#endif

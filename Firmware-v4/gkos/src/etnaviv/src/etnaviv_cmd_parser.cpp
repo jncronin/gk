@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -205,3 +207,5 @@ bool etnaviv_cmd_validate_one(struct etnaviv_gpu *gpu, u32 *stream,
 
 	return true;
 }
+
+#endif

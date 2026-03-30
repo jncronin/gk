@@ -125,22 +125,22 @@ struct etnaviv_gpu {
 	/* event management: */
 	DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
 	struct etnaviv_event event[ETNA_NR_EVENTS];
-	struct completion event_free;
+	//struct completion event_free;
 	Spinlock event_spinlock;
 
 	u32 idle_mask;
 
 	/* Fencing support */
-	xarray user_fences;
+	//xarray user_fences;
 	u32 next_user_fence;
 	u32 next_fence;
 	u32 completed_fence;
-	wait_queue_head_t fence_event;
+	//wait_queue_head_t fence_event;
 	u64 fence_context;
 	Spinlock fence_spinlock;
 
 	/* worker for handling 'sync' points: */
-	struct work_struct sync_point_work;
+	//struct work_struct sync_point_work;
 	int sync_point_event;
 
 	/* hang detection */
@@ -169,7 +169,7 @@ struct etnaviv_gpu {
 
 static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)
 {
-	writel(data, gpu->mmio + reg);
+	*(volatile uint32_t *)((uintptr_t)gpu->mmio + reg) = data;
 }
 
 static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
@@ -179,9 +179,9 @@ static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
 	 * throw away the result.
 	 */
 	if (reg >= VIVS_FE_DMA_STATUS && reg <= VIVS_FE_AUTO_FLUSH)
-		readl(gpu->mmio + reg);
+		*(volatile uint32_t *)((uintptr_t)gpu->mmio + reg);
 
-	return readl(gpu->mmio + reg);
+	return *(volatile uint32_t *)((uintptr_t)gpu->mmio + reg);
 }
 
 static inline u32 gpu_fix_power_address(struct etnaviv_gpu *gpu, u32 reg)
@@ -196,12 +196,12 @@ static inline u32 gpu_fix_power_address(struct etnaviv_gpu *gpu, u32 reg)
 
 static inline void gpu_write_power(struct etnaviv_gpu *gpu, u32 reg, u32 data)
 {
-	writel(data, gpu->mmio + gpu_fix_power_address(gpu, reg));
+	gpu_write(gpu, gpu_fix_power_address(gpu, reg), data);
 }
 
 static inline u32 gpu_read_power(struct etnaviv_gpu *gpu, u32 reg)
 {
-	return readl(gpu->mmio + gpu_fix_power_address(gpu, reg));
+	return gpu_read(gpu, gpu_fix_power_address(gpu, reg));
 }
 
 int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value);

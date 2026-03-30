@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2025 Etnaviv Project
@@ -221,3 +223,5 @@ void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu)
 					  output_offset, shader_offset,
 					  shader_size, shader_register_count);
 }
+
+#endif

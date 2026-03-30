@@ -18,6 +18,10 @@
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+#define __iomem volatile
+
 #define DRM_DEBUG klog
 
 typedef uint8_t u8;

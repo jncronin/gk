@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2017 Etnaviv Project
@@ -585,3 +587,5 @@ void etnaviv_perfmon_process(struct etnaviv_gpu *gpu,
 
 	*(bo + pmr->offset) = val;
 }
+
+#endif

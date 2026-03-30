@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2015 Etnaviv Project
@@ -633,3 +635,5 @@ err_submit_cmds:
 
 	return ret;
 }
+
+#endif

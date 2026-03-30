@@ -1,3 +1,5 @@
+#if 0
+
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -558,3 +560,5 @@ void etnaviv_iommu_global_fini(struct etnaviv_gpu *gpu)
 
 	priv->mmu_global = NULL;
 }
+
+#endif
