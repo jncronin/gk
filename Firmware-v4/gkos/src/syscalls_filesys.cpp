@@ -345,6 +345,18 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 #endif
         return -1;
     }
+    if(act_name == "/dev/dri")
+    {
+        if(!is_opendir)
+        {
+            klog("open: attempt to open /dev/dri as file\n");
+            *_errno = ENOTDIR;
+            return -1;
+        }
+        p->open_files.f[fd] = std::make_shared<DRIFile>();
+        p->open_files.f[fd]->path = act_name;
+        return fd;
+    }
 
     // use lwext4
     ext4_file _f = { 0 };
@@ -357,6 +369,7 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 
     if(gk_ext4_open(lwf->fname.c_str(), flags, mode, fd, _errno) < 0)
     {
+        klog("open: failed to open %s\n", act_name.c_str());
         cg.relock();
         p->open_files.f[fd] = nullptr;
         return -1;
@@ -623,4 +636,27 @@ int syscall_dup2(int oldfd, int newfd, int *_errno)
     }
 
     return newfd;
+}
+
+int syscall_ioctl(int fd, unsigned int nr, void *ptr, size_t len, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    CriticalGuard cg(p->open_files.sl);
+
+    if(fd < 0 || fd >= GK_MAX_OPEN_FILES)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    if(p->open_files.f[fd] == nullptr)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    auto pf = p->open_files.f[fd];
+    cg.unlock();
+
+    return pf->Ioctl(nr, ptr, len, _errno);
 }

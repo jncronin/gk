@@ -18,7 +18,8 @@ enum FileType
     FT_Socket,
     FT_Pipe,
     FT_Ram,
-    FT_FAT
+    FT_FAT,
+    FT_DRI
 };
 
 class File
@@ -46,6 +47,8 @@ class File
         virtual int Accept(void *addr, unsigned int *addrlen, int *_errno);
 
         virtual size_t Flen(int *_errno);
+
+        virtual int Ioctl(unsigned int id, void *ptr, size_t len, int *_errno);
 
         FileType GetType() const;    // support type checking without rtti
 
@@ -136,6 +139,17 @@ class SocketFile : public File
         SocketFile(Socket *sck);
 
         Socket *sck;
+};
+
+class DRIFile : public File
+{
+    public:
+        ssize_t Write(const char *buf, size_t count, int *_errno);
+        ssize_t Read(char *buf, size_t count, int *_errno);
+
+        int Ioctl(unsigned int id, void *ptr, size_t len, int *_errno);
+
+        DRIFile();
 };
 
 #endif

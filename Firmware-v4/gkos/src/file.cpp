@@ -69,3 +69,9 @@ int File::Ftruncate(off_t length, int *_errno)
     *_errno = EROFS;
     return -1;
 }
+
+int File::Ioctl(unsigned int, void *, size_t len, int *_errno)
+{
+    *_errno = EINVAL;
+    return -1;
+}
