@@ -70,7 +70,7 @@ int main(uint32_t bootrom_val)
         // Give privileged read/write access to CIDs 0,1
         for(unsigned int cid = 0; cid <= 6; cid++)
         {
-            klog("risab @ %p, cid %u\n", risab, cid);
+            //klog("risab @ %p, cid %u\n", risab, cid);
             auto enable_val = (cid <= 1) ? 0xffffffffU : 0U;
             risab->CID[cid].PRIVCFGR = enable_val;
             risab->CID[cid].RDCFGR = enable_val;
