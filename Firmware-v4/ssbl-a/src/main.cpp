@@ -100,14 +100,16 @@ int main(uint32_t bootrom_val)
 
     // Why did we just switch on?
     auto sw_on_reason = pmic_read_register(0x02);
+    auto reset_sr = pmic_read_register(0x04);
     klog("SSBL: TURN_ON_SR: %02x, TURN_OFF_SR: %02x, RESTART_SR: %02x\n", sw_on_reason,
-        pmic_read_register(0x03), pmic_read_register(0x04));
+        pmic_read_register(0x03), reset_sr);
     klog("SSBL: PADS_PULL_CR: %02x, INT_SRC_R1: %02x\n",
         pmic_read_register(0x18), pmic_read_register(0x7c));
 
-    if(sw_on_reason == 0x08 || sw_on_reason == 0x04)
+    if(sw_on_reason == 0x08 || sw_on_reason == 0x04 || reset_sr == 0x02)
     {
         // AUTO turn on by VIN going high or VBUS turn on - just switch off again
+        // or reset by long press PONKEY - again just switch off
         klog("SSBL: auto turn on - shutting down\n");
         while(!(USART6->ISR & USART_ISR_TXFE));
         pmic_write_register(0x10, 0x81);
