@@ -74,6 +74,14 @@ struct list_head
 #define BUG() do { klog("BUG()\n"); while(true); } while(0);
 #define BUG_ON(x) do { if(x) { klog("BUG_ON(%s)\n", str(x)); while(true); } } while(0);
 #define BUILD_BUG_ON(x) static_assert(!(x))
+#define BIT(x) (1U << (x))
+
+#define dev_warn(d, msg, ...) klog("GPU WARN : " msg __VA_OPT__(,) __VA_ARGS__)
+#define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
+#define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
+#define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
+
+#define clamp(x, minval, maxval) (((x) > (maxval)) ? (maxval) : (((x) < (minval)) ? (minval) : (x)))
 
 typedef uintptr_t dma_addr_t;
 
@@ -238,7 +246,7 @@ static inline int reset_control_deassert(reset_control &rst) { return rst.Deasse
 class clk
 {
 	public:
-		virtual int enable() = 0;
+		virtual int enable(uint64_t freq = ~0ULL) = 0;
 		virtual int disable() = 0;
 };
 
@@ -247,14 +255,14 @@ class Etnaviv_core_clock : public clk
 	public:
 		uint64_t freq = 800000000;
 
-		int enable();
+		int enable(uint64_t freq = ~0ULL);
 		int disable();
 };
 
 class Etnaviv_bus_clock : public clk
 {
 	public:
-		int enable();
+		int enable(uint64_t);
 		int disable();
 };
 

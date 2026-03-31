@@ -153,7 +153,7 @@ struct etnaviv_gpu {
 	void __iomem *mmio;
 	int irq;
 
-	struct etnaviv_iommu_context *mmu_context;
+	std::shared_ptr<etnaviv_iommu_context> mmu_context;
 	unsigned int flush_seq;
 
 	/* Power Control: */
@@ -172,6 +172,7 @@ struct etnaviv_gpu {
 static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)
 {
 	*(volatile uint32_t *)((uintptr_t)gpu->mmio + reg) = data;
+	__DSB();
 }
 
 static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)

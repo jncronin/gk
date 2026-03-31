@@ -154,6 +154,10 @@ class VBlockAllocator
         virtual int Traverse(traversal_function_t tf) = 0;
         virtual int Dealloc(VMemBlock& region) = 0;
         virtual int Dealloc(MemBlock& region);
+
+        VBlockAllocator() = default;
+        VBlockAllocator(uintptr_t _base, uintptr_t _length) : base(_base), length(_length) {}
+        virtual ~VBlockAllocator() = default;
 };
 
 class MapVBlockAllocator : public VBlockAllocator
@@ -175,6 +179,9 @@ class MapVBlockAllocator : public VBlockAllocator
         int Dealloc(VMemBlock &region);
 
         using VBlockAllocator::Dealloc;
+
+        MapVBlockAllocator() : VBlockAllocator() {}
+        MapVBlockAllocator(uintptr_t _base, uintptr_t _length) : VBlockAllocator(_base, _length) {}
 };
 
 #endif

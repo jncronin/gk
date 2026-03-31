@@ -514,7 +514,6 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 	etnaviv_hw_specs(gpu);
 }
 
-#if 0
 static void etnaviv_gpu_load_clock(struct etnaviv_gpu *gpu, u32 clock)
 {
 	gpu_write(gpu, VIVS_HI_CLOCK_CONTROL, clock |
@@ -526,10 +525,8 @@ static void etnaviv_gpu_update_clock(struct etnaviv_gpu *gpu)
 {
 	if (gpu->identity.minor_features2 &
 	    chipMinorFeatures2_DYNAMIC_FREQUENCY_SCALING) {
-		clk_set_rate(gpu->clk_core,
-			     gpu->base_rate_core >> gpu->freq_scale);
-		clk_set_rate(gpu->clk_shader,
-			     gpu->base_rate_shader >> gpu->freq_scale);
+			gpu->clk_core->enable(gpu->base_rate_core >> gpu->freq_scale);
+			gpu->clk_shader->enable(gpu->base_rate_core >> gpu->freq_scale);
 	} else {
 		unsigned int fscale = 1 << (6 - gpu->freq_scale);
 		u32 clock = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
@@ -551,13 +548,12 @@ static void etnaviv_gpu_update_clock(struct etnaviv_gpu *gpu)
 static int etnaviv_hw_reset(struct etnaviv_gpu *gpu)
 {
 	u32 control, idle;
-	unsigned long timeout;
 	bool failed = true;
 
 	/* We hope that the GPU resets in under one second */
-	timeout = jiffies + msecs_to_jiffies(1000);
+	auto timeout = clock_cur() + kernel_time_from_ms(1000);
 
-	while (time_is_after_jiffies(timeout)) {
+	while (clock_cur() < timeout) {
 		unsigned int fscale = 1 << (6 - gpu->freq_scale);
 		u32 pulse_eater = 0x01590880;
 
@@ -588,7 +584,7 @@ static int etnaviv_hw_reset(struct etnaviv_gpu *gpu)
 		}
 
 		/* wait for reset. */
-		usleep_range(10, 20);
+		usleep(10);
 
 		/* reset soft reset bit. */
 		control &= ~VIVS_HI_CLOCK_CONTROL_SOFT_RESET;
@@ -642,12 +638,12 @@ static int etnaviv_hw_reset(struct etnaviv_gpu *gpu)
 
 	gpu->state = ETNA_GPU_STATE_RESET;
 	gpu->exec_state = -1;
-	if (gpu->mmu_context)
-		etnaviv_iommu_context_put(gpu->mmu_context);
-	gpu->mmu_context = NULL;
+	gpu->mmu_context = nullptr;
 
 	return 0;
 }
+
+#if 0
 
 static void etnaviv_gpu_enable_mlcg(struct etnaviv_gpu *gpu)
 {
@@ -868,15 +864,14 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 			goto fail;
 		}
 	}
-#if 0
 
-	if (gpu->identity.nn_core_count > 0)
-		dev_warn(gpu->dev, "etnaviv has been instantiated on a NPU, "
+	if (gpu.identity.nn_core_count > 0)
+		dev_warn(gpu.dev, "etnaviv has been instantiated on a NPU, "
                                    "for which the UAPI is still experimental\n");
 
 	/* Exclude VG cores with FE2.0 */
-	if (gpu->identity.features & chipFeatures_PIPE_VG &&
-	    gpu->identity.features & chipFeatures_FE20) {
+	if (gpu.identity.features & chipFeatures_PIPE_VG &&
+	    gpu.identity.features & chipFeatures_FE20) {
 		dev_info(gpu->dev, "Ignoring GPU with VG and FE2.0\n");
 		ret = -ENXIO;
 		goto fail;
@@ -886,17 +881,18 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 	 * On cores with security features supported, we claim control over the
 	 * security states.
 	 */
-	if ((gpu->identity.minor_features7 & chipMinorFeatures7_BIT_SECURITY) &&
-	    (gpu->identity.minor_features10 & chipMinorFeatures10_SECURITY_AHB))
-		gpu->sec_mode = ETNA_SEC_KERNEL;
+	if ((gpu.identity.minor_features7 & chipMinorFeatures7_BIT_SECURITY) &&
+	    (gpu.identity.minor_features10 & chipMinorFeatures10_SECURITY_AHB))
+		gpu.sec_mode = ETNA_SEC_KERNEL;
 
-	gpu->state = ETNA_GPU_STATE_IDENTIFIED;
+	gpu.state = ETNA_GPU_STATE_IDENTIFIED;
 
-	ret = etnaviv_hw_reset(gpu);
+	ret = etnaviv_hw_reset(&gpu);
 	if (ret) {
-		dev_err(gpu->dev, "GPU reset failed\n");
+		dev_err(gpu.dev, "GPU reset failed\n");
 		goto fail;
 	}
+#if 0
 
 	ret = etnaviv_iommu_global_init(gpu);
 	if (ret)

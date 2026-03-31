@@ -22,7 +22,7 @@ void init_etnaviv()
     assert(order_base_2(3) == 2);
     assert(order_base_2(4) == 2);
     assert(order_base_2(5) == 3);
-    
+
     etna_dev = std::make_unique<device>();
     etnaviv_gpu_combined_init(*etna_dev);
 }
@@ -69,7 +69,7 @@ int Etnaviv_reset_control::Deassert()
     return 0;
 }
 
-int Etnaviv_bus_clock::enable()
+int Etnaviv_bus_clock::enable(uint64_t)
 {
     //flexgen59 for clk_icn_m_gpu, max 600 MHz
     // Use PLL5 = 1200 MHz / 2 -> 600 MHz
@@ -94,13 +94,22 @@ int Etnaviv_bus_clock::disable()
     return 0;
 }
 
-int Etnaviv_core_clock::enable()
+int Etnaviv_core_clock::enable(uint64_t new_freq)
 {
     // disable before enable
     if(RCC_VMEM->PLL3CFGR1 & RCC_PLL3CFGR1_PLLEN)
     {
+        if(new_freq == freq)
+        {
+            // already enabled at correct rate - do nothing
+            return 0;
+        }
         disable();
     }
+
+    if(new_freq == ~0ULL)
+        new_freq = 800000000;
+    freq = new_freq;
 
     // set reference clock to HSE40
     RCC_VMEM->MUXSELCFGR = (RCC_VMEM->MUXSELCFGR & ~RCC_MUXSELCFGR_MUXSEL7_Msk) |
@@ -109,7 +118,8 @@ int Etnaviv_core_clock::enable()
 
     if(freq != 800000000)
     {
-        klog("GPU frequencies other than 800 MHz not yet implemented\n");
+        klog("GPU frequencies other than 800 MHz not yet implemented (%llu requested)\n",
+            freq);
     }
 
     RCC_VMEM->PLL3CFGR2 = (2UL << RCC_PLL3CFGR2_FREFDIV_Pos) |
@@ -142,5 +152,16 @@ int Etnaviv_core_clock::disable()
 int drm_dev_register(drm_device &dev, int)
 {
     klog("DRM: registered device\n");
+    return 0;
+}
+
+int usleep(useconds_t usec)
+{
+    if(usec < 1000)
+    {
+        udelay(usec);
+        return 0;
+    }
+    Block(clock_cur() + kernel_time_from_us(usec));
     return 0;
 }
