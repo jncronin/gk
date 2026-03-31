@@ -37,5 +37,7 @@ void *dma_alloc_wc(struct device *dev, size_t size,
     }
 
     *dma_addr = pmem.base;
+
+    klog("dma_alloc_wc: %llu bytes @ %p physical, %p virtual\n", size, *dma_addr, (void *)vmem.base);
     return (void *)vmem.base;
 }

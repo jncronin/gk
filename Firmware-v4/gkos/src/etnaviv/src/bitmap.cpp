@@ -35,7 +35,9 @@ int bitmap_find_free_region(uint64_t * bitmap,
 
         if((bitmap[cword] & ctest) == 0)
         {
-            // free bit
+            // found a free range
+            klog("bitmap_find_free_region: order=%d, alloc %lu bits at position %lu (cword=%lu, total bits=%d)\n",
+                order, nbits, i * nbits, cword, bits);
             bitmap[cword] |= ctest;
             return i * nbits;
         }
@@ -43,6 +45,8 @@ int bitmap_find_free_region(uint64_t * bitmap,
         i++;
         shift += nbits;
     }
+
+    klog("bitmap: find_free_region failed\n");
 
     return -ENOMEM;
 }
