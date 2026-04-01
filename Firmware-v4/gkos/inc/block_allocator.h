@@ -73,6 +73,12 @@ template<typename KeyT, typename AddrT = uintptr_t> class BlockAllocator
                 std::numeric_limits<AddrT>::max()
             }) : addrspace(_addrspace) { }
 
+        BlockAllocator(AddrT start, AddrT length)
+        {
+            addrspace.start = start;
+            addrspace.length = length;
+        }
+
         iterator AllocFixed(BlockAddress region, KeyT &&val = KeyT{})
         {
             // if there is an exact match then fail
