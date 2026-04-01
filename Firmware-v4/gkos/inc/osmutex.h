@@ -35,6 +35,9 @@ class Mutex
         std::pair<bool, std::vector<PThread>> _unlock(int *reason = nullptr, bool force = false);
         bool unlock(bool do_unlock);
         bool try_delete(int *reason = nullptr);
+
+        /* Does the current thread own the mutex? */
+        bool held();
 };
 
 class RwLock

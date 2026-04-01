@@ -186,3 +186,10 @@ bool Mutex::try_delete(int *reason)
     return false;
 }
 
+bool Mutex::held()
+{
+    auto t = GetCurrentThreadForCore();
+
+    CriticalGuard cg(sl);
+    return owner == t->id;
+}
