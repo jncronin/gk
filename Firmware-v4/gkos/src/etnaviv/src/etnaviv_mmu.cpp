@@ -1,5 +1,3 @@
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -16,12 +14,14 @@
 #include "etnaviv_gem.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_mmu.h"
+#include "block_allocator.h"
+#include "coalescing_block_allocator.h"
 
 static void etnaviv_context_unmap(struct etnaviv_iommu_context *context,
 				 unsigned long iova, size_t size)
 {
 	size_t unmapped_page, unmapped = 0;
-	size_t pgsize = SZ_4K;
+	size_t pgsize = 4096;
 
 	while (unmapped < size) {
 		unmapped_page = context->global->ops->unmap(context, iova,
@@ -39,7 +39,7 @@ static int etnaviv_context_map(struct etnaviv_iommu_context *context,
 			      size_t size, int prot)
 {
 	unsigned long orig_iova = iova;
-	size_t pgsize = SZ_4K;
+	size_t pgsize = 4096;
 	size_t orig_size = size;
 	int ret = 0;
 
@@ -63,24 +63,23 @@ static int etnaviv_context_map(struct etnaviv_iommu_context *context,
 
 static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 			     u32 iova, unsigned int va_len,
-			     struct sg_table *sgt, int prot)
+			     sg_table &sgt, int prot)
 {
-	struct scatterlist *sg;
 	unsigned int da = iova;
 	unsigned int i;
 	int ret;
 
-	if (!context || !sgt)
+	if (!context)
 		return -EINVAL;
 
-	for_each_sgtable_dma_sg(sgt, sg, i) {
-		phys_addr_t pa = sg_dma_address(sg);
-		unsigned int da_len = sg_dma_len(sg);
-		unsigned int bytes = min_t(unsigned int, da_len, va_len);
+	for(auto &sge : sgt) {
+		phys_addr_t pa = sge.paddr;
+		unsigned int da_len = sge.len;
+		unsigned int bytes = std::min(da_len, va_len);
 
 		VERB("map[%d]: %08x %pap(%x)", i, da, &pa, bytes);
 
-		if (!IS_ALIGNED(iova | pa | bytes, SZ_4K)) {
+		if (!IS_ALIGNED(iova | pa | bytes, 4096ul)) {
 			dev_err(context->global->dev,
 				"unaligned: iova 0x%x pa %pa size 0x%x\n",
 				iova, &pa, bytes);
@@ -106,7 +105,7 @@ fail:
 }
 
 static void etnaviv_iommu_unmap(struct etnaviv_iommu_context *context, u32 iova,
-				struct sg_table *sgt, unsigned len)
+				sg_table &sgt, unsigned len)
 {
 	etnaviv_context_unmap(context, iova, len);
 
@@ -118,106 +117,185 @@ static void etnaviv_iommu_remove_mapping(struct etnaviv_iommu_context *context,
 {
 	struct etnaviv_gem_object *etnaviv_obj = mapping->object;
 
-	lockdep_assert_held(&context->lock);
+	BUG_ON(!context->lock->held());
 
 	etnaviv_iommu_unmap(context, mapping->vram_node.start,
 			    etnaviv_obj->sgt, etnaviv_obj->size);
-	drm_mm_remove_node(&mapping->vram_node);
+	context->mm.alloc.Dealloc(mapping->vram_node.start);
 }
 
 void etnaviv_iommu_reap_mapping(struct etnaviv_vram_mapping *mapping)
 {
-	struct etnaviv_iommu_context *context = mapping->context;
+	struct etnaviv_iommu_context *context = mapping->context.get();
 
-	lockdep_assert_held(&context->lock);
+	BUG_ON(!context->lock->held());
 	WARN_ON(mapping->use);
 
 	etnaviv_iommu_remove_mapping(context, mapping);
-	etnaviv_iommu_context_put(mapping->context);
-	mapping->context = NULL;
-	list_del_init(&mapping->mmu_node);
+	mapping->context = nullptr;
+
+	context->mm.alloc.Dealloc(mapping->vram_node.start);
 }
 
 static int etnaviv_iommu_find_iova(struct etnaviv_iommu_context *context,
-				   struct drm_mm_node *node, size_t size)
+				   drm_mm_node *node, size_t size)
 {
-	struct etnaviv_vram_mapping *free = NULL;
-	enum drm_mm_insert_mode mode = DRM_MM_INSERT_LOW;
-	int ret;
+	/* This function finds a free area in the GPU's virtual memory space.
+		If it cannot find one, it keeps removing entries until it
+		has enough space.
+	*/
+	BUG_ON(!context->lock->held());
 
-	lockdep_assert_held(&context->lock);
+	// save the last evicted location so we can use it in the loop
+	uintptr_t last_evicted = ~0ULL;
 
 	while (1) {
-		struct etnaviv_vram_mapping *m, *n;
-		struct drm_mm_scan scan;
-		struct list_head list;
-		bool found;
+		auto &mm = context->mm.alloc;
+		auto iter = mm.end();
 
-		ret = drm_mm_insert_node_in_range(&context->mm, node,
-						  size, 0, 0, 0, U64_MAX, mode);
-		if (ret != -ENOSPC)
-			break;
+		if(last_evicted != ~0ULL)
+		{
+			iter = mm.AllocFixed({ .start = last_evicted, .length = size });
+		}
+		if(iter == mm.end())
+		{
+			iter = mm.AllocAny(size);
+		}
+		if(iter != mm.end())
+		{
+			node->start = iter->first.start;
+			node->length = iter->first.length;
+			node->mm = &context->mm;
+			return 0;
+		}
 
-		/* Try to retire some entries */
-		drm_mm_scan_init(&scan, &context->mm, size, 0, 0, mode);
+		/* Logic for the following search:
+			Iterates through context->mappings (a list of mmu_nodes)
 
-		found = 0;
-		INIT_LIST_HEAD(&list);
-		list_for_each_entry(free, &context->mappings, mmu_node) {
+			It adds those with a non-zero vram_node.mm member, and a
+				zero 'use' member to a list called 'list'
+
+			All of these are potentials for removal.
+
+			It then uses the drm_mm_scan logic to determine if removing
+				several of these in combination would create a hole
+				large enough to satisfy the request.
+
+			drm_mm_scan_add_block maintains a list of memory blocks.  It
+				coalesces them together and eventually returns true if
+				any internal coalesced block is large enough to satisfy
+				the request (request is initially set up in scan_init).
+				The scanner then maintains an internal block representing
+				where the hole that is large enough is.
+
+			Once this is the case, entries are again removed from the scanner.
+			Any of those which overlap the hole will return true from
+			remove_block, those which don't will return false (these latter are
+			pruned from the list named 'list'
+
+			Then, those members of 'list' are passed to the driver defined
+			cleanup function (etnaviv_iommu_reap_mapping) which does driver
+			specific unmapping, as well as removing them from the mm itself.
+
+			Finally, the drm_mm is called again to allocate the block, with
+			the hint DRM_MM_INSERT_EVICT meaning to alloc at the last spot
+			we evicted.
+
+			We can achieve a similar thing with a map implementation, without
+			the remove step.
+
+			Each node contains a list of blocks that have formed it, as well
+			as a base and length.
+
+			When we add a new node, we use a list of length 1 spanning the
+			node.  We then immediately get its prev() and next() members.  If
+			they are adjacent, we coalesce (increase length/base, combine the
+			lists of nodes (keep in order)).  If the new node is big enough, we return the
+			list of nodes that were used to create it.  Then, we selectively
+			evict enough of these (starting from the beginning) to satisfy
+			the request.
+		*/
+
+		struct scan_node
+		{
+			std::list<uintptr_t> base_addrs;
+			bool CoalesceFrom(scan_node &other, bool other_is_prev)
+			{
+				if (other_is_prev)
+				{
+					base_addrs.insert(base_addrs.begin(),
+						other.base_addrs.begin(), other.base_addrs.end());
+				}
+				else
+				{
+					base_addrs.insert(base_addrs.end(),
+						other.base_addrs.begin(), other.base_addrs.end());
+				}
+				return true;
+			}
+			
+			scan_node(uintptr_t address) { base_addrs.push_back(address); }
+		};
+
+		bool found = false;
+		CoalescingBlockAllocator<scan_node> scan;
+		for(const auto &free : context->mappings)
+		{
 			/* If this vram node has not been used, skip this. */
-			if (!free->vram_node.mm)
+			if (!free.second.vram_node.mm)
 				continue;
 
 			/*
 			 * If the iova is pinned, then it's in-use,
 			 * so we must keep its mapping.
 			 */
-			if (free->use)
+			if (free.second.use)
 				continue;
 
-			list_add(&free->scan_node, &list);
-			if (drm_mm_scan_add_block(&scan, &free->vram_node)) {
+			auto &cmap = free.second.vram_node;
+			CoalescingBlockAllocator<scan_node>::BlockAddress baddr
+			{ .start = cmap.start, .length = cmap.length };
+
+			auto scan_iter = scan.AllocFixed(baddr, scan_node(cmap.start));
+
+			auto &creg = scan_iter->first;
+			if(creg.length >= size)
+			{
+				// We have identified a sufficiently large region to contain the
+				//  new block.  Now successively free the blocks.
 				found = true;
+				last_evicted = creg.start;
+
+				uintptr_t cur_evicted = 0;
+				
+				for(const auto &addr : scan_iter->second.base_addrs)
+				{
+					auto cmapping = context->mappings.find(addr);
+					BUG_ON(cmapping == context->mappings.end());
+					cur_evicted += cmapping->second.vram_node.length;
+					etnaviv_iommu_reap_mapping(&cmapping->second);
+
+					if(cur_evicted >= size)
+					{
+						// stop here
+						break;
+					}
+				}
+
 				break;
 			}
 		}
 
-		if (!found) {
-			/* Nothing found, clean up and fail */
-			list_for_each_entry_safe(m, n, &list, scan_node)
-				BUG_ON(drm_mm_scan_remove_block(&scan, &m->vram_node));
-			break;
+		if(!found)
+		{
+			return -ENOSPC;
 		}
-
-		/*
-		 * drm_mm does not allow any other operations while
-		 * scanning, so we have to remove all blocks first.
-		 * If drm_mm_scan_remove_block() returns false, we
-		 * can leave the block pinned.
-		 */
-		list_for_each_entry_safe(m, n, &list, scan_node)
-			if (!drm_mm_scan_remove_block(&scan, &m->vram_node))
-				list_del_init(&m->scan_node);
-
-		/*
-		 * Unmap the blocks which need to be reaped from the MMU.
-		 * Clear the mmu pointer to prevent the mapping_get finding
-		 * this mapping.
-		 */
-		list_for_each_entry_safe(m, n, &list, scan_node) {
-			etnaviv_iommu_reap_mapping(m);
-			list_del_init(&m->scan_node);
-		}
-
-		mode = DRM_MM_INSERT_EVICT;
 
 		/*
 		 * We removed enough mappings so that the new allocation will
 		 * succeed, retry the allocation one more time.
 		 */
 	}
-
-	return ret;
 }
 
 static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
@@ -560,5 +638,3 @@ void etnaviv_iommu_global_fini(struct etnaviv_gpu *gpu)
 
 	priv->mmu_global = NULL;
 }
-
-#endif

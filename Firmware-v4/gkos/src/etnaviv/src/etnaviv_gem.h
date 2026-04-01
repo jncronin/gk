@@ -23,18 +23,31 @@ struct etnaviv_gem_userptr {
 struct etnaviv_vram_mapping {
 	struct list_head obj_node;
 	struct list_head scan_node;
-	struct list_head mmu_node;
+
 	struct etnaviv_gem_object *object;
-	struct etnaviv_iommu_context *context;
-	struct drm_mm_node vram_node;
+	std::shared_ptr<etnaviv_iommu_context> context;
+	drm_mm_node vram_node;
 	unsigned int use;
 	u32 iova;
+
+	bool operator=(const etnaviv_vram_mapping &other) const
+	{
+		return vram_node.start == other.vram_node.start;
+	}
+};
+
+struct etnaviv_vram_mapping_hasher
+{
+	size_t operator()(const etnaviv_vram_mapping &o) const
+	{
+		return std::hash<uintptr_t>()(o.vram_node.start);
+	}
 };
 
 struct etnaviv_gem_object {
 	struct drm_gem_object base;
 	const struct etnaviv_gem_ops *ops;
-	std::unique_ptr<Mutex> lock;
+	std::shared_ptr<Mutex> lock = MutexList.Create();
 
 	/*
 	 * The actual size that is visible to the GPU, not necessarily
@@ -47,7 +60,7 @@ struct etnaviv_gem_object {
 	atomic_t gpu_active;
 
 	struct page **pages;
-	struct sg_table *sgt;
+	sg_table sgt;
 	void *vaddr;
 
 	struct list_head vram_list;

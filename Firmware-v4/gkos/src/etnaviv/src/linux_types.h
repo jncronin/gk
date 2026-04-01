@@ -18,6 +18,9 @@
 #include "syscalls_int.h"
 #include "_gk_ioctls.h"
 
+#include "sg_table.h"
+#include "block_allocator.h"
+
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -71,10 +74,13 @@ struct list_head
 #define xstr(a) str(a)
 #define str(a) #a
 
-#define BUG() do { klog("BUG()\n"); while(true); } while(0);
-#define BUG_ON(x) do { if(x) { klog("BUG_ON(%s)\n", str(x)); while(true); } } while(0);
+#define BUG() do { klog("BUG()\n"); while(true); } while(0)
+#define BUG_ON(x) do { if(x) { klog("BUG_ON(%s)\n", str(x)); while(true); } } while(0)
+#define WARN_ON(x) do { if(x) { klog("WARN_ON(%s)\n", str(x)); } } while(0)
 #define BUILD_BUG_ON(x) static_assert(!(x))
 #define BIT(x) (1U << (x))
+
+#define IS_ALIGNED(x, al) (((x) & ((al) - 1)) == 0)
 
 #define dev_warn(d, msg, ...) klog("GPU WARN : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
@@ -125,13 +131,15 @@ struct drm_sched_job
 
 struct drm_mm
 {
-
+	BlockAllocator<int> alloc =
+		BlockAllocator<int>(0, 0x100000000);
 };
 
-struct drm_mm_node
+struct drm_mm_node : public BlockAllocator<int>::BlockAddress
 {
-
+	drm_mm *mm = nullptr;
 };
+
 
 struct drm_gpu_scheduler
 {

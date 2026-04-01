@@ -172,7 +172,7 @@ struct etnaviv_gpu {
 static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)
 {
 	*(volatile uint32_t *)((uintptr_t)gpu->mmio + reg) = data;
-	__DSB();
+	__asm__ volatile("dsb sy\n" ::: "memory");
 }
 
 static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)

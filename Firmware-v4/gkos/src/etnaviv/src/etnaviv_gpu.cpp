@@ -892,11 +892,11 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 		dev_err(gpu.dev, "GPU reset failed\n");
 		goto fail;
 	}
-#if 0
 
-	ret = etnaviv_iommu_global_init(gpu);
+	ret = etnaviv_iommu_global_init(&gpu);
 	if (ret)
 		goto fail;
+#if 0
 
 	/* Create buffer: */
 	ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc, &gpu->buffer, SZ_4K);

@@ -6,6 +6,8 @@
 #ifndef __ETNAVIV_MMU_H__
 #define __ETNAVIV_MMU_H__
 
+#include <unordered_set>
+
 #define ETNAVIV_PROT_READ	(1 << 0)
 #define ETNAVIV_PROT_WRITE	(1 << 1)
 
@@ -71,8 +73,8 @@ struct etnaviv_iommu_context {
 	struct etnaviv_iommu_global *global;
 
 	/* memory manager for GPU address area */
-	std::unique_ptr<Mutex> lock;
-	struct list_head mappings;
+	std::shared_ptr<Mutex> lock = MutexList.Create();
+	std::unordered_map<uintptr_t, etnaviv_vram_mapping> mappings;
 	struct drm_mm mm;
 	unsigned int flush_seq;
 
