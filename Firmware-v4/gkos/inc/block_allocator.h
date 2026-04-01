@@ -270,6 +270,14 @@ template<typename KeyT, typename AddrT = uintptr_t> class BlockAllocator
                 return l.end();
         }
 
+        /* Allows the key in the underlying map to be changed */
+        iterator ChangeAddress(iterator iter, BlockAddress addr)
+        {
+            auto node = l.extract(iter);
+            node.key() = addr;
+            return l.insert(std::move(node)).position;
+        }
+
         iterator begin() { return l.begin(); }
         iterator end() { return l.end(); }
         iterator rbegin() { return l.rbegin(); }
