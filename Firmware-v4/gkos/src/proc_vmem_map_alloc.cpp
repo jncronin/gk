@@ -8,7 +8,9 @@ int MapVBlockAllocator::Traverse(traversal_function_t tf)
     for(auto &b : l)
     {
         auto &bb = b.second;
-        tf(bb);
+        auto ret = tf(bb);
+        if(ret != 0)
+            return ret;
     }
     return 0;
 }
@@ -153,7 +155,6 @@ VMemBlock MapVBlockAllocator::AllocAny(MemBlock region, bool lowest_first)
 
     // for a map with 'n' used entries, there are potentially 'n+1' empty spaces
     //  either side/between the used entries.  Iterate to check all of them
-    
     if(lowest_first)
     {
         for(auto iter = l.begin(); iter != l.end(); iter++)
