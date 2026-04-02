@@ -41,3 +41,36 @@ void *dma_alloc_wc(struct device *dev, size_t size,
     klog("dma_alloc_wc: %llu bytes @ %p physical, %p virtual\n", size, *dma_addr, (void *)vmem.base);
     return (void *)vmem.base;
 }
+
+void dma_free_wc(struct device *dev, size_t size,
+			       void *cpu_addr, dma_addr_t dma_addr)
+{
+    klog("dma_free_wc: %llu bytes @ %p physical, %p virtual\n", size, (void *)dma_addr, cpu_addr);
+
+    VMemBlock vb;
+    vb.base = (uint64_t)cpu_addr;
+    vb.length = size;
+    vb.valid = true;
+    vmem_unmap(vb);
+
+    vblock_free(vb);
+
+    for(auto i = 0ull; i < size; i += PAGE_SIZE)
+    {
+        PMemBlock pb;
+        pb.base = dma_addr + i;
+        pb.length = PAGE_SIZE;
+        pb.valid = true;
+        Pmem.release(pb);
+    }
+}
+
+void *memset32(void *p, uint32_t v, size_t n)
+{
+    auto cp = (uint32_t *)p;
+    while(n--)
+    {
+        *cp++ = v;
+    }
+    return p;
+}
