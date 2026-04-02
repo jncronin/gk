@@ -286,7 +286,6 @@ template<typename KeyT, typename AddrT = uintptr_t> class BlockAllocator
             }
 
             auto prev = std::prev(cloc.first);
-            auto &prev_region = prev->first;
             l.erase(cloc.first);
 
             return prev;
