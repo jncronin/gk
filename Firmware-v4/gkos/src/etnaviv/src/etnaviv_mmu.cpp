@@ -24,8 +24,7 @@ static void etnaviv_context_unmap(struct etnaviv_iommu_context *context,
 	size_t pgsize = 4096;
 
 	while (unmapped < size) {
-		unmapped_page = context->global->ops->unmap(context, iova,
-							    pgsize);
+		unmapped_page = context->unmap(iova, pgsize);
 		if (!unmapped_page)
 			break;
 
@@ -44,8 +43,7 @@ static int etnaviv_context_map(struct etnaviv_iommu_context *context,
 	int ret = 0;
 
 	while (size) {
-		ret = context->global->ops->map(context, iova, paddr, pgsize,
-						prot);
+		ret = context->map(iova, paddr, pgsize,	prot);
 		if (ret)
 			break;
 
@@ -436,7 +434,6 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
 etnaviv_iommu_context::~etnaviv_iommu_context()
 {
 	etnaviv_cmdbuf_suballoc_unmap(this, &cmdbuf_mapping);
-	global->ops->free(this);
 }
 
 std::shared_ptr<etnaviv_iommu_context>
@@ -471,14 +468,13 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 out_unmap:
 	etnaviv_cmdbuf_suballoc_unmap(ctx.get(), &ctx->cmdbuf_mapping);
 out_free:
-	global->ops->free(ctx.get());
 	return NULL;
 }
 
 void etnaviv_iommu_restore(struct etnaviv_gpu *gpu,
-			   struct etnaviv_iommu_context *context)
+			   std::shared_ptr<etnaviv_iommu_context> context)
 {
-	context->global->ops->restore(gpu, context);
+	context->restore(gpu, context);
 }
 
 int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
@@ -552,12 +548,12 @@ void etnaviv_iommu_put_suballoc_va(struct etnaviv_iommu_context *context,
 
 size_t etnaviv_iommu_dump_size(struct etnaviv_iommu_context *context)
 {
-	return context->global->ops->dump_size(context);
+	return context->dump_size();
 }
 
 void etnaviv_iommu_dump(struct etnaviv_iommu_context *context, void *buf)
 {
-	context->global->ops->dump(context, buf);
+	context->dump(buf);
 }
 
 int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu)
@@ -601,11 +597,6 @@ int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu)
 	global->gpu = gpu;
 	global->version = version;
 	global->use = 1;
-
-	if (version == ETNAVIV_IOMMU_V1)
-		global->ops = &etnaviv_iommuv1_ops;
-	else
-		global->ops = &etnaviv_iommuv2_ops;
 
 	return 0;
 

@@ -46,7 +46,6 @@ struct etnaviv_iommu_global {
 
 	struct etnaviv_gpu *gpu;
 	enum etnaviv_iommu_version version;
-	const struct etnaviv_iommu_ops *ops;
 	unsigned int use;
 	std::shared_ptr<Mutex> lock = MutexList.Create();
 
@@ -61,7 +60,7 @@ struct etnaviv_iommu_global {
 	 */
 	//union {
 		struct {
-			struct etnaviv_iommu_context *shared_context;
+			struct std::shared_ptr<etnaviv_iommu_context> shared_context;
 		} v1;
 		struct {
 			/* P(age) T(able) A(rray) */
@@ -84,7 +83,15 @@ struct etnaviv_iommu_context {
 	/* Not part of the context, but needs to have the same lifetime */
 	struct etnaviv_vram_mapping cmdbuf_mapping;
 
-	~etnaviv_iommu_context();
+	virtual ~etnaviv_iommu_context();
+
+	int map(unsigned long iova, phys_addr_t paddr,
+				size_t size, int prot);
+	size_t unmap(unsigned long iova, size_t size);
+	size_t dump_size();
+	void dump(void *buf);
+	void restore(struct etnaviv_gpu *gpu, std::shared_ptr<etnaviv_iommu_context> context);
+	
 };
 
 int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu);
