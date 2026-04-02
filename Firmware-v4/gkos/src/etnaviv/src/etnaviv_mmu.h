@@ -7,6 +7,8 @@
 #define __ETNAVIV_MMU_H__
 
 #include <unordered_set>
+#include <memory>
+#include "osmutex.h"
 
 #define ETNAVIV_PROT_READ	(1 << 0)
 #define ETNAVIV_PROT_WRITE	(1 << 1)
@@ -40,11 +42,13 @@ extern const struct etnaviv_iommu_ops etnaviv_iommuv2_ops;
 #define ETNAVIV_PTA_ENTRIES	(ETNAVIV_PTA_SIZE / sizeof(u64))
 
 struct etnaviv_iommu_global {
-	struct device *dev;
+	~etnaviv_iommu_global();
+
+	struct etnaviv_gpu *gpu;
 	enum etnaviv_iommu_version version;
 	const struct etnaviv_iommu_ops *ops;
 	unsigned int use;
-	std::unique_ptr<Mutex> lock;
+	std::shared_ptr<Mutex> lock = MutexList.Create();
 
 	void *bad_page_cpu;
 	dma_addr_t bad_page_dma;
@@ -55,7 +59,7 @@ struct etnaviv_iommu_global {
 	 * This union holds members needed by either MMUv1 or MMUv2, which
 	 * can not exist at the same time.
 	 */
-	union {
+	//union {
 		struct {
 			struct etnaviv_iommu_context *shared_context;
 		} v1;
@@ -65,21 +69,22 @@ struct etnaviv_iommu_global {
 			dma_addr_t pta_dma;
 			DECLARE_BITMAP(pta_alloc, ETNAVIV_PTA_ENTRIES);
 		} v2;
-	};
+	//};
 };
 
 struct etnaviv_iommu_context {
-	kref refcount;
 	struct etnaviv_iommu_global *global;
 
 	/* memory manager for GPU address area */
 	std::shared_ptr<Mutex> lock = MutexList.Create();
-	std::unordered_map<uintptr_t, etnaviv_vram_mapping> mappings;
+	std::unordered_map<uintptr_t, std::shared_ptr<etnaviv_vram_mapping>> mappings;
 	struct drm_mm mm;
 	unsigned int flush_seq;
 
 	/* Not part of the context, but needs to have the same lifetime */
 	struct etnaviv_vram_mapping cmdbuf_mapping;
+
+	~etnaviv_iommu_context();
 };
 
 int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu);
@@ -87,10 +92,10 @@ void etnaviv_iommu_global_fini(struct etnaviv_gpu *gpu);
 
 struct etnaviv_gem_object;
 
-int etnaviv_iommu_map_gem(struct etnaviv_iommu_context *context,
+int etnaviv_iommu_map_gem(std::shared_ptr<etnaviv_iommu_context> ,
 	struct etnaviv_gem_object *etnaviv_obj, u32 memory_base,
 	struct etnaviv_vram_mapping *mapping, u64 va);
-void etnaviv_iommu_unmap_gem(struct etnaviv_iommu_context *context,
+void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> ,
 	struct etnaviv_vram_mapping *mapping);
 void etnaviv_iommu_reap_mapping(struct etnaviv_vram_mapping *mapping);
 
@@ -104,22 +109,13 @@ void etnaviv_iommu_put_suballoc_va(struct etnaviv_iommu_context *ctx,
 size_t etnaviv_iommu_dump_size(struct etnaviv_iommu_context *ctx);
 void etnaviv_iommu_dump(struct etnaviv_iommu_context *ctx, void *buf);
 
-struct etnaviv_iommu_context *
+std::shared_ptr<etnaviv_iommu_context>
 etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 			   struct etnaviv_cmdbuf_suballoc *suballoc);
-static inline struct etnaviv_iommu_context *
-etnaviv_iommu_context_get(struct etnaviv_iommu_context *ctx)
-{
-	ctx->refcount.fetch_add(1);
-	return ctx;
-}
-void etnaviv_iommu_context_put(struct etnaviv_iommu_context *ctx);
-void etnaviv_iommu_restore(struct etnaviv_gpu *gpu,
-			   struct etnaviv_iommu_context *ctx);
 
-struct etnaviv_iommu_context *
+std::shared_ptr<etnaviv_iommu_context>
 etnaviv_iommuv1_context_alloc(struct etnaviv_iommu_global *global);
-struct etnaviv_iommu_context *
+std::shared_ptr<etnaviv_iommu_context>
 etnaviv_iommuv2_context_alloc(struct etnaviv_iommu_global *global);
 
 u32 etnaviv_iommuv2_get_mtlb_addr(struct etnaviv_iommu_context *context);

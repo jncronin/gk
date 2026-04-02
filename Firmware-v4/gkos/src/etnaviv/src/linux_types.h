@@ -59,14 +59,15 @@ typedef size_t __kernel_size_t;
 typedef unsigned int gfp_t;
 
 using atomic_t = std::atomic<unsigned int>;
-using kref = std::atomic<unsigned int>;
 
 using phys_addr_t = uintptr_t;
 
+void *memset32(void *d, uint32_t v, size_t n);
+
 struct list_head
 {
-    struct list_head *prev;
-    struct list_head *next;
+    //struct list_head *prev;
+    //struct list_head *next;
 };
 
 #define container_of(obj, result_type, member) (result_type *)((uintptr_t)(obj) - offsetof(result_type, member))

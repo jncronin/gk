@@ -20,8 +20,7 @@
 
 #define GPU_MEM_START	0x80000000
 
-struct etnaviv_iommuv1_context {
-	struct etnaviv_iommu_context base;
+struct etnaviv_iommuv1_context : public etnaviv_iommu_context {
 	u32 *pgtable_cpu;
 	dma_addr_t pgtable_dma;
 };

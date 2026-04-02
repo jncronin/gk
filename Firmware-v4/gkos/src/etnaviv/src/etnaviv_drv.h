@@ -19,6 +19,8 @@
 #include "etnaviv_drm.h"
 //#include <drm/gpu_scheduler.h>
 
+#include <memory>
+
 struct etnaviv_cmdbuf;
 struct etnaviv_gpu;
 struct etnaviv_mmu;
@@ -28,9 +30,11 @@ struct etnaviv_iommu_global;
 
 #define ETNAVIV_SOFTPIN_START_ADDRESS	(4*1024*1024ul) /* must be >= SUBALLOC_SIZE */
 
+struct etnaviv_iommu_context;
+
 struct etnaviv_file_private {
 	int id;
-	struct etnaviv_iommu_context	*mmu;
+	std::shared_ptr<etnaviv_iommu_context> mmu;
 	struct drm_sched_entity		sched_entity;
 };
 
@@ -42,7 +46,7 @@ struct etnaviv_drm_private {
 	gfp_t shm_gfp_mask;
 
 	std::unique_ptr<etnaviv_cmdbuf_suballoc> cmdbuf_suballoc;
-	struct etnaviv_iommu_global *mmu_global;
+	std::unique_ptr<etnaviv_iommu_global> mmu_global;
 
 	std::vector<void *> active_contexts;
 	u32 next_context_id;

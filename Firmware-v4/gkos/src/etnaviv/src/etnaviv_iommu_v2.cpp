@@ -29,8 +29,8 @@
 
 #define MMUv2_MAX_STLB_ENTRIES		1024
 
-struct etnaviv_iommuv2_context {
-	struct etnaviv_iommu_context base;
+struct etnaviv_iommuv2_context : public etnaviv_iommu_context
+{
 	unsigned short id;
 	/* M(aster) TLB aka first level pagetable */
 	u32 *mtlb_cpu;

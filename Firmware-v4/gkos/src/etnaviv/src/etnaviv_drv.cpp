@@ -50,7 +50,7 @@ static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
 
 	ctx->id = next_context_id.fetch_add(1);
 
-	ctx->mmu = etnaviv_iommu_context_init(priv->mmu_global,
+	ctx->mmu = etnaviv_iommu_context_init(priv->mmu_global.get(),
 					      priv->cmdbuf_suballoc.get());
 	if (!ctx->mmu) {
 		return -ENOMEM;

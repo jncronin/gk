@@ -104,7 +104,6 @@ struct etnaviv_gem_submit_bo {
  */
 struct etnaviv_gem_submit {
 	struct drm_sched_job sched_job;
-	kref refcount;
 	struct etnaviv_file_private *ctx;
 	struct etnaviv_gpu *gpu;
 	struct etnaviv_iommu_context *mmu_context, *prev_mmu_context;

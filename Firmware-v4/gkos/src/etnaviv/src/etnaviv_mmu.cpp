@@ -66,7 +66,7 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 			     sg_table &sgt, int prot)
 {
 	unsigned int da = iova;
-	unsigned int i;
+	unsigned int i = 0;
 	int ret;
 
 	if (!context)
@@ -77,7 +77,7 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 		unsigned int da_len = sge.len;
 		unsigned int bytes = std::min(da_len, va_len);
 
-		VERB("map[%d]: %08x %pap(%x)", i, da, &pa, bytes);
+		VERB("map[%d]: %08x %pap(%x)", i++, da, &pa, bytes);
 
 		if (!IS_ALIGNED(iova | pa | bytes, 4096ul)) {
 			dev_err(context->global->dev,
@@ -113,7 +113,7 @@ static void etnaviv_iommu_unmap(struct etnaviv_iommu_context *context, u32 iova,
 }
 
 static void etnaviv_iommu_remove_mapping(struct etnaviv_iommu_context *context,
-	struct etnaviv_vram_mapping *mapping)
+	std::shared_ptr<etnaviv_vram_mapping> mapping)
 {
 	struct etnaviv_gem_object *etnaviv_obj = mapping->object;
 
@@ -124,7 +124,7 @@ static void etnaviv_iommu_remove_mapping(struct etnaviv_iommu_context *context,
 	context->mm.alloc.Dealloc(mapping->vram_node.start);
 }
 
-void etnaviv_iommu_reap_mapping(struct etnaviv_vram_mapping *mapping)
+void etnaviv_iommu_reap_mapping(std::shared_ptr<etnaviv_vram_mapping> mapping)
 {
 	struct etnaviv_iommu_context *context = mapping->context.get();
 
@@ -242,17 +242,17 @@ static int etnaviv_iommu_find_iova(struct etnaviv_iommu_context *context,
 		for(const auto &free : context->mappings)
 		{
 			/* If this vram node has not been used, skip this. */
-			if (!free.second.vram_node.mm)
+			if (!free.second->vram_node.mm)
 				continue;
 
 			/*
 			 * If the iova is pinned, then it's in-use,
 			 * so we must keep its mapping.
 			 */
-			if (free.second.use)
+			if (free.second->use)
 				continue;
 
-			auto &cmap = free.second.vram_node;
+			auto &cmap = free.second->vram_node;
 			CoalescingBlockAllocator<scan_node>::BlockAddress baddr
 			{ .start = cmap.start, .length = cmap.length };
 
@@ -272,8 +272,8 @@ static int etnaviv_iommu_find_iova(struct etnaviv_iommu_context *context,
 				{
 					auto cmapping = context->mappings.find(addr);
 					BUG_ON(cmapping == context->mappings.end());
-					cur_evicted += cmapping->second.vram_node.length;
-					etnaviv_iommu_reap_mapping(&cmapping->second);
+					cur_evicted += cmapping->second->vram_node.length;
+					etnaviv_iommu_reap_mapping(cmapping->second);
 
 					if(cur_evicted >= size)
 					{
@@ -301,17 +301,17 @@ static int etnaviv_iommu_find_iova(struct etnaviv_iommu_context *context,
 static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 		   struct drm_mm_node *node, size_t size, u64 va)
 {
-	struct etnaviv_vram_mapping *m, *n;
-	struct drm_mm_node *scan_node;
-	LIST_HEAD(scan_list);
-	int ret;
+	BUG_ON(!context->lock->held());
 
-	lockdep_assert_held(&context->lock);
-
-	ret = drm_mm_insert_node_in_range(&context->mm, node, size, 0, 0, va,
-					  va + size, DRM_MM_INSERT_LOWEST);
-	if (ret != -ENOSPC)
-		return ret;
+	auto insert_iter = context->mm.alloc.AllocFixed(
+		{
+			.start = va, .length = size
+		}
+	);
+	if(insert_iter != context->mm.alloc.end())
+	{
+		return 0;
+	}
 
 	/*
 	 * When we can't insert the node, due to a existing mapping blocking
@@ -324,47 +324,63 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 	 * here to make space for the new mapping.
 	 */
 
-	drm_mm_for_each_node_in_range(scan_node, &context->mm, va, va + size) {
-		m = container_of(scan_node, struct etnaviv_vram_mapping,
-				 vram_node);
+	auto from = context->mm.alloc.LeftBlock(va);
+	auto to = context->mm.alloc.RightBlock(va + size);
 
-		if (m->use)
+	std::vector<uintptr_t> del_addrs;
+
+	for(; from != to; from++)
+	{
+		auto &m = context->mappings[from->first.start];
+		if(m->use)
 			return -ENOSPC;
-
-		list_add(&m->scan_node, &scan_list);
+		del_addrs.push_back(m->vram_node.start);
 	}
 
-	list_for_each_entry_safe(m, n, &scan_list, scan_node) {
+	for(const auto del_addr : del_addrs)
+	{
+		auto &m = context->mappings[del_addr];
 		etnaviv_iommu_reap_mapping(m);
-		list_del_init(&m->scan_node);
 	}
 
-	return drm_mm_insert_node_in_range(&context->mm, node, size, 0, 0, va,
-					   va + size, DRM_MM_INSERT_LOWEST);
+	insert_iter = context->mm.alloc.AllocFixed(
+		{
+			.start = va, .length = size
+		}
+	);
+	if(insert_iter != context->mm.alloc.end())
+	{
+		return 0;
+	}
+	else
+	{
+		return -ENOSPC;
+	}
 }
 
-int etnaviv_iommu_map_gem(struct etnaviv_iommu_context *context,
+int etnaviv_iommu_map_gem(std::shared_ptr<etnaviv_iommu_context> context,
 	struct etnaviv_gem_object *etnaviv_obj, u32 memory_base,
-	struct etnaviv_vram_mapping *mapping, u64 va)
+	std::shared_ptr<etnaviv_vram_mapping> mapping, u64 va)
 {
-	struct sg_table *sgt = etnaviv_obj->sgt;
+	sg_table *sgt = &etnaviv_obj->sgt;
 	struct drm_mm_node *node;
 	int ret;
 
-	lockdep_assert_held(&etnaviv_obj->lock);
+	BUG_ON(!(etnaviv_obj->lock->held()));
 
-	mutex_lock(&context->lock);
+	context->lock->lock();
 
 	/* v1 MMU can optimize single entry (contiguous) scatterlists */
 	if (context->global->version == ETNAVIV_IOMMU_V1 &&
-	    sgt->nents == 1 && !(etnaviv_obj->flags & ETNA_BO_FORCE_MMU)) {
+	    sgt->size() == 1 && !(etnaviv_obj->flags & ETNA_BO_FORCE_MMU)) {
 		u32 iova;
 
-		iova = sg_dma_address(sgt->sgl) - memory_base;
-		if (iova < 0x80000000 - sg_dma_len(sgt->sgl)) {
+		iova = (*sgt)[0].paddr - memory_base;
+		if (iova < 0x80000000 - (*sgt)[0].len) {
 			mapping->iova = iova;
-			mapping->context = etnaviv_iommu_context_get(context);
-			list_add_tail(&mapping->mmu_node, &context->mappings);
+			mapping->context = context;
+			context->mappings[mapping->vram_node.start] = mapping;
+
 			ret = 0;
 			goto unlock;
 		}
@@ -373,70 +389,61 @@ int etnaviv_iommu_map_gem(struct etnaviv_iommu_context *context,
 	node = &mapping->vram_node;
 
 	if (va)
-		ret = etnaviv_iommu_insert_exact(context, node, etnaviv_obj->size, va);
+		ret = etnaviv_iommu_insert_exact(context.get(), node, etnaviv_obj->size, va);
 	else
-		ret = etnaviv_iommu_find_iova(context, node, etnaviv_obj->size);
+		ret = etnaviv_iommu_find_iova(context.get(), node, etnaviv_obj->size);
 	if (ret < 0)
 		goto unlock;
 
 	mapping->iova = node->start;
-	ret = etnaviv_iommu_map(context, node->start, etnaviv_obj->size, sgt,
+	ret = etnaviv_iommu_map(context.get(), node->start, etnaviv_obj->size, *sgt,
 				ETNAVIV_PROT_READ | ETNAVIV_PROT_WRITE);
 
 	if (ret < 0) {
-		drm_mm_remove_node(node);
+		context->mm.alloc.Dealloc(node->start);
 		goto unlock;
 	}
 
-	mapping->context = etnaviv_iommu_context_get(context);
-	list_add_tail(&mapping->mmu_node, &context->mappings);
+	mapping->context = context;
+	context->mappings[mapping->vram_node.start] = mapping;
 unlock:
-	mutex_unlock(&context->lock);
+	context->lock->unlock();
 
 	return ret;
 }
 
-void etnaviv_iommu_unmap_gem(struct etnaviv_iommu_context *context,
-	struct etnaviv_vram_mapping *mapping)
+void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
+	std::shared_ptr<etnaviv_vram_mapping> mapping)
 {
 	WARN_ON(mapping->use);
 
-	mutex_lock(&context->lock);
+	context->lock->lock();
 
 	/* Bail if the mapping has been reaped by another thread */
 	if (!mapping->context) {
-		mutex_unlock(&context->lock);
+		context->lock->unlock();
 		return;
 	}
 
 	/* If the vram node is on the mm, unmap and remove the node */
 	if (mapping->vram_node.mm == &context->mm)
-		etnaviv_iommu_remove_mapping(context, mapping);
+		etnaviv_iommu_remove_mapping(context.get(), mapping);
 
-	list_del(&mapping->mmu_node);
-	mutex_unlock(&context->lock);
-	etnaviv_iommu_context_put(context);
+	context->mappings.erase(mapping->vram_node.start);
+	mapping->context = nullptr;
 }
 
-static void etnaviv_iommu_context_free(struct kref *kref)
+etnaviv_iommu_context::~etnaviv_iommu_context()
 {
-	struct etnaviv_iommu_context *context =
-		container_of(kref, struct etnaviv_iommu_context, refcount);
-
-	etnaviv_cmdbuf_suballoc_unmap(context, &context->cmdbuf_mapping);
-	mutex_destroy(&context->lock);
-	context->global->ops->free(context);
-}
-void etnaviv_iommu_context_put(struct etnaviv_iommu_context *context)
-{
-	kref_put(&context->refcount, etnaviv_iommu_context_free);
+	etnaviv_cmdbuf_suballoc_unmap(this, &cmdbuf_mapping);
+	global->ops->free(this);
 }
 
-struct etnaviv_iommu_context *
+std::shared_ptr<etnaviv_iommu_context>
 etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 			   struct etnaviv_cmdbuf_suballoc *suballoc)
 {
-	struct etnaviv_iommu_context *ctx;
+	std::shared_ptr<etnaviv_iommu_context> ctx;
 	int ret;
 
 	if (global->version == ETNAVIV_IOMMU_V1)
@@ -447,7 +454,7 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 	if (!ctx)
 		return NULL;
 
-	ret = etnaviv_cmdbuf_suballoc_map(suballoc, ctx, &ctx->cmdbuf_mapping,
+	ret = etnaviv_cmdbuf_suballoc_map(suballoc, ctx.get(), &ctx->cmdbuf_mapping,
 					  global->memory_base);
 	if (ret)
 		goto out_free;
@@ -462,9 +469,9 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 	return ctx;
 
 out_unmap:
-	etnaviv_cmdbuf_suballoc_unmap(ctx, &ctx->cmdbuf_mapping);
+	etnaviv_cmdbuf_suballoc_unmap(ctx.get(), &ctx->cmdbuf_mapping);
 out_free:
-	global->ops->free(ctx);
+	global->ops->free(ctx.get());
 	return NULL;
 }
 
@@ -475,15 +482,15 @@ void etnaviv_iommu_restore(struct etnaviv_gpu *gpu,
 }
 
 int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
-				  struct etnaviv_vram_mapping *mapping,
+				  std::shared_ptr<etnaviv_vram_mapping> mapping,
 				  u32 memory_base, dma_addr_t paddr,
 				  size_t size)
 {
-	mutex_lock(&context->lock);
+	context->lock->lock();
 
 	if (mapping->use > 0) {
 		mapping->use++;
-		mutex_unlock(&context->lock);
+		context->lock->unlock();
 		return 0;
 	}
 
@@ -501,7 +508,7 @@ int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
 
 		ret = etnaviv_iommu_find_iova(context, node, size);
 		if (ret < 0) {
-			mutex_unlock(&context->lock);
+			context->lock->unlock();
 			return ret;
 		}
 
@@ -509,38 +516,38 @@ int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
 		ret = etnaviv_context_map(context, node->start, paddr, size,
 					  ETNAVIV_PROT_READ);
 		if (ret < 0) {
-			drm_mm_remove_node(node);
-			mutex_unlock(&context->lock);
+			context->mm.alloc.Dealloc(node->start);
+			context->lock->unlock();
 			return ret;
 		}
 
 		context->flush_seq++;
 	}
 
-	list_add_tail(&mapping->mmu_node, &context->mappings);
+	context->mappings[mapping->vram_node.start] = mapping;
 	mapping->use = 1;
 
-	mutex_unlock(&context->lock);
+	context->lock->unlock();
 
 	return 0;
 }
 
 void etnaviv_iommu_put_suballoc_va(struct etnaviv_iommu_context *context,
-		  struct etnaviv_vram_mapping *mapping)
+		  std::shared_ptr<etnaviv_vram_mapping> mapping)
 {
 	struct drm_mm_node *node = &mapping->vram_node;
 
-	mutex_lock(&context->lock);
+	context->lock->lock();
 	mapping->use--;
 
 	if (mapping->use > 0 || context->global->version == ETNAVIV_IOMMU_V1) {
-		mutex_unlock(&context->lock);
+		context->lock->unlock();
 		return;
 	}
 
-	etnaviv_context_unmap(context, node->start, node->size);
-	drm_mm_remove_node(node);
-	mutex_unlock(&context->lock);
+	etnaviv_context_unmap(context, node->start, node->length);
+	context->mm.alloc.Dealloc(node->start);
+	context->lock->unlock();
 }
 
 size_t etnaviv_iommu_dump_size(struct etnaviv_iommu_context *context)
@@ -556,9 +563,7 @@ void etnaviv_iommu_dump(struct etnaviv_iommu_context *context, void *buf)
 int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu)
 {
 	enum etnaviv_iommu_version version = ETNAVIV_IOMMU_V1;
-	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
-	struct etnaviv_iommu_global *global;
-	struct device *dev = gpu->drm->dev;
+	auto &priv = gpu->drm->dev_private;
 
 	if (gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION)
 		version = ETNAVIV_IOMMU_V2;
@@ -574,67 +579,51 @@ int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu)
 		return 0;
 	}
 
-	global = kzalloc_obj(*global);
+	priv->mmu_global = std::make_unique<etnaviv_iommu_global>();
+	auto &global = priv->mmu_global;
 	if (!global)
 		return -ENOMEM;
 
-	global->bad_page_cpu = dma_alloc_wc(dev, SZ_4K, &global->bad_page_dma,
+	global->bad_page_cpu = dma_alloc_wc(nullptr, 4096, &global->bad_page_dma,
 					    GFP_KERNEL);
 	if (!global->bad_page_cpu)
 		goto free_global;
 
-	memset32(global->bad_page_cpu, 0xdead55aa, SZ_4K / sizeof(u32));
+	memset32(global->bad_page_cpu, 0xdead55aa, 4096 / sizeof(u32));
 
 	if (version == ETNAVIV_IOMMU_V2) {
-		global->v2.pta_cpu = dma_alloc_wc(dev, ETNAVIV_PTA_SIZE,
+		global->v2.pta_cpu = (u64 *)dma_alloc_wc(nullptr, ETNAVIV_PTA_SIZE,
 					       &global->v2.pta_dma, GFP_KERNEL);
 		if (!global->v2.pta_cpu)
 			goto free_bad_page;
 	}
 
-	global->dev = dev;
+	global->gpu = gpu;
 	global->version = version;
 	global->use = 1;
-	mutex_init(&global->lock);
 
 	if (version == ETNAVIV_IOMMU_V1)
 		global->ops = &etnaviv_iommuv1_ops;
 	else
 		global->ops = &etnaviv_iommuv2_ops;
 
-	priv->mmu_global = global;
-
 	return 0;
 
 free_bad_page:
-	dma_free_wc(dev, SZ_4K, global->bad_page_cpu, global->bad_page_dma);
+	dma_free_wc(nullptr, 4096, global->bad_page_cpu, global->bad_page_dma);
 free_global:
-	kfree(global);
+	priv->mmu_global = nullptr;
 
 	return -ENOMEM;
 }
 
-void etnaviv_iommu_global_fini(struct etnaviv_gpu *gpu)
+etnaviv_iommu_global::~etnaviv_iommu_global()
 {
-	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
-	struct etnaviv_iommu_global *global = priv->mmu_global;
+	if (v2.pta_cpu)
+		dma_free_wc(nullptr, ETNAVIV_PTA_SIZE,
+			    v2.pta_cpu, v2.pta_dma);
 
-	if (!global)
-		return;
-
-	if (--global->use > 0)
-		return;
-
-	if (global->v2.pta_cpu)
-		dma_free_wc(global->dev, ETNAVIV_PTA_SIZE,
-			    global->v2.pta_cpu, global->v2.pta_dma);
-
-	if (global->bad_page_cpu)
-		dma_free_wc(global->dev, SZ_4K,
-			    global->bad_page_cpu, global->bad_page_dma);
-
-	mutex_destroy(&global->lock);
-	kfree(global);
-
-	priv->mmu_global = NULL;
+	if (bad_page_cpu)
+		dma_free_wc(nullptr, 4096,
+			    bad_page_cpu, bad_page_dma);
 }
