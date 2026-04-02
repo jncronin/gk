@@ -93,7 +93,7 @@ int dump(const cMemBlock& mb, const ckey_t &v)
 
 int main()
 {
-	ba_t a({ 65536, 0x100000000 - 65536 });
+	ba_t a(65536, 0x100000000 - 65536);
 
 	// replicate a typical address space
 	assert(a.AllocFixed(MakeMemBlock(0x400000, 0x40000)) != a.end());
@@ -130,6 +130,16 @@ int main()
 	printf("\n");
 	for (const auto& mb : a)
 		dump(mb.first);
+
+	/* Check iterators of things which span a range */
+	auto from = a.LeftBlock(0x400000);
+	auto to = a.RightBlock(0x86ffff);
+	printf("\niter from %p to %p\n", (void*)from->first.start,
+		(void*)to->first.start);
+	for (; from != to; from++)
+	{
+		dump(from->first);
+	}
 
 
 	cba_t ca({ 65536, 0x100000000 - 65536 });

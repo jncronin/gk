@@ -262,6 +262,67 @@ template<typename KeyT, typename AddrT = uintptr_t> class BlockAllocator
             return l.end();
         }
 
+        /* Find the highest block with start address equal to or lower than addr */
+        iterator LeftBlock(AddrT addr)
+        {
+            BlockAddress test { .start = addr, .length = 0 };
+
+            /* Is there an exact match for addr? */
+            auto iter = l.find(test);
+            if(iter != l.end())
+            {
+                return iter;
+            }
+
+            /* If not, find the block immediately to the left of the test block */
+            // do a dummy insert to get an iterator
+            auto cloc = l.insert_or_assign(test, KeyT{});
+
+            // if nothing to the left then fail
+            if(cloc.first == l.begin())
+            {
+                l.erase(cloc.first);
+                return l.end();
+            }
+
+            auto prev = std::prev(cloc.first);
+            auto &prev_region = prev->first;
+            l.erase(cloc.first);
+
+            return prev;
+        }
+
+        /* Find the lowest block with address higher than addr */
+        iterator RightBlock(AddrT addr)
+        {
+            BlockAddress test { .start = addr, .length = 0 };
+
+            /* Is there an exact match for addr? */
+            auto iter = l.find(test);
+            if(iter == l.end())
+            {
+                /* If not, find the block immediately to the right of the test block */
+                // do a dummy insert to get an iterator
+                auto cloc = l.insert_or_assign(test, KeyT{});
+
+                // if nothing to the right then fail
+                if(cloc.first == l.end())
+                {
+                    l.erase(cloc.first);
+                    return l.end();
+                }
+
+                auto next = std::next(cloc.first);
+                l.erase(cloc.first);
+                return next;
+            }
+            else
+            {
+                auto next = std::next(iter);
+                return next;
+            }
+        }
+
         iterator Dealloc(iterator pos)
         {
             return l.erase(pos);
