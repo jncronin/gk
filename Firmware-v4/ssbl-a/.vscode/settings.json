@@ -2,6 +2,7 @@
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35.cmake",
     },
+    "cortex-debug.armToolchainPrefix": "aarch64-none-elf",
     "files.associations": {
         "compare": "cpp",
         "cstdint": "cpp",
