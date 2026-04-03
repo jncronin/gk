@@ -87,6 +87,7 @@ struct list_head
 #define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
+#define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
 
 #define clamp(x, minval, maxval) (((x) > (maxval)) ? (maxval) : (((x) < (minval)) ? (minval) : (x)))
 
@@ -226,6 +227,10 @@ int bitmap_find_free_region(unsigned long * bitmap,
 void bitmap_release_region (unsigned long * bitmap,
  	int pos,
  	int order);
+void set_bit(long nr, volatile unsigned long *addr);
+void clear_bit(long nr, volatile unsigned long *addr);
+unsigned long find_first_zero_bit(const unsigned long *addr,
+					 unsigned long size);
 
 template <typename T> int order_base_2(T x)
 {
@@ -290,5 +295,13 @@ class Etnaviv_pm_control : public pm_control
 		int enable();
 		int disable();
 };
+
+#define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
+
+/**
+ * lower_32_bits - return bits 0-31 of a number
+ * @n: the number we're accessing
+ */
+#define lower_32_bits(n) ((u32)(n))
 
 #endif

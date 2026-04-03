@@ -85,13 +85,12 @@ struct etnaviv_iommu_context {
 
 	virtual ~etnaviv_iommu_context();
 
-	int map(unsigned long iova, phys_addr_t paddr,
-				size_t size, int prot);
-	size_t unmap(unsigned long iova, size_t size);
-	size_t dump_size();
-	void dump(void *buf);
-	void restore(struct etnaviv_gpu *gpu, std::shared_ptr<etnaviv_iommu_context> context);
-	
+	virtual int map(unsigned long iova, phys_addr_t paddr,
+				size_t size, int prot) = 0;
+	virtual size_t unmap(unsigned long iova, size_t size) = 0;
+	virtual size_t dump_size() = 0;
+	virtual void dump(void *buf) = 0;
+	virtual void restore(struct etnaviv_gpu *gpu, std::shared_ptr<etnaviv_iommu_context> context) = 0;
 };
 
 int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu);
