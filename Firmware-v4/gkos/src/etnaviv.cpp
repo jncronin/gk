@@ -16,6 +16,11 @@ int etnaviv_gpu_combined_init(struct device &dev);
 void init_etnaviv()
 {
     // check order_base_2 logic
+    for(auto i = 0u; i < 10u; i++)
+    {
+        klog("order_base_2(%u) = %u\n", i, order_base_2(i));
+    }
+    
     assert(order_base_2(0) == 0);
     assert(order_base_2(1) == 0);
     assert(order_base_2(2) == 1);

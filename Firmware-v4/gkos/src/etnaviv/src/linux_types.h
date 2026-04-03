@@ -82,12 +82,49 @@ struct list_head
 #define BIT(x) (1U << (x))
 
 #define IS_ALIGNED(x, al) (((x) & ((al) - 1)) == 0)
+#define ALIGN_DOWN(x, al) ((x) & ~((typeof(x))(al) - 1))
 
 #define dev_warn(d, msg, ...) klog("GPU WARN : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 #define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
+
+#define SZ_1				0x00000001
+#define SZ_2				0x00000002
+#define SZ_4				0x00000004
+#define SZ_8				0x00000008
+#define SZ_16				0x00000010
+#define SZ_32				0x00000020
+#define SZ_64				0x00000040
+#define SZ_128				0x00000080
+#define SZ_256				0x00000100
+#define SZ_512				0x00000200
+
+#define SZ_1K				0x00000400
+#define SZ_2K				0x00000800
+#define SZ_4K				0x00001000
+#define SZ_8K				0x00002000
+#define SZ_16K				0x00004000
+#define SZ_32K				0x00008000
+#define SZ_64K				0x00010000
+#define SZ_128K				0x00020000
+#define SZ_256K				0x00040000
+#define SZ_512K				0x00080000
+
+#define SZ_1M				0x00100000
+#define SZ_2M				0x00200000
+#define SZ_4M				0x00400000
+#define SZ_8M				0x00800000
+#define SZ_16M				0x01000000
+#define SZ_32M				0x02000000
+#define SZ_64M				0x04000000
+#define SZ_128M				0x08000000
+#define SZ_256M				0x10000000
+#define SZ_512M				0x20000000
+
+#define SZ_1G				0x40000000
+#define SZ_2G				0x80000000
 
 #define clamp(x, minval, maxval) (((x) > (maxval)) ? (maxval) : (((x) < (minval)) ? (minval) : (x)))
 
@@ -227,6 +264,7 @@ int bitmap_find_free_region(unsigned long * bitmap,
 void bitmap_release_region (unsigned long * bitmap,
  	int pos,
  	int order);
+void bitmap_zero (unsigned long *bitmap, int bits);
 void set_bit(long nr, volatile unsigned long *addr);
 void clear_bit(long nr, volatile unsigned long *addr);
 unsigned long find_first_zero_bit(const unsigned long *addr,
@@ -235,7 +273,7 @@ unsigned long find_first_zero_bit(const unsigned long *addr,
 template <typename T> int order_base_2(T x)
 {
 	if(x == 0 || x == 1) return 0;
-	return sizeof(T) * 8 - __builtin_clz(x - 1) + 1;
+	return sizeof(T) * 8 - __builtin_clz(x - 1);
 }
 
 #define GFP_KERNEL 1

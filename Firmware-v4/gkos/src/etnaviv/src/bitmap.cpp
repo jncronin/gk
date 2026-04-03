@@ -50,3 +50,9 @@ int bitmap_find_free_region(uint64_t * bitmap,
 
     return -ENOMEM;
 }
+
+void bitmap_zero(uint64_t *bmp, int bits)
+{
+    for(auto i = 0; i < bits/64; i++)
+        bmp[i] = 0;
+}

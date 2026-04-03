@@ -112,11 +112,11 @@ struct etnaviv_gpu {
 	struct drm_device *drm;
 	struct thermal_cooling_device *cooling;
 	struct device *dev;
-	std::unique_ptr<Mutex> lock;
+	std::shared_ptr<Mutex> lock = MutexList.Create();
 	struct etnaviv_chip_identity identity;
 	enum etnaviv_sec_mode sec_mode;
 	struct workqueue_struct *wq;
-	std::unique_ptr<Mutex> sched_lock;
+	std::shared_ptr<Mutex> sched_lock = MutexList.Create();
 	std::unique_ptr<DRMScheduler> sched;
 	enum etnaviv_gpu_state state;
 
@@ -129,6 +129,7 @@ struct etnaviv_gpu {
 	struct etnaviv_event event[ETNA_NR_EVENTS];
 	//struct completion event_free;
 	Spinlock event_spinlock;
+	Condition event_free;
 
 	u32 idle_mask;
 

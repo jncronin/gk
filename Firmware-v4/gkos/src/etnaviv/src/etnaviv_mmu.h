@@ -118,6 +118,8 @@ void etnaviv_iommu_dump(struct etnaviv_iommu_context *ctx, void *buf);
 std::shared_ptr<etnaviv_iommu_context>
 etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 			   struct etnaviv_cmdbuf_suballoc *suballoc);
+void etnaviv_iommu_restore(struct etnaviv_gpu *gpu,
+			   std::shared_ptr<etnaviv_iommu_context> context);
 
 std::shared_ptr<etnaviv_iommu_context>
 etnaviv_iommuv1_context_alloc(struct etnaviv_iommu_global *global);

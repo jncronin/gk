@@ -10,8 +10,6 @@
 #include "etnaviv_drv.h"
 #include "etnaviv_flop_reset.h"
 
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2015-2018 Etnaviv Project
@@ -44,10 +42,13 @@
 #include "state_hi.xml.h"
 #include "cmdstream.xml.h"
 
+/*
 static const struct platform_device_id gpu_ids[] = {
 	{ .name = "etnaviv-gpu,2d" },
 	{ },
 };
+
+*/
 
 /*
  * Driver functions:
@@ -55,111 +56,111 @@ static const struct platform_device_id gpu_ids[] = {
 
 int etnaviv_gpu_get_param(struct etnaviv_gpu &gpu, u32 param, u64 *value)
 {
-	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
+	struct etnaviv_drm_private *priv = gpu.drm->dev_private.get();
 
 	switch (param) {
 	case ETNAVIV_PARAM_GPU_MODEL:
-		*value = gpu->identity.model;
+		*value = gpu.identity.model;
 		break;
 
 	case ETNAVIV_PARAM_GPU_REVISION:
-		*value = gpu->identity.revision;
+		*value = gpu.identity.revision;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_0:
-		*value = gpu->identity.features;
+		*value = gpu.identity.features;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_1:
-		*value = gpu->identity.minor_features0;
+		*value = gpu.identity.minor_features0;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_2:
-		*value = gpu->identity.minor_features1;
+		*value = gpu.identity.minor_features1;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_3:
-		*value = gpu->identity.minor_features2;
+		*value = gpu.identity.minor_features2;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_4:
-		*value = gpu->identity.minor_features3;
+		*value = gpu.identity.minor_features3;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_5:
-		*value = gpu->identity.minor_features4;
+		*value = gpu.identity.minor_features4;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_6:
-		*value = gpu->identity.minor_features5;
+		*value = gpu.identity.minor_features5;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_7:
-		*value = gpu->identity.minor_features6;
+		*value = gpu.identity.minor_features6;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_8:
-		*value = gpu->identity.minor_features7;
+		*value = gpu.identity.minor_features7;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_9:
-		*value = gpu->identity.minor_features8;
+		*value = gpu.identity.minor_features8;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_10:
-		*value = gpu->identity.minor_features9;
+		*value = gpu.identity.minor_features9;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_11:
-		*value = gpu->identity.minor_features10;
+		*value = gpu.identity.minor_features10;
 		break;
 
 	case ETNAVIV_PARAM_GPU_FEATURES_12:
-		*value = gpu->identity.minor_features11;
+		*value = gpu.identity.minor_features11;
 		break;
 
 	case ETNAVIV_PARAM_GPU_STREAM_COUNT:
-		*value = gpu->identity.stream_count;
+		*value = gpu.identity.stream_count;
 		break;
 
 	case ETNAVIV_PARAM_GPU_REGISTER_MAX:
-		*value = gpu->identity.register_max;
+		*value = gpu.identity.register_max;
 		break;
 
 	case ETNAVIV_PARAM_GPU_THREAD_COUNT:
-		*value = gpu->identity.thread_count;
+		*value = gpu.identity.thread_count;
 		break;
 
 	case ETNAVIV_PARAM_GPU_VERTEX_CACHE_SIZE:
-		*value = gpu->identity.vertex_cache_size;
+		*value = gpu.identity.vertex_cache_size;
 		break;
 
 	case ETNAVIV_PARAM_GPU_SHADER_CORE_COUNT:
-		*value = gpu->identity.shader_core_count;
+		*value = gpu.identity.shader_core_count;
 		break;
 
 	case ETNAVIV_PARAM_GPU_PIXEL_PIPES:
-		*value = gpu->identity.pixel_pipes;
+		*value = gpu.identity.pixel_pipes;
 		break;
 
 	case ETNAVIV_PARAM_GPU_VERTEX_OUTPUT_BUFFER_SIZE:
-		*value = gpu->identity.vertex_output_buffer_size;
+		*value = gpu.identity.vertex_output_buffer_size;
 		break;
 
 	case ETNAVIV_PARAM_GPU_BUFFER_SIZE:
-		*value = gpu->identity.buffer_size;
+		*value = gpu.identity.buffer_size;
 		break;
 
 	case ETNAVIV_PARAM_GPU_INSTRUCTION_COUNT:
-		*value = gpu->identity.instruction_count;
+		*value = gpu.identity.instruction_count;
 		break;
 
 	case ETNAVIV_PARAM_GPU_NUM_CONSTANTS:
-		*value = gpu->identity.num_constants;
+		*value = gpu.identity.num_constants;
 		break;
 
 	case ETNAVIV_PARAM_GPU_NUM_VARYINGS:
-		*value = gpu->identity.varyings_count;
+		*value = gpu.identity.varyings_count;
 		break;
 
 	case ETNAVIV_PARAM_SOFTPIN_START_ADDR:
@@ -170,26 +171,24 @@ int etnaviv_gpu_get_param(struct etnaviv_gpu &gpu, u32 param, u64 *value)
 		break;
 
 	case ETNAVIV_PARAM_GPU_PRODUCT_ID:
-		*value = gpu->identity.product_id;
+		*value = gpu.identity.product_id;
 		break;
 
 	case ETNAVIV_PARAM_GPU_CUSTOMER_ID:
-		*value = gpu->identity.customer_id;
+		*value = gpu.identity.customer_id;
 		break;
 
 	case ETNAVIV_PARAM_GPU_ECO_ID:
-		*value = gpu->identity.eco_id;
+		*value = gpu.identity.eco_id;
 		break;
 
 	default:
-		DBG("%s: invalid param: %u", dev_name(gpu->dev), param);
+		DBG("%s: invalid param: %u", "etnaviv", param);
 		return -EINVAL;
 	}
 
 	return 0;
 }
-
-#endif
 
 static int etnaviv_gpu_reset_deassert(struct etnaviv_gpu *gpu)
 {
@@ -525,8 +524,10 @@ static void etnaviv_gpu_update_clock(struct etnaviv_gpu *gpu)
 {
 	if (gpu->identity.minor_features2 &
 	    chipMinorFeatures2_DYNAMIC_FREQUENCY_SCALING) {
-			gpu->clk_core->enable(gpu->base_rate_core >> gpu->freq_scale);
-			gpu->clk_shader->enable(gpu->base_rate_core >> gpu->freq_scale);
+			if(gpu->clk_core)
+				gpu->clk_core->enable(gpu->base_rate_core >> gpu->freq_scale);
+			if(gpu->clk_shader)
+				gpu->clk_shader->enable(gpu->base_rate_core >> gpu->freq_scale);
 	} else {
 		unsigned int fscale = 1 << (6 - gpu->freq_scale);
 		u32 clock = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
@@ -643,8 +644,6 @@ static int etnaviv_hw_reset(struct etnaviv_gpu *gpu)
 	return 0;
 }
 
-#if 0
-
 static void etnaviv_gpu_enable_mlcg(struct etnaviv_gpu *gpu)
 {
 	u32 pmc, ppc;
@@ -719,8 +718,8 @@ void etnaviv_gpu_start_fe(struct etnaviv_gpu *gpu, u32 address, u16 prefetch)
 	}
 }
 
-static void etnaviv_gpu_start_fe_idleloop(struct etnaviv_gpu *gpu,
-					  struct etnaviv_iommu_context *context)
+[[maybe_unused]] static void etnaviv_gpu_start_fe_idleloop(struct etnaviv_gpu *gpu,
+					  std::shared_ptr<etnaviv_iommu_context> context)
 {
 	u16 prefetch;
 	u32 address;
@@ -826,7 +825,6 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 	gpu->state = ETNA_GPU_STATE_INITIALIZED;
 }
 
-#endif
 int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 {
 	[[maybe_unused]] auto &priv = gpu.drm->dev_private;
@@ -852,8 +850,6 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 		ret = -ENXIO;
 		goto fail;
 	}
-
-	klog("GPU: etnaviv_gpu_init not fully implemented\n");
 
 	if (etnaviv_flop_reset_ppu_require(&gpu.identity) &&
 	    !priv->flop_reset_data_ppu) {
@@ -896,10 +892,9 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 	ret = etnaviv_iommu_global_init(&gpu);
 	if (ret)
 		goto fail;
-#if 0
 
 	/* Create buffer: */
-	ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc, &gpu->buffer, SZ_4K);
+	ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc.get(), &gpu.buffer, 4096u);
 	if (ret) {
 		dev_err(gpu->dev, "could not create command buffer\n");
 		goto fail;
@@ -917,37 +912,38 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 	 * expose this issue, as all TS accesses are MMU translated, so the
 	 * linear window offset won't be used.
 	 */
-	cmdbuf_paddr = ALIGN_DOWN(etnaviv_cmdbuf_get_pa(&gpu->buffer), SZ_128M);
+	cmdbuf_paddr = ALIGN_DOWN(etnaviv_cmdbuf_get_pa(&gpu.buffer), SZ_128M);
 
-	if (!(gpu->identity.features & chipFeatures_PIPE_3D) ||
-	    (gpu->identity.minor_features0 & chipMinorFeatures0_MC20) ||
-	    (gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION)) {
+	if (!(gpu.identity.features & chipFeatures_PIPE_3D) ||
+	    (gpu.identity.minor_features0 & chipMinorFeatures0_MC20) ||
+	    (gpu.identity.minor_features1 & chipMinorFeatures1_MMU_VERSION)) {
 		if (cmdbuf_paddr >= SZ_2G)
 			priv->mmu_global->memory_base = SZ_2G;
 		else
 			priv->mmu_global->memory_base = cmdbuf_paddr;
 	} else if (cmdbuf_paddr + SZ_128M >= SZ_2G) {
-		dev_info(gpu->dev,
+		dev_info(gpu.dev,
 			 "Need to move linear window on MC1.0, disabling TS\n");
-		gpu->identity.features &= ~chipFeatures_FAST_CLEAR;
+		gpu.identity.features &= ~chipFeatures_FAST_CLEAR;
 		priv->mmu_global->memory_base = SZ_2G;
 	}
 
+
 	/* Setup event management */
-	spin_lock_init(&gpu->event_spinlock);
-	init_completion(&gpu->event_free);
-	bitmap_zero(gpu->event_bitmap, ETNA_NR_EVENTS);
-	for (i = 0; i < ARRAY_SIZE(gpu->event); i++)
-		complete(&gpu->event_free);
+	bitmap_zero(gpu.event_bitmap, ETNA_NR_EVENTS);
+	for (i = 0; i < (int)ARRAY_SIZE(gpu.event); i++)
+		gpu.event_free.Signal();
+
+
 
 	/* Now program the hardware */
-	mutex_lock(&gpu->lock);
-	etnaviv_gpu_hw_init(gpu);
-	mutex_unlock(&gpu->lock);
+	gpu.lock->lock();
+	etnaviv_gpu_hw_init(&gpu);
+	gpu.lock->unlock();
 
-	pm_runtime_mark_last_busy(gpu->dev);
-	pm_runtime_put_autosuspend(gpu->dev);
-#endif
+	//pm_runtime_mark_last_busy(gpu->dev);
+	//pm_runtime_put_autosuspend(gpu->dev);
+
 	return 0;
 
 fail:
@@ -1838,6 +1834,8 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	gpu->clk_bus = std::make_unique<Etnaviv_bus_clock>();
 	gpu->clk_core = std::make_unique<Etnaviv_core_clock>();
 	gpu->clk_shader = nullptr;
+	gpu->base_rate_core = 800000000;
+	gpu->base_rate_shader = 800000000;
 
 	/* Power on */
 	dev.pm->enable();
