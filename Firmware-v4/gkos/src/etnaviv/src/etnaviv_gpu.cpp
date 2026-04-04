@@ -1865,7 +1865,13 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	/* Initial register access to identify chip */
 	etnaviv_gpu_init(*dev.drm->dev_private->gpu);
 
-	return drm_dev_register(*dev.drm, 0);
+	dev.drm->name = "etnaviv";
+	dev.drm->desc = "etnaviv DRM";
+	dev.drm->date = __DATE__;
+	dev.drm->major = 1;
+	dev.drm->minor = 4;
+
+	return 0;
 }
 
 int etnaviv_gpu_bind(struct device &dev, struct device &master,

@@ -140,6 +140,8 @@ class pm_control;
 struct drm_device
 {
     std::unique_ptr<etnaviv_drm_private> dev_private;
+	std::string name, date, desc;
+	unsigned int major, minor;
 };
 
 struct etnaviv_file_private;
@@ -250,7 +252,7 @@ struct drm_ioctl_desc {
 		.name = #ioctl						\
 	}
 
-int drm_dev_register(drm_device &dev, int unused_val);
+int drm_dev_register(std::shared_ptr<device> &dev, int unused_val);
 
 void *dma_alloc_wc(struct device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp);

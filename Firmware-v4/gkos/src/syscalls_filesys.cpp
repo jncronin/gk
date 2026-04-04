@@ -353,9 +353,31 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
             *_errno = ENOTDIR;
             return -1;
         }
-        p->open_files.f[fd] = std::make_shared<DRIFile>();
+        auto df = std::make_shared<DRIFile>();
+        df->dt = DRIFile::dri_type::dir;
+        p->open_files.f[fd] = std::move(df);
         p->open_files.f[fd]->path = act_name;
         return fd;
+    }
+    if(act_name.starts_with("/dev/dri/"))
+    {
+        if(is_opendir)
+        {
+            *_errno = ENOTDIR;
+            return -1;
+        }
+        auto rdret = dri_open(act_name.substr(9), &p->open_files.f[fd],
+            (flags & 3) != O_WRONLY, (flags & 3) != O_RDONLY);
+        if(rdret == 0)
+        {
+            p->open_files.f[fd]->path = act_name;
+            return fd;
+        }
+        else
+        {
+            *_errno = ENOENT;
+            return rdret;
+        }
     }
 
     // use lwext4

@@ -12,7 +12,7 @@
 #define RISC_VMEM ((RISC_TypeDef *)PMEM_TO_VMEM(RISC_BASE))
 #define RIMC_VMEM ((RIMC_TypeDef *)PMEM_TO_VMEM(RIMC_BASE))
 
-static std::unique_ptr<device> etna_dev;
+static std::shared_ptr<device> etna_dev;
 
 int etnaviv_gpu_combined_init(struct device &dev);
 
@@ -37,8 +37,12 @@ void init_etnaviv()
     RISC_VMEM->PRIVCFGR[2] &= ~(1U << 15);
     RIMC_VMEM->ATTR[9] = 0;
 
-    etna_dev = std::make_unique<device>();
-    etnaviv_gpu_combined_init(*etna_dev);
+    etna_dev = std::make_shared<device>();
+    if(etnaviv_gpu_combined_init(*etna_dev) == 0)
+    {
+        drm_dev_register(etna_dev, 0);
+    }
+
 
 #if 0
     /* Just try enabling things, without config, to see what happens */
@@ -201,12 +205,6 @@ int Etnaviv_core_clock::disable()
         RCC_VMEM->PLL3CFGR1 &= ~RCC_PLL3CFGR1_PLLEN;
         udelay(10);
     }
-    return 0;
-}
-
-int drm_dev_register(drm_device &dev, int)
-{
-    klog("DRM: registered device\n");
     return 0;
 }
 

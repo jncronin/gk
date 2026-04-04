@@ -559,7 +559,8 @@ int etnaviv_bind(struct device &dev)
 
 	load_gpu(*dev.drm);
 
-	ret = drm_dev_register(*dev.drm, 0);
+	ret = 0;
+	//ret = drm_dev_register(*dev.drm, 0);
 
 	return ret;
 }
