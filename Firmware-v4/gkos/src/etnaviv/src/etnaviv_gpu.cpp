@@ -1797,6 +1797,7 @@ static const struct thermal_cooling_device_ops cooling_ops = {
 /* combine dev and gpu probe/bind here */
 int etnaviv_gpu_combined_init(struct device &dev)
 {
+	/* dev_bind() */
 	dev.drm = std::make_unique<drm_device>();
 	dev.pm = std::make_unique<Etnaviv_pm_control>();
 	dev.drm->dev_private = std::make_unique<etnaviv_drm_private>();
@@ -1809,12 +1810,29 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	auto gpu = std::make_unique<etnaviv_gpu>();
 	gpu->dev = &dev;
 	gpu->drm = dev.drm.get();
+	
+	/* gpu_probe() */
 
 	/* Map registers: */
 	gpu->mmio = (volatile void *)PMEM_TO_VMEM(GPU_BASE);
 
 	/* Get Reset: */
 	gpu->rst = std::make_unique<Etnaviv_reset_control>();
+
+	/* Get Clocks: */
+	gpu->clk_reg = std::make_unique<Etnaviv_reg_clock>();
+	gpu->clk_bus = std::make_unique<Etnaviv_bus_clock>();
+	gpu->clk_core = std::make_unique<Etnaviv_core_clock>();
+	gpu->clk_shader = nullptr;
+	gpu->base_rate_core = 800000000;
+	gpu->base_rate_shader = 800000000;
+
+	/* Power on */
+	dev.pm->enable();
+
+	// errata 2.3.9 - need clk reg/clk bus setup prior to reset assert
+	gpu->clk_reg->enable();
+	gpu->clk_bus->enable();
 
 	auto err = reset_control_assert(*gpu->rst);
 	if (err)
@@ -1829,23 +1847,21 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	gic_set_handler(gpu->irq, gk_gpu_irqhandler);
 	gic_set_target(gpu->irq, GIC_ENABLED_CORES);
 
-	/* Get Clocks: */
-	gpu->clk_reg = nullptr;
-	gpu->clk_bus = std::make_unique<Etnaviv_bus_clock>();
-	gpu->clk_core = std::make_unique<Etnaviv_core_clock>();
-	gpu->clk_shader = nullptr;
-	gpu->base_rate_core = 800000000;
-	gpu->base_rate_shader = 800000000;
+	dev.drm->dev_private->gpu = std::move(gpu);
+	dev.drm->dev_private->num_gpus = 1;
 
-	/* Power on */
-	dev.pm->enable();
+	/* component_bind_all -> gpu_bind() */
+	klog("GPU: etnaviv_sched_init not implemented\n");
+#if 0
+	auto ret = etnaviv_sched_init(gpu.get());
+	if(ret)
+		return ret;
+#endif
 
 	/* Clock */
-	etnaviv_gpu_clk_enable(*gpu);
+	etnaviv_gpu_clk_enable(*dev.drm->dev_private->gpu);
 
-	dev.drm->dev_private->gpu = std::move(gpu);
-
-
+	/* back in drv_bind() -> load_gpu() -> etnaviv_gpu_init() */
 	/* Initial register access to identify chip */
 	etnaviv_gpu_init(*dev.drm->dev_private->gpu);
 

@@ -41,9 +41,9 @@ struct etnaviv_file_private {
 struct etnaviv_cmdbuf_suballoc;
 
 struct etnaviv_drm_private {
-	int num_gpus;
+	int num_gpus = 0;
 	std::unique_ptr<etnaviv_gpu> gpu;
-	gfp_t shm_gfp_mask;
+	gfp_t shm_gfp_mask = GFP_HIGHUSER;
 
 	std::unique_ptr<etnaviv_cmdbuf_suballoc> cmdbuf_suballoc;
 	std::unique_ptr<etnaviv_iommu_global> mmu_global;
@@ -52,7 +52,7 @@ struct etnaviv_drm_private {
 	u32 next_context_id;
 
 	/* list of GEM objects: */
-	Mutex gem_lock;
+	std::shared_ptr<Mutex> gem_lock = MutexList.Create();
 	struct list_head gem_list;
 
 	/* ppu flop reset data */

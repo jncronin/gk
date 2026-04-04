@@ -276,7 +276,8 @@ template <typename T> int order_base_2(T x)
 	return sizeof(T) * 8 - __builtin_clz(x - 1);
 }
 
-#define GFP_KERNEL 1
+#define GFP_KERNEL 		1
+#define GFP_HIGHUSER	2
 
 class reset_control
 {
@@ -314,7 +315,14 @@ class Etnaviv_core_clock : public clk
 class Etnaviv_bus_clock : public clk
 {
 	public:
-		int enable(uint64_t);
+		int enable(uint64_t = 0);
+		int disable();
+};
+
+class Etnaviv_reg_clock : public clk
+{
+	public:
+		int enable(uint64_t = 0);
 		int disable();
 };
 

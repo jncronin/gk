@@ -33,6 +33,7 @@ void *dma_alloc_wc(struct device *dev, size_t size,
     // then map
     for(auto i = 0ul; i < pmem.length; i += PAGE_SIZE)
     {
+        klog("dma_alloc_wc: map %p phys to %p virt\n", (void *)(pmem.base + i), (void *)(vmem.base + i));
         vmem_map(vmem.base + i, pmem.base + i, false, true, false, ~0ULL, ~0ULL, nullptr, MT_NORMAL_WT);
     }
 

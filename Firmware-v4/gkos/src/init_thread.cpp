@@ -26,7 +26,7 @@ void *init_thread(void *)
     airoc_if = std::make_unique<WifiAirocNetInterface>();
     airoc_if->DynamicIP = true;
     airoc_if->OnIPAssign.push_back(std::make_unique<NTPOnConnectScript>());
-    airoc_if->OnIPAssign.push_back(std::make_unique<TelnetOnConnectScript>());
+    //airoc_if->OnIPAssign.push_back(std::make_unique<TelnetOnConnectScript>());
     net_register_interface(airoc_if.get());
 #endif
 
@@ -50,7 +50,7 @@ void *init_thread(void *)
 
     p_gksupervisor->env.cwd = "/gkmenu-0.1.1-gk";   // run in gkmenu dir so we can load osd files from there
     p_gksupervisor->env.args.clear();
-    //p_gksupervisor->env.args.push_back("Doom");
+    p_gksupervisor->env.args.push_back("SDL GL Test");
 
     p_gksupervisor->screen.screen_pf = GK_PIXELFORMAT_RGB565;
     p_gksupervisor->screen.screen_w = 800;
@@ -88,7 +88,7 @@ void *init_thread(void *)
         {
             SetFocusProcess(p_gksupervisor);
             klog("init: thread created, scheduling it\n");
-            //sched.Schedule(t_test);
+            sched.Schedule(t_test);
         }    
     }
 

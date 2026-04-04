@@ -9,6 +9,9 @@
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 
+#define RISC_VMEM ((RISC_TypeDef *)PMEM_TO_VMEM(RISC_BASE))
+#define RIMC_VMEM ((RIMC_TypeDef *)PMEM_TO_VMEM(RIMC_BASE))
+
 static std::unique_ptr<device> etna_dev;
 
 int etnaviv_gpu_combined_init(struct device &dev);
@@ -28,12 +31,36 @@ void init_etnaviv()
     assert(order_base_2(4) == 2);
     assert(order_base_2(5) == 3);
 
+    /* GPU is RISUP 79 / RIMC 9
+        Set as unprivileged
+    */
+    RISC_VMEM->PRIVCFGR[2] &= ~(1U << 15);
+    RIMC_VMEM->ATTR[9] = 0;
+
     etna_dev = std::make_unique<device>();
     etnaviv_gpu_combined_init(*etna_dev);
+
+#if 0
+    /* Just try enabling things, without config, to see what happens */
+    Etnaviv_bus_clock _bc;
+    Etnaviv_core_clock _cc;
+    Etnaviv_reg_clock _rc;
+    Etnaviv_reset_control _rst;
+    Etnaviv_pm_control _pm;
+
+    _rc.enable();
+    _bc.enable();
+    _pm.enable();
+    _rst.Deassert();
+    _cc.enable();
+#endif
 }
 
 int Etnaviv_pm_control::enable()
 {
+    if(PWR_VMEM->CR12 & PWR_CR12_VDDGPURDY)
+        return 0;
+    
     pmic_set_power(PMIC_Power_Target::GPU, 800);
     udelay(1000);
     PWR_VMEM->CR12 |= PWR_CR12_GPUVMEN;
@@ -61,38 +88,61 @@ int Etnaviv_pm_control::disable()
 int Etnaviv_reset_control::Assert()
 {
     RCC_VMEM->GPUCFGR |= RCC_GPUCFGR_GPURST;
-    klog("GPU reset asserted\n");
+    __DSB();
+    while(RCC_VMEM->GPUCFGR & RCC_GPUCFGR_GPURST);
+    klog("GPU reset completed\n");
     return 0;
 }
 
 int Etnaviv_reset_control::Deassert()
 {
-    RCC_VMEM->GPUCFGR &= ~RCC_GPUCFGR_GPURST;
-    __DSB();
     while(RCC_VMEM->GPUCFGR & RCC_GPUCFGR_GPURST);
     klog("GPU reset deasserted\n");
     return 0;
 }
 
+int Etnaviv_reg_clock::enable(uint64_t)
+{
+    if(RCC_VMEM->GPUCFGR & RCC_GPUCFGR_GPUEN)
+        return 0;
+    
+    RCC_VMEM->GPUCFGR |= RCC_GPUCFGR_GPUEN;
+    __DSB();
+    klog("GPU reg clock enabled\n");
+    return 0;
+}
+
+int Etnaviv_reg_clock::disable()
+{
+    RCC_VMEM->GPUCFGR &= ~RCC_GPUCFGR_GPUEN;
+    klog("GPU reg clock disabled\n");
+    return 0;
+}
+
 int Etnaviv_bus_clock::enable(uint64_t)
 {
+    if(RCC_VMEM->PREDIVxCFGR[59] == 1 &&
+        RCC_VMEM->FINDIVxCFGR[59] == 0x40 &&
+        RCC_VMEM->XBARxCFGR[59] == 0x41)
+    {
+        return 0;
+    }
+
     //flexgen59 for clk_icn_m_gpu, max 600 MHz
     // Use PLL5 = 1200 MHz / 2 -> 600 MHz
+    RCC_VMEM->XBARxCFGR[59] = 0;
+    __DSB();
     RCC_VMEM->PREDIVxCFGR[59] = 1;
     RCC_VMEM->FINDIVxCFGR[59] = 0x40;
     RCC_VMEM->XBARxCFGR[59] = 0x41;
     __DSB();
 
-    RCC_VMEM->GPUCFGR |= RCC_GPUCFGR_GPUEN;
-    __DSB();
     klog("GPU bus clock enabled\n");
     return 0;
 }
 
 int Etnaviv_bus_clock::disable()
 {
-    RCC_VMEM->GPUCFGR &= ~RCC_GPUCFGR_GPUEN;
-
     RCC_VMEM->XBARxCFGR[59] = 0;
 
     klog("GPU bus clock disabled\n");
@@ -118,7 +168,7 @@ int Etnaviv_core_clock::enable(uint64_t new_freq)
 
     // set reference clock to HSE40
     RCC_VMEM->MUXSELCFGR = (RCC_VMEM->MUXSELCFGR & ~RCC_MUXSELCFGR_MUXSEL7_Msk) |
-        (7U << RCC_MUXSELCFGR_MUXSEL1_Pos);
+        (1U << RCC_MUXSELCFGR_MUXSEL7_Pos);
     __DSB();
 
     if(freq != 800000000)

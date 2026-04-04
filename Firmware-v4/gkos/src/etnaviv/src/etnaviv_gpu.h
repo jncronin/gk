@@ -14,6 +14,7 @@
 #include "state.xml.h"
 
 #include "drm_scheduler.h"
+#include "workqueue.h"
 
 struct etnaviv_gem_submit;
 struct etnaviv_vram_mapping;
@@ -109,53 +110,53 @@ enum etnaviv_gpu_state {
 };
 
 struct etnaviv_gpu {
-	struct drm_device *drm;
-	struct thermal_cooling_device *cooling;
-	struct device *dev;
+	struct drm_device *drm = nullptr;
+	struct thermal_cooling_device *cooling = nullptr;
+	struct device *dev = nullptr;
 	std::shared_ptr<Mutex> lock = MutexList.Create();
-	struct etnaviv_chip_identity identity;
-	enum etnaviv_sec_mode sec_mode;
-	struct workqueue_struct *wq;
+	struct etnaviv_chip_identity identity{};
+	enum etnaviv_sec_mode sec_mode{};
+	WorkQueue wq;
 	std::shared_ptr<Mutex> sched_lock = MutexList.Create();
 	std::unique_ptr<DRMScheduler> sched;
-	enum etnaviv_gpu_state state;
+	enum etnaviv_gpu_state state{};
 
 	/* 'ring'-buffer: */
-	struct etnaviv_cmdbuf buffer;
-	int exec_state;
+	struct etnaviv_cmdbuf buffer{};
+	int exec_state = 0;
 
 	/* event management: */
 	DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
 	struct etnaviv_event event[ETNA_NR_EVENTS];
 	//struct completion event_free;
-	Spinlock event_spinlock;
-	Condition event_free;
+	Spinlock event_spinlock{};
+	Condition event_free{};
 
-	u32 idle_mask;
+	u32 idle_mask = 0;
 
 	/* Fencing support */
 	//xarray user_fences;
-	u32 next_user_fence;
-	u32 next_fence;
-	u32 completed_fence;
+	u32 next_user_fence = 0;
+	u32 next_fence = 0;
+	u32 completed_fence = 0;
 	//wait_queue_head_t fence_event;
-	u64 fence_context;
+	u64 fence_context = 0;
 	Spinlock fence_spinlock;
 
 	/* worker for handling 'sync' points: */
 	//struct work_struct sync_point_work;
-	int sync_point_event;
+	int sync_point_event = 0;
 
 	/* hang detection */
-	u32 hangcheck_dma_addr;
-	u32 hangcheck_primid;
-	u32 hangcheck_fence;
+	u32 hangcheck_dma_addr = 0;
+	u32 hangcheck_primid = 0;
+	u32 hangcheck_fence = 0;
 
-	void __iomem *mmio;
-	int irq;
+	void __iomem *mmio = nullptr;
+	int irq = 0;
 
 	std::shared_ptr<etnaviv_iommu_context> mmu_context;
-	unsigned int flush_seq;
+	unsigned int flush_seq = 0;
 
 	/* Power Control: */
 	std::unique_ptr<clk> clk_bus;
@@ -164,10 +165,10 @@ struct etnaviv_gpu {
 	std::unique_ptr<clk> clk_shader;
 	std::unique_ptr<reset_control> rst;
 
-	unsigned int freq_scale;
-	unsigned int fe_waitcycles;
-	unsigned long base_rate_core;
-	unsigned long base_rate_shader;
+	unsigned int freq_scale = 0;
+	unsigned int fe_waitcycles = 0;
+	unsigned long base_rate_core = 0;
+	unsigned long base_rate_shader = 0;
 };
 
 static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)

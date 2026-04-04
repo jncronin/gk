@@ -19,8 +19,6 @@ etnaviv_cmdbuf_suballoc_new(struct device *dev)
 
 	suballoc->dev = dev;
 
-	//init_waitqueue_head(&suballoc->free_event);
-
 	BUILD_BUG_ON(ETNAVIV_SOFTPIN_START_ADDRESS < SUBALLOC_SIZE);
 	suballoc->vaddr = dma_alloc_wc(dev, SUBALLOC_SIZE,
 				       &suballoc->paddr, GFP_KERNEL);
