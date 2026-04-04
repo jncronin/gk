@@ -42,6 +42,8 @@
 #include "state_hi.xml.h"
 #include "cmdstream.xml.h"
 
+extern const struct drm_ioctl_desc etnaviv_ioctls[];
+
 /*
 static const struct platform_device_id gpu_ids[] = {
 	{ .name = "etnaviv-gpu,2d" },
@@ -1870,6 +1872,8 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	dev.drm->date = __DATE__;
 	dev.drm->major = 1;
 	dev.drm->minor = 4;
+	dev.drm->ioctls = etnaviv_ioctls;
+	dev.drm->num_ioctls = DRM_ETNAVIV_NUM_IOCTLS;
 
 	return 0;
 }

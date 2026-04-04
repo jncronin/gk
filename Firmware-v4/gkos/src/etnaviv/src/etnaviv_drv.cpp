@@ -253,8 +253,11 @@ static int etnaviv_ioctl_gem_new(struct drm_device *dev, void *data,
 			    ETNA_BO_FORCE_MMU))
 		return -EINVAL;
 
-	return etnaviv_gem_new_handle(dev, file, args->size,
-			args->flags, &args->handle);
+	klog("etnaviv_ioctl_gem_new not implemented\n");
+	return -ENOTSUP;
+
+	//return etnaviv_gem_new_handle(dev, file, args->size,
+	//		args->flags, &args->handle);
 }
 
 static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
@@ -437,11 +440,7 @@ static int etnaviv_ioctl_pm_query_dom(struct drm_device *dev, void *data,
 	if (!gpu)
 		return -ENXIO;
 
-#if 0
-	return etnaviv_pm_query_dom(gpu, args);
-#endif
-	klog("ioctl_pm_query_dom not supported\n");
-	return -ENOTSUP;
+	return etnaviv_pm_query_dom(gpu.get(), args);
 }
 
 static int etnaviv_ioctl_pm_query_sig(struct drm_device *dev, void *data,
@@ -457,14 +456,10 @@ static int etnaviv_ioctl_pm_query_sig(struct drm_device *dev, void *data,
 	if (!gpu)
 		return -ENXIO;
 
-#if 0
-	return etnaviv_pm_query_sig(gpu, args);
-#endif
-	klog("ioctl_pm_query_sig not supported\n");
-	return -ENOTSUP;
+	return etnaviv_pm_query_sig(gpu.get(), args);
 }
 
-static const struct drm_ioctl_desc etnaviv_ioctls[] = {
+extern const struct drm_ioctl_desc etnaviv_ioctls[] = {
 	{ DRM_IOCTL_ETNAVIV_GET_PARAM,    DRM_RENDER_ALLOW, etnaviv_ioctl_get_param,    "ETNAVIV_GET_PARAM" },
 	{ 1, 0, nullptr, "" },
 	{ DRM_IOCTL_ETNAVIV_GEM_NEW,      DRM_RENDER_ALLOW, etnaviv_ioctl_gem_new,      "ETNAVIV_GEM_NEW" },

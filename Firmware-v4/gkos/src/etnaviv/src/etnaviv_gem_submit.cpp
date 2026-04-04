@@ -1,3 +1,5 @@
+#include "linux_types.h"
+
 #if 0
 
 // SPDX-License-Identifier: GPL-2.0-only
@@ -410,9 +412,16 @@ void etnaviv_submit_put(struct etnaviv_gem_submit *submit)
 	kref_put(&submit->refcount, submit_cleanup);
 }
 
+#endif
+
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		struct drm_file *file)
 {
+	klog("etnaviv_ioctl_gem_submit not implemented\n");
+	return -ENOTSUP;
+}
+
+#if 0
 	struct etnaviv_file_private *ctx = file->driver_priv;
 	struct etnaviv_drm_private *priv = dev->dev_private;
 	struct drm_etnaviv_gem_submit *args = data;

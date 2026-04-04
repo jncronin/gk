@@ -1,5 +1,3 @@
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2017 Etnaviv Project
@@ -64,7 +62,7 @@ static u32 pipe_perf_reg_read(struct etnaviv_gpu *gpu,
 	u32 value = 0;
 	unsigned i;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	for (i = 0; i < gpu->identity.pixel_pipes; i++) {
 		pipe_select(gpu, clock, i);
@@ -85,7 +83,7 @@ static u32 pipe_reg_read(struct etnaviv_gpu *gpu,
 	u32 value = 0;
 	unsigned i;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	for (i = 0; i < gpu->identity.pixel_pipes; i++) {
 		pipe_select(gpu, clock, i);
@@ -450,18 +448,18 @@ static const struct etnaviv_pm_domain doms_vg[] = {
 static const struct etnaviv_pm_domain_meta doms_meta[] = {
 	{
 		.feature = chipFeatures_PIPE_3D,
+		.domains = &doms_3d[0],
 		.nr_domains = ARRAY_SIZE(doms_3d),
-		.domains = &doms_3d[0]
 	},
 	{
 		.feature = chipFeatures_PIPE_2D,
+		.domains = &doms_2d[0],
 		.nr_domains = ARRAY_SIZE(doms_2d),
-		.domains = &doms_2d[0]
 	},
 	{
 		.feature = chipFeatures_PIPE_VG,
+		.domains = &doms_vg[0],
 		.nr_domains = ARRAY_SIZE(doms_vg),
-		.domains = &doms_vg[0]
 	}
 };
 
@@ -587,5 +585,3 @@ void etnaviv_perfmon_process(struct etnaviv_gpu *gpu,
 
 	*(bo + pmr->offset) = val;
 }
-
-#endif

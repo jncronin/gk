@@ -35,7 +35,19 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
                 dv->desc_len = d->drm->desc.length() + 1;
                 dv->name_len = d->drm->name.length() + 1;
             }
-            return 0;
+            return 0;            
+    }
+
+    auto dri_nr = _IOC_NR(nr);
+    if(dri_nr >= DRM_COMMAND_BASE && dri_nr < DRM_COMMAND_END)
+    {
+        // this is a driver-specific ioctl
+        auto driver_nr = dri_nr - DRM_COMMAND_BASE;
+        if(driver_nr < d->drm->num_ioctls)
+        {
+            auto &cioc = d->drm->ioctls[driver_nr];
+            return cioc.func(d->drm.get(), ptr, nullptr);
+        }
     }
 
     klog("DRI: ioctl(%x) not supported\n", nr);

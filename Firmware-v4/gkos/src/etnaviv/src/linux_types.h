@@ -64,6 +64,8 @@ using phys_addr_t = uintptr_t;
 
 void *memset32(void *d, uint32_t v, size_t n);
 
+ssize_t strscpy_pad(char *dest, const char *src, size_t count);
+
 struct list_head
 {
     //struct list_head *prev;
@@ -140,6 +142,8 @@ class pm_control;
 struct drm_device
 {
     std::unique_ptr<etnaviv_drm_private> dev_private;
+	const struct drm_ioctl_desc *ioctls;
+	size_t num_ioctls;
 	std::string name, date, desc;
 	unsigned int major, minor;
 };
