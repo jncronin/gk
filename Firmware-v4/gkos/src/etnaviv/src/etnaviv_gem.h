@@ -44,8 +44,7 @@ struct etnaviv_vram_mapping_hasher
 	}
 };
 
-struct etnaviv_gem_object {
-	struct drm_gem_object base;
+struct etnaviv_gem_object : public drm_gem_object {
 	const struct etnaviv_gem_ops *ops;
 	std::shared_ptr<Mutex> lock = MutexList.Create();
 
@@ -59,9 +58,7 @@ struct etnaviv_gem_object {
 	struct list_head gem_node;
 	atomic_t gpu_active;
 
-	struct page **pages;
 	sg_table sgt;
-	void *vaddr;
 
 	struct list_head vram_list;
 
@@ -74,14 +71,14 @@ struct etnaviv_gem_object {
 static inline
 struct etnaviv_gem_object *to_etnaviv_bo(struct drm_gem_object *obj)
 {
-	return container_of(obj, struct etnaviv_gem_object, base);
+	return reinterpret_cast<etnaviv_gem_object *>(obj);
 }
 
 struct etnaviv_gem_ops {
-	int (*get_pages)(struct etnaviv_gem_object *);
-	void (*release)(struct etnaviv_gem_object *);
-	void *(*vmap)(struct etnaviv_gem_object *);
-	int (*mmap)(struct etnaviv_gem_object *, struct vm_area_struct *);
+	int (*get_pages)(std::shared_ptr<etnaviv_gem_object> &);
+	void (*release)(std::shared_ptr<etnaviv_gem_object> &);
+	void *(*vmap)(std::shared_ptr<etnaviv_gem_object> &);
+	int (*mmap)(std::shared_ptr<etnaviv_gem_object> &, struct vm_area_struct *);
 };
 
 static inline bool is_active(struct etnaviv_gem_object *etnaviv_obj)

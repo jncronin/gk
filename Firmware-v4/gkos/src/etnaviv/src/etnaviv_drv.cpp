@@ -253,34 +253,27 @@ static int etnaviv_ioctl_gem_new(struct drm_device *dev, void *data,
 			    ETNA_BO_FORCE_MMU))
 		return -EINVAL;
 
-	klog("etnaviv_ioctl_gem_new not implemented\n");
-	return -ENOTSUP;
-
-	//return etnaviv_gem_new_handle(dev, file, args->size,
-	//		args->flags, &args->handle);
+	return etnaviv_gem_new_handle(dev, file, args->size,
+			args->flags, &args->handle);
 }
 
 static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
 		struct drm_file *file)
 {
 	struct drm_etnaviv_gem_cpu_prep *args = reinterpret_cast<drm_etnaviv_gem_cpu_prep *>(data);
-	[[maybe_unused]] struct drm_gem_object *obj;
 	int ret;
 
 	if (args->op & ~(ETNA_PREP_READ | ETNA_PREP_WRITE | ETNA_PREP_NOSYNC))
 		return -EINVAL;
 
-#if 0
-	obj = drm_gem_object_lookup(file, args->handle);
+	auto obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
 
-	ret = etnaviv_gem_cpu_prep(obj, args->op, &args->timeout);
+	ret = etnaviv_gem_cpu_prep(std::reinterpret_pointer_cast<etnaviv_gem_object>(obj),
+		args->op, &args->timeout);
 
-	drm_gem_object_put(obj);
-#endif
-	klog("ioctl_gem_cpu_prep not implemented\n");
-	return -ENOENT;
+	//drm_gem_object_put(obj);
 
 	return ret;
 }
@@ -289,23 +282,16 @@ static int etnaviv_ioctl_gem_cpu_fini(struct drm_device *dev, void *data,
 		struct drm_file *file)
 {
 	struct drm_etnaviv_gem_cpu_fini *args = reinterpret_cast<drm_etnaviv_gem_cpu_fini *>(data);
-	[[maybe_unused]] struct drm_gem_object *obj;
 	int ret;
 
 	if (args->flags)
 		return -EINVAL;
 
-#if 0
-	obj = drm_gem_object_lookup(file, args->handle);
+	auto obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
 
-	ret = etnaviv_gem_cpu_fini(obj);
-
-	drm_gem_object_put(obj);
-#endif
-	klog("ioctl_gem_cpu_fini not implemented\n");
-	return -ENOENT;
+	ret = etnaviv_gem_cpu_fini(std::reinterpret_pointer_cast<etnaviv_gem_object>(obj));
 
 	return ret;
 }
@@ -314,22 +300,17 @@ static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
 		struct drm_file *file)
 {
 	struct drm_etnaviv_gem_info *args = reinterpret_cast<drm_etnaviv_gem_info *>(data);
-	[[maybe_unused]] struct drm_gem_object *obj;
 	int ret;
 
 	if (args->pad)
 		return -EINVAL;
 
-#if 0
-	obj = drm_gem_object_lookup(file, args->handle);
+	auto obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
 
-	ret = etnaviv_gem_mmap_offset(obj, &args->offset);
-	drm_gem_object_put(obj);
-#endif
-	klog("ioctl_gem_info not implemented\n");
-	return -ENOENT;
+	ret = etnaviv_gem_mmap_offset(std::reinterpret_pointer_cast<etnaviv_gem_object>(obj),
+		&args->offset);
 
 	return ret;
 }

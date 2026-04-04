@@ -23,6 +23,9 @@
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
+#define PAGE_ALIGN(x) ALIGN(x, PAGE_SIZE)
+#define PAGE_SHIFT 16
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 #define __iomem volatile
@@ -156,8 +159,34 @@ struct drm_file
 
 struct drm_gem_object
 {
-
+	dma_addr_t dma_addr;
+	void *vaddr;
+	size_t psize, vsize;
+	u32 handle;
+	u64 vma_node;		// this is an offset that is used in mmap(drifile, ...) calls.
+						// Needs to be PAGE_SIZE aligned otherwise mmap will fail
 };
+
+typedef u64 drm_vma_offset_node;
+
+int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *drm, size_t size);
+int drm_gem_handle_create(struct drm_file *file,
+	std::shared_ptr<drm_gem_object> obj, u32 *handlep);
+std::shared_ptr<drm_gem_object> drm_gem_object_lookup(struct drm_file *file, u32 handle);
+int drm_prime_pages_to_sg(const drm_gem_object &obj, sg_table &sgt);
+int drm_gem_create_mmap_offset(std::shared_ptr<drm_gem_object> obj);
+__u64 drm_vma_node_offset_addr(drm_vma_offset_node *node);
+
+enum dma_data_direction {
+	DMA_TO_DEVICE		= 1,
+	DMA_FROM_DEVICE		= 2,
+	DMA_BIDIRECTIONAL	= 3
+};
+
+int dma_sync_sgtable_for_cpu(sg_table &sgt, dma_data_direction dir);
+int dma_sync_sgtable_for_device(sg_table &sgt, dma_data_direction dir);
+
+
 
 struct iosys_map
 {
@@ -260,6 +289,9 @@ int drm_dev_register(std::shared_ptr<device> &dev, int unused_val);
 
 void *dma_alloc_wc(struct device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp);
+void *dma_alloc(struct device *dev, size_t size,
+				 dma_addr_t *dma_addr, gfp_t gfp, unsigned int mt,
+				size_t *vsize = nullptr, size_t *psize = nullptr);
 
 void dma_free_wc(struct device *dev, size_t size,
 			       void *cpu_addr, dma_addr_t dma_addr);

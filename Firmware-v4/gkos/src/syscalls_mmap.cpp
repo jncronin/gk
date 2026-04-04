@@ -4,6 +4,9 @@
 #include "vmem.h"
 #include "screen.h"
 
+int dri_mmap(size_t len, void **retaddr, int is_sync,
+    int is_read, int is_write, int is_exec, DRIFile &fd, int is_fixed, size_t offset, int *_errno);
+
 int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     int is_read, int is_write, int is_exec, int fd, int is_fixed, size_t foffset, int *_errno)
 {
@@ -47,6 +50,12 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
         {
             *_errno = EINVAL;
             return -1;
+        }
+
+        if(p->open_files.f[fd]->GetType() == FileType::FT_DRI)
+        {
+            return dri_mmap(len, retaddr, is_sync, is_read, is_write, is_exec,
+                (DRIFile &)p->open_files.f[fd], is_fixed, foffset, _errno);
         }
 
         if(is_write)

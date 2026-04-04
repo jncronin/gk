@@ -53,7 +53,7 @@ struct etnaviv_drm_private {
 
 	/* list of GEM objects: */
 	std::shared_ptr<Mutex> gem_lock = MutexList.Create();
-	struct list_head gem_list;
+	std::vector<std::shared_ptr<etnaviv_gem_object>> gem_list;
 
 	/* ppu flop reset data */
 	std::unique_ptr<etnaviv_cmdbuf> flop_reset_data_ppu;
@@ -62,7 +62,7 @@ struct etnaviv_drm_private {
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		struct drm_file *file);
 
-int etnaviv_gem_mmap_offset(struct drm_gem_object *obj, u64 *offset);
+int etnaviv_gem_mmap_offset(std::shared_ptr<etnaviv_gem_object> obj, u64 *offset);
 sg_table etnaviv_gem_prime_get_sg_table(struct drm_gem_object *obj);
 int etnaviv_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
 struct drm_gem_object *etnaviv_gem_prime_import_sg_table(struct drm_device *dev,
@@ -70,9 +70,9 @@ struct drm_gem_object *etnaviv_gem_prime_import_sg_table(struct drm_device *dev,
 int etnaviv_gem_prime_pin(struct drm_gem_object *obj);
 void etnaviv_gem_prime_unpin(struct drm_gem_object *obj);
 void *etnaviv_gem_vmap(struct drm_gem_object *obj);
-int etnaviv_gem_cpu_prep(struct drm_gem_object *obj, u32 op,
+int etnaviv_gem_cpu_prep(std::shared_ptr<etnaviv_gem_object> obj, u32 op,
 		struct drm_etnaviv_timespec *timeout);
-int etnaviv_gem_cpu_fini(struct drm_gem_object *obj);
+int etnaviv_gem_cpu_fini(std::shared_ptr<etnaviv_gem_object> obj);
 void etnaviv_gem_free_object(struct drm_gem_object *obj);
 int etnaviv_gem_new_handle(struct drm_device *dev, struct drm_file *file,
 		u32 size, u32 flags, u32 *handle);
