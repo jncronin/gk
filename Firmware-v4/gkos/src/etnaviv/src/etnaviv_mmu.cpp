@@ -330,6 +330,12 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 	for(; from != to; from++)
 	{
 		auto &m = context->mappings[from->first.start];
+		if(!m)
+		{
+			klog("ERROR: context->mappings does not contain %p\n",
+				(void *)from->first.start);
+			continue;
+		}
 		if(m->use)
 			return -ENOSPC;
 		del_addrs.push_back(m->vram_node.start);
