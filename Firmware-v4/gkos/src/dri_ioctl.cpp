@@ -45,7 +45,10 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
         if(driver_nr < d->drm->num_ioctls)
         {
             auto &cioc = d->drm->ioctls[driver_nr];
-            return cioc.func(d->drm.get(), ptr, df.get());
+            klog("DRI: ioctl: %08x starting\n", nr);
+            auto ret = cioc.func(d->drm.get(), ptr, df.get());
+            klog("DRI: ioctl: %08x returning %d\n", nr, ret);
+            return ret;
         }
     }
 
