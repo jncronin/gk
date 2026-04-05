@@ -9,6 +9,7 @@
 #include "pins.h"
 #include "cache.h"
 #include "persistent.h"
+#include "btnled.h"
 #include <stm32mp2xx.h>
 #include <atomic>
 #include <cmath>
@@ -784,6 +785,9 @@ int screen_set_brightness(int bright, bool persist)
     auto vout_sc_i = (unsigned int)std::round(vout_sc * (double)arr);
 
     TIM2_VMEM->CCR1 = vout_sc_i;
+
+    if(persist)
+        btnled_updatecolor();
 
     return bright;
 }

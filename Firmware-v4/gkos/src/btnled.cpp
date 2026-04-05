@@ -4,6 +4,7 @@
 #include <cmath>
 #include "gk_conf.h"
 #include "vmem.h"
+#include "screen.h"
 
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
 #define GPIOK_VMEM ((GPIO_TypeDef *)PMEM_TO_VMEM(GPIOK_BASE))
@@ -11,7 +12,7 @@
 #define TIM1_VMEM ((TIM_TypeDef *)PMEM_TO_VMEM(TIM1_BASE))
 
 static const constexpr unsigned int arr = 4096;
-double btnled_brightness = 0.5;
+static uint32_t _rgb = 0xffffff;
 
 static constexpr pin btnled_pins[] =
 {
@@ -59,19 +60,33 @@ void init_btnled()
 
 static inline unsigned int pwm_non_linear(unsigned int input)
 {
-    auto iflt = static_cast<double>(input);
-    auto oflt = std::pow(arr, iflt / 255.0 * btnled_brightness);
-    auto oi = static_cast<int>(std::rint(oflt));
-    if(oi < 0) oi = 0;
-    if(oi > static_cast<int>(arr)) oi = arr;
-    return static_cast<unsigned int>(oi);    
+    auto bright = (double)screen_get_brightness() / 100.0;   
+    auto vin = static_cast<double>(input) / 255.0 * bright;
+
+    const double minimum = 0.05;
+    const double maximum = 0.95;
+    const double fsr = maximum - minimum;       // scale to this * ARR
+    const double gamma = 2.2;
+
+    double vout = std::pow(vin, gamma);
+
+    double vout_sc = vout * fsr + minimum;
+    auto vout_sc_i = (unsigned int)std::round(vout_sc * (double)arr);
+
+    return vout_sc_i;
+}
+
+void btnled_updatecolor()
+{
+    TIM1_VMEM->CCR1 = pwm_non_linear((_rgb >> 16) & 0xffUL);
+    TIM1_VMEM->CCR2 = pwm_non_linear((_rgb >> 8) & 0xffUL);
+    TIM1_VMEM->CCR3 = pwm_non_linear(_rgb & 0xffUL);
 }
 
 void btnled_setcolor(uint32_t rgb)
 {
-    TIM1_VMEM->CCR1 = pwm_non_linear((rgb >> 16) & 0xffUL);
-    TIM1_VMEM->CCR2 = pwm_non_linear((rgb >> 8) & 0xffUL);
-    TIM1_VMEM->CCR3 = pwm_non_linear(rgb & 0xffUL);
+    _rgb = rgb;
+    btnled_updatecolor();
 }
 
 static const constexpr pin BTNLED_R { GPIOJ_VMEM, 6 };

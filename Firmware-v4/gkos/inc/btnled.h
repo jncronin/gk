@@ -5,6 +5,7 @@
 
 void init_btnled();
 void btnled_setcolor(uint32_t rgb);
+void btnled_updatecolor();
 void btnled_setcolor_init(uint32_t rgb);
 
 #endif
