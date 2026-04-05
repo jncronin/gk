@@ -160,11 +160,8 @@ struct drm_device
 	std::string name, date, desc;
 	unsigned int major, minor;
 };
-
-struct etnaviv_file_private;
 struct drm_file
 {
-    std::unique_ptr<etnaviv_file_private> driver_priv;
 };
 
 /* resv handles locking as well as maintaining a list of fences */

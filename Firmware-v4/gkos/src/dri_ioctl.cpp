@@ -7,8 +7,6 @@
 
 static_assert(sizeof(drm_version) == _IOC_SIZE(0xc0406400));
 
-
-
 int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 {
     switch(nr)
@@ -47,7 +45,7 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
         if(driver_nr < d->drm->num_ioctls)
         {
             auto &cioc = d->drm->ioctls[driver_nr];
-            return cioc.func(d->drm.get(), ptr, this);
+            return cioc.func(d->drm.get(), ptr, df.get());
         }
     }
 

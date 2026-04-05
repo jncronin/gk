@@ -55,7 +55,7 @@
 
 	dev_info(gpu->dev, "virt %p phys 0x%08x free 0x%08x\n",
 			ptr, etnaviv_cmdbuf_get_va(buf,
-			&gpu->mmu_context->cmdbuf_mapping) +
+			gpu->mmu_context->cmdbuf_mapping.get()) +
 			off, size - len * 4 - off);
 
 	//print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
@@ -90,7 +90,7 @@ static u32 etnaviv_buffer_reserve(struct etnaviv_gpu *gpu,
 		buffer->user_size = 0;
 
 	return etnaviv_cmdbuf_get_va(buffer,
-				     &gpu->mmu_context->cmdbuf_mapping) +
+				     gpu->mmu_context->cmdbuf_mapping.get()) +
 	       buffer->user_size;
 }
 
@@ -109,7 +109,7 @@ u16 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 
 	CMD_WAIT(buffer, gpu->fe_waitcycles);
 	CMD_LINK(buffer, 2,
-		 etnaviv_cmdbuf_get_va(buffer, &gpu->mmu_context->cmdbuf_mapping)
+		 etnaviv_cmdbuf_get_va(buffer, gpu->mmu_context->cmdbuf_mapping.get())
 		 + buffer->user_size - 4);
 
 	return buffer->user_size / 8;
@@ -261,7 +261,7 @@ void etnaviv_sync_point_queue(struct etnaviv_gpu *gpu, unsigned int event)
 	/* Append waitlink */
 	CMD_WAIT(buffer, gpu->fe_waitcycles);
 	CMD_LINK(buffer, 2,
-		 etnaviv_cmdbuf_get_va(buffer, &gpu->mmu_context->cmdbuf_mapping)
+		 etnaviv_cmdbuf_get_va(buffer, gpu->mmu_context->cmdbuf_mapping.get())
 		 + buffer->user_size - 4);
 
 	/*
@@ -296,7 +296,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 		etnaviv_buffer_dump(gpu, buffer, 0, 0x50);
 
 	link_target = etnaviv_cmdbuf_get_va(cmdbuf,
-					    &gpu->mmu_context->cmdbuf_mapping);
+					    gpu->mmu_context->cmdbuf_mapping.get());
 	link_dwords = cmdbuf->size / 8;
 
 	/*
@@ -380,7 +380,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 
 		/* And the link to the submitted buffer */
 		link_target = etnaviv_cmdbuf_get_va(cmdbuf,
-					&gpu->mmu_context->cmdbuf_mapping);
+					gpu->mmu_context->cmdbuf_mapping.get());
 		CMD_LINK(buffer, link_dwords, link_target);
 
 		/* Update the link target to point to above instructions */
@@ -442,13 +442,13 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 		       VIVS_GL_EVENT_FROM_PE);
 	CMD_WAIT(buffer, gpu->fe_waitcycles);
 	CMD_LINK(buffer, 2,
-		 etnaviv_cmdbuf_get_va(buffer, &gpu->mmu_context->cmdbuf_mapping)
+		 etnaviv_cmdbuf_get_va(buffer, gpu->mmu_context->cmdbuf_mapping.get())
 		 + buffer->user_size - 4);
 
 	if (drm_debug_enabled(DRM_UT_DRIVER))
 		pr_info("stream link to 0x%08x @ 0x%08x %p\n",
 			return_target,
-			etnaviv_cmdbuf_get_va(cmdbuf, &gpu->mmu_context->cmdbuf_mapping),
+			etnaviv_cmdbuf_get_va(cmdbuf, gpu->mmu_context->cmdbuf_mapping.get()),
 			cmdbuf->vaddr);
 
 	if (drm_debug_enabled(DRM_UT_DRIVER)) {

@@ -22,7 +22,7 @@ class DRIFile : public File
         std::string dev_name;
         unsigned int dir_iter = 0;  // re-use as device number for dri_type != dir
         std::shared_ptr<device> d;
-        drm_file ctx;
+        std::unique_ptr<drm_file> df;
 
     public:
         ssize_t Write(const char *buf, size_t count, int *_errno);

@@ -9,6 +9,8 @@
 static Spinlock sl_dri;
 static std::vector<std::shared_ptr<device>> drm_devs;
 
+int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file);
+
 DRIFile::DRIFile()
 {
     type = FT_DRI;
@@ -166,6 +168,8 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
     nfile->dev_name = cdev->drm->name;
     nfile->dir_iter = dev_id;
     nfile->dt = is_render ? DRIFile::dri_type::render : DRIFile::dri_type::card;
+    etnaviv_open(cdev->drm.get(), &nfile->df);
+
     *f = nfile;
 
     return 0;

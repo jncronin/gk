@@ -736,7 +736,7 @@ void etnaviv_gpu_start_fe(struct etnaviv_gpu *gpu, u32 address, u16 prefetch)
 	/* Start command processor */
 	prefetch = etnaviv_buffer_init(gpu);
 	address = etnaviv_cmdbuf_get_va(&gpu->buffer,
-					&gpu->mmu_context->cmdbuf_mapping);
+					gpu->mmu_context->cmdbuf_mapping.get());
 
 	etnaviv_gpu_start_fe(gpu, address, prefetch);
 
@@ -1683,20 +1683,19 @@ static int etnaviv_gpu_clk_enable(struct etnaviv_gpu &gpu)
 	return 0;
 }
 
-#if 0
-static int etnaviv_gpu_clk_disable(struct etnaviv_gpu *gpu)
+[[maybe_unused]] static int etnaviv_gpu_clk_disable(struct etnaviv_gpu *gpu)
 {
-	clk_disable_unprepare(gpu->clk_shader);
-	clk_disable_unprepare(gpu->clk_core);
-	clk_disable_unprepare(gpu->clk_bus);
-	clk_disable_unprepare(gpu->clk_reg);
+	if(gpu->clk_shader) gpu->clk_shader->disable();
+	if(gpu->clk_core) gpu->clk_core->disable();
+	if(gpu->clk_bus) gpu->clk_bus->disable();
+	if(gpu->clk_reg) gpu->clk_reg->disable();
 
 	return 0;
 }
 
 int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms)
 {
-	unsigned long timeout = jiffies + msecs_to_jiffies(timeout_ms);
+	auto timeout = clock_cur() + kernel_time_from_ms(timeout_ms);
 
 	do {
 		u32 idle = gpu_read(gpu, VIVS_HI_IDLE_STATE);
@@ -1704,7 +1703,7 @@ int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms)
 		if ((idle & gpu->idle_mask) == gpu->idle_mask)
 			return 0;
 
-		if (time_is_before_jiffies(timeout)) {
+		if (clock_cur() > timeout) {
 			dev_warn(gpu->dev,
 				 "timed out waiting for idle: idle=0x%x\n",
 				 idle);
@@ -1715,13 +1714,13 @@ int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms)
 	} while (1);
 }
 
-static void etnaviv_gpu_hw_suspend(struct etnaviv_gpu *gpu)
+[[maybe_unused]] static void etnaviv_gpu_hw_suspend(struct etnaviv_gpu *gpu)
 {
 	if (gpu->state == ETNA_GPU_STATE_RUNNING) {
 		/* Replace the last WAIT with END */
-		mutex_lock(&gpu->lock);
+		gpu->lock->lock();
 		etnaviv_buffer_end(gpu);
-		mutex_unlock(&gpu->lock);
+		gpu->lock->unlock();
 
 		/*
 		 * We know that only the FE is busy here, this should
@@ -1736,22 +1735,19 @@ static void etnaviv_gpu_hw_suspend(struct etnaviv_gpu *gpu)
 	gpu->exec_state = -1;
 }
 
-static int etnaviv_gpu_hw_resume(struct etnaviv_gpu *gpu)
+[[maybe_unused]] static int etnaviv_gpu_hw_resume(struct etnaviv_gpu *gpu)
 {
-	int ret;
-
-	ret = mutex_lock_killable(&gpu->lock);
-	if (ret)
-		return ret;
+	gpu->lock->lock();
 
 	etnaviv_gpu_update_clock(gpu);
 	etnaviv_gpu_hw_init(gpu);
 
-	mutex_unlock(&gpu->lock);
+	gpu->lock->unlock();
 
 	return 0;
 }
 
+#if 0
 static int
 etnaviv_gpu_cooling_get_max_state(struct thermal_cooling_device *cdev,
 				  unsigned long *state)
@@ -1786,13 +1782,6 @@ etnaviv_gpu_cooling_set_cur_state(struct thermal_cooling_device *cdev,
 
 	return 0;
 }
-
-static const struct thermal_cooling_device_ops cooling_ops = {
-	.get_max_state = etnaviv_gpu_cooling_get_max_state,
-	.get_cur_state = etnaviv_gpu_cooling_get_cur_state,
-	.set_cur_state = etnaviv_gpu_cooling_set_cur_state,
-};
-
 #endif
 
 /* combine dev and gpu probe/bind here */

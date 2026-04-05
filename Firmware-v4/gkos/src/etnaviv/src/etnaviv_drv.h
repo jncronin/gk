@@ -32,7 +32,7 @@ struct etnaviv_iommu_global;
 
 struct etnaviv_iommu_context;
 
-struct etnaviv_file_private {
+struct etnaviv_file_private : public drm_file {
 	int id;
 	std::shared_ptr<etnaviv_iommu_context> mmu;
 	struct drm_sched_entity		sched_entity;

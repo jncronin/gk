@@ -39,10 +39,9 @@ static void load_gpu(struct drm_device &dev)
 
 }
 
-static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
+int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file)
 {
 	auto &priv = dev->dev_private;
-	int i;
 
 	auto ctx = std::make_unique<etnaviv_file_private>();
 	if (!ctx)
@@ -58,14 +57,14 @@ static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
 
 	auto &gpu = priv->gpu;
 	if(gpu)
-		gpu->sched->init(DRM_SCHED_PRIORITY_NORMAL, i);
+		gpu->sched->init(DRM_SCHED_PRIORITY_NORMAL, 0);
 
-	file->driver_priv = std::move(ctx);
+	*file = std::move(ctx);
 
 	return 0;
 }
 
-static void etnaviv_postclose(struct drm_device *dev, struct drm_file *file)
+[[maybe_unused]] static void etnaviv_postclose(struct drm_device *dev, struct drm_file *file)
 {
 #if 0
 	struct etnaviv_drm_private *priv = dev->dev_private;
@@ -455,7 +454,7 @@ extern const struct drm_ioctl_desc etnaviv_ioctls[] = {
 	{ DRM_IOCTL_ETNAVIV_PM_QUERY_SIG, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_sig, "ETNAVIV_PM_QUERY_SIG" },
 };
 
-static void etnaviv_show_fdinfo(struct drm_printer *p, struct drm_file *file)
+[[maybe_unused]] static void etnaviv_show_fdinfo(struct drm_printer *p, struct drm_file *file)
 {
 	//drm_show_memory_stats(p, file);
 }
@@ -467,23 +466,6 @@ static const struct file_operations fops = {
 	.show_fdinfo = drm_show_fdinfo,
 };
 #endif
-
-static const struct drm_driver etnaviv_drm_driver = {
-	.open               = etnaviv_open,
-	.postclose           = etnaviv_postclose,
-	//.gem_prime_import_sg_table = etnaviv_gem_prime_import_sg_table,
-#ifdef CONFIG_DEBUG_FS
-	.debugfs_init       = etnaviv_debugfs_init,
-#endif
-	.show_fdinfo        = etnaviv_show_fdinfo,
-	.ioctls             = etnaviv_ioctls,
-	.num_ioctls         = DRM_ETNAVIV_NUM_IOCTLS,
-	//.fops               = &fops,
-	.name               = "etnaviv",
-	.desc               = "etnaviv DRM",
-	.major              = 1,
-	.minor              = 4,
-};
 
 /*
  * Platform driver:

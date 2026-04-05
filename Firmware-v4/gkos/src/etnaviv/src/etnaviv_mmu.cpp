@@ -433,7 +433,7 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
 
 etnaviv_iommu_context::~etnaviv_iommu_context()
 {
-	etnaviv_cmdbuf_suballoc_unmap(this, &cmdbuf_mapping);
+	etnaviv_cmdbuf_suballoc_unmap(this, cmdbuf_mapping);
 }
 
 std::shared_ptr<etnaviv_iommu_context>
@@ -451,13 +451,13 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 	if (!ctx)
 		return NULL;
 
-	ret = etnaviv_cmdbuf_suballoc_map(suballoc, ctx.get(), &ctx->cmdbuf_mapping,
+	ret = etnaviv_cmdbuf_suballoc_map(suballoc, ctx.get(), ctx->cmdbuf_mapping,
 					  global->memory_base);
 	if (ret)
 		goto out_free;
 
 	if (global->version == ETNAVIV_IOMMU_V1 &&
-	    ctx->cmdbuf_mapping.iova > 0x80000000) {
+	    ctx->cmdbuf_mapping->iova > 0x80000000) {
 		dev_err(global->dev,
 		        "command buffer outside valid memory window\n");
 		goto out_unmap;
@@ -466,7 +466,7 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 	return ctx;
 
 out_unmap:
-	etnaviv_cmdbuf_suballoc_unmap(ctx.get(), &ctx->cmdbuf_mapping);
+	etnaviv_cmdbuf_suballoc_unmap(ctx.get(), ctx->cmdbuf_mapping);
 out_free:
 	return NULL;
 }

@@ -81,7 +81,7 @@ struct etnaviv_iommu_context {
 	unsigned int flush_seq;
 
 	/* Not part of the context, but needs to have the same lifetime */
-	struct etnaviv_vram_mapping cmdbuf_mapping;
+	std::shared_ptr<etnaviv_vram_mapping> cmdbuf_mapping = std::make_shared<etnaviv_vram_mapping>();
 
 	virtual ~etnaviv_iommu_context();
 
@@ -105,12 +105,12 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> ,
 	struct etnaviv_vram_mapping *mapping);
 void etnaviv_iommu_reap_mapping(std::shared_ptr<etnaviv_vram_mapping> mapping);
 
-int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *ctx,
-				  struct etnaviv_vram_mapping *mapping,
+int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *context,
+				  std::shared_ptr<etnaviv_vram_mapping> mapping,
 				  u32 memory_base, dma_addr_t paddr,
 				  size_t size);
 void etnaviv_iommu_put_suballoc_va(struct etnaviv_iommu_context *ctx,
-				   struct etnaviv_vram_mapping *mapping);
+				   std::shared_ptr<etnaviv_vram_mapping> mapping);
 
 size_t etnaviv_iommu_dump_size(struct etnaviv_iommu_context *ctx);
 void etnaviv_iommu_dump(struct etnaviv_iommu_context *ctx, void *buf);

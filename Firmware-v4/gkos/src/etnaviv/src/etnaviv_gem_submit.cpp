@@ -542,7 +542,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (ret)
 		goto err_submit_put;
 
-	submit->ctx = file->driver_priv.get();
+	submit->ctx = static_cast<etnaviv_file_private *>(file);
 	submit->mmu_context = submit->ctx->mmu;
 	submit->exec_state = args->exec_state;
 	submit->flags = args->flags;

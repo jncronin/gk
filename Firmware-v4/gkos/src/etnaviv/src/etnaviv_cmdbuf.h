@@ -46,10 +46,10 @@ etnaviv_cmdbuf_suballoc_new(struct device *dev);
 void etnaviv_cmdbuf_suballoc_destroy(struct etnaviv_cmdbuf_suballoc *suballoc);
 int etnaviv_cmdbuf_suballoc_map(struct etnaviv_cmdbuf_suballoc *suballoc,
 				struct etnaviv_iommu_context *context,
-				struct etnaviv_vram_mapping *mapping,
+				std::shared_ptr<etnaviv_vram_mapping> mapping,
 				u32 memory_base);
 void etnaviv_cmdbuf_suballoc_unmap(struct etnaviv_iommu_context *context,
-				   struct etnaviv_vram_mapping *mapping);
+				   std::shared_ptr<etnaviv_vram_mapping> mapping);
 
 
 int etnaviv_cmdbuf_init(struct etnaviv_cmdbuf_suballoc *suballoc,

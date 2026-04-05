@@ -216,7 +216,7 @@ void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu)
 	}
 
 	u32 buffer_base = etnaviv_cmdbuf_get_va(priv->flop_reset_data_ppu.get(),
-						&gpu->mmu_context->cmdbuf_mapping);
+						gpu->mmu_context->cmdbuf_mapping.get());
 
 	etnaviv_emit_flop_reset_state_ppu(&gpu->buffer, buffer_base, 0,
 					  output_offset, shader_offset,
