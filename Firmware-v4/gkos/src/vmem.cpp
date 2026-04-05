@@ -53,7 +53,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
     return 0;
 }
 
-static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr,
+static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr, uintptr_t *paddr_out = nullptr,
     unsigned int memory_type = MT_NORMAL, bool is_global = false);
 static int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act_vaddr, bool release_page);
 static uintptr_t vmem_vaddr_to_paddr_int(uintptr_t vaddr, uintptr_t ttbr);
@@ -78,7 +78,7 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
 
         {
             CriticalGuard cg(sl_uh);
-            return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type, true);
+            return vmem_map_int(vaddr, vaddr + UH_START, paddr, user, write, exec, ttbr, paddr_out, memory_type, true);
         }
     }
     else
@@ -94,11 +94,12 @@ int vmem_map(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec,
         }
 
         // no lock here - already done in calling function
-        return vmem_map_int(vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type, false);
+        return vmem_map_int(vaddr, vaddr, paddr, user, write, exec, ttbr, paddr_out, memory_type, false);
     }
 }
 
-static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr,
+static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr,
+    uintptr_t paddr, bool user, bool write, bool exec, uintptr_t ttbr,
     uintptr_t *paddr_out, unsigned int memory_type, bool is_global)
 {
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
@@ -134,8 +135,17 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t paddr, bool user, bool write,
 
     if(pt[l3_addr] & 0x1)
     {
-        klog("vmem: trying to map already mapped page at %llx\n", vaddr);
-        return -1;
+        if(paddr == (pt[l3_addr] & PAGE_PADDR_MASK))
+        {
+            // its the same physical page - perhaps we are just changing permissions.
+            pt[l3_addr] = 0;
+            vmem_invlpg(act_vaddr, ttbr);
+        }
+        else
+        {
+            klog("vmem: trying to map already mapped page at %llx\n", vaddr);
+            return -1;
+        }
     }
 
     if(!paddr)
