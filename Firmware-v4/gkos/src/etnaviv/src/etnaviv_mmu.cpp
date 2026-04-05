@@ -308,6 +308,10 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 	);
 	if(insert_iter != context->mm.alloc.end())
 	{
+		node->start = insert_iter->first.start;
+		node->length = insert_iter->first.length;
+		node->mm = &context->mm;
+
 		return 0;
 	}
 
@@ -354,6 +358,10 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 	);
 	if(insert_iter != context->mm.alloc.end())
 	{
+		node->start = insert_iter->first.start;
+		node->length = insert_iter->first.length;
+		node->mm = &context->mm;
+
 		return 0;
 	}
 	else
