@@ -30,7 +30,7 @@ void *dma_alloc(struct device *dev, size_t size,
     uintptr_t ttbr0 = ~0ULL;
     if(gfp & GFP_KERNEL)
     {
-        vmem = vblock_alloc(vblock_size_for(size), false, true, false);
+        vmem = vblock_alloc(vblock_size_for(pmem.length), false, true, false);
     }
     else
     {
@@ -39,14 +39,14 @@ void *dma_alloc(struct device *dev, size_t size,
             return nullptr;
 
         // A backing store for any unmapped region - shoudln't get used
-        auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, size, true, false);
+        auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, pmem.length, true, false);
         vmem = p->user_mem->vblocks.AllocAny(pmb, false);
         ttbr0 = p->user_mem->ttbr0;
     }
     if(!vmem.valid)
     {
         Pmem.release(pmem);
-        klog("dma_alloc_wc: unable to allocate vmem of length %llu\n", size);
+        klog("dma_alloc_wc: unable to allocate vmem of length %llu\n", pmem.length);
         return nullptr;
     }
 
@@ -62,7 +62,7 @@ void *dma_alloc(struct device *dev, size_t size,
     // then map
     for(auto i = 0ul; i < pmem.length; i += PAGE_SIZE)
     {
-        klog("dma_alloc_wc: map %p phys to %p virt\n", (void *)(pmem.base + i), (void *)(vmem.base + i));
+        //klog("dma_alloc_wc: map %p phys to %p virt\n", (void *)(pmem.base + i), (void *)(vmem.base + i));
         vmem_map(vmem.base + i, pmem.base + i, false, true, false, ttbr0, ~0ULL, nullptr, mt);
     }
 
