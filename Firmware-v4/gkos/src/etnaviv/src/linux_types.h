@@ -70,6 +70,10 @@ void *memset32(void *d, uint32_t v, size_t n);
 
 ssize_t strscpy_pad(char *dest, const char *src, size_t count);
 
+enum drm_gem_object_status
+{
+	DRM_GEM_OBJECT_RESIDENT
+};
 struct list_head
 {
     //struct list_head *prev;
@@ -94,6 +98,7 @@ struct list_head
 #define dev_warn_once dev_warn
 #define dev_warn_ratelimited dev_warn
 #define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
+#define pr_info(msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 #define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
@@ -338,6 +343,7 @@ void bitmap_zero (unsigned long *bitmap, int bits);
 void bitmap_set (unsigned long *bitmap, unsigned int start, unsigned int nbits);
 void set_bit(long nr, volatile unsigned long *addr);
 void clear_bit(long nr, volatile unsigned long *addr);
+bool test_bit(long nr, volatile unsigned long *addr);
 unsigned long find_first_zero_bit(const unsigned long *addr,
 					 unsigned long size);
 
@@ -427,5 +433,38 @@ class Etnaviv_pm_control : public pm_control
  * @n: the number we're accessing
  */
 #define lower_32_bits(n) ((u32)(n))
+
+struct vm_fault;
+typedef unsigned int vm_fault_t;
+
+struct vm_operations_struct {
+        void (*open)(struct vm_area_struct * area);
+        void (*close)(struct vm_area_struct * area);
+        vm_fault_t (*fault)(struct vm_fault *vmf);
+};
+
+struct iosys_map;
+
+struct drm_gem_object_funcs {
+  void (*free)(struct drm_gem_object *obj);
+  int (*open)(struct drm_gem_object *obj, struct drm_file *file);
+  void (*close)(struct drm_gem_object *obj, struct drm_file *file);
+  void (*print_info)(struct drm_printer *p, unsigned int indent, const struct drm_gem_object *obj);
+  int (*pin)(struct drm_gem_object *obj);
+  void (*unpin)(struct drm_gem_object *obj);
+  sg_table (*get_sg_table)(struct drm_gem_object *obj);
+  int (*vmap)(struct drm_gem_object *obj, struct iosys_map *);
+  void (*vunmap)(struct drm_gem_object *obj, void *vaddr);
+  int (*mmap)(std::shared_ptr<drm_gem_object> &obj, struct vm_area_struct *vma);
+  const struct vm_operations_struct *vm_ops;
+};
+
+enum drm_debug_category
+{
+	DRM_UT_CORE,
+	DRM_UT_DRIVER,
+};
+
+#define drm_debug_enabled(x) 1
 
 #endif

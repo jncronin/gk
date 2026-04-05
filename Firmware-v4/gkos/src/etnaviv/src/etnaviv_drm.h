@@ -92,9 +92,9 @@ struct drm_etnaviv_param {
 
 #define ETNA_BO_CACHE_MASK   0x000f0000
 /* cache modes */
-#define ETNA_BO_CACHED       0x00010000
-#define ETNA_BO_WC           0x00020000
-#define ETNA_BO_UNCACHED     0x00040000
+#define ETNA_BO_CACHED       0x00010000				/* MT_NORMAL */
+#define ETNA_BO_WC           0x00020000				/* MT_NORMAL_NC */
+#define ETNA_BO_UNCACHED     0x00040000				/* MT_NORMAL_NC */
 /* map flags */
 #define ETNA_BO_FORCE_MMU    0x00100000
 

@@ -92,7 +92,7 @@ struct etnaviv_gem_submit_bo {
 	u32 flags;
 	u64 va;
 	struct std::shared_ptr<etnaviv_gem_object> obj;
-	struct etnaviv_vram_mapping *mapping;
+	struct std::shared_ptr<etnaviv_vram_mapping> mapping;
 };
 
 /* Created per submit-ioctl, to track bo's and cmdstream bufs, etc,
@@ -128,7 +128,8 @@ void etnaviv_gem_obj_add(struct drm_device *dev, struct drm_gem_object *obj);
 struct page **etnaviv_gem_get_pages(struct etnaviv_gem_object *obj);
 void etnaviv_gem_put_pages(struct etnaviv_gem_object *obj);
 
-struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
+std::shared_ptr<etnaviv_vram_mapping>
+etnaviv_gem_mapping_get(
 	std::shared_ptr<etnaviv_gem_object> &obj,
 	std::shared_ptr<etnaviv_iommu_context> &mmu_context,
 	u64 va);

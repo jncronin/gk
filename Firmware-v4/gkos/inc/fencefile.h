@@ -23,7 +23,7 @@ class FenceFile : public File
 {
     public:
         FenceFile();
-        
+
         /* The fence is shared between userspace and kernel - this is the userspace reference */
         std::shared_ptr<dma_fence> fence;
 };

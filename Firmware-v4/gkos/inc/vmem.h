@@ -36,6 +36,15 @@ static inline uintptr_t vmem_get_ttbr0()
     return cur_ttbr0;
 }
 
+static inline uintptr_t vmem_get_ttbr1()
+{
+    uint64_t cur_ttbr1;
+    __asm__ volatile(
+        "mrs %[cur_ttbr1], ttbr1_el1\n"
+        : [cur_ttbr1] "=r" (cur_ttbr1) :: "memory");
+    return cur_ttbr1;
+}
+
 static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr, uint64_t ttbr0 = ~0U)
 {
     uint64_t daif;

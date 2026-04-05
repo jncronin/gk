@@ -232,9 +232,8 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 
 	for (auto i = 0u; i < submit->nr_bos; i++) {
 		auto &etnaviv_obj = submit->bos[i].obj;
-		struct etnaviv_vram_mapping *mapping;
 
-		mapping = etnaviv_gem_mapping_get(etnaviv_obj,
+		auto mapping = etnaviv_gem_mapping_get(etnaviv_obj,
 						  submit->mmu_context,
 						  submit->bos[i].va);
 		if (!mapping) {
@@ -243,7 +242,7 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 
 		if ((submit->flags & ETNA_SUBMIT_SOFTPIN) &&
 		     submit->bos[i].va != mapping->iova) {
-			etnaviv_gem_mapping_unreference(mapping);
+			etnaviv_gem_mapping_unreference(mapping.get());
 			return -EINVAL;
 		}
 
@@ -365,7 +364,7 @@ static int submit_perfmon_validate(struct etnaviv_gem_submit *submit,
 		submit->pmrs[i].signal = r->signal;
 		submit->pmrs[i].sequence = r->sequence;
 		submit->pmrs[i].offset = r->read_offset;
-		submit->pmrs[i].bo_vma = (u32 *)etnaviv_gem_vmap(bo->obj.get());
+		submit->pmrs[i].bo_vma = (u32 *)etnaviv_gem_vmap(bo->obj);
 	}
 
 	return 0;

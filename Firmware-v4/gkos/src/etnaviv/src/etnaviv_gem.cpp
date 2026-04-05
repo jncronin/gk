@@ -19,6 +19,7 @@
 #include "etnaviv_mmu.h"
 #include "vmem.h"
 #include "cache.h"
+#include "process.h"
 
 #if 0
 
@@ -64,9 +65,11 @@ static void etnaviv_gem_scatterlist_unmap(struct etnaviv_gem_object *etnaviv_obj
 		dma_unmap_sgtable(dev->dev, sgt, DMA_BIDIRECTIONAL, 0);
 }
 
+#endif
 /* called with etnaviv_obj->lock held */
-static int etnaviv_gem_shmem_get_pages(struct etnaviv_gem_object *etnaviv_obj)
+static int etnaviv_gem_shmem_get_pages(std::shared_ptr<etnaviv_gem_object> &etnaviv_obj)
 {
+ /*
 	struct drm_device *dev = etnaviv_obj->base.dev;
 	struct page **p = drm_gem_get_pages(&etnaviv_obj->base);
 
@@ -76,12 +79,14 @@ static int etnaviv_gem_shmem_get_pages(struct etnaviv_gem_object *etnaviv_obj)
 	}
 
 	etnaviv_obj->pages = p;
+	*/
 
 	return 0;
 }
 
-static void put_pages(struct etnaviv_gem_object *etnaviv_obj)
+[[maybe_unused]] static void put_pages(struct etnaviv_gem_object *etnaviv_obj)
 {
+	/*
 	if (etnaviv_obj->sgt) {
 		etnaviv_gem_scatterlist_unmap(etnaviv_obj);
 		sg_free_table(etnaviv_obj->sgt);
@@ -93,9 +98,9 @@ static void put_pages(struct etnaviv_gem_object *etnaviv_obj)
 				  true, false);
 
 		etnaviv_obj->pages = NULL;
-	}
+	} */
 }
-#endif
+
 void etnaviv_gem_get_pages(std::shared_ptr<etnaviv_gem_object> &etnaviv_obj)
 {
 	BUG_ON(!etnaviv_obj->lock->held());
@@ -111,16 +116,17 @@ void etnaviv_gem_get_pages(std::shared_ptr<etnaviv_gem_object> &etnaviv_obj)
 	}
 }
 
-#if 0
 void etnaviv_gem_put_pages(struct etnaviv_gem_object *etnaviv_obj)
 {
-	lockdep_assert_held(&etnaviv_obj->lock);
+	BUG_ON(!etnaviv_obj->lock->held());
+	//lockdep_assert_held(&etnaviv_obj->lock);
 	/* when we start tracking the pin count, then do something here */
 }
 
-static int etnaviv_gem_mmap_obj(struct etnaviv_gem_object *etnaviv_obj,
+static int etnaviv_gem_mmap_obj(std::shared_ptr<etnaviv_gem_object> &obj,
 		struct vm_area_struct *vma)
 {
+#if 0
 	pgprot_t vm_page_prot;
 
 	vm_flags_set(vma, VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP);
@@ -142,55 +148,17 @@ static int etnaviv_gem_mmap_obj(struct etnaviv_gem_object *etnaviv_obj,
 
 		vma->vm_page_prot = vm_page_prot;
 	}
+#endif
 
 	return 0;
 }
 
-static int etnaviv_gem_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
+static int etnaviv_gem_mmap(std::shared_ptr<drm_gem_object> &obj, struct vm_area_struct *vma)
 {
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-
-	return etnaviv_obj->ops->mmap(etnaviv_obj, vma);
+	auto o2 = obj;
+	auto eobj = std::reinterpret_pointer_cast<etnaviv_gem_object>(o2);
+	return eobj->ops->mmap(eobj, vma);
 }
-
-static vm_fault_t etnaviv_gem_fault(struct vm_fault *vmf)
-{
-	struct vm_area_struct *vma = vmf->vma;
-	struct drm_gem_object *obj = vma->vm_private_data;
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-	struct page **pages;
-	unsigned long pfn;
-	pgoff_t pgoff;
-	int err;
-
-	/*
-	 * Make sure we don't parallel update on a fault, nor move or remove
-	 * something from beneath our feet.  Note that vmf_insert_page() is
-	 * specifically coded to take care of this, so we don't have to.
-	 */
-	err = mutex_lock_interruptible(&etnaviv_obj->lock);
-	if (err)
-		return VM_FAULT_NOPAGE;
-	/* make sure we have pages attached now */
-	pages = etnaviv_gem_get_pages(etnaviv_obj);
-	mutex_unlock(&etnaviv_obj->lock);
-
-	if (IS_ERR(pages)) {
-		err = PTR_ERR(pages);
-		return vmf_error(err);
-	}
-
-	/* We don't use vmf->pgoff since that has the fake offset: */
-	pgoff = (vmf->address - vma->vm_start) >> PAGE_SHIFT;
-
-	pfn = page_to_pfn(pages[pgoff]);
-
-	VERB("Inserting %p pfn %lx, pa %lx", (void *)vmf->address,
-	     pfn, pfn << PAGE_SHIFT);
-
-	return vmf_insert_pfn(vma, vmf->address, pfn);
-}
-#endif
 
 int etnaviv_gem_mmap_offset(std::shared_ptr<etnaviv_gem_object> obj, u64 *offset)
 {
@@ -206,45 +174,48 @@ int etnaviv_gem_mmap_offset(std::shared_ptr<etnaviv_gem_object> obj, u64 *offset
 	return ret;
 }
 
-#if 0
 
-static struct etnaviv_vram_mapping *
+std::shared_ptr<etnaviv_vram_mapping>
 etnaviv_gem_get_vram_mapping(struct etnaviv_gem_object *obj,
-			     struct etnaviv_iommu_context *context)
+			     struct etnaviv_iommu_context *context,
+				bool delete_from_list = false)
 {
-	struct etnaviv_vram_mapping *mapping;
-
-	list_for_each_entry(mapping, &obj->vram_list, obj_node) {
-		if (mapping->context == context)
-			return mapping;
+	for(auto iter = obj->vram_list.begin(); iter != obj->vram_list.end(); iter++)
+	{
+		auto &mapping = *iter;
+		if(mapping->context.get() == context)
+		{
+			auto cmapping = mapping;
+			if(delete_from_list)
+				obj->vram_list.erase(iter);
+			return cmapping;
+		}
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void etnaviv_gem_mapping_unreference(struct etnaviv_vram_mapping *mapping)
 {
 	struct etnaviv_gem_object *etnaviv_obj = mapping->object;
 
-	mutex_lock(&etnaviv_obj->lock);
+	etnaviv_obj->lock->lock();
 	WARN_ON(mapping->use == 0);
 	mapping->use -= 1;
-	mutex_unlock(&etnaviv_obj->lock);
-
-	drm_gem_object_put(&etnaviv_obj->base);
+	etnaviv_obj->lock->unlock();
 }
 
-struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
-	struct drm_gem_object *obj, struct etnaviv_iommu_context *mmu_context,
+std::shared_ptr<etnaviv_vram_mapping>
+etnaviv_gem_mapping_get(
+	std::shared_ptr<etnaviv_gem_object> &obj,
+	std::shared_ptr<etnaviv_iommu_context> &mmu_context,
 	u64 va)
 {
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-	struct etnaviv_vram_mapping *mapping;
-	struct page **pages;
+	auto &etnaviv_obj = obj;
 	int ret = 0;
 
-	mutex_lock(&etnaviv_obj->lock);
-	mapping = etnaviv_gem_get_vram_mapping(etnaviv_obj, mmu_context);
+	etnaviv_obj->lock->lock();
+	auto mapping = etnaviv_gem_get_vram_mapping(etnaviv_obj.get(), mmu_context.get());
 	if (mapping) {
 		/*
 		 * Holding the object lock prevents the use count changing
@@ -253,17 +224,17 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 		 * the MMU owns this mapping to close this race.
 		 */
 		if (mapping->use == 0) {
-			mutex_lock(&mmu_context->lock);
+			mmu_context->lock->lock();
 			if (mapping->context == mmu_context)
 				if (va && mapping->iova != va) {
 					etnaviv_iommu_reap_mapping(mapping);
-					mapping = NULL;
+					mapping = nullptr;
 				} else {
 					mapping->use += 1;
 				}
 			else
 				mapping = NULL;
-			mutex_unlock(&mmu_context->lock);
+			mmu_context->lock->unlock();
 			if (mapping)
 				goto out;
 		} else {
@@ -272,96 +243,93 @@ struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
 		}
 	}
 
-	pages = etnaviv_gem_get_pages(etnaviv_obj);
-	if (IS_ERR(pages)) {
-		ret = PTR_ERR(pages);
-		goto out;
-	}
+	etnaviv_gem_get_pages(etnaviv_obj);
 
 	/*
 	 * See if we have a reaped vram mapping we can re-use before
 	 * allocating a fresh mapping.
 	 */
-	mapping = etnaviv_gem_get_vram_mapping(etnaviv_obj, NULL);
+	mapping = etnaviv_gem_get_vram_mapping(etnaviv_obj.get(), NULL, true);
 	if (!mapping) {
-		mapping = kzalloc_obj(*mapping);
+		mapping = std::make_shared<etnaviv_vram_mapping>();
 		if (!mapping) {
 			ret = -ENOMEM;
 			goto out;
 		}
 
-		INIT_LIST_HEAD(&mapping->scan_node);
-		mapping->object = etnaviv_obj;
-	} else {
-		list_del(&mapping->obj_node);
+		mapping->object = etnaviv_obj.get();
 	}
 
 	mapping->use = 1;
 
-	ret = etnaviv_iommu_map_gem(mmu_context, etnaviv_obj,
+	ret = etnaviv_iommu_map_gem(mmu_context, etnaviv_obj.get(),
 				    mmu_context->global->memory_base,
 				    mapping, va);
-	if (ret < 0)
-		kfree(mapping);
-	else
-		list_add_tail(&mapping->obj_node, &etnaviv_obj->vram_list);
+	if (ret >= 0)
+		etnaviv_obj->vram_list.push_back(mapping);
 
 out:
-	mutex_unlock(&etnaviv_obj->lock);
+	etnaviv_obj->lock->unlock();
 
 	if (ret)
-		return ERR_PTR(ret);
+		return nullptr;
 
-	/* Take a reference on the object */
-	drm_gem_object_get(obj);
 	return mapping;
 }
 
-void *etnaviv_gem_vmap(struct drm_gem_object *obj)
+void *etnaviv_gem_vmap(std::shared_ptr<etnaviv_gem_object> obj)
 {
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
+	auto &etnaviv_obj = obj;
 
 	if (etnaviv_obj->vaddr)
 		return etnaviv_obj->vaddr;
 
-	mutex_lock(&etnaviv_obj->lock);
+	etnaviv_obj->lock->lock();
 	/*
 	 * Need to check again, as we might have raced with another thread
 	 * while waiting for the mutex.
 	 */
 	if (!etnaviv_obj->vaddr)
 		etnaviv_obj->vaddr = etnaviv_obj->ops->vmap(etnaviv_obj);
-	mutex_unlock(&etnaviv_obj->lock);
+	etnaviv_obj->lock->unlock();
 
 	return etnaviv_obj->vaddr;
 }
 
-static void *etnaviv_gem_vmap_impl(struct etnaviv_gem_object *obj)
+static void *etnaviv_gem_vmap_impl(std::shared_ptr<etnaviv_gem_object> &obj)
 {
-	struct page **pages;
-	pgprot_t prot;
+	unsigned int mt = 0;
 
-	lockdep_assert_held(&obj->lock);
+	BUG_ON(!obj->lock->held());
 
-	pages = etnaviv_gem_get_pages(obj);
-	if (IS_ERR(pages))
-		return NULL;
+	etnaviv_gem_get_pages(obj);
 
 	switch (obj->flags & ETNA_BO_CACHE_MASK) {
 	case ETNA_BO_CACHED:
-		prot = PAGE_KERNEL;
+		mt = MT_NORMAL;
 		break;
 	case ETNA_BO_UNCACHED:
-		prot = pgprot_noncached(PAGE_KERNEL);
+		mt = MT_NORMAL_NC;
 		break;
 	case ETNA_BO_WC:
 	default:
-		prot = pgprot_writecombine(PAGE_KERNEL);
+		mt = MT_NORMAL_NC;
+		break;
 	}
 
-	return vmap(pages, obj->base.size >> PAGE_SHIFT, VM_MAP, prot);
+	auto p = GetCurrentProcessForCore();
+	{
+		MutexGuard cg(p->user_mem->m);
+		auto ttbr0 = p->user_mem->ttbr0;
+		auto ttbr1 = vmem_get_ttbr1();
+
+		for(auto i = 0ull; i < obj->psize; i += PAGE_SIZE)
+			vmem_map((uintptr_t)obj->vaddr + i, (uintptr_t)obj->dma_addr + i, true, true, false,
+				ttbr0, ttbr1, nullptr, mt);
+	}
+
+	return obj->vaddr;
 }
-#endif
 
 static inline enum dma_data_direction etnaviv_op_to_dma_dir(u32 op)
 {
@@ -429,8 +397,6 @@ int etnaviv_gem_cpu_fini(std::shared_ptr<etnaviv_gem_object> obj)
 	return 0;
 }
 
-#if 0
-
 int etnaviv_gem_wait_bo(struct etnaviv_gpu *gpu, struct drm_gem_object *obj,
 	struct drm_etnaviv_timespec *timeout)
 {
@@ -482,10 +448,10 @@ void etnaviv_gem_describe_objects(struct etnaviv_drm_private *priv,
 }
 #endif
 
-static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
+static void etnaviv_gem_shmem_release(std::shared_ptr<etnaviv_gem_object> &etnaviv_obj)
 {
-	vunmap(etnaviv_obj->vaddr);
-	put_pages(etnaviv_obj);
+	//vunmap(etnaviv_obj->vaddr);
+	//put_pages(etnaviv_obj);
 }
 
 static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
@@ -497,6 +463,10 @@ static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
 
 void etnaviv_gem_free_object(struct drm_gem_object *obj)
 {
+	klog("etnaviv_gem_free_object not implemented\n");
+	return;
+
+#if 0
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
 	struct etnaviv_drm_private *priv = obj->dev->dev_private;
 	struct etnaviv_vram_mapping *mapping, *tmp;
@@ -526,8 +496,9 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
 
 	mutex_destroy(&etnaviv_obj->lock);
 	kfree(etnaviv_obj);
-}
 #endif
+}
+
 void etnaviv_gem_obj_add(struct drm_device *dev, std::shared_ptr<etnaviv_gem_object> obj)
 {
 	struct etnaviv_drm_private *priv = dev->dev_private.get();
@@ -536,22 +507,13 @@ void etnaviv_gem_obj_add(struct drm_device *dev, std::shared_ptr<etnaviv_gem_obj
 	priv->gem_list.push_back(obj);
 	priv->gem_lock->unlock();
 }
-#if 0
-static enum drm_gem_object_status etnaviv_gem_status(struct drm_gem_object *obj)
+
+[[maybe_unused]] static enum drm_gem_object_status etnaviv_gem_status(struct drm_gem_object *obj)
 {
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-	enum drm_gem_object_status status = 0;
-
-	if (etnaviv_obj->pages)
-		status |= DRM_GEM_OBJECT_RESIDENT;
-
-	return status;
+	return DRM_GEM_OBJECT_RESIDENT;
 }
 
 static const struct vm_operations_struct vm_ops = {
-	.fault = etnaviv_gem_fault,
-	.open = drm_gem_vm_open,
-	.close = drm_gem_vm_close,
 };
 
 static const struct drm_gem_object_funcs etnaviv_gem_object_funcs = {
@@ -561,11 +523,8 @@ static const struct drm_gem_object_funcs etnaviv_gem_object_funcs = {
 	.get_sg_table = etnaviv_gem_prime_get_sg_table,
 	.vmap = etnaviv_gem_prime_vmap,
 	.mmap = etnaviv_gem_mmap,
-	.status = etnaviv_gem_status,
 	.vm_ops = &vm_ops,
 };
-
-#endif
 
 static int etnaviv_gem_new_impl(struct drm_device *dev, u32 size, u32 flags,
 	std::shared_ptr<etnaviv_gem_object> *obj)

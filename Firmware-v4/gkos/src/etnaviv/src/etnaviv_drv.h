@@ -69,7 +69,7 @@ struct drm_gem_object *etnaviv_gem_prime_import_sg_table(struct drm_device *dev,
 	struct dma_buf_attachment *attach, sg_table *sg);
 int etnaviv_gem_prime_pin(struct drm_gem_object *obj);
 void etnaviv_gem_prime_unpin(struct drm_gem_object *obj);
-void *etnaviv_gem_vmap(struct drm_gem_object *obj);
+void *etnaviv_gem_vmap(std::shared_ptr<etnaviv_gem_object> obj);
 int etnaviv_gem_cpu_prep(std::shared_ptr<etnaviv_gem_object> obj, u32 op,
 		struct drm_etnaviv_timespec *timeout);
 int etnaviv_gem_cpu_fini(std::shared_ptr<etnaviv_gem_object> obj);
@@ -84,7 +84,7 @@ u16 etnaviv_buffer_config_pta(struct etnaviv_gpu *gpu, unsigned short id);
 void etnaviv_buffer_end(struct etnaviv_gpu *gpu);
 void etnaviv_sync_point_queue(struct etnaviv_gpu *gpu, unsigned int event);
 void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
-	struct etnaviv_iommu_context *mmu,
+	std::shared_ptr<etnaviv_iommu_context> mmu,
 	unsigned int event, struct etnaviv_cmdbuf *cmdbuf);
 void etnaviv_validate_init(void);
 bool etnaviv_cmd_validate_one(struct etnaviv_gpu *gpu,

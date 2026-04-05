@@ -87,8 +87,8 @@ enum etnaviv_sec_mode {
 };
 
 struct etnaviv_event {
-	struct dma_fence *fence;
-	struct etnaviv_gem_submit *submit;
+	struct std::shared_ptr<dma_fence> fence;
+	struct std::shared_ptr<etnaviv_gem_submit> submit;
 
 	void (*sync_point)(struct etnaviv_gpu *gpu, struct etnaviv_event *event);
 };
@@ -118,7 +118,7 @@ struct etnaviv_gpu {
 	enum etnaviv_sec_mode sec_mode{};
 	WorkQueue wq;
 	std::shared_ptr<Mutex> sched_lock = MutexList.Create();
-	std::unique_ptr<DRMScheduler> sched;
+	std::unique_ptr<DRMScheduler> sched = std::make_unique<DRMScheduler>();
 	enum etnaviv_gpu_state state{};
 
 	/* 'ring'-buffer: */
@@ -225,7 +225,7 @@ int etnaviv_gpu_wait_fence_interruptible(struct etnaviv_gpu *gpu,
 int etnaviv_gpu_wait_obj_inactive(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_object *etnaviv_obj,
 	struct drm_etnaviv_timespec *timeout);
-std::shared_ptr<dma_fence> etnaviv_gpu_submit(struct etnaviv_gem_submit *submit);
+std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr <etnaviv_gem_submit> submit);
 int etnaviv_gpu_pm_get_sync(struct etnaviv_gpu *gpu);
 void etnaviv_gpu_pm_put(struct etnaviv_gpu *gpu);
 int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms);

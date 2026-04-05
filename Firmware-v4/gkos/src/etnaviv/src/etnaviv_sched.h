@@ -12,10 +12,10 @@
 struct etnaviv_gpu;
 
 static inline
-struct etnaviv_gem_submit *to_etnaviv_submit(struct drm_sched_job *sched_job)
+std::shared_ptr <etnaviv_gem_submit> to_etnaviv_submit(struct drm_sched_job *sched_job)
 {
 	auto esj = reinterpret_cast<etnaviv_sched_job *>(sched_job);
-	return esj->submit.get();
+	return esj->submit;
 }
 
 int etnaviv_sched_init(struct etnaviv_gpu *gpu);

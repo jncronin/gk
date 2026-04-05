@@ -1,5 +1,3 @@
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2014-2018 Etnaviv Project
@@ -23,12 +21,12 @@
 
 #include "etnaviv_flop_reset.h"
 
-static void etnaviv_cmd_select_pipe(struct etnaviv_gpu *gpu,
+[[maybe_unused]] static void etnaviv_cmd_select_pipe(struct etnaviv_gpu *gpu,
 	struct etnaviv_cmdbuf *buffer, u8 pipe)
 {
 	u32 flush = 0;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	/*
 	 * This assumes that if we're switching to 2D, we're switching
@@ -49,19 +47,19 @@ static void etnaviv_cmd_select_pipe(struct etnaviv_gpu *gpu,
 		       VIVS_GL_PIPE_SELECT_PIPE(pipe));
 }
 
-static void etnaviv_buffer_dump(struct etnaviv_gpu *gpu,
+[[maybe_unused]] static void etnaviv_buffer_dump(struct etnaviv_gpu *gpu,
 	struct etnaviv_cmdbuf *buf, u32 off, u32 len)
 {
 	u32 size = buf->size;
-	u32 *ptr = buf->vaddr + off;
+	u32 *ptr = (u32 *)((uintptr_t)buf->vaddr + off);
 
 	dev_info(gpu->dev, "virt %p phys 0x%08x free 0x%08x\n",
 			ptr, etnaviv_cmdbuf_get_va(buf,
 			&gpu->mmu_context->cmdbuf_mapping) +
 			off, size - len * 4 - off);
 
-	print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
-			ptr, len * 4, 0);
+	//print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
+	//		ptr, len * 4, 0);
 }
 
 /*
@@ -73,12 +71,12 @@ static void etnaviv_buffer_dump(struct etnaviv_gpu *gpu,
 static void etnaviv_buffer_replace_wait(struct etnaviv_cmdbuf *buffer,
 	unsigned int wl_offset, u32 cmd, u32 arg)
 {
-	u32 *lw = buffer->vaddr + wl_offset;
+	u32 *lw = (u32 *)((uintptr_t)buffer->vaddr + wl_offset);
 
 	lw[1] = arg;
-	mb();
+	__asm__ volatile("dmb ish\n" ::: "memory");
 	lw[0] = cmd;
-	mb();
+	__asm__ volatile("dmb ish\n" ::: "memory");
 }
 
 /*
@@ -100,7 +98,7 @@ u16 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 {
 	struct etnaviv_cmdbuf *buffer = &gpu->buffer;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	/* initialize buffer */
 	buffer->user_size = 0;
@@ -121,7 +119,7 @@ u16 etnaviv_buffer_config_mmuv2(struct etnaviv_gpu *gpu, u32 mtlb_addr, u32 safe
 {
 	struct etnaviv_cmdbuf *buffer = &gpu->buffer;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	buffer->user_size = 0;
 
@@ -156,7 +154,7 @@ u16 etnaviv_buffer_config_pta(struct etnaviv_gpu *gpu, unsigned short id)
 {
 	struct etnaviv_cmdbuf *buffer = &gpu->buffer;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	buffer->user_size = 0;
 
@@ -178,7 +176,7 @@ void etnaviv_buffer_end(struct etnaviv_gpu *gpu)
 	bool has_blt = !!(gpu->identity.minor_features5 &
 			  chipMinorFeatures5_BLT_ENGINE);
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	if (gpu->exec_state == ETNA_PIPE_2D)
 		flush = VIVS_GL_FLUSH_CACHE_PE2D;
@@ -244,7 +242,7 @@ void etnaviv_sync_point_queue(struct etnaviv_gpu *gpu, unsigned int event)
 	unsigned int waitlink_offset = buffer->user_size - 16;
 	u32 dwords, target;
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	/*
 	 * We need at most 3 dwords in the return target:
@@ -278,21 +276,21 @@ void etnaviv_sync_point_queue(struct etnaviv_gpu *gpu, unsigned int event)
 
 /* Append a command buffer to the ring buffer. */
 void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
-	struct etnaviv_iommu_context *mmu_context, unsigned int event,
+	std::shared_ptr<etnaviv_iommu_context> mmu_context, unsigned int event,
 	struct etnaviv_cmdbuf *cmdbuf)
 {
 	struct etnaviv_cmdbuf *buffer = &gpu->buffer;
 	unsigned int waitlink_offset = buffer->user_size - 16;
 	u32 return_target, return_dwords;
 	u32 link_target, link_dwords;
-	bool switch_context = gpu->exec_state != exec_state;
+	bool switch_context = gpu->exec_state != (int)exec_state;
 	bool switch_mmu_context = gpu->mmu_context != mmu_context;
-	unsigned int new_flush_seq = READ_ONCE(mmu_context->flush_seq);
+	unsigned int new_flush_seq = *(const volatile unsigned int *)&mmu_context->flush_seq;
 	bool need_flush = switch_mmu_context || gpu->flush_seq != new_flush_seq;
 	bool has_blt = !!(gpu->identity.minor_features5 &
 			  chipMinorFeatures5_BLT_ENGINE);
 
-	lockdep_assert_held(&gpu->lock);
+	BUG_ON(!gpu->lock->held());
 
 	if (drm_debug_enabled(DRM_UT_DRIVER))
 		etnaviv_buffer_dump(gpu, buffer, 0, 0x50);
@@ -336,10 +334,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 		 * the switch.
 		 */
 		if (switch_mmu_context) {
-			struct etnaviv_iommu_context *old_context = gpu->mmu_context;
-
-			gpu->mmu_context = etnaviv_iommu_context_get(mmu_context);
-			etnaviv_iommu_context_put(old_context);
+			gpu->mmu_context = mmu_context;
 		}
 
 		if (need_flush) {
@@ -358,14 +353,14 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 				if (switch_mmu_context &&
 				    gpu->sec_mode == ETNA_SEC_KERNEL) {
 					unsigned short id =
-						etnaviv_iommuv2_get_pta_id(gpu->mmu_context);
+						etnaviv_iommuv2_get_pta_id(gpu->mmu_context.get());
 					CMD_LOAD_STATE(buffer,
 						VIVS_MMUv2_PTA_CONFIG,
 						VIVS_MMUv2_PTA_CONFIG_INDEX(id));
 				}
 
 				if (gpu->sec_mode == ETNA_SEC_NONE)
-					flush |= etnaviv_iommuv2_get_mtlb_addr(gpu->mmu_context);
+					flush |= etnaviv_iommuv2_get_mtlb_addr(gpu->mmu_context.get());
 
 				CMD_LOAD_STATE(buffer, VIVS_MMUv2_CONFIGURATION,
 					       flush);
@@ -457,10 +452,10 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 			cmdbuf->vaddr);
 
 	if (drm_debug_enabled(DRM_UT_DRIVER)) {
-		print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
-			       cmdbuf->vaddr, cmdbuf->size, 0);
+		//print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
+		//	       cmdbuf->vaddr, cmdbuf->size, 0);
 
-		pr_info("link op: %p\n", buffer->vaddr + waitlink_offset);
+		pr_info("link op: %p\n", (void *)((uintptr_t)buffer->vaddr + waitlink_offset));
 		pr_info("addr: 0x%08x\n", link_target);
 		pr_info("back: 0x%08x\n", return_target);
 		pr_info("event: %d\n", event);
@@ -478,5 +473,3 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 	if (drm_debug_enabled(DRM_UT_DRIVER))
 		etnaviv_buffer_dump(gpu, buffer, 0, 0x50);
 }
-
-#endif

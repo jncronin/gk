@@ -19,7 +19,7 @@
 
 static std::shared_ptr<dma_fence> etnaviv_sched_run_job(struct drm_sched_job *sched_job)
 {
-	struct etnaviv_gem_submit *submit = to_etnaviv_submit(sched_job);
+	auto submit = to_etnaviv_submit(sched_job);
 	std::shared_ptr<dma_fence> fence = NULL;
 
 	if (likely(sched_job->finished))

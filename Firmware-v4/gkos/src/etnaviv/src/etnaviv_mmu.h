@@ -98,12 +98,12 @@ void etnaviv_iommu_global_fini(struct etnaviv_gpu *gpu);
 
 struct etnaviv_gem_object;
 
-int etnaviv_iommu_map_gem(std::shared_ptr<etnaviv_iommu_context> ,
+int etnaviv_iommu_map_gem(std::shared_ptr<etnaviv_iommu_context> context,
 	struct etnaviv_gem_object *etnaviv_obj, u32 memory_base,
-	struct etnaviv_vram_mapping *mapping, u64 va);
+	std::shared_ptr<etnaviv_vram_mapping> mapping, u64 va);
 void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> ,
 	struct etnaviv_vram_mapping *mapping);
-void etnaviv_iommu_reap_mapping(struct etnaviv_vram_mapping *mapping);
+void etnaviv_iommu_reap_mapping(std::shared_ptr<etnaviv_vram_mapping> mapping);
 
 int etnaviv_iommu_get_suballoc_va(struct etnaviv_iommu_context *ctx,
 				  struct etnaviv_vram_mapping *mapping,
