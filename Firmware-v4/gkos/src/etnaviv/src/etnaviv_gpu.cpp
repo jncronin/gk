@@ -1418,7 +1418,7 @@ static void sync_point_perfmon_sample_post(struct etnaviv_gpu *gpu,
 
 
 /* add bo's to gpu's ring, and kick gpu: */
-struct dma_fence *etnaviv_gpu_submit(struct etnaviv_gem_submit *submit)
+std::shared_ptr<dma_fence> etnaviv_gpu_submit(struct etnaviv_gem_submit *submit)
 {
 	struct etnaviv_gpu *gpu = submit->gpu;
 	struct dma_fence *gpu_fence;
@@ -1853,12 +1853,9 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	dev.drm->dev_private->num_gpus = 1;
 
 	/* component_bind_all -> gpu_bind() */
-	klog("GPU: etnaviv_sched_init not implemented\n");
-#if 0
 	auto ret = etnaviv_sched_init(gpu.get());
 	if(ret)
 		return ret;
-#endif
 
 	/* Clock */
 	etnaviv_gpu_clk_enable(*dev.drm->dev_private->gpu);

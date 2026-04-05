@@ -14,6 +14,8 @@
 class Thread;
 using PThread = std::shared_ptr<Thread>;
 
+using ticket_t = kernel_time;
+
 class Mutex
 {
     protected:
@@ -22,12 +24,14 @@ class Mutex
         bool is_recursive = false;
         bool echeck = false;
         int lockcount = 0;
+        ticket_t owning_ticket = kernel_time_invalid();
 
     public:
         Spinlock sl;
         id_t id;
         Mutex(bool recursive = false, bool error_check = false);
         void lock(bool allow_deadlk = false);
+        bool lock(ticket_t new_ticket);
         bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         void _lock(bool allow_deadlk = false);
         bool _try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());

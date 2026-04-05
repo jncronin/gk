@@ -75,3 +75,15 @@ int File::Ioctl(unsigned int, void *, size_t len, int *_errno)
     *_errno = EINVAL;
     return -1;
 }
+
+ssize_t File::Write(const char *buf, size_t count, int *_errno)
+{
+    *_errno = EINVAL;
+    return -1;
+}
+
+ssize_t File::Read(char *buf, size_t count, int *_errno)
+{
+    *_errno = EINVAL;
+    return -1;
+}

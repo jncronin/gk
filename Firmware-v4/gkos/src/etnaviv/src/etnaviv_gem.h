@@ -60,7 +60,7 @@ struct etnaviv_gem_object : public drm_gem_object {
 
 	sg_table sgt;
 
-	struct list_head vram_list;
+	std::list<std::shared_ptr<etnaviv_vram_mapping>> vram_list;
 
 	/* cache maintenance */
 	u32 last_cpu_prep_op;
@@ -91,7 +91,7 @@ static inline bool is_active(struct etnaviv_gem_object *etnaviv_obj)
 struct etnaviv_gem_submit_bo {
 	u32 flags;
 	u64 va;
-	struct etnaviv_gem_object *obj;
+	struct std::shared_ptr<etnaviv_gem_object> obj;
 	struct etnaviv_vram_mapping *mapping;
 };
 
@@ -100,22 +100,22 @@ struct etnaviv_gem_submit_bo {
  * make it easier to unwind when things go wrong, etc).
  */
 struct etnaviv_gem_submit {
-	struct drm_sched_job sched_job;
+	std::unique_ptr<etnaviv_sched_job> sched_job;
 	struct etnaviv_file_private *ctx;
 	struct etnaviv_gpu *gpu;
-	struct etnaviv_iommu_context *mmu_context, *prev_mmu_context;
-	struct dma_fence *out_fence;
+	std::shared_ptr<etnaviv_iommu_context> mmu_context, prev_mmu_context;
+	std::shared_ptr<dma_fence> out_fence;
 	int out_fence_id;
 	struct list_head node; /* GPU active submit list */
 	struct etnaviv_cmdbuf cmdbuf;
-	struct pid *pid;       /* submitting process */
+	id_t pid;       /* submitting process */
 	u32 exec_state;
 	u32 flags;
 	unsigned int nr_pmrs;
-	struct etnaviv_perfmon_request *pmrs;
 	unsigned int nr_bos;
-	struct etnaviv_gem_submit_bo bos[];
-	/* No new members here, the previous one is variable-length! */
+
+	std::vector<etnaviv_perfmon_request> pmrs;
+	std::vector<etnaviv_gem_submit_bo> bos;
 };
 
 void etnaviv_submit_put(struct etnaviv_gem_submit * submit);
@@ -129,7 +129,8 @@ struct page **etnaviv_gem_get_pages(struct etnaviv_gem_object *obj);
 void etnaviv_gem_put_pages(struct etnaviv_gem_object *obj);
 
 struct etnaviv_vram_mapping *etnaviv_gem_mapping_get(
-	struct drm_gem_object *obj, struct etnaviv_iommu_context *mmu_context,
+	std::shared_ptr<etnaviv_gem_object> &obj,
+	std::shared_ptr<etnaviv_iommu_context> &mmu_context,
 	u64 va);
 void etnaviv_gem_mapping_unreference(struct etnaviv_vram_mapping *mapping);
 

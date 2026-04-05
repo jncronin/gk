@@ -3,9 +3,7 @@
 #include "osspinlock.h"
 #include "vmem.h"
 #include "screen.h"
-
-int dri_mmap(size_t len, void **retaddr, int is_sync,
-    int is_read, int is_write, int is_exec, DRIFile &fd, int is_fixed, size_t offset, int *_errno);
+#include "drifile.h"
 
 int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
     int is_read, int is_write, int is_exec, int fd, int is_fixed, size_t foffset, int *_errno)

@@ -56,3 +56,20 @@ void bitmap_zero(uint64_t *bmp, int bits)
     for(auto i = 0; i < bits/64; i++)
         bmp[i] = 0;
 }
+
+void bitmap_set (unsigned long *bitmap, unsigned int start, unsigned int nbits)
+{
+    // HIGHLY unoptimised.
+    // TODO
+    /* Essentially linux creates a uint64_t first_word variable and last_word
+        variable to set the non-complete words at the beginning/end of the
+        range, and then sets all words in between to ~0
+
+        Because this is mostly used in run-once init code it hasn't been
+        optimised for gkos yet.
+    */
+    while(nbits--)
+    {
+        set_bit(start++, bitmap);
+    }
+}

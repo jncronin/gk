@@ -4,6 +4,7 @@
 #include "vmem.h"
 #include "proc_vmem.h"
 #include "process.h"
+#include "drifile.h"
 
 static Spinlock sl_handles;
 static u32 next_handle = 1;

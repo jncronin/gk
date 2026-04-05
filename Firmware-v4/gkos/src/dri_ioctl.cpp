@@ -3,6 +3,7 @@
 #include "osmutex.h"
 #include "_gk_ioctls.h"
 #include <cstring>
+#include "drifile.h"
 
 static_assert(sizeof(drm_version) == _IOC_SIZE(0xc0406400));
 

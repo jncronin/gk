@@ -18,18 +18,10 @@ int etnaviv_gpu_combined_init(struct device &dev);
 
 void init_etnaviv()
 {
-    // check order_base_2 logic
-    for(auto i = 0u; i < 10u; i++)
-    {
-        klog("order_base_2(%u) = %u\n", i, order_base_2(i));
-    }
-    
-    assert(order_base_2(0) == 0);
-    assert(order_base_2(1) == 0);
-    assert(order_base_2(2) == 1);
-    assert(order_base_2(3) == 2);
-    assert(order_base_2(4) == 2);
-    assert(order_base_2(5) == 3);
+    /* Functions marked __init */
+    void etnaviv_validate_init(void);
+    etnaviv_validate_init();
+
 
     /* GPU is RISUP 79 / RIMC 9
         Set as unprivileged

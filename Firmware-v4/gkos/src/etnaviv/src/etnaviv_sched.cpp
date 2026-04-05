@@ -1,5 +1,3 @@
-#if 0
-
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2017 Etnaviv Project
@@ -14,18 +12,17 @@
 #include "etnaviv_sched.h"
 #include "state.xml.h"
 #include "state_hi.xml.h"
+#include "fencefile.h"
 
-static int etnaviv_job_hang_limit = 0;
-module_param_named(job_hang_limit, etnaviv_job_hang_limit, int , 0444);
-static int etnaviv_hw_jobs_limit = 4;
-module_param_named(hw_job_limit, etnaviv_hw_jobs_limit, int , 0444);
+[[maybe_unused]] static int etnaviv_job_hang_limit = 0;
+[[maybe_unused]] static int etnaviv_hw_jobs_limit = 4;
 
-static struct dma_fence *etnaviv_sched_run_job(struct drm_sched_job *sched_job)
+static std::shared_ptr<dma_fence> etnaviv_sched_run_job(struct drm_sched_job *sched_job)
 {
 	struct etnaviv_gem_submit *submit = to_etnaviv_submit(sched_job);
-	struct dma_fence *fence = NULL;
+	std::shared_ptr<dma_fence> fence = NULL;
 
-	if (likely(!sched_job->s_fence->finished.error))
+	if (likely(sched_job->finished))
 		fence = etnaviv_gpu_submit(submit);
 	else
 		dev_dbg(submit->gpu->dev, "skipping bad job\n");
@@ -33,9 +30,13 @@ static struct dma_fence *etnaviv_sched_run_job(struct drm_sched_job *sched_job)
 	return fence;
 }
 
+
 static enum drm_gpu_sched_stat etnaviv_sched_timedout_job(struct drm_sched_job
 							  *sched_job)
 {
+	klog("etnaviv_sched_timedout_job not implemented\n");
+	return DRM_GPU_SCHED_STAT_NO_HANG;
+#if 0
 	struct etnaviv_gem_submit *submit = to_etnaviv_submit(sched_job);
 	struct etnaviv_gpu *gpu = submit->gpu;
 	u32 dma_addr, primid = 0;
@@ -89,15 +90,16 @@ static enum drm_gpu_sched_stat etnaviv_sched_timedout_job(struct drm_sched_job
 
 	drm_sched_start(&gpu->sched, 0);
 	return DRM_GPU_SCHED_STAT_RESET;
+#endif
 }
 
 static void etnaviv_sched_free_job(struct drm_sched_job *sched_job)
 {
-	struct etnaviv_gem_submit *submit = to_etnaviv_submit(sched_job);
-
-	drm_sched_job_cleanup(sched_job);
-
-	etnaviv_submit_put(submit);
+	auto escj = reinterpret_cast<etnaviv_sched_job *>(sched_job);
+	escj->deps.clear();
+	escj->finished = nullptr;
+	escj->scheduled = nullptr;
+	escj->submit = nullptr;
 }
 
 static const struct drm_sched_backend_ops etnaviv_sched_ops = {
@@ -106,58 +108,41 @@ static const struct drm_sched_backend_ops etnaviv_sched_ops = {
 	.free_job = etnaviv_sched_free_job,
 };
 
-int etnaviv_sched_push_job(struct etnaviv_gem_submit *submit)
+
+int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
 {
-	struct etnaviv_gpu *gpu = submit->gpu;
-	int ret;
+	auto &gpu = submit->gpu;
 
 	/*
 	 * Hold the sched lock across the whole operation to avoid jobs being
 	 * pushed out of order with regard to their sched fence seqnos as
 	 * allocated in drm_sched_job_arm.
 	 */
-	mutex_lock(&gpu->sched_lock);
+	gpu->sched_lock->lock();
 
-	drm_sched_job_arm(&submit->sched_job);
+	//drm_sched_job_arm(&submit->sched_job);	// prepares the jobs fences
+	submit->sched_job->scheduled = std::make_shared<dma_fence>();
+	submit->sched_job->finished = std::make_shared<dma_fence>();
+	submit->sched_job->submit = submit;		// allow us to extract the job again
 
-	submit->out_fence = dma_fence_get(&submit->sched_job.s_fence->finished);
-	ret = xa_alloc_cyclic(&gpu->user_fences, &submit->out_fence_id,
-			      submit->out_fence, xa_limit_32b,
-			      &gpu->next_user_fence, GFP_KERNEL);
-	if (ret < 0) {
-		drm_sched_job_cleanup(&submit->sched_job);
-		goto out_unlock;
-	}
+	submit->out_fence = submit->sched_job->finished;
 
-	/* the scheduler holds on to the job now */
-	kref_get(&submit->refcount);
+	gpu->sched->push_job(std::move(submit->sched_job));
 
-	drm_sched_entity_push_job(&submit->sched_job);
+	gpu->sched_lock->unlock();
 
-out_unlock:
-	mutex_unlock(&gpu->sched_lock);
-
-	return ret;
+	return 0;
 }
 
 int etnaviv_sched_init(struct etnaviv_gpu *gpu)
 {
-	const struct drm_sched_init_args args = {
-		.ops = &etnaviv_sched_ops,
-		.num_rqs = DRM_SCHED_PRIORITY_COUNT,
-		.credit_limit = etnaviv_hw_jobs_limit,
-		.hang_limit = etnaviv_job_hang_limit,
-		.timeout = msecs_to_jiffies(500),
-		.name = dev_name(gpu->dev),
-		.dev = gpu->dev,
-	};
+	gpu->sched->ops = &etnaviv_sched_ops;
+	gpu->sched->timeout = kernel_time_from_ms(500);
 
-	return drm_sched_init(&gpu->sched, &args);
+	return 0;
 }
 
 void etnaviv_sched_fini(struct etnaviv_gpu *gpu)
 {
-	drm_sched_fini(&gpu->sched);
+	//drm_sched_fini(&gpu->sched);
 }
-
-#endif

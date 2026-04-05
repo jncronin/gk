@@ -1,4 +1,7 @@
-#if 0
+#include "linux_types.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_gpu.h"
+
 
 // SPDX-License-Identifier: GPL-2.0
 /*
@@ -24,7 +27,7 @@ struct etna_validation_state {
 static const struct {
 	u16 offset;
 	u16 size;
-} etnaviv_sensitive_states[] __initconst = {
+} etnaviv_sensitive_states[] = {
 #define ST(start, num) { (start) >> 2, (num) }
 	/* 2D */
 	ST(0x1200, 1),
@@ -80,7 +83,7 @@ static const struct {
 #define ETNAVIV_STATES_SIZE (VIV_FE_LOAD_STATE_HEADER_OFFSET__MASK + 1u)
 static DECLARE_BITMAP(etnaviv_states, ETNAVIV_STATES_SIZE);
 
-void __init etnaviv_validate_init(void)
+void etnaviv_validate_init(void)
 {
 	unsigned int i;
 
@@ -108,7 +111,7 @@ static void etnaviv_warn_if_non_sensitive(struct etna_validation_state *state,
 static bool etnaviv_validate_load_state(struct etna_validation_state *state,
 	u32 *ptr, unsigned int state_offset, unsigned int num)
 {
-	unsigned int size = min(ETNAVIV_STATES_SIZE, state_offset + num);
+	unsigned int size = std::min(ETNAVIV_STATES_SIZE, state_offset + num);
 	unsigned int st_offset = state_offset, buf_offset;
 
 	for_each_set_bit_from(st_offset, etnaviv_states, size) {
@@ -140,11 +143,7 @@ static bool etnaviv_validate_load_state(struct etna_validation_state *state,
 }
 
 static uint8_t cmd_length[32] = {
-	[FE_OPCODE_DRAW_PRIMITIVES] = 4,
-	[FE_OPCODE_DRAW_INDEXED_PRIMITIVES] = 6,
-	[FE_OPCODE_DRAW_INSTANCED] = 4,
-	[FE_OPCODE_NOP] = 2,
-	[FE_OPCODE_STALL] = 2,
+	0, 0, 0, 2, 0, 4, 6, 0, 0, 2, 0, 0, 4,
 };
 
 bool etnaviv_cmd_validate_one(struct etnaviv_gpu *gpu, u32 *stream,
@@ -207,5 +206,3 @@ bool etnaviv_cmd_validate_one(struct etnaviv_gpu *gpu, u32 *stream,
 
 	return true;
 }
-
-#endif

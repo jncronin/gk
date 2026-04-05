@@ -19,7 +19,8 @@ enum FileType
     FT_Pipe,
     FT_Ram,
     FT_FAT,
-    FT_DRI
+    FT_DRI,
+    FT_Fence
 };
 
 class File
@@ -30,8 +31,8 @@ class File
     public:
         Mutex m;
         
-        virtual ssize_t Write(const char *buf, size_t count, int *_errno) = 0;
-        virtual ssize_t Read(char *buf, size_t count, int *_errno) = 0;
+        virtual ssize_t Write(const char *buf, size_t count, int *_errno);
+        virtual ssize_t Read(char *buf, size_t count, int *_errno);
         virtual int ReadDir(dirent *de, int *_errno);
 
         virtual int Fstat(struct stat *buf, int *_errno);
@@ -139,30 +140,6 @@ class SocketFile : public File
         SocketFile(Socket *sck);
 
         Socket *sck;
-};
-
-struct device;
-
-int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write);
-
-class DRIFile : public File
-{
-    public:
-        enum dri_type { dir, card, render };
-        dri_type dt;
-        std::string dev_name;
-        unsigned int dir_iter = 0;  // re-use as device number for dri_type != dir
-        std::shared_ptr<device> d;
-
-    public:
-        ssize_t Write(const char *buf, size_t count, int *_errno);
-        ssize_t Read(char *buf, size_t count, int *_errno);
-        int ReadDir(dirent *de, int *_errno);
-        int Fstat(struct stat *buf, int *_errno);
-
-        int Ioctl(unsigned int id, void *ptr, size_t len, int *_errno);
-
-        DRIFile();
 };
 
 #endif

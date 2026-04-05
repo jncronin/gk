@@ -2,6 +2,9 @@
 #include "etnaviv/src/linux_types.h"
 #include "osmutex.h"
 #include <vector>
+#include "drifile.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_gpu.h"
 
 static Spinlock sl_dri;
 static std::vector<std::shared_ptr<device>> drm_devs;

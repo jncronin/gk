@@ -14,6 +14,9 @@
 
 #include "ext4_thread.h"
 #include "vmem.h"
+#include "drifile.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_gpu.h"
 
 #define DEBUG_SYSCALL_FILESYS       0
 

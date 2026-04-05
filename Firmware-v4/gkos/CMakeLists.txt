@@ -58,7 +58,8 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/fatfs/source"
         "${CMAKE_CURRENT_SOURCE_DIR}/../cm33-firmware/inc/interface"
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/inih"
-        "${CMAKE_CURRENT_SOURCE_DIR}/etnaviv/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/etnaviv/src"
 )
 
 target_compile_definitions(${PROJECT_NAME}

@@ -20,6 +20,7 @@
 
 #include "sg_table.h"
 #include "block_allocator.h"
+#include "waitwound.h"
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
@@ -77,12 +78,12 @@ struct list_head
 
 #define container_of(obj, result_type, member) (result_type *)((uintptr_t)(obj) - offsetof(result_type, member))
 
-#define xstr(a) str(a)
-#define str(a) #a
+#define xxxstr(a) xxstr(a)
+#define xxstr(a) #a
 
 #define BUG() do { klog("BUG()\n"); while(true); } while(0)
-#define BUG_ON(x) do { if(x) { klog("BUG_ON(%s)\n", str(x)); while(true); } } while(0)
-#define WARN_ON(x) do { if(x) { klog("WARN_ON(%s)\n", str(x)); } } while(0)
+#define BUG_ON(x) do { if(x) { klog("BUG_ON(%s)\n", xxstr(x)); while(true); } } while(0)
+#define WARN_ON(x) do { if(x) { klog("WARN_ON(%s)\n", xxstr(x)); } } while(0)
 #define BUILD_BUG_ON(x) static_assert(!(x))
 #define BIT(x) (1U << (x))
 
@@ -90,10 +91,13 @@ struct list_head
 #define ALIGN_DOWN(x, al) ((x) & ~((typeof(x))(al) - 1))
 
 #define dev_warn(d, msg, ...) klog("GPU WARN : " msg __VA_OPT__(,) __VA_ARGS__)
+#define dev_warn_once dev_warn
+#define dev_warn_ratelimited dev_warn
 #define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 #define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
+#define DRM_ERROR(msg, ...) klog("DRM_ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 
 #define SZ_1				0x00000001
 #define SZ_2				0x00000002
@@ -140,6 +144,7 @@ typedef uintptr_t dma_addr_t;
 
 #define DECLARE_BITMAP(name, count) uint64_t name[((count + 63) & ~63) / 64] = { 0 }
 
+struct dma_fence;
 struct etnaviv_drm_private;
 class pm_control;
 struct drm_device
@@ -157,6 +162,13 @@ struct drm_file
     std::unique_ptr<etnaviv_file_private> driver_priv;
 };
 
+/* resv handles locking as well as maintaining a list of fences */
+struct dma_resv
+{
+	std::shared_ptr<Mutex> lock = MutexList.Create();
+	std::list<std::shared_ptr<dma_fence>> read_fences, write_fences;
+};
+
 struct drm_gem_object
 {
 	dma_addr_t dma_addr;
@@ -165,6 +177,8 @@ struct drm_gem_object
 	u32 handle;
 	u64 vma_node;		// this is an offset that is used in mmap(drifile, ...) calls.
 						// Needs to be PAGE_SIZE aligned otherwise mmap will fail
+	
+	dma_resv resv;
 };
 
 typedef u64 drm_vma_offset_node;
@@ -185,8 +199,15 @@ enum dma_data_direction {
 
 int dma_sync_sgtable_for_cpu(sg_table &sgt, dma_data_direction dir);
 int dma_sync_sgtable_for_device(sg_table &sgt, dma_data_direction dir);
+int dma_resv_lock_interruptible(dma_resv &resv, WaitWoundContext &ticket);
+int dma_resv_lock_slow_interruptible(dma_resv &resv, WaitWoundContext &ticket);
+int dma_resv_unlock(dma_resv &resv);
 
+struct dma_fence;
+std::shared_ptr<dma_fence> sync_file_get_fence(int fd);
 
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
 
 struct iosys_map
 {
@@ -200,7 +221,15 @@ struct drm_sched_entity
 
 struct drm_sched_job
 {
+	std::vector<std::shared_ptr<dma_fence>> deps;
+	std::shared_ptr<dma_fence> scheduled;			// signalled when pushed to gpu
+	std::shared_ptr<dma_fence> finished;			// signalled when completed on gpu
+};
 
+struct etnaviv_gem_submit;
+struct etnaviv_sched_job : public drm_sched_job
+{
+	std::shared_ptr<etnaviv_gem_submit> submit;
 };
 
 struct drm_mm
@@ -244,6 +273,9 @@ struct device
 extern std::atomic<uint32_t> next_context_id;
 extern std::atomic<uint32_t> next_fence_id;
 
+#ifdef PAGE_SIZE
+#undef PAGE_SIZE
+#endif
 #define PAGE_SIZE                   65536ul
 #define PAGE_MASK                   (~(PAGE_SIZE - 1))
 #define offset_in_page(p)           ((unsigned long)(p) & ~PAGE_MASK)
@@ -303,10 +335,18 @@ void bitmap_release_region (unsigned long * bitmap,
  	int pos,
  	int order);
 void bitmap_zero (unsigned long *bitmap, int bits);
+void bitmap_set (unsigned long *bitmap, unsigned int start, unsigned int nbits);
 void set_bit(long nr, volatile unsigned long *addr);
 void clear_bit(long nr, volatile unsigned long *addr);
 unsigned long find_first_zero_bit(const unsigned long *addr,
 					 unsigned long size);
+
+#define for_each_set_bit_from(bit, addr, size) \
+	for ((bit) = find_next_bit((addr), (size), (bit)); \
+	     (bit) < (size); \
+	     (bit) = find_next_bit((addr), (size), (bit) + 1))
+
+unsigned int find_next_bit(const unsigned long *addr, unsigned int nbits, unsigned int from);
 
 template <typename T> int order_base_2(T x)
 {
