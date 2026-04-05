@@ -51,6 +51,7 @@ class DRMScheduler
 {
     Spinlock sl;
     std::array<DRMSchedulerPriority, DRM_SCHED_PRIORITY_COUNT> priorities;
+    bool is_init = false;
 
 public:
     const drm_sched_backend_ops *ops;
