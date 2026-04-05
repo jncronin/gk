@@ -24,3 +24,17 @@ std::shared_ptr<dma_fence> sync_file_get_fence(int fd)
     auto fptr = reinterpret_cast<FenceFile *>(ptr);
     return fptr->fence;
 }
+
+FenceFile::FenceFile()
+{
+    type = FileType::FT_Fence;
+}
+
+int fence_open(PFile *f, std::shared_ptr<dma_fence> fence)
+{
+    auto ff = std::make_shared<FenceFile>();
+    if(fence)
+        ff->fence = fence;
+    *f = std::move(ff);
+    return 0;
+}
