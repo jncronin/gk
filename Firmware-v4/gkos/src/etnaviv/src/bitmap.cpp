@@ -73,3 +73,35 @@ void bitmap_set (unsigned long *bitmap, unsigned int start, unsigned int nbits)
         set_bit(start++, bitmap);
     }
 }
+
+void set_bit(long nr, volatile unsigned long *addr)
+{
+    volatile uint64_t *bmp = (volatile uint64_t *)addr;
+    auto word_addr = nr / sizeof(*bmp);
+    auto bit_addr = nr % sizeof(*bmp);
+    bmp[word_addr] = bmp[word_addr] | (1UL << bit_addr);
+}
+
+unsigned int find_next_bit(const unsigned long *addr, unsigned int nbits, unsigned int from)
+{
+    auto bmp = (uint64_t *)addr;
+    auto start_word = from / sizeof(*bmp);
+    auto start_bit = from % sizeof(*bmp);
+    auto start_mask = (~0ULL) << start_bit;
+    auto nwords = ALIGN(nbits, sizeof(*bmp) * 8) / (sizeof(*bmp) * 8);
+
+    for(auto cword = start_word; cword < nwords; cword++)
+    {
+        auto cmask = (cword == start_word) ? start_mask : ~0ULL;
+        auto cval = bmp[cword] & cmask;
+
+        if(cval == 0)
+        {
+            continue;
+        }
+
+        return cword * (sizeof(*bmp) * 8) + __builtin_ctz(cval);
+    }
+
+    return nbits;
+}
