@@ -156,3 +156,19 @@ int drm_prime_pages_to_sg(const drm_gem_object &obj, sg_table &sgt)
     sgt.push_back(sge);
     return 0;
 }
+
+int dma_resv_lock_interruptible(dma_resv &resv, WaitWoundContext &ticket)
+{
+    return ticket.lock(resv.lock);
+}
+
+int dma_resv_lock_slow_interruptible(dma_resv &resv, WaitWoundContext &ticket)
+{
+    return ticket.lock_slow(resv.lock);
+}
+
+int dma_resv_unlock(dma_resv &resv)
+{
+    resv.lock->unlock();
+    return 0;
+}

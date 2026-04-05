@@ -4,6 +4,7 @@
 #include "ipi.h"
 #include "threadproclist.h"
 #include "logger.h"
+#include "clocks.h"
 
 Mutex::Mutex(bool recursive, bool error_check) : 
     owner(0),
@@ -13,14 +14,25 @@ Mutex::Mutex(bool recursive, bool error_check) :
 {
 }
 
-void Mutex::lock(bool allow_deadlk)
+/* We need to handle wound/wait mutexes differently here.
+    pthread_mutex_lock returns +EBUSY if someone else owns the mutex
+     and +EDEADLK if we already own it (assuming allow_deadlk is true)
+    wound_wait mutex lock returns -EDEADLK if someone else owns the mutex with
+     an older ticket, or +EBUSY if someone else owns it with a newer ticket,
+     and -EALREADY if we already own it
+*/
+int Mutex::lock(ticket_t new_ticket, bool allow_deadlk)
 {
     int reason;
-    while(!try_lock(&reason))
+    while(!try_lock(&reason, true, kernel_time_invalid(), new_ticket))
     {
+        if(reason == -EDEADLK || reason == -EALREADY)
+        {
+            return reason;
+        }
         if(allow_deadlk && reason == EDEADLK)
         {
-            return;
+            return -EDEADLK;
         }
         
         if(reason != EBUSY)
@@ -28,16 +40,21 @@ void Mutex::lock(bool allow_deadlk)
             __asm__ volatile("brk #212\n" ::: "memory");
         }
     }
+    return 0;
 }
 
-void Mutex::_lock(bool allow_deadlk)
+int Mutex::_lock(ticket_t new_ticket, bool allow_deadlk)
 {
     int reason;
-    while(!_try_lock(&reason))
+    while(!_try_lock(&reason, true, kernel_time_invalid(), new_ticket))
     {
+        if(reason == -EDEADLK || reason == -EALREADY)
+        {
+            return reason;
+        }
         if(allow_deadlk && reason == EDEADLK)
         {
-            return;
+            return -EDEADLK;
         }
         
         if(reason != EBUSY)
@@ -45,17 +62,18 @@ void Mutex::_lock(bool allow_deadlk)
             __asm__ volatile("brk #212\n" ::: "memory");
         }
     }
+    return 0;
 }
 
-bool Mutex::try_lock(int *reason, bool block, kernel_time tout)
+bool Mutex::try_lock(int *reason, bool block, kernel_time tout, ticket_t ticket)
 {
     auto t = GetCurrentThreadForCore();
     CriticalGuard cg(sl, t->locked_mutexes.sl);
 
-    return _try_lock(reason, block, tout);
+    return _try_lock(reason, block, tout, ticket);
 }
 
-bool Mutex::_try_lock(int *reason, bool block, kernel_time tout)
+bool Mutex::_try_lock(int *reason, bool block, kernel_time tout, ticket_t ticket)
 {
     auto t = GetCurrentThreadForCore();
     auto towner = ThreadList.Get(owner).v;
@@ -69,6 +87,11 @@ bool Mutex::_try_lock(int *reason, bool block, kernel_time tout)
     }
     else if(towner.get() == t)
     {
+        if(kernel_time_is_valid(ticket))
+        {
+            if(reason) *reason = -EALREADY;
+            return true;
+        }
         if(reason) *reason = EDEADLK;
         if(echeck)
         {
@@ -85,7 +108,19 @@ bool Mutex::_try_lock(int *reason, bool block, kernel_time tout)
     }
     else
     {
-        if(reason) *reason = EBUSY;
+        if(kernel_time_is_valid(ticket))
+        {
+            if(ticket > owning_ticket)
+            {
+                if(reason) *reason = -EDEADLK;
+                return false;
+            }
+            if(reason) *reason = EBUSY;
+        }
+        else
+        {
+            if(reason) *reason = EBUSY;
+        }
 
         if(block)
         {
@@ -155,6 +190,8 @@ std::pair<bool, std::vector<PThread>> Mutex::_unlock(int *reason, bool force)
     }
 
     t->locked_mutexes.Delete(id);
+
+    owning_ticket = kernel_time_invalid();
 
     return std::make_pair(true, to_unlock);
 }

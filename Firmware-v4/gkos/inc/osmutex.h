@@ -30,11 +30,12 @@ class Mutex
         Spinlock sl;
         id_t id;
         Mutex(bool recursive = false, bool error_check = false);
-        void lock(bool allow_deadlk = false);
-        bool lock(ticket_t new_ticket);
-        bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
-        void _lock(bool allow_deadlk = false);
-        bool _try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
+        int lock(ticket_t new_ticket = kernel_time_invalid(), bool allow_deadlk = false);
+        bool try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time(),
+            ticket_t new_ticket = kernel_time_invalid());
+        int _lock(ticket_t new_ticket = kernel_time_invalid(), bool allow_deadlk = false);
+        bool _try_lock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time(),
+            ticket_t new_ticket = kernel_time_invalid());
         bool unlock(int *reason = nullptr, bool force = false);
         std::pair<bool, std::vector<PThread>> _unlock(int *reason = nullptr, bool force = false);
         bool unlock(bool do_unlock);
