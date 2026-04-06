@@ -14,7 +14,7 @@ int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file);
 DRIFile::DRIFile()
 {
     type = FT_DRI;
-    klog("DRI: opened\n");
+    //klog("DRI: opened\n");
 }
 
 ssize_t DRIFile::Write(const char *, size_t, int *_errno)
@@ -168,7 +168,12 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
     nfile->dev_name = cdev->drm->name;
     nfile->dir_iter = dev_id;
     nfile->dt = is_render ? DRIFile::dri_type::render : DRIFile::dri_type::card;
-    etnaviv_open(cdev->drm.get(), &nfile->df);
+
+    if(for_write)
+    {
+        // don't run etnaviv_open sequence if only opened for read (e.g. stat() call)
+        etnaviv_open(cdev->drm.get(), &nfile->df);
+    }
 
     *f = nfile;
 
