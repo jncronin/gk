@@ -10,20 +10,20 @@
 /* TODO:
 
     DRM scheduler has:
-        multiple run queues with different priorities (etnaviv only uses one - PRIORITY_NORMAL)
-            Each run queue has a queue of _entities_ - etnaviv has 4 here one per pipe
+    Multiple priorities of multiple run queues
+    We simplify it a bit so that we only have one run queue per prioriry
 
-    The scheduler then runs each queue as appropriate.  Note that within an entity, the jobs are
-        always executed in a FIFO manner.
-
-    There is also a credit count mechanism for flow control.
+    There is also a credit count mechanism for flow control.  Essentially running a job
+    on the gpu increases a counter in the scheduler, and finishing that job decreases it.
+    If the count is too high, we do not send any more jobs to the gpu but keep them
+    batched here.
 
 */
 
-#define DRM_SCHED_PRIORITY_NORMAL       1
+#define DRM_SCHED_PRIORITY_NORMAL       0
 #define DRM_SCHED_PRIORITY_COUNT        1
 
-using DRMSchedulerEntity = std::queue<etnaviv_sched_job>;
+using DRMSchedulerEntity = std::queue<std::unique_ptr<drm_sched_job>>;
 
 enum drm_gpu_sched_stat
 {
@@ -49,15 +49,22 @@ class DRMSchedulerPriority
 
 class DRMScheduler
 {
-    Spinlock sl;
-    std::array<DRMSchedulerPriority, DRM_SCHED_PRIORITY_COUNT> priorities;
-    bool is_init = false;
-
 public:
+    Spinlock sl;
+    std::array<DRMSchedulerEntity, DRM_SCHED_PRIORITY_COUNT> priorities;
+    std::array<bool, DRM_SCHED_PRIORITY_COUNT> is_init;
+    std::array<CountingSemaphore, DRM_SCHED_PRIORITY_COUNT> sems;
+    std::array<id_t, DRM_SCHED_PRIORITY_COUNT> tids;
+    std::array<bool, DRM_SCHED_PRIORITY_COUNT> shutdown_req;
+
+    unsigned int next_job_id = 0;       // for debugging
+
     const drm_sched_backend_ops *ops;
     kernel_time timeout;
-    void init(size_t priority, size_t entity);
+    void init(size_t priority, size_t entity, std::shared_ptr<DRMScheduler> &sched);
     int push_job(std::unique_ptr<drm_sched_job> &&j);
+
+    DRMScheduler();
 };
 
 #endif

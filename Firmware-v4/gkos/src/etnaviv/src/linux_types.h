@@ -226,6 +226,9 @@ struct drm_sched_job
 	std::vector<std::shared_ptr<dma_fence>> deps;
 	std::shared_ptr<dma_fence> scheduled;			// signalled when pushed to gpu
 	std::shared_ptr<dma_fence> finished;			// signalled when completed on gpu
+	kernel_time arm_time;
+	unsigned int job_id;
+	unsigned int priority;
 };
 
 struct etnaviv_gem_submit;

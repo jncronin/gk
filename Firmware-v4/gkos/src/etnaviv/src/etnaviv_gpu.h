@@ -118,7 +118,7 @@ struct etnaviv_gpu {
 	enum etnaviv_sec_mode sec_mode{};
 	WorkQueue wq;
 	std::shared_ptr<Mutex> sched_lock = MutexList.Create();
-	std::unique_ptr<DRMScheduler> sched = std::make_unique<DRMScheduler>();
+	std::shared_ptr<DRMScheduler> sched = std::make_shared<DRMScheduler>();
 	enum etnaviv_gpu_state state{};
 
 	/* 'ring'-buffer: */

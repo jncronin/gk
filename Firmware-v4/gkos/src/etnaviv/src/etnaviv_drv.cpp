@@ -57,7 +57,7 @@ int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file)
 
 	auto &gpu = priv->gpu;
 	if(gpu)
-		gpu->sched->init(DRM_SCHED_PRIORITY_NORMAL, 0);
+		gpu->sched->init(DRM_SCHED_PRIORITY_NORMAL, 0, gpu->sched);
 
 	*file = std::move(ctx);
 

@@ -16,7 +16,7 @@ int fence_open(PFile *f, std::shared_ptr<dma_fence> fence = nullptr);
 
 struct dma_fence
 {
-    BinarySemaphore s;
+    SimpleSignal s;
 };
 
 class FenceFile : public File

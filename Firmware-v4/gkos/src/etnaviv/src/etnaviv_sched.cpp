@@ -22,7 +22,7 @@ static std::shared_ptr<dma_fence> etnaviv_sched_run_job(struct drm_sched_job *sc
 	auto submit = to_etnaviv_submit(sched_job);
 	std::shared_ptr<dma_fence> fence = NULL;
 
-	if (likely(sched_job->finished))
+	if (likely(sched_job->finished->s.Value() == 0))
 		fence = etnaviv_gpu_submit(submit);
 	else
 		dev_dbg(submit->gpu->dev, "skipping bad job\n");
@@ -124,6 +124,8 @@ int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
 	submit->sched_job->scheduled = std::make_shared<dma_fence>();
 	submit->sched_job->finished = std::make_shared<dma_fence>();
 	submit->sched_job->submit = submit;		// allow us to extract the job again
+	submit->sched_job->arm_time = clock_cur();
+	submit->sched_job->priority = DRM_SCHED_PRIORITY_NORMAL;
 
 	submit->out_fence = submit->sched_job->finished;
 

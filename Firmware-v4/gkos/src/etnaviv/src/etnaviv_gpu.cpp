@@ -1443,7 +1443,12 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		return NULL;
 	}
 
+	klog("******** PT-1\n");
+
+
 	gpu->lock->lock();
+
+	klog("******** PT0\n");
 
 	auto gpu_fence = etnaviv_gpu_fence_alloc(gpu);
 	if (!gpu_fence) {
@@ -1453,8 +1458,12 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		goto out_unlock;
 	}
 
+	klog("******** PT1\n");
+
 	if (gpu->state == ETNA_GPU_STATE_INITIALIZED)
 		etnaviv_gpu_start_fe_idleloop(gpu, submit->mmu_context);
+
+	klog("******** PT2\n");
 
 	submit->prev_mmu_context = gpu->mmu_context;
 
@@ -1464,16 +1473,22 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		etnaviv_sync_point_queue(gpu, event[1]);
 	}
 
+	klog("******** PT3\n");
+
 	gpu->event[event[0]].fence = gpu_fence;
 	submit->cmdbuf.user_size = submit->cmdbuf.size - 8;
 	etnaviv_buffer_queue(gpu, submit->exec_state, submit->mmu_context,
 			     event[0], &submit->cmdbuf);
+
+	klog("******** PT4\n");
 
 	if (submit->nr_pmrs) {
 		gpu->event[event[2]].sync_point = &sync_point_perfmon_sample_post;
 		gpu->event[event[2]].submit = submit;
 		etnaviv_sync_point_queue(gpu, event[2]);
 	}
+
+	klog("******** PT5\n");
 
 out_unlock:
 	gpu->lock->unlock();
