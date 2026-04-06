@@ -101,6 +101,7 @@ struct list_head
 #define pr_info(msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
+#define dev_err_ratelimited dev_err
 #define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
 #define DRM_ERROR(msg, ...) klog("DRM_ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 
@@ -312,6 +313,7 @@ struct drm_ioctl_desc {
 	unsigned int flags;
 	drm_ioctl_t *func;
 	const char *name;
+	size_t param_size;
 };
 
 #define DRM_IOCTL_DEF_DRV(ioctl, _func, _flags)				\

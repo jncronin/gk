@@ -447,6 +447,7 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
 
 etnaviv_iommu_context::~etnaviv_iommu_context()
 {
+	klog("GPU: free IOMMU context\n");
 	etnaviv_cmdbuf_suballoc_unmap(this, cmdbuf_mapping);
 }
 
@@ -624,6 +625,7 @@ free_global:
 
 etnaviv_iommu_global::~etnaviv_iommu_global()
 {
+	klog("GPU: free MMU global\n");
 	if (v2.pta_cpu)
 		dma_free_wc(nullptr, ETNAVIV_PTA_SIZE,
 			    v2.pta_cpu, v2.pta_dma);

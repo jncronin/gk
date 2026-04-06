@@ -125,6 +125,8 @@ void *drm_sched_worker(void *p)
 
         auto finish_fence = s->ops->run_job(j.get());
 
+        klog("drm_sched_worker: job %u submitted to gpu, awaiting completion\n", j->job_id);
+
         auto job_completed = finish_fence->s.Wait(SimpleSignal::SignalOperation::Noop, 0,
             clock_cur() + s->timeout);
         

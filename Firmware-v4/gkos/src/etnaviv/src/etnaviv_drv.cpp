@@ -440,18 +440,18 @@ static int etnaviv_ioctl_pm_query_sig(struct drm_device *dev, void *data,
 }
 
 extern const struct drm_ioctl_desc etnaviv_ioctls[] = {
-	{ DRM_IOCTL_ETNAVIV_GET_PARAM,    DRM_RENDER_ALLOW, etnaviv_ioctl_get_param,    "ETNAVIV_GET_PARAM" },
-	{ 1, 0, nullptr, "" },
-	{ DRM_IOCTL_ETNAVIV_GEM_NEW,      DRM_RENDER_ALLOW, etnaviv_ioctl_gem_new,      "ETNAVIV_GEM_NEW" },
-	{ DRM_IOCTL_ETNAVIV_GEM_INFO,     DRM_RENDER_ALLOW, etnaviv_ioctl_gem_info,     "ETNAVIV_GEM_INFO" },
-	{ DRM_IOCTL_ETNAVIV_GEM_CPU_PREP, DRM_RENDER_ALLOW, etnaviv_ioctl_gem_cpu_prep, "ETNAVIV_GEM_CPU_PREP" },
-	{ DRM_IOCTL_ETNAVIV_GEM_CPU_FINI, DRM_RENDER_ALLOW, etnaviv_ioctl_gem_cpu_fini, "ETNAVIV_GEM_CPU_FINI" },
-	{ DRM_IOCTL_ETNAVIV_GEM_SUBMIT,   DRM_RENDER_ALLOW, etnaviv_ioctl_gem_submit,   "ETNAVIV_GEM_SUBMIT" },
-	{ DRM_IOCTL_ETNAVIV_WAIT_FENCE,   DRM_RENDER_ALLOW, etnaviv_ioctl_wait_fence,   "ETNAVIV_WAIT_FENCE" },
-	{ DRM_IOCTL_ETNAVIV_GEM_USERPTR,  DRM_RENDER_ALLOW, etnaviv_ioctl_gem_userptr,  "ETNAVIV_GEM_USERPTR" },
-	{ DRM_IOCTL_ETNAVIV_GEM_WAIT,     DRM_RENDER_ALLOW, etnaviv_ioctl_gem_wait,     "ETNAVIV_GEM_WAIT" },
-	{ DRM_IOCTL_ETNAVIV_PM_QUERY_DOM, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_dom, "ETNAVIV_PM_QUERY_DOM" },
-	{ DRM_IOCTL_ETNAVIV_PM_QUERY_SIG, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_sig, "ETNAVIV_PM_QUERY_SIG" },
+	{ DRM_IOCTL_ETNAVIV_GET_PARAM,    DRM_RENDER_ALLOW, etnaviv_ioctl_get_param,    "ETNAVIV_GET_PARAM", sizeof(drm_etnaviv_param) },
+	{ 1, 0, nullptr, "", 0 },
+	{ DRM_IOCTL_ETNAVIV_GEM_NEW,      DRM_RENDER_ALLOW, etnaviv_ioctl_gem_new,      "ETNAVIV_GEM_NEW", sizeof(drm_etnaviv_gem_new) },
+	{ DRM_IOCTL_ETNAVIV_GEM_INFO,     DRM_RENDER_ALLOW, etnaviv_ioctl_gem_info,     "ETNAVIV_GEM_INFO", sizeof(drm_etnaviv_gem_info) },
+	{ DRM_IOCTL_ETNAVIV_GEM_CPU_PREP, DRM_RENDER_ALLOW, etnaviv_ioctl_gem_cpu_prep, "ETNAVIV_GEM_CPU_PREP", sizeof(drm_etnaviv_gem_cpu_prep) },
+	{ DRM_IOCTL_ETNAVIV_GEM_CPU_FINI, DRM_RENDER_ALLOW, etnaviv_ioctl_gem_cpu_fini, "ETNAVIV_GEM_CPU_FINI", sizeof(drm_etnaviv_gem_cpu_fini) },
+	{ DRM_IOCTL_ETNAVIV_GEM_SUBMIT,   DRM_RENDER_ALLOW, etnaviv_ioctl_gem_submit,   "ETNAVIV_GEM_SUBMIT", sizeof(drm_etnaviv_gem_submit) },
+	{ DRM_IOCTL_ETNAVIV_WAIT_FENCE,   DRM_RENDER_ALLOW, etnaviv_ioctl_wait_fence,   "ETNAVIV_WAIT_FENCE", sizeof(drm_etnaviv_wait_fence) },
+	{ DRM_IOCTL_ETNAVIV_GEM_USERPTR,  DRM_RENDER_ALLOW, etnaviv_ioctl_gem_userptr,  "ETNAVIV_GEM_USERPTR", sizeof(drm_etnaviv_gem_userptr) },
+	{ DRM_IOCTL_ETNAVIV_GEM_WAIT,     DRM_RENDER_ALLOW, etnaviv_ioctl_gem_wait,     "ETNAVIV_GEM_WAIT", sizeof(drm_etnaviv_gem_wait) },
+	{ DRM_IOCTL_ETNAVIV_PM_QUERY_DOM, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_dom, "ETNAVIV_PM_QUERY_DOM", sizeof(drm_etnaviv_pm_domain) },
+	{ DRM_IOCTL_ETNAVIV_PM_QUERY_SIG, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_sig, "ETNAVIV_PM_QUERY_SIG", sizeof(drm_etnaviv_pm_signal) },
 };
 
 [[maybe_unused]] static void etnaviv_show_fdinfo(struct drm_printer *p, struct drm_file *file)

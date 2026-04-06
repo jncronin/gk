@@ -206,6 +206,8 @@ struct etnaviv_iommuv2_context : public etnaviv_iommu_context
 	void restore(struct etnaviv_gpu *gpu,
 						std::shared_ptr<etnaviv_iommu_context> context)
 	{
+		klog("GPU: restore MMU context @%p (mtlb = %p)\n", context.get(),
+			((etnaviv_iommuv2_context *)context.get())->mtlb_dma);
 		switch (gpu->sec_mode) {
 		case ETNA_SEC_NONE:
 			etnaviv_iommuv2_restore_nonsec(gpu, context);
@@ -256,6 +258,9 @@ etnaviv_iommuv2_context_alloc(struct etnaviv_iommu_global *global)
 					    &v2_context->mtlb_dma, GFP_KERNEL);
 	if (!v2_context->mtlb_cpu)
 		goto out_free_id;
+
+	klog("GPU: IOMMU: MTLB @ %p virt, %p phys\n", v2_context->mtlb_cpu,
+		(void *)v2_context->mtlb_dma);
 
 	memset32(v2_context->mtlb_cpu, MMUv2_PTE_EXCEPTION,
 		 MMUv2_MAX_STLB_ENTRIES);

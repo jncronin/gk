@@ -1534,7 +1534,7 @@ void etnaviv_gpu_recover_hang(struct etnaviv_gem_submit *submit)
 pm_put:
 	pm_runtime_put_autosuspend(gpu->dev);
 }
-
+#endif
 static void dump_mmu_fault(struct etnaviv_gpu *gpu)
 {
 	static const char *fault_reasons[] = {
@@ -1580,24 +1580,18 @@ static void dump_mmu_fault(struct etnaviv_gpu *gpu)
 	}
 }
 
-#endif
-
 static irqreturn_t irq_handler(int irq, void *data)
 {
-	klog("GPU irq not implemented\n");
-	return 0;
-
-#if 0
-	struct etnaviv_gpu *gpu = data;
-	irqreturn_t ret = IRQ_NONE;
+	struct etnaviv_gpu *gpu = (etnaviv_gpu *)data;
+	irqreturn_t ret = 0;
 
 	u32 intr = gpu_read(gpu, VIVS_HI_INTR_ACKNOWLEDGE);
 
 	if (intr != 0) {
-		ktime_t now = ktime_get();
+		//ktime_t now = ktime_get();
 		int event;
 
-		pm_runtime_mark_last_busy(gpu->dev);
+		//pm_runtime_mark_last_busy(gpu->dev);
 
 		dev_dbg(gpu->dev, "intr 0x%08x\n", intr);
 
@@ -1607,15 +1601,14 @@ static irqreturn_t irq_handler(int irq, void *data)
 		}
 
 		if (intr & VIVS_HI_INTR_ACKNOWLEDGE_MMU_EXCEPTION) {
+			klog("GPU: MMU exception\n");
 			dump_mmu_fault(gpu);
 			gpu->state = ETNA_GPU_STATE_FAULT;
-			drm_sched_fault(&gpu->sched);
+			//drm_sched_fault(&gpu->sched);
 			intr &= ~VIVS_HI_INTR_ACKNOWLEDGE_MMU_EXCEPTION;
 		}
 
-		while ((event = ffs(intr)) != 0) {
-			struct dma_fence *fence;
-
+		while ((event = __builtin_ffs(intr)) != 0) {
 			event -= 1;
 
 			intr &= ~(1 << event);
@@ -1623,11 +1616,12 @@ static irqreturn_t irq_handler(int irq, void *data)
 			dev_dbg(gpu->dev, "event %u\n", event);
 
 			if (gpu->event[event].sync_point) {
+				klog("GPU: sync point events not implemented\n");
 				gpu->sync_point_event = event;
-				queue_work(gpu->wq, &gpu->sync_point_work);
+				//queue_work(gpu->wq, &gpu->sync_point_work);
 			}
 
-			fence = gpu->event[event].fence;
+			auto fence = gpu->event[event].fence;
 			if (!fence)
 				continue;
 
@@ -1642,18 +1636,18 @@ static irqreturn_t irq_handler(int irq, void *data)
 			 * - event 1 and event 0 complete
 			 * we can end up processing event 0 first, then 1.
 			 */
-			if (fence_after(fence->seqno, gpu->completed_fence))
-				gpu->completed_fence = fence->seqno;
-			dma_fence_signal_timestamp(fence, now);
+			//if (fence_after(fence->seqno, gpu->completed_fence))
+			//	gpu->completed_fence = fence->seqno;
+			fence->s.Signal();
+			//dma_fence_signal_timestamp(fence, now);
 
 			event_free(gpu, event);
-		}
 
-		ret = IRQ_HANDLED;
+			ret++;
+		}
 	}
 
 	return ret;
-#endif
 }
 
 static etnaviv_gpu *gpu_for_irq = nullptr;
@@ -1830,6 +1824,7 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	gpu_for_irq = gpu.get();
 	gic_set_handler(gpu->irq, gk_gpu_irqhandler);
 	gic_set_target(gpu->irq, GIC_ENABLED_CORES);
+	gic_set_enable(gpu->irq);
 
 	dev.drm->dev_private->gpu = std::move(gpu);
 	dev.drm->dev_private->num_gpus = 1;
