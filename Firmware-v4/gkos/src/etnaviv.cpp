@@ -11,6 +11,8 @@
 
 #define RISC_VMEM ((RISC_TypeDef *)PMEM_TO_VMEM(RISC_BASE))
 #define RIMC_VMEM ((RIMC_TypeDef *)PMEM_TO_VMEM(RIMC_BASE))
+#define RIFSC_VMEM PMEM_TO_VMEM(RIFSC_BASE)
+
 
 static std::shared_ptr<device> etna_dev;
 
@@ -24,10 +26,27 @@ void init_etnaviv()
 
 
     /* GPU is RISUP 79 / RIMC 9
-        Set as unprivileged
+        Set as same as CA35
     */
-    RISC_VMEM->PRIVCFGR[2] &= ~(1U << 15);
-    RIMC_VMEM->ATTR[9] = 0;
+    //RISC_VMEM->PRIVCFGR[2] &= ~(1U << 15);
+    //RIMC_VMEM->ATTR[9] = 0;
+    *(volatile uint32_t *)(RIFSC_VMEM + 0xc10 + 9 * 0x4) =
+        (1UL << 2) |                // use cid specified here
+        (1UL << 4) |                // CID 1
+        (1UL << 8) |                // secure
+        (1UL << 9);                 // priv
+
+    /* The GPU is forced to non-secure if its RISUP (RISUP 79) is programmed as non-secure,
+        therefore set as secure here */
+    const uint32_t risup = 79;
+    const uint32_t risup_word = risup / 32;
+    const uint32_t risup_bit = risup % 32;
+    auto risup_reg = (volatile uint32_t *)(RIFSC_VMEM + 0x10 + 0x4 * risup_word);
+    auto old_val = *risup_reg;
+    old_val |= 1U << risup_bit;
+    *risup_reg = old_val;
+    __asm__ volatile("dmb sy\n" ::: "memory");
+
 
     etna_dev = std::make_shared<device>();
     if(etnaviv_gpu_combined_init(*etna_dev) == 0)
