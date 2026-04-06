@@ -934,11 +934,10 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 
 
 	/* Setup event management */
-	bitmap_zero(gpu.event_bitmap, ETNA_NR_EVENTS);
-	for (i = 0; i < (int)ARRAY_SIZE(gpu.event); i++)
-		gpu.event_free.Signal();
-
-
+	for(i = 0u; i < ETNA_NR_EVENTS; i++)
+	{
+		gpu.free_events.Push(i);
+	}
 
 	/* Now program the hardware */
 	gpu.lock->lock();
@@ -1228,64 +1227,44 @@ static inline bool fence_after(u32 a, u32 b)
 static int event_alloc(struct etnaviv_gpu *gpu, unsigned nr_events,
 	unsigned int *events)
 {
-	auto timeout = kernel_time_from_ms(10 * 10000);
-	unsigned i, acquired = 0, rpm_count = 0;
-	int ret;
+	std::vector<unsigned int> acquired_events;
 
-	for (i = 0; i < nr_events; i++) {
-		int signalled = 0;
-		gpu->event_free.Wait(clock_cur() + timeout, &signalled);
+	for(auto i = 0u; i < nr_events; i++)
+	{
+		unsigned int cevent;
 
-		if (!signalled) {
-			dev_err(gpu->dev, "wait_for_completion_timeout failed");
-			ret = -EBUSY;
-			goto out;
+		if(gpu->free_events.Pop(&cevent, kernel_time_from_ms(5000)))
+		{
+			acquired_events.push_back(cevent);
 		}
-
-		acquired++;
+		else
+		{
+			klog("gpu: timeout waiting for free event\n");
+			break;
+		}
 	}
 
-	gpu->event_spinlock.lock();
-
-	for (i = 0; i < nr_events; i++) {
-		int event = find_first_zero_bit(gpu->event_bitmap, ETNA_NR_EVENTS);
-
-		events[i] = event;
-		gpu->event[event] = etnaviv_event{};
-		set_bit(event, gpu->event_bitmap);
+	if(acquired_events.size() != nr_events)
+	{
+		for(auto cevent : acquired_events)
+		{
+			gpu->free_events.Push(cevent);
+		}
+		return -EBUSY;
 	}
-
-	gpu->event_spinlock.unlock();
-
-	for (i = 0; i < nr_events; i++) {
-		//ret = pm_runtime_resume_and_get(gpu->dev);
-		//if (ret)
-		//	goto out_rpm;
-		rpm_count++;
+	else
+	{
+		for(auto cevent : acquired_events)
+		{
+			*events++ = cevent;
+		}
+		return 0;
 	}
-
-	return 0;
-
-	for (i = 0; i < rpm_count; i++);
-		//pm_runtime_put_autosuspend(gpu->dev);
-out:
-	for (i = 0; i < acquired; i++)
-		gpu->event_free.Signal(false);
-
-	return ret;
 }
 
 static void event_free(struct etnaviv_gpu *gpu, unsigned int event)
 {
-	if (!test_bit(event, gpu->event_bitmap)) {
-		dev_warn(gpu->dev, "event %u is already marked as free",
-			 event);
-	} else {
-		clear_bit(event, gpu->event_bitmap);
-		gpu->event_free.Signal(false);
-	}
-
-	//pm_runtime_put_autosuspend(gpu->dev);
+	gpu->free_events.Push(event);
 }
 
 #if 0

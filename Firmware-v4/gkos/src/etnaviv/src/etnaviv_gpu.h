@@ -16,6 +16,8 @@
 #include "drm_scheduler.h"
 #include "workqueue.h"
 
+#include "osqueue.h"
+
 struct etnaviv_gem_submit;
 struct etnaviv_vram_mapping;
 
@@ -126,11 +128,12 @@ struct etnaviv_gpu {
 	int exec_state = 0;
 
 	/* event management: */
-	DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
+	//DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
 	struct etnaviv_event event[ETNA_NR_EVENTS];
 	//struct completion event_free;
-	Spinlock event_spinlock{};
-	Condition event_free{};
+	//Spinlock event_spinlock{};
+	//Condition event_free{};
+	FixedQueue<unsigned int, ETNA_NR_EVENTS> free_events;
 
 	u32 idle_mask = 0;
 
