@@ -220,6 +220,31 @@ struct etnaviv_iommuv2_context : public etnaviv_iommu_context
 			break;
 		}
 	}
+
+	void dump()
+	{
+		klog("GPU: IOMMUv2 MMU DUMP: MTLB: %p phys\n", (void *)mtlb_dma);
+		for(auto i = 0u; i < MMUv2_MAX_STLB_ENTRIES; i++)
+		{
+			auto stlb = stlb_cpu[i];
+			if(stlb)
+			{
+				auto base_addr = i * 4096U * 1024;
+				
+				for(auto j = 0u; j < 1024; j++)
+				{
+					if(stlb[j] & MMUv2_PTE_PRESENT)
+					{
+						auto paddr = stlb[j] & ~0xfffU;
+
+						klog("  %08x @ %p phys\n",
+							base_addr + j * 4096, (void *)paddr);
+					}
+
+				}
+			}
+		}
+	}
 };
 
 u32 etnaviv_iommuv2_get_mtlb_addr(struct etnaviv_iommu_context *context)

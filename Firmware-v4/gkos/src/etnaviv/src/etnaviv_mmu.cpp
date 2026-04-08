@@ -75,12 +75,12 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 		unsigned int da_len = sge.len;
 		unsigned int bytes = std::min(da_len, va_len);
 
-		VERB("map[%d]: %08x %pap(%x)", i++, da, &pa, bytes);
+		VERB("map[%d]: %08x pa %p (%x)", i++, da, (void *)pa, bytes);
 
 		if (!IS_ALIGNED(iova | pa | bytes, 4096ul)) {
 			dev_err(context->global->dev,
-				"unaligned: iova 0x%x pa %pa size 0x%x\n",
-				iova, &pa, bytes);
+				"unaligned: iova 0x%x pa %p size 0x%x\n",
+				iova, (void *)pa, bytes);
 			ret = -EINVAL;
 			goto fail;
 		}
@@ -633,4 +633,9 @@ etnaviv_iommu_global::~etnaviv_iommu_global()
 	if (bad_page_cpu)
 		dma_free_wc(nullptr, 4096,
 			    bad_page_cpu, bad_page_dma);
+}
+
+void etnaviv_iommu_context::dump()
+{
+	klog("GPU: IOMMU dump not implemented\n");
 }

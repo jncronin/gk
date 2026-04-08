@@ -90,6 +90,7 @@ struct etnaviv_iommu_context {
 	virtual size_t unmap(unsigned long iova, size_t size) = 0;
 	virtual size_t dump_size() = 0;
 	virtual void dump(void *buf) = 0;
+	virtual void dump();
 	virtual void restore(struct etnaviv_gpu *gpu, std::shared_ptr<etnaviv_iommu_context> context) = 0;
 };
 
