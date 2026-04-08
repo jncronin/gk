@@ -350,12 +350,6 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
     }
     if(act_name == "/dev/dri")
     {
-        if(!is_opendir)
-        {
-            klog("open: attempt to open /dev/dri as file\n");
-            *_errno = ENOTDIR;
-            return -1;
-        }
         auto df = std::make_shared<DRIFile>();
         df->dt = DRIFile::dri_type::dir;
         p->open_files.f[fd] = std::move(df);
