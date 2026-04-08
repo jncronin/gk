@@ -95,3 +95,43 @@ void CleanA35Cache(uintptr_t base, uintptr_t length, CacheType_t ctype, bool for
     }
     __asm__ volatile("dsb sy\n" ::: "memory");
 }
+
+void CleanAndInvalidateA35Cache(uintptr_t base, uintptr_t length, CacheType_t ctype, bool for_dma)
+{
+#if DEBUG_UNALIGNED || ERROR_UNALIGNED
+    if((base & (CACHE_LINE_SIZE - 1)) || (length & (CACHE_LINE_SIZE - 1)))
+    {
+        klog("cache: clean: unaligned %llx:%llx\n", base, length);
+#if ERROR_UNALIGNED
+        __asm__ volatile("brk #250\n" ::: "memory");
+#endif
+    }
+#endif
+    auto end = base + length;
+    end = (end + (CACHE_LINE_SIZE - 1)) & ~(CACHE_LINE_SIZE - 1);
+    base &= ~(CACHE_LINE_SIZE - 1);
+    length = end - base;
+
+    switch(ctype)
+    {
+        case CacheType_t::Both:
+        case CacheType_t::Data:
+            while(length)
+            {
+                __asm__ volatile("dc civac, %[base]\n" : : [base] "r" (base) : "memory");
+                base += CACHE_LINE_SIZE;
+                length -= CACHE_LINE_SIZE;
+            }
+            break;
+
+        case CacheType_t::Instruction:
+            while(length)
+            {
+                __asm__ volatile("ic ivau, %[base]\n" : : [base] "r" (base) : "memory");
+                base += CACHE_LINE_SIZE;
+                length -= CACHE_LINE_SIZE;
+            }
+            break;
+    }
+    __asm__ volatile("dsb sy\n" ::: "memory");
+}
