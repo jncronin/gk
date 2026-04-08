@@ -23,14 +23,14 @@ Mutex::Mutex(bool recursive, bool error_check) :
 */
 int Mutex::lock(ticket_t new_ticket, bool allow_deadlk)
 {
-    int reason;
-    while(!try_lock(&reason, true, kernel_time_invalid(), new_ticket))
+    int reason, reason2 = 0;
+    while(!try_lock(&reason, true, kernel_time_invalid(), new_ticket, &reason2))
     {
         if(reason == -EDEADLK || reason == -EALREADY)
         {
             return reason;
         }
-        if(allow_deadlk && reason == EDEADLK)
+        if(allow_deadlk && reason2 == EDEADLK)
         {
             return -EDEADLK;
         }
@@ -65,12 +65,19 @@ int Mutex::_lock(ticket_t new_ticket, bool allow_deadlk)
     return 0;
 }
 
-bool Mutex::try_lock(int *reason, bool block, kernel_time tout, ticket_t ticket)
+bool Mutex::try_lock(int *reason, bool block, kernel_time tout, ticket_t ticket, int *reason2)
 {
     auto t = GetCurrentThreadForCore();
     CriticalGuard cg(sl, t->locked_mutexes.sl);
 
-    return _try_lock(reason, block, tout, ticket);
+    auto ret = _try_lock(reason, block, tout, ticket);
+    if(reason && *reason == EDEADLK)
+    {
+        *reason = EBUSY;        // try_lock cannot return EDEADLK
+        if(reason2) *reason2 = EDEADLK;     // but lock() can with error check, therefore capture this too
+    }
+
+    return ret;
 }
 
 bool Mutex::_try_lock(int *reason, bool block, kernel_time tout, ticket_t ticket)
@@ -93,18 +100,7 @@ bool Mutex::_try_lock(int *reason, bool block, kernel_time tout, ticket_t ticket
             return true;
         }
         if(reason) *reason = EDEADLK;
-        if(echeck)
-        {
-            return false;
-        }
-        else
-        {
-            // non-error checking non-recursive mutex already owned - deadlock
-            klog("mutex: recursive lock of non-recursive mutex\n");
-            t->blocking.block_indefinite();
-            Yield();
-            return false;
-        }
+        return false;
     }
     else
     {
