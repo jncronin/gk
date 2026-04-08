@@ -64,6 +64,12 @@ void *dma_alloc(struct device *dev, size_t size,
     {
         //klog("dma_alloc_wc: map %p phys to %p virt\n", (void *)(pmem.base + i), (void *)(vmem.base + i));
         vmem_map(vmem.base + i, pmem.base + i, false, true, false, ttbr0, ~0ULL, nullptr, mt);
+
+        // and zero
+        for(auto j = 0ul; j < PAGE_SIZE; j += CACHE_LINE_SIZE)
+        {
+            __asm__ volatile("dc zva, %[addr]\n" : : [addr] "r" (vmem.base + i + j) : "memory");
+        }
     }
 
     *dma_addr = pmem.base;
@@ -75,7 +81,7 @@ void *dma_alloc(struct device *dev, size_t size,
 void *dma_alloc_wc(struct device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp)
 {
-    return dma_alloc(dev, size, dma_addr, gfp, MT_NORMAL_WT);
+    return dma_alloc(dev, size, dma_addr, gfp, MT_NORMAL_NC);
 }
 
 

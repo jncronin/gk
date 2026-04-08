@@ -58,6 +58,12 @@
 			gpu->mmu_context->cmdbuf_mapping.get()) +
 			off, size - len * 4 - off);
 
+	for(auto i = 0u; i < len; i += 4u)
+	{
+		auto row = &ptr[i];
+		klog("GPU: CMD[%4x]: %08x %08x %08x %08x\n", i * 4, row[0], row[1], row[2], row[3]);
+	}
+
 	//print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
 	//		ptr, len * 4, 0);
 }
@@ -293,11 +299,16 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 	BUG_ON(!gpu->lock->held());
 
 	if (drm_debug_enabled(DRM_UT_DRIVER))
-		etnaviv_buffer_dump(gpu, buffer, 0, 0x50);
+		etnaviv_buffer_dump(gpu, cmdbuf, 0, cmdbuf->size / 4);
 
 	link_target = etnaviv_cmdbuf_get_va(cmdbuf,
 					    gpu->mmu_context->cmdbuf_mapping.get());
 	link_dwords = cmdbuf->size / 8;
+
+	klog("GPU: cmdbuf: %08x, size %u dwords\n", link_target, link_dwords);
+
+	switch_context = true;
+	switch_mmu_context = true;	// adding these does not seem to have helped
 
 	/*
 	 * If we need maintenance prior to submitting this buffer, we will
@@ -306,6 +317,9 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 	 */
 	if (need_flush || switch_context) {
 		u32 target, extra_dwords;
+
+		klog("GPU: cmdbuf: need_flush: %s, switch_context: %s\n", need_flush ? "true" : "false",
+			switch_context ? "true" : "false");
 
 		/* link command */
 		extra_dwords = 1;
@@ -327,6 +341,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 			extra_dwords += 1;
 
 		target = etnaviv_buffer_reserve(gpu, buffer, extra_dwords);
+		klog("writing extra commands at %08x\n", target);
 		/*
 		 * Switch MMU context if necessary. Must be done after the
 		 * link target has been calculated, as the jump forward in the
@@ -354,6 +369,8 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 				    gpu->sec_mode == ETNA_SEC_KERNEL) {
 					unsigned short id =
 						etnaviv_iommuv2_get_pta_id(gpu->mmu_context.get());
+
+					klog("GPU: switching to context id %u\n", id);
 					CMD_LOAD_STATE(buffer,
 						VIVS_MMUv2_PTA_CONFIG,
 						VIVS_MMUv2_PTA_CONFIG_INDEX(id));
@@ -373,6 +390,8 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 			gpu->flush_seq = new_flush_seq;
 		}
 
+		klog("GPU: old exec_state: %u, new exec_state: %u\n", gpu->exec_state, exec_state);
+
 		if (switch_context) {
 			etnaviv_cmd_select_pipe(gpu, buffer, exec_state);
 			gpu->exec_state = exec_state;
@@ -382,6 +401,8 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 		link_target = etnaviv_cmdbuf_get_va(cmdbuf,
 					gpu->mmu_context->cmdbuf_mapping.get());
 		CMD_LINK(buffer, link_dwords, link_target);
+
+		klog("GPU: writing link back to cmdbuf %08x\n", link_target);
 
 		/* Update the link target to point to above instructions */
 		link_target = target;
@@ -461,10 +482,26 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 		pr_info("event: %d\n", event);
 	}
 
+	/* Write an end to the start of our buffer to see if that can isolate a fault */
+	//*(volatile uint32_t *)((uintptr_t)cmdbuf->vaddr + 0x120) = VIV_FE_END_HEADER_OP_END;
+
+	// There is an issue with the RS which does blits - here uses to fill a destination
+	//  area of memory.  Try using more commands like modern mesa dose
+
+	// the beebbeeb kicker is at 0x128 - 08010580 beebbeeb
+	*(volatile uint32_t *)((uintptr_t)cmdbuf->vaddr + 0x128) = 0x18000000;	// NOP
+	*(volatile uint32_t *)((uintptr_t)cmdbuf->vaddr + 0x12c) = 0x18000000;	// for good measure
+	// 
+	//*(volatile uint32_t *)((uintptr_t)cmdbuf->vaddr + 0xdc) = 0x4600;
+	__asm__ volatile("dsb sy\n" ::: "memory");
+
 	/*
 	 * Kick off the submitted command by replacing the previous
 	 * WAIT with a link to the address in the ring buffer.
 	 */
+	klog("GPU: writing LINK to target %08x (prefetch %u) at address %08x\n",
+		link_target, link_dwords, waitlink_offset);
+
 	etnaviv_buffer_replace_wait(buffer, waitlink_offset,
 				    VIV_FE_LINK_HEADER_OP_LINK |
 				    VIV_FE_LINK_HEADER_PREFETCH(link_dwords),

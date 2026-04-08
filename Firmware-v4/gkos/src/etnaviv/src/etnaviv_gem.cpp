@@ -35,8 +35,10 @@ static void etnaviv_gem_scatter_map(struct etnaviv_gem_object *etnaviv_obj)
 	 */
 	if (etnaviv_obj->flags & ETNA_BO_CACHE_MASK)
 	{
-		for(auto i = 0ull; i < etnaviv_obj->vsize; i += CACHE_LINE_SIZE)
-			__asm__ volatile("dc zva, %[addr]\n" : : [addr] "r" ((uintptr_t)etnaviv_obj->vaddr + i) : "memory");
+		CleanAndInvalidateA35Cache((uintptr_t)etnaviv_obj->vaddr, etnaviv_obj->vsize,
+			CacheType_t::Data);
+		//for(auto i = 0ull; i < etnaviv_obj->vsize; i += CACHE_LINE_SIZE)
+		//	__asm__ volatile("dc zva, %[addr]\n" : : [addr] "r" ((uintptr_t)etnaviv_obj->vaddr + i) : "memory");
 	}
 }
 
@@ -106,9 +108,11 @@ void etnaviv_gem_get_pages(std::shared_ptr<etnaviv_gem_object> &etnaviv_obj)
 	BUG_ON(!etnaviv_obj->lock->held());
 
 	if (etnaviv_obj->sgt.empty()) {
-		klog("etnaviv_gem_get_pages: vaddr: %p, paddr: %p, vsize: %llx, psize: %llx\n",
+		klog("etnaviv_gem_get_pages: vaddr: %p, paddr: %p, vsize: %llx, psize: %llx, obj_size: %llx\n",
 			(void *)etnaviv_obj->vaddr, (void *)etnaviv_obj->dma_addr,
-			etnaviv_obj->vsize, etnaviv_obj->psize);
+			etnaviv_obj->vsize, etnaviv_obj->psize,
+			etnaviv_obj->size
+		);
 
 		drm_prime_pages_to_sg(*etnaviv_obj, etnaviv_obj->sgt);
 

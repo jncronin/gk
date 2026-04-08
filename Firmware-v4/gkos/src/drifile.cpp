@@ -151,7 +151,7 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
         return -1;
     }
 
-    klog("dri_open: dev_id: %u, is_render: %s\n", dev_id, is_render ? "true" : "false");
+    if(for_write) klog("dri_open: dev_id: %u, is_render: %s\n", dev_id, is_render ? "true" : "false");
 
     CriticalGuard cg(sl_dri);
     if(dev_id >= drm_devs.size())

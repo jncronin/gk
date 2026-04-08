@@ -195,6 +195,11 @@ int etnaviv_flop_reset_ppu_init(struct etnaviv_drm_private *priv)
 		return ret;
 	}
 
+	klog("GPU: flop init at %p virt, %p phys\n",
+		priv->flop_reset_data_ppu->vaddr,
+		(void *)(priv->flop_reset_data_ppu->suballoc->paddr +
+			priv->flop_reset_data_ppu->suballoc_offset));
+
 	void *buffer_base = priv->flop_reset_data_ppu->vaddr;
 	u32 *input_data = (u32 *)buffer_base;
 	u8 *shader_data = (u8 *)buffer_base + shader_offset;
@@ -214,6 +219,8 @@ void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu)
 			"Oops: Flop reset data was not initialized, skipping\n");
 		return;
 	}
+
+	klog("GPU: queuing flop\n");
 
 	u32 buffer_base = etnaviv_cmdbuf_get_va(priv->flop_reset_data_ppu.get(),
 						gpu->mmu_context->cmdbuf_mapping.get());

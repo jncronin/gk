@@ -1447,6 +1447,7 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 	submit->prev_mmu_context = gpu->mmu_context;
 
 	if (submit->nr_pmrs) {
+		klog("GPU: queueing sync point pre\n");
 		gpu->event[event[1]].sync_point = &sync_point_perfmon_sample_pre;
 		gpu->event[event[1]].submit = submit;
 		etnaviv_sync_point_queue(gpu, event[1]);
@@ -1462,6 +1463,7 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 	klog("******** PT4\n");
 
 	if (submit->nr_pmrs) {
+		klog("GPU: queueing sync point post\n");
 		gpu->event[event[2]].sync_point = &sync_point_perfmon_sample_post;
 		gpu->event[event[2]].submit = submit;
 		etnaviv_sync_point_queue(gpu, event[2]);
@@ -1549,13 +1551,20 @@ static void dump_mmu_fault(struct etnaviv_gpu *gpu)
 	u32 status_reg, status;
 	int i;
 
+	auto pc = gpu_read(gpu, VIVS_FE_COMMAND_ADDRESS);
+	auto dma_status = gpu_read(gpu, VIVS_FE_DMA_STATUS);
+	auto dma_debug_state = gpu_read(gpu, VIVS_FE_DMA_DEBUG_STATE);
+	auto dma_addr = gpu_read(gpu, VIVS_FE_DMA_ADDRESS);
+
+
 	if (gpu->sec_mode == ETNA_SEC_NONE)
 		status_reg = VIVS_MMUv2_STATUS;
 	else
 		status_reg = VIVS_MMUv2_SEC_STATUS;
 
 	status = gpu_read(gpu, status_reg);
-	dev_err_ratelimited(gpu->dev, "MMU fault status 0x%08x\n", status);
+	dev_err_ratelimited(gpu->dev, "MMU fault status 0x%08x, PC=%08x, dma_status=%08x, dma_debug_state=%08x, dma_addr=%08x\n", 
+		status, pc, dma_status, dma_debug_state, dma_addr);
 
 	for (i = 0; i < 4; i++) {
 		const char *reason = "unknown";
@@ -1578,6 +1587,8 @@ static void dump_mmu_fault(struct etnaviv_gpu *gpu)
 				    "MMU %d fault (%s) addr 0x%08x\n",
 				    i, reason, gpu_read(gpu, address_reg));
 	}
+
+	gpu->mmu_context->dump();
 }
 
 static irqreturn_t irq_handler(int irq, void *data)
