@@ -183,19 +183,36 @@ static int submit_fence_sync(struct etnaviv_gem_submit *submit)
 			to the dependency list of the sched_job
 			
 			If write == true, must wait for all fences
-			If write == false, just need to wait for previous writer to finish */
+			If write == false, just need to wait for previous writer to finish
+			
+			We remove any fences from the lists that are already signalled to prevent
+			these lists growing on every frame */
 
 		/* We already have the lock on the resv objects */
 		if(bo.flags & ETNA_SUBMIT_BO_WRITE)
 		{
-			for(auto &dep : robj.read_fences)
+			for(auto iter = robj.write_fences.begin(); iter != robj.write_fences.end(); )
 			{
-				submit->sched_job->deps.push_back(dep);
+				auto &dep = *iter;
+				if(dep->IsSignalled())
+					iter = robj.write_fences.erase(iter);
+				else
+				{
+					submit->sched_job->deps.push_back(dep);
+					iter++;
+				}
 			}
 		}
-		for(auto &dep : robj.write_fences)
+		for(auto iter = robj.read_fences.begin(); iter != robj.read_fences.end(); )
 		{
-			submit->sched_job->deps.push_back(dep);
+			auto &dep = *iter;
+			if(dep->IsSignalled())
+				iter = robj.read_fences.erase(iter);
+			else
+			{
+				submit->sched_job->deps.push_back(dep);
+				iter++;
+			}
 		}
 
 		/*
@@ -221,6 +238,11 @@ static void submit_attach_object_fences(struct etnaviv_gem_submit *submit)
 			obj->resv.write_fences.push_back(submit->out_fence);
 		else
 			obj->resv.read_fences.push_back(submit->out_fence);
+
+		if(obj->resv.write_fences.size() > 100)
+			klog("resv.write_fences.size() = %u\n", obj->resv.write_fences.size());
+		if(obj->resv.read_fences.size() > 100)
+			klog("resv.read_fences.size() = %u\n", obj->resv.read_fences.size());
 
 		submit_unlock_object(submit, i);
 	}

@@ -113,12 +113,11 @@ void *drm_sched_worker(void *p)
         /* We now have a job to do - wait on the various fences */
         for(auto &dep : j->deps)
         {
-            if(!dep->s.Value())
+            if(!dep->IsSignalled())
             {
                 klog("drm_sched_worker: waiting on dependency\n");
 
-                while(!dep->s.Wait(SimpleSignal::SignalOperation::Noop, 0,
-                    clock_cur() + kernel_time_from_ms(1000)))
+                while(!dep->Wait(clock_cur() + kernel_time_from_ms(1000)))
                 {
                     klog("drm_sched_worker: still waiting for dependency\n");
                 }
@@ -128,7 +127,7 @@ void *drm_sched_worker(void *p)
 #if GPU_DEBUG > 2
         klog("drm_sched_worker: job %u dependencies satisfied.\n", j->job_id);
 #endif
-        j->scheduled->s.Signal();
+        j->scheduled->Signal();
 
         auto finish_fence = s->ops->run_job(j.get());
 
@@ -136,15 +135,14 @@ void *drm_sched_worker(void *p)
         klog("drm_sched_worker: job %u submitted to gpu, awaiting completion\n", j->job_id);
 #endif
 
-        auto job_completed = finish_fence->s.Wait(SimpleSignal::SignalOperation::Noop, 0,
-            clock_cur() + s->timeout);
+        auto job_completed = finish_fence->Wait(clock_cur() + s->timeout);
         
         if(job_completed)
         {
 #if GPU_DEBUG > 1
             klog("drm_sched_worker: job %u completed\n", j->job_id);
 #endif
-            j->finished->s.Signal();
+            j->finished->Signal();
         }
         else
         {

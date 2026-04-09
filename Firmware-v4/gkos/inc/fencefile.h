@@ -13,10 +13,24 @@
 #include "osfile.h"
 
 int fence_open(PFile *f, std::shared_ptr<dma_fence> fence = nullptr);
+class UserFenceManager;
 
-struct dma_fence
+class dma_fence
 {
-    SimpleSignal s;
+    private:
+        SimpleSignal s;
+
+    public:
+        uint32_t id = 0;
+        bool has_id = false;
+        std::weak_ptr<UserFenceManager> ufm;
+
+        void Signal();
+        bool IsSignalled() { return s.Value() != 0; }
+        bool Wait(kernel_time tout = kernel_time_invalid())
+        {
+            return s.Wait(SimpleSignal::SignalOperation::Noop, 0, tout);
+        }
 };
 
 class FenceFile : public File

@@ -146,7 +146,7 @@ struct etnaviv_gpu {
 	//wait_queue_head_t fence_event;
 	u64 fence_context = 0;
 	Spinlock fence_spinlock;
-	UserFenceManager user_fences;
+	std::shared_ptr<UserFenceManager> user_fences = std::make_shared<UserFenceManager>();
 
 	/* worker for handling 'sync' points: */
 	//struct work_struct sync_point_work;

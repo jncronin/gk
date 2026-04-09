@@ -1,5 +1,6 @@
 #include "fencefile.h"
 #include "process.h"
+#include "etnaviv/src/user_fences.h"
 
 std::shared_ptr<dma_fence> sync_file_get_fence(int fd)
 {
@@ -37,4 +38,16 @@ int fence_open(PFile *f, std::shared_ptr<dma_fence> fence)
         ff->fence = fence;
     *f = std::move(ff);
     return 0;
+}
+
+void dma_fence::Signal()
+{
+    if(has_id)
+    {
+        auto fm = ufm.lock();
+        if(fm)
+            fm->Deregister(id);
+    }
+
+    s.Signal();
 }

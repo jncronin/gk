@@ -1280,7 +1280,7 @@ int etnaviv_gpu_wait_fence_interruptible(struct etnaviv_gpu *gpu,
 	 */
 
 	gpu->sched_lock->lock();
-	auto fence = gpu->user_fences.Get(id);
+	auto fence = gpu->user_fences->Get(id);
 	gpu->sched_lock->unlock();
 
 	if (!fence)
@@ -1288,10 +1288,9 @@ int etnaviv_gpu_wait_fence_interruptible(struct etnaviv_gpu *gpu,
 
 	if (!timeout) {
 		/* No timeout was requested: just test for completion */
-		return fence->s.Value() ? 0 : -EBUSY;
+		return fence->IsSignalled() ? 0 : -EBUSY;
 	} else {
-		auto ret = fence->s.Wait(SimpleSignal::SignalOperation::Noop, 0,
-			clock_cur() + *timeout);
+		auto ret = fence->Wait(clock_cur() + *timeout);
 		if(ret)
 		{
 			return 0;
@@ -1629,7 +1628,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 			 */
 			//if (fence_after(fence->seqno, gpu->completed_fence))
 			//	gpu->completed_fence = fence->seqno;
-			fence->s.Signal();
+			fence->Signal();
 			//dma_fence_signal_timestamp(fence, now);
 			gpu->event[event].submit = nullptr;
 			event_free(gpu, event);
