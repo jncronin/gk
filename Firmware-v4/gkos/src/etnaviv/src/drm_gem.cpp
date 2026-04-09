@@ -20,7 +20,7 @@ extern std::atomic<bool> fb_dma_addr_next;
 
 int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *drm, size_t size)
 {
-    drm->vaddr = dma_alloc(nullptr, size, &drm->dma_addr, GFP_HIGHUSER, MT_NORMAL_WT, 
+    drm->vaddr = dma_alloc(nullptr, size, &drm->dma_addr, GFP_HIGHUSER, drm->mt, 
         &drm->vsize, &drm->psize);
     drm->handle = 0;
 
@@ -111,6 +111,12 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
         klog("dri: mmap length too long for underlying object: %llx vs %llx\n",
             len, obj->psize);
         return -1;
+    }
+
+    if(!is_fixed && obj->vaddr)
+    {
+        *retaddr = obj->vaddr;
+        return 0;
     }
 
     // Replicate the mmap code somewhat to get the vaddr

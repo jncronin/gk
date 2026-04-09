@@ -557,6 +557,8 @@ static int etnaviv_gem_new_impl(struct drm_device *dev, u32 size, u32 flags,
 
 	etnaviv_obj->size = ALIGN(size, SZ_4K);
 	etnaviv_obj->flags = flags;
+	etnaviv_obj->mt = ((flags & ETNA_BO_CACHE_MASK) == ETNA_BO_CACHED) ? MT_NORMAL :
+		MT_NORMAL_NC;
 
 	*obj = etnaviv_obj;
 

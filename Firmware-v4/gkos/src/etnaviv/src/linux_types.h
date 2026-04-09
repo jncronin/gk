@@ -182,6 +182,8 @@ struct drm_gem_object
 						// Needs to be PAGE_SIZE aligned otherwise mmap will fail
 	
 	dma_resv resv;
+
+	unsigned int mt;	// memory type
 };
 
 typedef u64 drm_vma_offset_node;

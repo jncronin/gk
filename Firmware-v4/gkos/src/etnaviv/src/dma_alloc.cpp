@@ -63,12 +63,19 @@ void *dma_alloc(struct device *dev, size_t size,
     for(auto i = 0ul; i < pmem.length; i += PAGE_SIZE)
     {
         //klog("dma_alloc_wc: map %p phys to %p virt\n", (void *)(pmem.base + i), (void *)(vmem.base + i));
-        vmem_map(vmem.base + i, pmem.base + i, false, true, false, ttbr0, ~0ULL, nullptr, mt);
+        vmem_map(vmem.base + i, pmem.base + i, (gfp & GFP_HIGHUSER) != 0, true, false, ttbr0, ~0ULL, nullptr, mt);
 
         // and zero
-        for(auto j = 0ul; j < PAGE_SIZE; j += CACHE_LINE_SIZE)
+        if(mt == MT_NORMAL_NC || mt == MT_DEVICE || mt == MT_DEVICE_NGNRE)
         {
-            __asm__ volatile("dc zva, %[addr]\n" : : [addr] "r" (vmem.base + i + j) : "memory");
+            memset((void *)(vmem.base + i), 0, PAGE_SIZE);
+        }
+        else
+        {
+            for(auto j = 0ul; j < PAGE_SIZE; j += CACHE_LINE_SIZE)
+            {
+                __asm__ volatile("dc zva, %[addr]\n" : : [addr] "r" (vmem.base + i + j) : "memory");
+            }
         }
     }
 
