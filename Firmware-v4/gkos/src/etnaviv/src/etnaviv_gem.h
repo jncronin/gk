@@ -58,8 +58,6 @@ struct etnaviv_gem_object : public drm_gem_object {
 	struct list_head gem_node;
 	atomic_t gpu_active;
 
-	sg_table sgt;
-
 	std::list<std::shared_ptr<etnaviv_vram_mapping>> vram_list;
 
 	/* cache maintenance */

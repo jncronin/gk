@@ -183,6 +183,7 @@ struct drm_gem_object
 	
 	dma_resv resv;
 
+	sg_table sgt;
 	unsigned int mt;	// memory type
 };
 

@@ -150,6 +150,11 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
         *retaddr = (void *)vb.data_start();
     }
 
+    /* If we've reached this far then this is a new mapping for this object
+        Add it to sg_table so it gets cache operations done appropriately */
+    sg_entry sge { .vaddr = (void *)vb.data_start(), .paddr = obj->dma_addr, .len = vb.data_length() };
+    obj->sgt.push_back(sge);
+
     vb.user = true;
     vb.write = is_write != 0;
     vb.exec = false;
