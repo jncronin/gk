@@ -68,6 +68,7 @@ target_compile_definitions(${PROJECT_NAME}
         CORE_CM33
         ETH_MODE
         PINS_DONT_RCC_ENABLE
+        GKOS_KERNEL
         _POSIX_THREADS
         _POSIX_READER_WRITER_LOCKS
         _UNIX98_THREAD_MUTEX_ATTRIBUTES

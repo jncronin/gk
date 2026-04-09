@@ -334,12 +334,8 @@ static int etnaviv_ioctl_wait_fence(struct drm_device *dev, void *data,
 	if (args->flags & ETNA_WAIT_NONBLOCK)
 		timeout = NULL;
 
-#if 0
-	return etnaviv_gpu_wait_fence_interruptible(gpu, args->fence,
+	return etnaviv_gpu_wait_fence_interruptible(gpu.get(), args->fence,
 						    timeout);
-#endif
-	klog("ioctl_wait_fence not implemented\n");
-	return -ENOTSUP;
 }
 
 static int etnaviv_ioctl_gem_userptr(struct drm_device *dev, void *data,

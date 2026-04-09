@@ -5,6 +5,7 @@
 #include "proc_vmem.h"
 #include "process.h"
 #include "drifile.h"
+#include <atomic>
 
 static Spinlock sl_handles;
 static u32 next_handle = 1;
@@ -14,11 +15,21 @@ static Spinlock sl_mmap_offsets;
 static u32 next_mmap_offset = 1;
 static std::unordered_map<u32, std::shared_ptr<drm_gem_object>> mmap_offsets;
 
+extern uintptr_t fb_dma_addr;
+extern std::atomic<bool> fb_dma_addr_next;
+
 int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *drm, size_t size)
 {
     drm->vaddr = dma_alloc(nullptr, size, &drm->dma_addr, GFP_HIGHUSER, MT_NORMAL_WT, 
         &drm->vsize, &drm->psize);
     drm->handle = 0;
+
+    if(drm->vaddr && fb_dma_addr_next.load() && fb_dma_addr_next.exchange(false))
+    {
+        fb_dma_addr = drm->dma_addr;
+        klog("drm: set framebuffer dma address to %p\n", (void *)fb_dma_addr);
+    }
+
     return drm->vaddr ? 0 : -1;
 }
 

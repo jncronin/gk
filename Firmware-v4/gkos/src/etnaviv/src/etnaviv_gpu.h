@@ -15,6 +15,7 @@
 
 #include "drm_scheduler.h"
 #include "workqueue.h"
+#include "user_fences.h"
 
 #include "osqueue.h"
 
@@ -145,6 +146,7 @@ struct etnaviv_gpu {
 	//wait_queue_head_t fence_event;
 	u64 fence_context = 0;
 	Spinlock fence_spinlock;
+	UserFenceManager user_fences;
 
 	/* worker for handling 'sync' points: */
 	//struct work_struct sync_point_work;

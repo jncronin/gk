@@ -141,3 +141,8 @@ void *drm_sched_worker(void *p)
         }
     }
 }
+
+drm_sched_job::~drm_sched_job()
+{
+    klog("drm_sched_job destructor called\n");
+}

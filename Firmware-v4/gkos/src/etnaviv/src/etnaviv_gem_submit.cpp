@@ -379,62 +379,32 @@ static int submit_perfmon_validate(struct etnaviv_gem_submit *submit,
 
 	return 0;
 }
-#if 0
 
-static void submit_cleanup(struct kref *kref)
+
+etnaviv_gem_submit::~etnaviv_gem_submit()
 {
-	struct etnaviv_gem_submit *submit =
-			container_of(kref, struct etnaviv_gem_submit, refcount);
+	auto submit = this;
+
 	unsigned i;
 
 	if (submit->cmdbuf.suballoc)
 		etnaviv_cmdbuf_free(&submit->cmdbuf);
 
-	if (submit->mmu_context)
-		etnaviv_iommu_context_put(submit->mmu_context);
-
-	if (submit->prev_mmu_context)
-		etnaviv_iommu_context_put(submit->prev_mmu_context);
-
 	for (i = 0; i < submit->nr_bos; i++) {
-		struct etnaviv_gem_object *etnaviv_obj = submit->bos[i].obj;
+		auto etnaviv_obj = submit->bos[i].obj;
 
 		/* unpin all objects */
 		if (submit->bos[i].flags & BO_PINNED) {
-			etnaviv_gem_mapping_unreference(submit->bos[i].mapping);
-			atomic_dec(&etnaviv_obj->gpu_active);
+			etnaviv_gem_mapping_unreference(submit->bos[i].mapping.get());
+			etnaviv_obj->gpu_active.fetch_sub(1);
 			submit->bos[i].mapping = NULL;
 			submit->bos[i].flags &= ~BO_PINNED;
 		}
 
 		/* if the GPU submit failed, objects might still be locked */
 		submit_unlock_object(submit, i);
-		drm_gem_object_put(&etnaviv_obj->base);
 	}
-
-	wake_up_all(&submit->gpu->fence_event);
-
-	if (submit->out_fence) {
-		/*
-		 * Remove from user fence array before dropping the reference,
-		 * so fence can not be found in lookup anymore.
-		 */
-		xa_erase(&submit->gpu->user_fences, submit->out_fence_id);
-		dma_fence_put(submit->out_fence);
-	}
-
-	put_pid(submit->pid);
-
-	kfree(submit->pmrs);
-	kfree(submit);
 }
-
-void etnaviv_submit_put(struct etnaviv_gem_submit *submit)
-{
-	kref_put(&submit->refcount, submit_cleanup);
-}
-
-#endif
 
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		struct drm_file *file)

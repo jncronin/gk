@@ -128,6 +128,7 @@ int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
 	submit->sched_job->priority = DRM_SCHED_PRIORITY_NORMAL;
 
 	submit->out_fence = submit->sched_job->finished;
+	submit->out_fence_id = gpu->user_fences.Register(submit->out_fence);
 
 	gpu->sched->push_job(std::move(submit->sched_job));
 

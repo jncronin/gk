@@ -1267,47 +1267,42 @@ static void event_free(struct etnaviv_gpu *gpu, unsigned int event)
 	gpu->free_events.Push(event);
 }
 
-#if 0
 /*
  * Cmdstream submission/retirement:
  */
 int etnaviv_gpu_wait_fence_interruptible(struct etnaviv_gpu *gpu,
 	u32 id, struct drm_etnaviv_timespec *timeout)
 {
-	struct dma_fence *fence;
-	int ret;
-
 	/*
 	 * Look up the fence and take a reference. We might still find a fence
 	 * whose refcount has already dropped to zero. dma_fence_get_rcu
 	 * pretends we didn't find a fence in that case.
 	 */
-	rcu_read_lock();
-	fence = xa_load(&gpu->user_fences, id);
-	if (fence)
-		fence = dma_fence_get_rcu(fence);
-	rcu_read_unlock();
+
+	gpu->sched_lock->lock();
+	auto fence = gpu->user_fences.Get(id);
+	gpu->sched_lock->unlock();
 
 	if (!fence)
 		return 0;
 
 	if (!timeout) {
 		/* No timeout was requested: just test for completion */
-		ret = dma_fence_is_signaled(fence) ? 0 : -EBUSY;
+		return fence->s.Value() ? 0 : -EBUSY;
 	} else {
-		unsigned long remaining = etnaviv_timeout_to_jiffies(timeout);
-
-		ret = dma_fence_wait_timeout(fence, true, remaining);
-		if (ret == 0)
-			ret = -ETIMEDOUT;
-		else if (ret != -ERESTARTSYS)
-			ret = 0;
-
+		auto ret = fence->s.Wait(SimpleSignal::SignalOperation::Noop, 0,
+			clock_cur() + *timeout);
+		if(ret)
+		{
+			return 0;
+		}
+		else
+		{
+			return -ETIMEDOUT;
+		}
 	}
-
-	dma_fence_put(fence);
-	return ret;
 }
+#if 0
 
 /*
  * Wait for an object to become inactive.  This, on it's own, is not race
@@ -1422,12 +1417,7 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		return NULL;
 	}
 
-	klog("******** PT-1\n");
-
-
 	gpu->lock->lock();
-
-	klog("******** PT0\n");
 
 	auto gpu_fence = etnaviv_gpu_fence_alloc(gpu);
 	if (!gpu_fence) {
@@ -1437,12 +1427,8 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		goto out_unlock;
 	}
 
-	klog("******** PT1\n");
-
 	if (gpu->state == ETNA_GPU_STATE_INITIALIZED)
 		etnaviv_gpu_start_fe_idleloop(gpu, submit->mmu_context);
-
-	klog("******** PT2\n");
 
 	submit->prev_mmu_context = gpu->mmu_context;
 
@@ -1453,14 +1439,10 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		etnaviv_sync_point_queue(gpu, event[1]);
 	}
 
-	klog("******** PT3\n");
-
 	gpu->event[event[0]].fence = gpu_fence;
 	submit->cmdbuf.user_size = submit->cmdbuf.size - 8;
 	etnaviv_buffer_queue(gpu, submit->exec_state, submit->mmu_context,
 			     event[0], &submit->cmdbuf);
-
-	klog("******** PT4\n");
 
 	if (submit->nr_pmrs) {
 		klog("GPU: queueing sync point post\n");
@@ -1468,8 +1450,6 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 		gpu->event[event[2]].submit = submit;
 		etnaviv_sync_point_queue(gpu, event[2]);
 	}
-
-	klog("******** PT5\n");
 
 out_unlock:
 	gpu->lock->unlock();
@@ -1651,7 +1631,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 			//	gpu->completed_fence = fence->seqno;
 			fence->s.Signal();
 			//dma_fence_signal_timestamp(fence, now);
-
+			gpu->event[event].submit = nullptr;
 			event_free(gpu, event);
 
 			ret++;

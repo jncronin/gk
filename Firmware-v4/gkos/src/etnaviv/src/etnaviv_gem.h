@@ -116,6 +116,8 @@ struct etnaviv_gem_submit {
 
 	std::vector<etnaviv_perfmon_request> pmrs;
 	std::vector<etnaviv_gem_submit_bo> bos;
+
+	~etnaviv_gem_submit();
 };
 
 void etnaviv_submit_put(struct etnaviv_gem_submit * submit);

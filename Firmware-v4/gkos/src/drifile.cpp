@@ -5,11 +5,16 @@
 #include "drifile.h"
 #include "etnaviv_drv.h"
 #include "etnaviv_gpu.h"
+#include "screen.h"
+#include "process.h"
 
 static Spinlock sl_dri;
 static std::vector<std::shared_ptr<device>> drm_devs;
 
 int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file);
+
+uintptr_t fb_dma_addr = 0;
+std::atomic<bool> fb_dma_addr_next = false;
 
 DRIFile::DRIFile()
 {
@@ -177,5 +182,31 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
 
     *f = nfile;
 
+    return 0;
+}
+
+int syscall_opengl_makerenderbuffer(int *_errno)
+{
+    fb_dma_addr_next = true;
+    return 0;
+}
+
+int syscall_opengl_fliprenderbuffer(int *_errno)
+{
+    auto dma = fb_dma_addr;
+    if(dma)
+    {
+        auto p = GetCurrentProcessForCore();
+        p->screen.sl.lock();
+        auto w = p->screen.screen_w;
+        auto h = p->screen.screen_h;
+        auto bpp = screen_get_bpp_for_pf(p->screen.screen_pf);
+        p->screen.sl.unlock();
+
+        // TODO: optimise with HPDMA
+        auto targ_virt = screen_update();
+
+        memcpy((void *)targ_virt, (void *)(dma + 0xfffffd0000000000), w * h * bpp);
+    }
     return 0;
 }

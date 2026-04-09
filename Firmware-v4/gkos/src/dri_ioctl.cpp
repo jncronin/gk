@@ -6,6 +6,11 @@
 #include "drifile.h"
 
 static_assert(sizeof(drm_version) == _IOC_SIZE(0xc0406400));
+static_assert(sizeof(drm_mode_create_dumb) == _IOC_SIZE(0xc02064b2));
+static_assert(sizeof(drm_mode_map_dumb) == _IOC_SIZE(0xc01064b3));
+
+static int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_file *f);
+static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_file *f);
 
 int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 {
@@ -34,7 +39,18 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
                 dv->desc_len = d->drm->desc.length() + 1;
                 dv->name_len = d->drm->name.length() + 1;
             }
-            return 0;            
+            return 0;
+            
+        case 0xc02064b2:
+            // DRM_IOCTL_MODE_CREATE_DUMB
+            return dri_ioctl_mode_create_dumb(reinterpret_cast<drm_mode_create_dumb *>(ptr),
+                d->drm.get(), df.get());
+
+        case 0xc01064b3:
+            // DRM_IOCTL_MODE_MAP_DUMB
+            return dri_ioctl_mode_map_dumb(reinterpret_cast<drm_mode_map_dumb *>(ptr),
+                d->drm.get(), df.get());
+
     }
 
     auto dri_nr = _IOC_NR(nr);
@@ -61,4 +77,59 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
     klog("DRI: ioctl(%x) not supported\n", nr);
     *_errno = EINVAL;
     return -1;
+}
+
+// TODO: use a member function within the the subclassed drm_device here
+int etnaviv_gem_new_handle(struct drm_device *dev, struct drm_file *file,
+	u32 size, u32 flags, u32 *handle);
+#define ETNA_BO_WC           0x00020000				/* MT_NORMAL_NC */
+
+
+
+int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_file *f)
+{
+    auto pitch = m->width * m->bpp / 8;
+    // align to 256 bytes for etnaviv efficiency
+    pitch = (pitch + 255U) & ~255U;
+    
+    auto size = m->height * pitch;
+    uint32_t handle;
+
+    auto ret = etnaviv_gem_new_handle(dev, f, size, ETNA_BO_WC, &handle);
+
+    if(ret == 0)
+    {
+        klog("drm_ioctl_mode_create_dumb: %ux%ux%u - allocated buffer with size %u and handle %u\n",
+            m->width, m->height, m->bpp, size, handle);
+        m->pitch = pitch;
+        m->handle = handle;
+
+        return 0;
+    }
+    else
+    {
+        klog("etnaviv_gem_new_handle failed: %d\n", ret);
+        return ret;
+    }
+}
+
+static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_file *f)
+{
+    auto obj = drm_gem_object_lookup(f, m->handle);
+    if(obj)
+    {
+        if(!obj->vma_node)
+        {
+            drm_gem_create_mmap_offset(obj);
+        }
+        m->offset = obj->vma_node;
+        klog("dri_ioctl_mode_map_dump: handle %u linked to mmap offset %llx\n", m->handle,
+            m->offset);
+        return 0;
+    }
+    else
+    {
+        klog("drm_ioctl_mode_map_dumb: handle not found: %u\n", m->handle);
+        return 0;
+    }
 }

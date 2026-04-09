@@ -230,6 +230,8 @@ struct drm_sched_job
 	kernel_time arm_time;
 	unsigned int job_id;
 	unsigned int priority;
+
+	virtual ~drm_sched_job();
 };
 
 struct etnaviv_gem_submit;

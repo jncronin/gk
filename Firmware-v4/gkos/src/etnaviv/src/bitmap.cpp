@@ -137,3 +137,26 @@ unsigned long find_first_zero_bit(const unsigned long *addr,
     }
     return nbits;
 }
+
+void bitmap_release_region (unsigned long * bitmap,
+ 	int pos,
+ 	int order)
+{
+    auto nbits = 1UL << order;
+    if(nbits > 64)
+    {
+        klog("bitmap_release_region not implemented for order %d\n", order);
+        return;
+    }
+
+    klog("bitmap_release_region: %u bits at pos %u\n", nbits, pos);
+
+    auto set_bits = (1UL << nbits) - 1;
+
+    auto cword = pos / 64U;
+    auto cbit = pos % 64U;
+    auto cbits = set_bits << cbit;
+
+    auto &word = bitmap[cword];
+    word &= ~cbits;
+}
