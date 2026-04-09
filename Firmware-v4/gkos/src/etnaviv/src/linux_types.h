@@ -1,6 +1,8 @@
 #ifndef LINUX_TYPES_H
 #define LINUX_TYPES_H
 
+#define GPU_DEBUG		0
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -94,15 +96,30 @@ struct list_head
 #define IS_ALIGNED(x, al) (((x) & ((al) - 1)) == 0)
 #define ALIGN_DOWN(x, al) ((x) & ~((typeof(x))(al) - 1))
 
+#if GPU_DEBUG > 1
 #define dev_warn(d, msg, ...) klog("GPU WARN : " msg __VA_OPT__(,) __VA_ARGS__)
+#define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
+#else
+#define dev_warn(d, msg, ...) do {} while(0)
+#define WARN(d, msg, ...) do {} while(0)
+#endif
 #define dev_warn_once dev_warn
 #define dev_warn_ratelimited dev_warn
+#if GPU_DEBUG > 2
 #define dev_info(d, msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
 #define pr_info(msg, ...) klog("GPU INFO : " msg __VA_OPT__(,) __VA_ARGS__)
+#else
+#define dev_info(d, msg, ...) do {} while(0)
+#define pr_info(msg, ...) do {} while(0)
+#endif
+#if GPU_DEBUG > 3
 #define dev_dbg(d, msg, ...) klog("GPU DEBUG: " msg __VA_OPT__(,) __VA_ARGS__)
+#else
+#define dev_dbg(d, msg, ...) do {} while(0)
+#endif
+
 #define dev_err(d, msg, ...) klog("GPU ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 #define dev_err_ratelimited dev_err
-#define WARN(d, msg, ...) klog("WARN: " msg __VA_OPT__(,) __VA_ARGS__)
 #define DRM_ERROR(msg, ...) klog("DRM_ERROR: " msg __VA_OPT__(,) __VA_ARGS__)
 
 #define SZ_1				0x00000001

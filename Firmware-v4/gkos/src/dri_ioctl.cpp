@@ -67,9 +67,13 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
                     nr, _IOC_SIZE(nr), cioc.param_size);
                 return -1;
             }
+#if GPU_DEBUG > 2
             klog("DRI: ioctl: %08x starting\n", nr);
+#endif
             auto ret = cioc.func(d->drm.get(), ptr, df.get());
+#if GPU_DEBUG > 2
             klog("DRI: ioctl: %08x returning %d\n", nr, ret);
+#endif
             return ret;
         }
     }

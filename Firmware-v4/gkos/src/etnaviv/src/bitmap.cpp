@@ -36,9 +36,11 @@ int bitmap_find_free_region(uint64_t * bitmap,
         if((bitmap[cword] & ctest) == 0)
         {
             // found a free range
+#if GPU_DEBUG > 4
             klog("bitmap_find_free_region: order=%d, alloc %lu bits at position %lu (cword=%lu, total bits=%d)\n",
                 order, nbits, i * nbits, cword, bits);
-            bitmap[cword] |= ctest;
+#endif
+                bitmap[cword] |= ctest;
             return i * nbits;
         }
 
@@ -149,7 +151,9 @@ void bitmap_release_region (unsigned long * bitmap,
         return;
     }
 
+#if GPU_DEBUG > 4
     klog("bitmap_release_region: %u bits at pos %u\n", nbits, pos);
+#endif
 
     auto set_bits = (1UL << nbits) - 1;
 

@@ -50,7 +50,7 @@
 [[maybe_unused]] static void etnaviv_buffer_dump(struct etnaviv_gpu *gpu,
 	struct etnaviv_cmdbuf *buf, u32 off, u32 len)
 {
-	u32 size = buf->size;
+	[[maybe_unused]] u32 size = buf->size;
 	u32 *ptr = (u32 *)((uintptr_t)buf->vaddr + off);
 
 	dev_info(gpu->dev, "virt %p phys 0x%08x free 0x%08x\n",

@@ -230,7 +230,9 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 {
 	int ret = 0;
 
+#if GPU_DEBUG > 3
 	klog("GPU: submit: %u objects\n", submit->nr_bos);
+#endif
 
 	for (auto i = 0u; i < submit->nr_bos; i++) {
 		auto &etnaviv_obj = submit->bos[i].obj;
@@ -242,9 +244,11 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 			return -1;
 		}
 
+#if GPU_DEBUG > 3
 		klog("obj: %u, %08x/%08x/%08x va @ %p phys\n", 
 			i, mapping->iova, mapping->vram_node.start, submit->bos[i].va,
 			submit->bos[i].obj->dma_addr);
+#endif
 
 		if ((submit->flags & ETNA_SUBMIT_SOFTPIN) &&
 		     submit->bos[i].va != mapping->iova) {
@@ -284,7 +288,9 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 	u32 *ptr = (u32 *)stream;
 	int ret;
 
+#if GPU_DEBUG > 3
 	klog("GPU: submit: %u relocs\n", nr_relocs);
+#endif
 
 	/* Submits using softpin don't blend with relocs */
 	if ((submit->flags & ETNA_SUBMIT_SOFTPIN) && nr_relocs != 0)
@@ -326,7 +332,9 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 
 		ptr[off] = bo->mapping->iova + r->reloc_offset;
 
+#if GPU_DEBUG > 3
 		klog("stream offset %u -> %08x + %u\n", off, bo->mapping->iova, r->reloc_offset);
+#endif
 
 		last_offset = off;
 	}

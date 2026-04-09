@@ -28,7 +28,10 @@ int DRMScheduler::push_job(std::unique_ptr<drm_sched_job> &&j)
     }
 
     j->job_id = next_job_id++;
+
+#if GPU_DEBUG > 1
     klog("drm_sched: scheduling job %u\n", j->job_id);
+#endif
 
     auto priority = j->priority;
     priorities[j->priority].push(std::move(j));
@@ -103,7 +106,9 @@ void *drm_sched_worker(void *p)
             s->priorities[priority].pop();
         }
 
+#if GPU_DEBUG > 1
         klog("drm_sched_worker: running job %u\n", j->job_id);
+#endif
 
         /* We now have a job to do - wait on the various fences */
         for(auto &dep : j->deps)
@@ -120,19 +125,25 @@ void *drm_sched_worker(void *p)
             }
         }
 
+#if GPU_DEBUG > 2
         klog("drm_sched_worker: job %u dependencies satisfied.\n", j->job_id);
+#endif
         j->scheduled->s.Signal();
 
         auto finish_fence = s->ops->run_job(j.get());
 
+#if GPU_DEBUG > 2
         klog("drm_sched_worker: job %u submitted to gpu, awaiting completion\n", j->job_id);
+#endif
 
         auto job_completed = finish_fence->s.Wait(SimpleSignal::SignalOperation::Noop, 0,
             clock_cur() + s->timeout);
         
         if(job_completed)
         {
+#if GPU_DEBUG > 1
             klog("drm_sched_worker: job %u completed\n", j->job_id);
+#endif
             j->finished->s.Signal();
         }
         else
@@ -144,5 +155,7 @@ void *drm_sched_worker(void *p)
 
 drm_sched_job::~drm_sched_job()
 {
+#if GPU_DEBUG > 4
     klog("drm_sched_job destructor called\n");
+#endif
 }

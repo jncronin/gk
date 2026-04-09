@@ -78,7 +78,9 @@ retry:
 	cmdbuf->suballoc_offset = granule_offs * SUBALLOC_GRANULE;
 	cmdbuf->vaddr = (void *)((uintptr_t)suballoc->vaddr + cmdbuf->suballoc_offset);
 
+#if GPU_DEBUG > 2
 	klog("GPU: cmdbuf: alloc at %p phys\n", cmdbuf->suballoc->paddr + cmdbuf->suballoc_offset);
+#endif
 
 	return 0;
 }
