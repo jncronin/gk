@@ -8,6 +8,7 @@
 
 void init_screen();
 uintptr_t screen_update();
+int screen_current_buf();
 std::pair<uintptr_t, uintptr_t> screen_current();
 std::pair<uintptr_t, uintptr_t> _screen_current();
 PMemBlock screen_get_buf(unsigned int layer, unsigned int buf);
@@ -15,6 +16,8 @@ size_t screen_get_bpp_for_pf(unsigned int pf);
 void screen_clear_all_userspace();
 
 int syscall_screenflip(unsigned int layer, unsigned int alpha, int *_errno);
+
+std::pair<void *, uintptr_t> screen_get_layer_vaddr_paddr(unsigned int layer, unsigned int buf);
 
 int screen_get_brightness();
 int screen_set_brightness(int brightness, bool persist = true);

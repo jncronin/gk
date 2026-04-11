@@ -13,8 +13,7 @@ static std::vector<std::shared_ptr<device>> drm_devs;
 
 int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file);
 
-uintptr_t fb_dma_addr = 0;
-std::atomic<bool> fb_dma_addr_next = false;
+std::atomic<int> fb_dma_addr_next = -1;
 
 DRIFile::DRIFile()
 {
@@ -185,28 +184,13 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
     return 0;
 }
 
-int syscall_opengl_makerenderbuffer(int *_errno)
+int syscall_opengl_makerenderbuffer(int fb_idx, int *_errno)
 {
-    fb_dma_addr_next = true;
+    fb_dma_addr_next = fb_idx;
     return 0;
 }
 
-int syscall_opengl_fliprenderbuffer(int *_errno)
+int syscall_opengl_getrenderbuffer(int *_errno)
 {
-    auto dma = fb_dma_addr;
-    if(dma)
-    {
-        auto p = GetCurrentProcessForCore();
-        p->screen.sl.lock();
-        auto w = p->screen.screen_w;
-        auto h = p->screen.screen_h;
-        auto bpp = screen_get_bpp_for_pf(p->screen.screen_pf);
-        p->screen.sl.unlock();
-
-        // TODO: optimise with HPDMA
-        auto targ_virt = screen_update();
-
-        memcpy((void *)targ_virt, (void *)(dma + 0xfffffd0000000000), w * h * bpp);
-    }
-    return 0;
+    return screen_current_buf();
 }

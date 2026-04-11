@@ -170,6 +170,9 @@ typedef uintptr_t dma_addr_t;
 struct dma_fence;
 struct etnaviv_drm_private;
 class pm_control;
+
+struct drm_gem_object;
+
 struct drm_device
 {
     std::unique_ptr<etnaviv_drm_private> dev_private;
@@ -177,6 +180,8 @@ struct drm_device
 	size_t num_ioctls;
 	std::string name, date, desc;
 	unsigned int major, minor;
+
+	int flipbuffer(std::shared_ptr<drm_gem_object> &fb);
 };
 struct drm_file
 {
@@ -202,11 +207,13 @@ struct drm_gem_object
 
 	sg_table sgt;
 	unsigned int mt;	// memory type
+
+	drm_device *dev;
 };
 
 typedef u64 drm_vma_offset_node;
 
-int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *drm, size_t size);
+int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> drm, size_t size);
 int drm_gem_handle_create(struct drm_file *file,
 	std::shared_ptr<drm_gem_object> obj, u32 *handlep);
 std::shared_ptr<drm_gem_object> drm_gem_object_lookup(struct drm_file *file, u32 handle);

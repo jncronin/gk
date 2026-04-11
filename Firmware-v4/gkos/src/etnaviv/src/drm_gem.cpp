@@ -6,6 +6,7 @@
 #include "process.h"
 #include "drifile.h"
 #include <atomic>
+#include "screen.h"
 
 static Spinlock sl_handles;
 static u32 next_handle = 1;
@@ -15,20 +16,31 @@ static Spinlock sl_mmap_offsets;
 static u32 next_mmap_offset = 1;
 static std::unordered_map<u32, std::shared_ptr<drm_gem_object>> mmap_offsets;
 
-extern uintptr_t fb_dma_addr;
-extern std::atomic<bool> fb_dma_addr_next;
+extern std::atomic<int> fb_dma_addr_next;
 
-int drm_gem_object_init(struct drm_device *dev, struct drm_gem_object *drm, size_t size)
+int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> drm, size_t size)
 {
-    drm->vaddr = dma_alloc(nullptr, size, &drm->dma_addr, GFP_HIGHUSER, drm->mt, 
-        &drm->vsize, &drm->psize);
-    drm->handle = 0;
-
-    if(drm->vaddr && fb_dma_addr_next.load() && fb_dma_addr_next.exchange(false))
+    auto fb_idx = fb_dma_addr_next.exchange(-1);
+    if(fb_idx >= 0 && fb_idx < 3)
     {
-        fb_dma_addr = drm->dma_addr;
-        klog("drm: set framebuffer dma address to %p\n", (void *)fb_dma_addr);
+        auto p = GetCurrentProcessForCore();
+        CriticalGuard cg(p->screen.sl);
+        auto layer = p->screen.screen_layer;
+        cg.unlock();
+
+        auto scr = screen_get_layer_vaddr_paddr(layer, fb_idx);
+        drm->vaddr = scr.first;
+        drm->dma_addr = scr.second;
+        drm->psize = size;
+        drm->vsize = size;
     }
+    else
+    {
+        drm->vaddr = dma_alloc(nullptr, size, &drm->dma_addr, GFP_HIGHUSER, drm->mt, 
+            &drm->vsize, &drm->psize);
+    }
+    drm->handle = 0;
+    drm->dev = dev;
 
     return drm->vaddr ? 0 : -1;
 }

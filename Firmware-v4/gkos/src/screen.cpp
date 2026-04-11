@@ -132,6 +132,8 @@ class TripleBufferScreenLayer
         friend void init_screen();
         friend PMemBlock screen_get_buf(unsigned int, unsigned int);
         friend void screen_clear_all_userspace();
+        friend std::pair<void *, uintptr_t> screen_get_layer_vaddr_paddr(unsigned int layer, unsigned int buf);
+        friend int screen_current_buf();
 };
 
 static TripleBufferScreenLayer scrs[2] = { TripleBufferScreenLayer{}, TripleBufferScreenLayer{} };
@@ -387,6 +389,13 @@ static uintptr_t screen_buf_to_vaddr(unsigned int layer, unsigned int buf)
     return 0;
 }
 
+std::pair<void *, uintptr_t> screen_get_layer_vaddr_paddr(unsigned int layer, unsigned int buf)
+{
+    auto vaddr = screen_buf_to_vaddr(layer, buf);
+    auto paddr = scrs[layer].pm[buf].base;
+    return std::make_pair((void *)vaddr, paddr);
+}
+
 std::pair<uintptr_t, uintptr_t> screen_current()
 {
     auto p = GetCurrentProcessForCore();
@@ -407,6 +416,18 @@ std::pair<uintptr_t, uintptr_t> _screen_current()
 
     return std::make_pair(screen_buf_to_vaddr(layer, buf.first),
         screen_buf_to_vaddr(layer, buf.second));
+}
+
+int screen_current_buf()
+{
+    auto p = GetCurrentProcessForCore();
+    CriticalGuard cg(p->screen.sl);
+    if(!p)
+        return -1;
+    
+    auto layer = p->screen.screen_layer;
+    auto buf = scrs[layer].cur_update;
+    return buf;
 }
 
 uintptr_t screen_update()
