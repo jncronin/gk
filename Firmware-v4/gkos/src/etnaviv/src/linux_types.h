@@ -385,10 +385,22 @@ unsigned long find_first_zero_bit(const unsigned long *addr,
 
 unsigned int find_next_bit(const unsigned long *addr, unsigned int nbits, unsigned int from);
 
-template <typename T> int order_base_2(T x)
+static inline int order_base_2(unsigned int x)
 {
 	if(x == 0 || x == 1) return 0;
-	return sizeof(T) * 8 - __builtin_clz(x - 1);
+	return sizeof(unsigned int) * 8 - __builtin_clz(x - 1);
+}
+
+static inline int order_base_2(unsigned long int x)
+{
+	if(x == 0 || x == 1) return 0;
+	return sizeof(unsigned long int) * 8 - __builtin_clzl(x - 1);
+}
+
+static inline int order_base_2(unsigned long long int x)
+{
+	if(x == 0 || x == 1) return 0;
+	return sizeof(unsigned long long int) * 8 - __builtin_clzll(x - 1);
 }
 
 #define GFP_KERNEL 		1
