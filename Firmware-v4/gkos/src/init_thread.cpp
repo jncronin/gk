@@ -50,7 +50,7 @@ void *init_thread(void *)
 
     p_gksupervisor->env.cwd = "/gkmenu-0.1.1-gk";   // run in gkmenu dir so we can load osd files from there
     p_gksupervisor->env.args.clear();
-    p_gksupervisor->env.args.push_back("SDL GL Test");
+    //p_gksupervisor->env.args.push_back("SDL GL Test");
 
     p_gksupervisor->screen.screen_pf = GK_PIXELFORMAT_RGB565;
     p_gksupervisor->screen.screen_w = 800;
