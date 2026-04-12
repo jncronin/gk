@@ -108,11 +108,13 @@ void etnaviv_gem_get_pages(std::shared_ptr<etnaviv_gem_object> &etnaviv_obj)
 	BUG_ON(!etnaviv_obj->lock->held());
 
 	if (etnaviv_obj->sgt.empty()) {
+#if GPU_DEBUG > 2
 		klog("etnaviv_gem_get_pages: vaddr: %p, paddr: %p, vsize: %llx, psize: %llx, obj_size: %llx\n",
 			(void *)etnaviv_obj->vaddr, (void *)etnaviv_obj->dma_addr,
 			etnaviv_obj->vsize, etnaviv_obj->psize,
 			etnaviv_obj->size
 		);
+#endif
 
 		drm_prime_pages_to_sg(*etnaviv_obj, etnaviv_obj->sgt);
 

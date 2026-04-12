@@ -318,8 +318,10 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, u32 exec_state,
 	if (need_flush || switch_context) {
 		u32 target, extra_dwords;
 
+#if GPU_DEBUG > 2
 		klog("GPU: cmdbuf: need_flush: %s, switch_context: %s\n", need_flush ? "true" : "false",
 			switch_context ? "true" : "false");
+#endif
 
 		/* link command */
 		extra_dwords = 1;

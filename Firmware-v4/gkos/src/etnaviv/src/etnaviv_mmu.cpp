@@ -64,7 +64,7 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 			     sg_table &sgt, int prot)
 {
 	unsigned int da = iova;
-	unsigned int i = 0;
+	[[maybe_unused]] unsigned int i = 0;
 	int ret;
 
 	if (!context)

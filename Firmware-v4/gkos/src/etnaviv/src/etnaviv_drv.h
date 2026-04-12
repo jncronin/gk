@@ -96,8 +96,8 @@ void etnaviv_gem_describe_objects(struct etnaviv_drm_private *priv,
 	struct seq_file *m);
 #endif
 
-#define DBG(fmt, ...) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
-#define VERB(fmt, ...) if (1) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
+#define DBG(fmt, ...) dev_dbg(fmt"\n", ##__VA_ARGS__)
+#define VERB(fmt, ...) if (1) dev_dbg(fmt"\n", ##__VA_ARGS__)
 
 /*
  * Return the storage size of a structure with a variable length array.
