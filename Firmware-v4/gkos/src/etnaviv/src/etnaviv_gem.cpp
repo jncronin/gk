@@ -598,6 +598,7 @@ int etnaviv_gem_new_handle(struct drm_device *dev, struct drm_file *file,
 
 	/* drop reference from allocate - handle holds it now */
 fail:
+	if(ret) klog("etnaviv_gem_new_handle failing: %d\n", ret);
 
 	return ret;
 }
