@@ -17,6 +17,7 @@
 #include "drifile.h"
 #include "etnaviv_drv.h"
 #include "etnaviv_gpu.h"
+#include "gk_conf.h"
 
 #define DEBUG_SYSCALL_FILESYS       0
 
@@ -146,7 +147,7 @@ int Process::open_files_t::get_free_fildes(int start_fd)
     }
     
     // add to end
-    if(f.size() < GK_MAX_OPEN_FILES)
+    if(f.size() < GK_MAX_FILES)
     {
         f.push_back(PFile {});
         return (int)(f.size() - 1);
@@ -388,7 +389,9 @@ int syscall_open(const char *pathname, int flags, int mode, int *_errno)
 
     if(gk_ext4_open(lwf->fname.c_str(), flags, mode, fd, _errno) < 0)
     {
+#ifdef DEBUG_OPEN
         klog("open: failed to open %s\n", act_name.c_str());
+#endif
         cg.relock();
         p->open_files.f[fd] = nullptr;
         return -1;

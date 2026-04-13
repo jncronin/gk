@@ -46,6 +46,7 @@
 #define GK_MIN_SCREEN_REFRESH       24
 #define GK_MAX_IRQS                 512
 #define GK_PROCESS_DATA_MAX         1024
+#define GK_MAX_FILES                65536
 
 #define GK_TLBI_AFTER_TTBR_CHANGE   1
 

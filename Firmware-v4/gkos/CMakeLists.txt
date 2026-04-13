@@ -64,6 +64,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
+        __GAMEKID__=4
         STM32MP257Fxx
         CORE_CM33
         ETH_MODE
