@@ -15,6 +15,7 @@
 #include "etnaviv_mmu.h"
 #include "state.xml.h"
 #include "state_hi.xml.h"
+#include "coalescing_block_allocator.h"
 
 #include <cstring>
 
@@ -221,9 +222,41 @@ struct etnaviv_iommuv2_context : public etnaviv_iommu_context
 		}
 	}
 
+	struct dump_cba_type
+	{
+		uint32_t phys_base;
+		uint32_t phys_len;
+
+		bool CoalesceFrom(dump_cba_type &other, bool other_is_prev)
+		{
+			if(other_is_prev)
+			{
+				if(other.phys_base + other.phys_len == phys_base)
+				{
+					phys_base = other.phys_base;
+					phys_len += other.phys_len;
+					return true;
+				}
+			}
+			else
+			{
+				if(phys_base + phys_len == other.phys_base)
+				{
+					phys_len += other.phys_len;
+					return true;
+				}
+			}
+			return false;
+		}
+	};
+
 	void dump()
 	{
 		klog("GPU: IOMMUv2 MMU DUMP: MTLB: %p phys\n", (void *)mtlb_dma);
+		CoalescingBlockAllocator<dump_cba_type>::BlockAddress cba_space;
+		cba_space.start = 0;
+		cba_space.length = 0x100000000ULL;
+		CoalescingBlockAllocator<dump_cba_type> cba(cba_space);
 		for(auto i = 0u; i < MMUv2_MAX_STLB_ENTRIES; i++)
 		{
 			auto stlb = stlb_cpu[i];
@@ -237,12 +270,24 @@ struct etnaviv_iommuv2_context : public etnaviv_iommu_context
 					{
 						auto paddr = stlb[j] & ~0xfffU;
 
-						klog("  %08x @ %p phys\n",
-							base_addr + j * 4096, (void *)paddr);
-					}
+						dump_cba_type cbat;
+						cbat.phys_base = paddr;
+						cbat.phys_len = 4096;
 
+						CoalescingBlockAllocator<dump_cba_type>::BlockAddress ba;
+						ba.start = base_addr + j * 4096;
+						ba.length = 4096;
+
+						cba.AllocFixed(ba, std::move(cbat));
+					}
 				}
 			}
+		}
+
+		for(auto &b : cba)
+		{
+			klog("  %08x - %08x @ %p phys\n",
+				b.first.start, b.first.end(), b.second.phys_base);
 		}
 	}
 };
