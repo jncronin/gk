@@ -117,12 +117,21 @@ void *drm_sched_worker(void *p)
             {
                 klog("drm_sched_worker: waiting on dependency\n");
 
-                while(!dep->Wait(clock_cur() + kernel_time_from_ms(1000)))
+                if(!dep->Wait(clock_cur() + kernel_time_from_ms(250)))
                 {
-                    klog("drm_sched_worker: still waiting for dependency\n");
+                    klog("drm_sched_worker: dependency did not complete, dropping job %u\n",
+                        j->job_id);
+                    auto finished_sig = j->finished;
+                    j = nullptr;
+                    if(finished_sig)
+                        finished_sig->Signal();
+                    break;
                 }
             }
         }
+
+        if(!j)
+            continue;
 
 #if GPU_DEBUG > 2
         klog("drm_sched_worker: job %u dependencies satisfied.\n", j->job_id);
