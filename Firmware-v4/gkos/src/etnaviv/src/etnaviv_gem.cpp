@@ -259,6 +259,7 @@ etnaviv_gem_mapping_get(
 	if (!mapping) {
 		mapping = std::make_shared<etnaviv_vram_mapping>();
 		if (!mapping) {
+			DRM_ERROR("could not allocate etnaviv_vram_mapping\n");
 			ret = -ENOMEM;
 			goto out;
 		}
@@ -273,6 +274,11 @@ etnaviv_gem_mapping_get(
 				    mapping, va);
 	if (ret >= 0)
 		etnaviv_obj->vram_list.push_back(mapping);
+
+	if(ret != 0)
+	{
+		DRM_ERROR("etnaviv_iommu_map_gem returned %d\n", ret);
+	}
 
 out:
 	etnaviv_obj->lock->unlock();

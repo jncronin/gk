@@ -263,6 +263,7 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 						  submit->mmu_context,
 						  submit->bos[i].va);
 		if (!mapping) {
+			DRM_ERROR("object does not have a mapping\n");
 			return -1;
 		}
 
@@ -275,6 +276,7 @@ static int submit_pin_objects(struct etnaviv_gem_submit *submit)
 		if ((submit->flags & ETNA_SUBMIT_SOFTPIN) &&
 		     submit->bos[i].va != mapping->iova) {
 			etnaviv_gem_mapping_unreference(mapping.get());
+			DRM_ERROR("softpin with incorrect va\n");
 			return -EINVAL;
 		}
 
@@ -316,7 +318,10 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 
 	/* Submits using softpin don't blend with relocs */
 	if ((submit->flags & ETNA_SUBMIT_SOFTPIN) && nr_relocs != 0)
+	{
+		DRM_ERROR("softpin with relocs\n");
 		return -EINVAL;
+	}
 
 	for (i = 0; i < nr_relocs; i++) {
 		const struct drm_etnaviv_gem_submit_reloc *r = relocs + i;
@@ -446,16 +451,22 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	struct etnaviv_gpu *gpu;
 	int out_fence_fd = -1;
 	auto pid = GetCurrentProcessForCore()->id;
-	int ret;
+	int ret = 0;
 	WaitWoundContext ticket;
 
 
 	if (args->pipe >= ETNA_MAX_PIPES)
+	{
+		DRM_ERROR("invalid pipe\n");
 		return -EINVAL;
+	}
 
 	gpu = priv->gpu.get();
 	if (!gpu)
+	{
+		DRM_ERROR("no device\n");
 		return -ENXIO;
+	}
 
 	if (args->stream_size % 4) {
 		DRM_ERROR("non-aligned cmdstream buffer size: %u\n",
@@ -497,6 +508,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	std::unique_ptr<uint8_t[]> stream(new uint8_t[args->stream_size]);
 	if (!bos || !relocs || !pmrs || !stream) {
 		ret = -ENOMEM;
+		DRM_ERROR("no mem\n");
 		goto err_submit_cmds;
 	}
 
@@ -511,6 +523,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		out_fence_fd = p->open_files.get_free_fildes();
 		if (out_fence_fd < 0) {
 			ret = out_fence_fd;
+			DRM_ERROR("no out fence\n");
 			goto err_submit_cmds;
 		}
 		fence_open(&p->open_files.f[out_fence_fd]);
@@ -543,6 +556,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	submit = submit_create(dev, gpu, args->nr_bos, args->nr_pmrs);
 	if (!submit) {
 		ret = -ENOMEM;
+		DRM_ERROR("submit_create failed\n");
 		goto err_submit_ww_acquire;
 	}
 	submit->pid = pid;
@@ -550,7 +564,10 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc.get(), &submit->cmdbuf,
 				  ALIGN(args->stream_size, 8) + 8);
 	if (ret)
+	{
+		DRM_ERROR("cmdbuf_init failed\n");
 		goto err_submit_put;
+	}
 
 	submit->ctx = static_cast<etnaviv_file_private *>(file);
 	submit->mmu_context = submit->ctx->mmu;
@@ -567,11 +584,15 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 
 	ret = submit_lookup_objects(submit.get(), file, bos.get(), args->nr_bos);
 	if (ret)
+	{
+		DRM_ERROR("lookup_objects failed\n");
 		goto err_submit_job;
+	}
 
 	if ((priv->mmu_global->version != ETNAVIV_IOMMU_V2) &&
 	    !etnaviv_cmd_validate_one(gpu, (u32 *)stream.get(), args->stream_size / 4,
 				      relocs.get(), args->nr_relocs)) {
+		DRM_ERROR("etnaviv_cmd_validate_one failed\n");
 		ret = -EINVAL;
 		goto err_submit_job;
 	}
@@ -579,6 +600,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (args->flags & ETNA_SUBMIT_FENCE_FD_IN) {
 		auto in_fence = sync_file_get_fence(args->fence_fd);
 		if (!in_fence) {
+			DRM_ERROR("in fence not found\n");
 			ret = -EINVAL;
 			goto err_submit_job;
 		}
@@ -588,30 +610,48 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 
 	ret = submit_pin_objects(submit.get());
 	if (ret)
+	{
+		DRM_ERROR("pin_objects failed\n");
 		goto err_submit_job;
+	}
 
 	ret = submit_reloc(submit.get(), stream.get(), args->stream_size / 4,
 			   relocs.get(), args->nr_relocs);
 	if (ret)
+	{
+		DRM_ERROR("submit_reloc failed\n");
 		goto err_submit_job;
+	}
 
 	ret = submit_perfmon_validate(submit.get(), args->exec_state, pmrs.get());
 	if (ret)
+	{
+		DRM_ERROR("perfmon_validate failed\n");
 		goto err_submit_job;
+	}
 
 	memcpy(submit->cmdbuf.vaddr, stream.get(), args->stream_size);
 
 	ret = submit_lock_objects(submit.get(), ticket);
 	if (ret)
+	{
+		DRM_ERROR("lock_objects failed\n");
 		goto err_submit_job;
+	}
 
 	ret = submit_fence_sync(submit.get());
 	if (ret)
+	{
+		DRM_ERROR("fence_sync failed\n");
 		goto err_submit_job;
+	}
 
 	ret = etnaviv_sched_push_job(submit);
 	if (ret)
+	{
+		DRM_ERROR("sched_push_job failed\n");
 		goto err_submit_job;
+	}
 
 	submit_attach_object_fences(submit.get());
 

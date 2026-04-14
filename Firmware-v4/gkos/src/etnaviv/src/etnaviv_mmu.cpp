@@ -286,6 +286,7 @@ static int etnaviv_iommu_find_iova(struct etnaviv_iommu_context *context,
 
 		if(!found)
 		{
+			DRM_ERROR("iommu_find_iova failing due to lack of space\n");
 			return -ENOSPC;
 		}
 
@@ -327,12 +328,18 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 	 */
 
 	auto from = context->mm.alloc.LeftBlock(va);
-	auto to = context->mm.alloc.RightBlock(va + size);
+	auto to = context->mm.alloc.RightBlock(va + size - 1);
 
 	std::vector<uintptr_t> del_addrs;
 
 	for(; from != to; from++)
 	{
+		/* First double check we are actually covering the region */
+		if(from->first.end() <= va)
+			continue;
+		if(from->first.start >= (va + size))
+			continue;
+		
 		auto &m = context->mappings[from->first.start];
 		if(!m)
 		{
@@ -341,7 +348,13 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 			continue;
 		}
 		if(m->use)
+		{
+			DRM_ERROR("iommu_insert_exact failing due to in-use memory (iova: %08x/%08x, dma: %p, len: %u/%u) covering requested region (%08x %u)\n",
+				m->iova, (u32)from->first.start, (void *)m->object->dma_addr,
+				m->object->size, (u32)from->first.length,
+				(u32)va, (u32)size);
 			return -ENOSPC;
+		}
 		del_addrs.push_back(m->vram_node.start);
 	}
 
@@ -366,6 +379,7 @@ static int etnaviv_iommu_insert_exact(struct etnaviv_iommu_context *context,
 	}
 	else
 	{
+		DRM_ERROR("iommu_insert_exact failing due to no space after removing expected culprits\n");
 		return -ENOSPC;
 	}
 }
@@ -405,7 +419,11 @@ int etnaviv_iommu_map_gem(std::shared_ptr<etnaviv_iommu_context> context,
 	else
 		ret = etnaviv_iommu_find_iova(context.get(), node, etnaviv_obj->size);
 	if (ret < 0)
+	{
+		DRM_ERROR("iommu_map_gem failing for object: vaddr: %p, paddr: %p, size: %u\n",
+			etnaviv_obj->vaddr, (void *)etnaviv_obj->dma_addr, etnaviv_obj->size);
 		goto unlock;
+	}
 
 	mapping->iova = node->start;
 	ret = etnaviv_iommu_map(context.get(), node->start, etnaviv_obj->size, *sgt,
