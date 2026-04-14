@@ -208,7 +208,11 @@ struct drm_gem_object
 	sg_table sgt;
 	unsigned int mt;	// memory type
 
+	id_t pid;
+
 	drm_device *dev;
+
+	virtual ~drm_gem_object();
 };
 
 typedef u64 drm_vma_offset_node;
@@ -217,6 +221,7 @@ int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> 
 int drm_gem_handle_create(struct drm_file *file,
 	std::shared_ptr<drm_gem_object> obj, u32 *handlep);
 std::shared_ptr<drm_gem_object> drm_gem_object_lookup(struct drm_file *file, u32 handle);
+int drm_gem_object_close(struct drm_file *file, u32 handle);
 int drm_prime_pages_to_sg(const drm_gem_object &obj, sg_table &sgt);
 int drm_gem_create_mmap_offset(std::shared_ptr<drm_gem_object> obj);
 __u64 drm_vma_node_offset_addr(drm_vma_offset_node *node);

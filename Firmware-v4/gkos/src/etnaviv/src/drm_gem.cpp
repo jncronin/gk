@@ -21,9 +21,13 @@ extern std::atomic<int> fb_dma_addr_next;
 int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> drm, size_t size)
 {
     auto fb_idx = fb_dma_addr_next.exchange(-1);
+    auto p = GetCurrentProcessForCore();
+    if(!p)
+    {
+        return -1;
+    }
     if(fb_idx >= 0 && fb_idx < 3)
     {
-        auto p = GetCurrentProcessForCore();
         CriticalGuard cg(p->screen.sl);
         auto layer = p->screen.screen_layer;
         cg.unlock();
@@ -41,6 +45,7 @@ int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> 
     }
     drm->handle = 0;
     drm->dev = dev;
+    drm->pid = p->id;
 
     return drm->vaddr ? 0 : -1;
 }
@@ -64,6 +69,40 @@ std::shared_ptr<drm_gem_object> drm_gem_object_lookup(struct drm_file *file, u32
     if(iter == handles.end())
         return nullptr;
     return iter->second;
+}
+
+drm_gem_object::~drm_gem_object()
+{
+    if(vaddr)
+    {
+        auto p = ProcessList.Get(pid);
+        if(p.v && p.v->user_mem)
+        {
+            MutexGuard mg(p.v->user_mem->m);
+            auto mb = p.v->user_mem->vblocks.IsAllocated((uintptr_t)vaddr);
+            if(mb.b.valid)
+            {
+                p.v->user_mem->vblocks.Dealloc(mb);
+                vmem_unmap(mb.b, p.v->user_mem->ttbr0, ~0ULL, mb.pmem_is_shared == false);
+            }
+        }
+    }
+
+    klog("drm_gem_object: destructor\n");
+}
+
+int drm_gem_object_close(struct drm_file *file, u32 handle)
+{
+    CriticalGuard cg(sl_handles);
+    auto iter = handles.find(handle);
+    if(iter == handles.end())
+    {
+        klog("drm_gem_close: handle %u not found\n", handle);
+        return -1;
+    }
+    auto obj = iter->second;
+    handles.erase(iter);
+    return 0;
 }
 
 int drm_gem_create_mmap_offset(std::shared_ptr<drm_gem_object> obj)

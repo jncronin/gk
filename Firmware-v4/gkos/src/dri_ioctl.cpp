@@ -8,9 +8,11 @@
 static_assert(sizeof(drm_version) == _IOC_SIZE(0xc0406400));
 static_assert(sizeof(drm_mode_create_dumb) == _IOC_SIZE(0xc02064b2));
 static_assert(sizeof(drm_mode_map_dumb) == _IOC_SIZE(0xc01064b3));
+static_assert(sizeof(drm_gem_close) == _IOC_SIZE(0x40086409));
 
 static int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_file *f);
 static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_file *f);
+static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, drm_file *f);
 
 int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 {
@@ -51,6 +53,10 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
             return dri_ioctl_mode_map_dumb(reinterpret_cast<drm_mode_map_dumb *>(ptr),
                 d->drm.get(), df.get());
 
+        case 0x40086409:
+            // DRM_IOCTL_GEM_CLOSE
+            return dri_ioctl_gem_close(reinterpret_cast<drm_gem_close *>(ptr),
+                d->drm.get(), df.get());
     }
 
     auto dri_nr = _IOC_NR(nr);
@@ -136,4 +142,9 @@ static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_fi
         klog("drm_ioctl_mode_map_dumb: handle not found: %u\n", m->handle);
         return 0;
     }
+}
+
+static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, drm_file *f)
+{
+    return drm_gem_object_close(f, m->handle);
 }
