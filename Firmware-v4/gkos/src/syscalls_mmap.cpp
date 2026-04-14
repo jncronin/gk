@@ -92,6 +92,7 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
                     // for the rest of the mmap area, just zero out
                     pmb = MemBlock::ZeroBackedReadWriteMemory((uintptr_t)*retaddr, len, true, is_exec != 0, 0,
                         is_sync ? MT_NORMAL_WT : MT_NORMAL);
+                    pmb.pmem_is_shared = true;
                 }
                 else
                 {
@@ -192,6 +193,30 @@ int syscall_setprot(const void *addr, int is_read, int is_write, int is_exec, in
     {
         klog("setprot: address not mapped %p\n", addr);
         *_errno = ENOMEM;
+        return -1;
+    }
+}
+
+int syscall_memdealloc(size_t len, const void *addr, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    if(!p || !p->user_mem)
+    {
+        *_errno = EFAULT;
+        return -1;
+    }
+    MutexGuard mg(p->user_mem->m);
+
+    auto mb = p->user_mem->vblocks.IsAllocated((uintptr_t)addr);
+    if(mb.b.valid)
+    {
+        p->user_mem->vblocks.Dealloc(mb);
+        vmem_unmap(mb.b, p->user_mem->ttbr0, ~0ULL, mb.pmem_is_shared == false);
+        return 0;
+    }
+    else
+    {
+        *_errno = EINVAL;
         return -1;
     }
 }

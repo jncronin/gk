@@ -134,6 +134,7 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
     // Replicate the mmap code somewhat to get the vaddr
     auto p = GetCurrentProcessForCore();
     auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, len, true, false); // for any extra
+    pmb.pmem_is_shared = true;
 
     VMemBlock vb = InvalidVMemBlock();
     if(*retaddr)

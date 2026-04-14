@@ -108,6 +108,8 @@ class MemBlock
         action_t FillSubsequent = nullptr;
         action_t Sync = nullptr;
 
+        bool pmem_is_shared = false;
+
         static MemBlock ZeroBackedReadOnlyMemory(uintptr_t base,
             uintptr_t length,
             bool user, bool exec, unsigned int guard_type = 0, unsigned int mt = MT_NORMAL);
