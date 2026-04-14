@@ -267,7 +267,25 @@ int Thread::Kill(id_t id, void *retval)
 
 Thread::~Thread()
 {
+    // This should be called on the cleanup thread
     klog("THREAD DESTRUCTOR %u:%s @ %p\n", id, name.c_str(), this);
+
+    {
+        CriticalGuard cg(locked_mutexes.sl);
+        for(auto &m : locked_mutexes.pset)
+        {
+            auto cm = MutexList.Get(m);
+            if(cm) cm->force_release(id);
+        }
+    }
+    {
+        CriticalGuard cg(locked_rwlocks.sl);
+        for(auto &m : locked_rwlocks.pset)
+        {
+            auto cm = MutexList.Get(m);
+            if(cm) cm->force_release(id);
+        }
+    }
 }
 
 ThreadPrivilegeEscalationGuard::ThreadPrivilegeEscalationGuard()

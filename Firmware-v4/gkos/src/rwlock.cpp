@@ -154,6 +154,53 @@ bool RwLock::unlock(int *reason)
     return true;
 }
 
+void RwLock::force_release(id_t t)
+{
+    CriticalGuard cg(sl, ThreadList.sl);
+    auto twrowner = ThreadList._get(wrowner).v;
+    if(twrowner)
+    {
+        if(twrowner->id == t)
+        {
+            for(auto wt : waiting_threads)
+            {
+                auto pwt = ThreadList._get(wt).v;
+                if(pwt)
+                {
+                    pwt->blocking.unblock();
+                    signal_thread_woken(pwt);
+                }
+            }
+            waiting_threads.clear();
+            wrowner = 0;
+        }
+    }
+    if(rdowners.empty())
+    {
+        return;
+    }
+    auto iter = rdowners.find(t);
+    if(iter == rdowners.end())
+    {
+        return;
+    }
+    rdowners.erase(iter);
+
+    if(rdowners.empty())
+    {
+        for(auto wt : waiting_threads)
+        {
+            auto pwt = ThreadList._get(wt).v;
+            if(pwt)
+            {
+                pwt->blocking.unblock();
+                signal_thread_woken(pwt);
+            }
+        }
+        waiting_threads.clear();
+    }
+}
+
 bool RwLock::try_delete(int *reason)
 {
     CriticalGuard cg(sl, ThreadList.sl);

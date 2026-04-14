@@ -94,19 +94,33 @@ template <class T> class IDList
             return _exists(id);
         }
 
-        void _delete(id_t id)
+        T _delete(id_t id)
         {
             auto iter = this->list.find(id);
-            if(iter != this->list.end())
+            if(iter == this->list.end())
             {
+                return T();
+            }
+            else
+            {
+                auto ret = iter->second;
                 this->list.erase(iter);
+                return ret;
             }
         }
 
         void Delete(id_t id)
         {
             CriticalGuard cg(this->sl);
-            _delete(id);
+            auto iter = this->list.find(id);
+            if(iter == this->list.end())
+            {
+                return;
+            }
+            // ensure the destructor is called outside the lock
+            auto val = iter->second;
+            this->list.erase(iter);
+            cg.unlock();
         }
 };
 

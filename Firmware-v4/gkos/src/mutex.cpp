@@ -153,6 +153,11 @@ bool Mutex::unlock(int *reason, bool force)
     return ret;
 }
 
+void Mutex::force_release(id_t)
+{
+    unlock(nullptr, true);
+}
+
 std::pair<bool, std::vector<PThread>> Mutex::_unlock(int *reason, bool force)
 {
     auto towner = ThreadList._get(owner).v;
@@ -163,7 +168,7 @@ std::pair<bool, std::vector<PThread>> Mutex::_unlock(int *reason, bool force)
     }
     auto t = GetCurrentThreadForCore();
     if(((towner.get() != t) && (force == false)) ||
-        ((force == true) && towner->is_privileged))
+        ((force == true) && towner->is_privileged && !GetCurrentThreadForCore()->is_privileged))
     {
         if(reason) *reason = EPERM;
         return std::make_pair(false, std::vector<PThread>());

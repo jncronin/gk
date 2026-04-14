@@ -27,6 +27,7 @@
 #include "retram.h"
 #include "pmic.h"
 #include "osnet.h"
+#include "cleanup.h"
 #include <memory>
 
 // test threads
@@ -147,6 +148,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
 
     init_process_interface();
     init_klogbuffer_thread();
+    init_cleanup();
 
     init_btnled();
     btnled_setcolor(0x808080);

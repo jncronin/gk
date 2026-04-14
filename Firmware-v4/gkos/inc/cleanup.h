@@ -15,6 +15,6 @@ using CleanupQueue_t = FixedQueue<cleanup_message, 8>;
 
 extern CleanupQueue_t CleanupQueue;
 
-void *cleanup_thread(void *);
+void init_cleanup();
 
 #endif

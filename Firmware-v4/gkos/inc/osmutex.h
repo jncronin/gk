@@ -40,6 +40,7 @@ class Mutex
         std::pair<bool, std::vector<PThread>> _unlock(int *reason = nullptr, bool force = false);
         bool unlock(bool do_unlock);
         bool try_delete(int *reason = nullptr);
+        void force_release(id_t thread_id);
 
         /* Does the current thread own the mutex? */
         bool held();
@@ -59,6 +60,7 @@ class RwLock
         bool try_rdlock(int *reason = nullptr, bool block = true, kernel_time tout = kernel_time());
         bool try_delete(int *reason = nullptr);
         bool unlock(int *reason = nullptr);
+        void force_release(id_t thread_id);
 };
 
 class UserspaceSemaphore
