@@ -151,14 +151,14 @@ void *drm_sched_worker(void *p)
 #if GPU_DEBUG > 1
             klog("drm_sched_worker: job %u completed\n", j->job_id);
 #endif
-            auto finish_signal = j->finished;
-            j = nullptr;        // release any locks prior to signalling out fence
-            finish_signal->Signal();
         }
         else
         {
             klog("drm_sched_worker: job %u timed out\n", j->job_id);
         }
+        auto finish_signal = j->finished;
+        j = nullptr;        // release any locks prior to signalling out fence
+        finish_signal->Signal();
     }
 }
 
