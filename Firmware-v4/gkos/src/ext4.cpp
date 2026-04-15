@@ -211,12 +211,6 @@ static int do_mount()
         klog("ext4: journal_start failed %d\n", r);
     }
 #endif
-
-    // ensure we have the appropriate basic directory structure
-    ext4_dir_mk("/bin");
-    ext4_dir_mk("/lib");
-    ext4_dir_mk("/etc");
-    ext4_dir_mk("/opt");
 #endif
 
     unmounted = false;
