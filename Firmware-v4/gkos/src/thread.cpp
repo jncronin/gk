@@ -282,7 +282,7 @@ Thread::~Thread()
         CriticalGuard cg(locked_rwlocks.sl);
         for(auto &m : locked_rwlocks.pset)
         {
-            auto cm = MutexList.Get(m);
+            auto cm = RwLockList.Get(m);
             if(cm) cm->force_release(id);
         }
     }

@@ -5,21 +5,22 @@
 #include <cstring>
 #include "drifile.h"
 
-static_assert(sizeof(drm_version) == _IOC_SIZE(0xc0406400));
-static_assert(sizeof(drm_mode_create_dumb) == _IOC_SIZE(0xc02064b2));
-static_assert(sizeof(drm_mode_map_dumb) == _IOC_SIZE(0xc01064b3));
-static_assert(sizeof(drm_gem_close) == _IOC_SIZE(0x40086409));
+static_assert(sizeof(drm_version) == _IOC_SIZE(DRM_IOCTL_VERSION));
+static_assert(sizeof(drm_mode_create_dumb) == _IOC_SIZE(DRM_IOCTL_MODE_CREATE_DUMB));
+static_assert(sizeof(drm_mode_map_dumb) == _IOC_SIZE(DRM_IOCTL_MODE_MAP_DUMB));
+static_assert(sizeof(drm_gem_close) == _IOC_SIZE(DRM_IOCTL_GEM_CLOSE));
+static_assert(sizeof(drm_get_cap) == _IOC_SIZE(DRM_IOCTL_GET_CAP));
 
 static int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_file *f);
 static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_file *f);
 static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, drm_file *f);
+static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, drm_file *f);
 
 int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 {
     switch(nr)
     {
-        case 0xc0406400:
-            // DRM_IOCTL_VERSION
+        case DRM_IOCTL_VERSION:
             {
                 auto dv = reinterpret_cast<drm_version *>(ptr);
                 dv->version_major = d->drm->major;
@@ -43,19 +44,20 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
             }
             return 0;
             
-        case 0xc02064b2:
-            // DRM_IOCTL_MODE_CREATE_DUMB
+        case DRM_IOCTL_MODE_CREATE_DUMB:
             return dri_ioctl_mode_create_dumb(reinterpret_cast<drm_mode_create_dumb *>(ptr),
                 d->drm.get(), df.get());
 
-        case 0xc01064b3:
-            // DRM_IOCTL_MODE_MAP_DUMB
+        case DRM_IOCTL_MODE_MAP_DUMB:
             return dri_ioctl_mode_map_dumb(reinterpret_cast<drm_mode_map_dumb *>(ptr),
                 d->drm.get(), df.get());
 
-        case 0x40086409:
-            // DRM_IOCTL_GEM_CLOSE
+        case DRM_IOCTL_GEM_CLOSE:
             return dri_ioctl_gem_close(reinterpret_cast<drm_gem_close *>(ptr),
+                d->drm.get(), df.get());
+
+        case DRM_IOCTL_GET_CAP:
+            return dri_ioctl_get_cap(reinterpret_cast<drm_get_cap *>(ptr),
                 d->drm.get(), df.get());
     }
 
@@ -147,4 +149,22 @@ static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_fi
 static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, drm_file *f)
 {
     return drm_gem_object_close(f, m->handle);
+}
+
+static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, drm_file *f)
+{
+    switch(m->capability)
+    {
+        case DRM_CAP_TIMESTAMP_MONOTONIC:
+            m->value = 1;
+            return 0;
+        case DRM_CAP_PRIME:
+            m->value = DRM_PRIME_CAP_IMPORT | DRM_PRIME_CAP_EXPORT;
+            return 0;
+        case DRM_CAP_DUMB_BUFFER:
+            m->value = 1;
+            return 0;
+        default:
+            return -EINVAL;
+    }
 }
