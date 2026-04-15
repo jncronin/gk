@@ -43,6 +43,15 @@ struct scsi_read_capacity_header
     // all res0
 } __attribute__((packed));
 
+struct scsi_read_capacity_16_header
+{
+    uint8_t opcode;
+    uint8_t subcommand;
+    uint8_t lba[8];
+    uint32_t allocation_length;
+    // rest reserved
+} __attribute__((packed));
+
 struct scsi_mode_sense_header
 {
     uint8_t opcode;
@@ -69,6 +78,16 @@ struct scsi_read10_header
     uint32_t lba_be;
     uint8_t group_number;
     uint16_t nblocks_be;
+    uint8_t control;
+} __attribute__((packed));
+
+struct scsi_read16_header
+{
+    uint8_t opcode;
+    uint8_t rdprotect;
+    uint64_t lba_be;
+    uint32_t nblocks_be;
+    uint8_t group_number;
     uint8_t control;
 } __attribute__((packed));
 
@@ -280,6 +299,34 @@ static uint8_t usb_msc_handle_mode_sense(usb_handle *pdev, std::shared_ptr<usb_m
     return usb_core_transmit(pdev, ci->epnum_in, msc_buffer, to_send);
 }
 
+static uint8_t usb_msc_handle_read_capacity_16(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci,
+    scsi_read_capacity_16_header *hdr)
+{
+    if(ci->expected_length != __builtin_bswap32(hdr->allocation_length))
+    {
+        klog("usb_msc: request sense header length mismatch %u vs %u\n", ci->expected_length,
+            __builtin_bswap32(hdr->allocation_length));
+        return USBD_FAIL;
+    }
+
+    // build a response
+    *(uint64_t *)&msc_buffer[0] = __builtin_bswap64(usb_msc_cb_get_num_blocks() - 1);       // last lba address
+    *(uint32_t *)&msc_buffer[8] = __builtin_bswap32(usb_msc_cb_get_block_size());
+    msc_buffer[12] = 1U << 4;
+    msc_buffer[13] = 0;
+    msc_buffer[14] = 0;
+    msc_buffer[15] = 0;
+
+    // send
+    auto to_send = std::min(ci->expected_length, 16U);
+
+    ci->state = usb_msc_status::DATA_SENT_IN;
+    ci->data_sent_in_len = to_send;
+    ci->data_sent_in_last_packet = true;
+    ci->command_succeeded = true;
+    return usb_core_transmit(pdev, ci->epnum_in, msc_buffer, to_send);
+}
+
 static uint8_t usb_msc_handle_read_capacity(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci,
     scsi_read_capacity_header *hdr)
 {
@@ -376,6 +423,51 @@ static uint8_t usb_msc_handle_read10(usb_handle *pdev, std::shared_ptr<usb_msc_s
         ci->data_sent_in_last_packet = true;
 
         klog("usb_msc: read10: out of range: lba: %u, req_n_blocks: %u, dev_n_blocks: %u\n",
+            lba, req_n_blocks, dev_n_blocks);
+    }
+    else
+    {
+        // prep a (potentially multi-sector) read
+        ci->next_lba = lba;
+        ci->next_buf = msc_buffer;
+        ci->buflen = sizeof(msc_buffer);
+        ci->data_sent_in_last_packet = false;
+        ci->data_sent_in_len = 0;
+    }
+
+    return usb_msc_handle_data_sent_in(pdev, ci);
+}
+
+static uint8_t usb_msc_handle_read16(usb_handle *pdev, std::shared_ptr<usb_msc_status> ci,
+    scsi_read16_header *hdr)
+{
+    // check validity
+    auto dev_n_blocks = usb_msc_cb_get_num_blocks();
+    auto lba = __builtin_bswap64(hdr->lba_be);
+    auto req_n_blocks = __builtin_bswap32(hdr->nblocks_be);
+
+    if((req_n_blocks * usb_msc_cb_get_block_size()) != ci->expected_length)
+    {
+        klog("usb_msc: read16, expected_len: %u, lba: %llu, n_blocks: %u\n",
+            ci->expected_length, __builtin_bswap64(hdr->lba_be), __builtin_bswap32(hdr->nblocks_be));
+        return USBD_FAIL;
+    }
+
+#if DEBUG_USB
+    klog("usb_msc: read16, expected_len: %u, lba: %llu, n_blocks: %u\n",
+        ci->expected_length, __builtin_bswap32(hdr->lba_be), __builtin_bswap16(hdr->nblocks_be));
+#endif
+
+    if((lba >= dev_n_blocks) || ((lba + req_n_blocks) > dev_n_blocks))
+    {
+        // out of range
+        ci->sense_key = SENSE_CODE_ILLEGAL_REQUEST;
+        ci->additional_sense_code = ADDITIONAL_SENSE_LBA_OUT_OF_RANGE;
+        ci->command_succeeded = false;
+        ci->data_sent_in_len = 0;
+        ci->data_sent_in_last_packet = true;
+
+        klog("usb_msc: read16: out of range: lba: %u, req_n_blocks: %u, dev_n_blocks: %u\n",
             lba, req_n_blocks, dev_n_blocks);
     }
     else
@@ -495,8 +587,47 @@ static uint8_t usb_msc_handle_header(usb_handle *pdev, std::shared_ptr<usb_msc_s
             return usb_msc_handle_write10(pdev, ci,
                 (scsi_read10_header *)&msc_buffer[15]);
 
+        case 0x88:
+            // READ (16)
+            if(scsi_header_length != 16 || !is_in)
+            {
+                klog("usb_msc: read (16) invalid params: header_len: %u, is_in: %s\n",
+                    scsi_header_length, is_in ? "TRUE" : "FALSE");
+                return USBD_FAIL;
+            }
+
+            return usb_msc_handle_read16(pdev, ci,
+                (scsi_read16_header *)&msc_buffer[15]);
+
+        case 0x9e:
+            // Commmand 9e depends on the subcommand field in the first 5 bits of the second byte
+            {
+                auto subcommand = msc_buffer[16] & 0x1fu;
+                switch(subcommand)
+                {
+                    case 0x10:
+                        // READ CAPACITY_16
+                        if(scsi_header_length != 16 || !is_in)
+                        {
+                            klog("usb_msc: read capacity 16 invalid params: header_len: %u, is_in: %s\n",
+                                scsi_header_length, is_in ? "TRUE" : "FALSE");
+                            return USBD_FAIL;
+                        }
+                        return usb_msc_handle_read_capacity_16(pdev, ci,
+                            (scsi_read_capacity_16_header *)&msc_buffer[15]);
+                }
+                klog("usb_msc: unsupported scsi command 9e/%02x\n", subcommand);
+            }
+            // send a fail csw
+            ci->data_sent_in_len = 0;
+            ci->data_sent_in_last_packet = true;
+            ci->command_succeeded = false;
+            ci->sense_key = 5;
+            ci->additional_sense_code = 0;
+            return usb_msc_handle_data_sent_in(pdev, ci);
+
         default:
-            klog("usb_msc: unsupported scsi command %u\n", msc_buffer[15]);
+            klog("usb_msc: unsupported scsi command %x\n", msc_buffer[15]);
             // send a fail csw
             ci->data_sent_in_len = 0;
             ci->data_sent_in_last_packet = true;

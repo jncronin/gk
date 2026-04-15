@@ -5,17 +5,10 @@
 
 extern bool usb_israwsd;
 
-uint32_t usb_msc_cb_get_num_blocks()
+uint64_t usb_msc_cb_get_num_blocks()
 {
-    if(!sd_get_ready())
-    {
-        return 0;
-    }
-    else
-    {
-        auto size = usb_israwsd ? (unsigned int)(sd_get_size() / (uint64_t)usb_msc_cb_get_block_size) : fake_mbr_get_sector_count();
-        return static_cast<uint32_t>(size);
-    }
+    auto size = usb_israwsd ? (uint64_t)(sd_get_size() / (uint64_t)usb_msc_cb_get_block_size()) : fake_mbr_get_sector_count();
+    return static_cast<uint64_t>(size);
 }
 
 uint32_t usb_msc_cb_get_block_size()

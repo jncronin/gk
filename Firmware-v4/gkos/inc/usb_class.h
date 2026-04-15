@@ -20,7 +20,7 @@ uint8_t usb_msc_data_in(usb_handle *pdev, uint8_t epnum);
 
 
 // user-provided callbacks
-uint32_t usb_msc_cb_get_num_blocks();
+uint64_t usb_msc_cb_get_num_blocks();
 uint32_t usb_msc_cb_get_block_size();
 bool usb_msc_cb_get_is_ready();
 int usb_msc_cb_read_data(uint32_t lba, size_t nbytes, void *buf, size_t *nread);
@@ -38,7 +38,7 @@ class usb_msc_status : public usb_class_status
         bool data_sent_in_last_packet;
         bool command_succeeded;
         uint8_t sense_key, additional_sense_code;
-        uint32_t next_lba;
+        uint64_t next_lba;
         void *next_buf;
         size_t buflen;
 
