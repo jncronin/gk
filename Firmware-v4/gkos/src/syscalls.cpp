@@ -17,6 +17,7 @@
 #include "btnled.h"
 #include "util.h"
 #include "screen.h"
+#include "persistent.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -1067,6 +1068,17 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             {
                 *reinterpret_cast<int *>(r1) = syscall_opengl_getrenderbuffer(
                     reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_rawsdenable:
+            {
+                auto en = (int)(intptr_t)r2;
+                if(en)
+                    persistent_reboot_flags_set(GK_REBOOTFLAG_RAWSD);
+                else
+                    persistent_reboot_flags_clear(GK_REBOOTFLAG_RAWSD);
+                *reinterpret_cast<int *>(r1) = 0;
             }
             break;
             

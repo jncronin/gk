@@ -10,6 +10,7 @@
 #include "wifi_airoc_if.h"
 #include <fcntl.h>
 #include "osnet_onconnect_userprocess.h"
+#include "persistent.h"
 #include "etnaviv.h"
 
 PProcess p_gksupervisor;
@@ -18,10 +19,23 @@ std::unique_ptr<WifiAirocNetInterface> airoc_if;
 
 void *init_thread(void *)
 {
+    // Clear out reboot flags (already cached in reboot_flags variable)
+    if(persistent[PERSISTENT_ID_REBOOT_FLAGS])
+    {
+        PersistentMemoryWriteGuard pmg;
+        persistent[PERSISTENT_ID_REBOOT_FLAGS] = 0;
+    }
+
     // Provision FS prior to usb start
-    fs_provision();
+    extern unsigned int reboot_flags;
+    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
+        fs_provision();
     
     usb_process_start();
+
+    if(reboot_flags & GK_REBOOTFLAG_RAWSD)
+        return nullptr;
+    
 #if GK_ENABLE_NETWORK && GK_ENABLE_WIFI
     airoc_if = std::make_unique<WifiAirocNetInterface>();
     airoc_if->DynamicIP = true;

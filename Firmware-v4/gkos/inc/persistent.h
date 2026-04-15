@@ -32,4 +32,7 @@ class PersistentMemoryWriteGuard
         PersistentMemoryWriteGuard(PersistentMemoryWriteGuard &&) = delete;
 };
 
+void persistent_reboot_flags_set(unsigned int flag);
+void persistent_reboot_flags_clear(unsigned int flag);
+
 #endif

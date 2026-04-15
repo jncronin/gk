@@ -28,6 +28,7 @@
 #include "pmic.h"
 #include "osnet.h"
 #include "cleanup.h"
+#include "persistent.h"
 #include <memory>
 
 // test threads
@@ -61,7 +62,8 @@ extern "C" int mp_kpremain(const gkos_boot_interface *_gbi, uint64_t magic)
     uint64_t magic_str[2] = { magic, 0 };
 
     klog("gkos: magic: %s, ddr: %llx - %llx\n", (const char *)(&magic_str[0]), _gbi->ddr_start, _gbi->ddr_end);
-    
+    reboot_flags = persistent[PERSISTENT_ID_REBOOT_FLAGS];
+    klog("gkos: reboot_flags: %08x\n", reboot_flags);
     klogbuffer_purge_uart();
 
     init_pmem(_gbi->ddr_start, _gbi->ddr_end);

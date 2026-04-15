@@ -229,6 +229,9 @@ static int do_mount()
 
 static int check_mounted()
 {
+    extern bool usb_israwsd;
+    if(usb_israwsd)
+        return -1;
     if(unmounted)
         prepare_ext4();
     if(unmounted)
@@ -637,6 +640,11 @@ int gk_ext4_unmount(int *_errno)
 
 int sd_open(ext4_blockdev *bdev)
 {
+    extern bool usb_israwsd;
+    if(usb_israwsd)
+    {
+        return ENXIO;
+    }
     bdev->part_size = sd_get_size();
     bdev->bdif->ph_bcnt = bdev->part_size / bdev->bdif->ph_bsize;
 

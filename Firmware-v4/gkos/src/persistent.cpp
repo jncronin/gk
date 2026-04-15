@@ -18,3 +18,21 @@ PersistentMemoryWriteGuard::~PersistentMemoryWriteGuard()
     PWR_VMEM->BDCR1 &= ~PWR_BDCR1_DBD3P;
     m_pmg.unlock();
 }
+
+void persistent_reboot_flags_set(unsigned int flag)
+{
+    if(persistent[PERSISTENT_ID_REBOOT_FLAGS] & flag)
+        return;
+    PersistentMemoryWriteGuard pmg;
+    persistent[PERSISTENT_ID_REBOOT_FLAGS] =
+        persistent[PERSISTENT_ID_REBOOT_FLAGS] | flag;
+}
+
+void persistent_reboot_flags_clear(unsigned int flag)
+{
+    if(!(persistent[PERSISTENT_ID_REBOOT_FLAGS] & flag))
+        return;
+    PersistentMemoryWriteGuard pmg;
+    persistent[PERSISTENT_ID_REBOOT_FLAGS] =
+        persistent[PERSISTENT_ID_REBOOT_FLAGS] & ~flag;
+}
