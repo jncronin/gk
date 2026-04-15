@@ -741,7 +741,7 @@ uint8_t usb_msc_handle_data_sent_in(usb_handle *pdev, std::shared_ptr<usb_msc_st
         // read the sector(s)
         auto bytes_left = ci->expected_length - ci->data_sent_in_len;
         auto sector_size = usb_msc_cb_get_block_size();
-        auto sectors_left = ((bytes_left + (sector_size - 1)) & ~(sector_size - 1)) / sector_size;
+        auto sectors_left = (bytes_left + (sector_size - 1)) / sector_size;
 
         auto bytes_to_read = std::min(ci->buflen, (size_t)sectors_left * sector_size);
         size_t bytes_read = 0;
