@@ -575,7 +575,8 @@ static void *pmic_thread(void *)
                 ev.type = ponkeyn_val ? Event::event_type_t::KeyUp :
                     Event::event_type_t::KeyDown;
                 ev.key = GK_SCANCODE_POWER;
-                p_gksupervisor->events.Push(ev);
+                if(p_gksupervisor)
+                    p_gksupervisor->events.Push(ev);
 
                 if(ponkeyn_val)
                 {
