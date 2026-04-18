@@ -1,12 +1,16 @@
+#include <map>
+#include <list>
+#ifndef GK_UNIT_TEST
 #include "sd.h"
 #include "vblock.h"
 #include "osmutex.h"
-#include <map>
-#include <list>
 #include "pmem.h"
 #include "vmem.h"
 #include "cache.h"
 #include "process.h"
+#else
+#include "unittest.h"
+#endif
 
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries = 10);
@@ -83,10 +87,12 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
             klog("sdc: invalid pblock\n");
             return addr_ret{};
         }
+#ifndef GK_UNIT_TEST
         {
             CriticalGuard cg(p_kernel->owned_pages.sl);
             p_kernel->owned_pages.add(paddr_be);
         }
+#endif
         vmem_map(vaddr, paddr_be.base, false, true, false);
 
         addr_ret ret;
