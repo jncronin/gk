@@ -130,17 +130,17 @@ int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
 	submit->out_fence = submit->sched_job->finished;
 	submit->out_fence_id = gpu->user_fences->Register(submit->out_fence, gpu->user_fences);
 
-	gpu->sched->push_job(std::move(submit->sched_job));
+	submit->ctx->sched->push_job(std::move(submit->sched_job));
 
 	gpu->sched_lock->unlock();
 
 	return 0;
 }
 
-int etnaviv_sched_init(struct etnaviv_gpu *gpu)
+int etnaviv_sched_init(DRMScheduler *dsched)
 {
-	gpu->sched->ops = &etnaviv_sched_ops;
-	gpu->sched->timeout = kernel_time_from_ms(500);
+	dsched->ops = &etnaviv_sched_ops;
+	dsched->timeout = kernel_time_from_ms(500);
 
 	return 0;
 }

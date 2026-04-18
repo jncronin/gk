@@ -1819,11 +1819,6 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	dev.drm->dev_private->gpu = std::move(gpu);
 	dev.drm->dev_private->num_gpus = 1;
 
-	/* component_bind_all -> gpu_bind() */
-	auto ret = etnaviv_sched_init(dev.drm->dev_private->gpu.get());
-	if(ret)
-		return ret;
-
 	/* Clock */
 	etnaviv_gpu_clk_enable(*dev.drm->dev_private->gpu);
 

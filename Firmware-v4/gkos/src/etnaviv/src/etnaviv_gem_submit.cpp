@@ -442,13 +442,14 @@ etnaviv_gem_submit::~etnaviv_gem_submit()
 }
 
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	//struct etnaviv_file_private *ctx = file->driver_priv;
 	[[maybe_unused]] struct etnaviv_drm_private *priv = dev->dev_private.get();
 	struct drm_etnaviv_gem_submit *args = reinterpret_cast<drm_etnaviv_gem_submit *>(data);
 	std::shared_ptr<etnaviv_gem_submit> submit;
 	struct etnaviv_gpu *gpu;
+	std::shared_ptr<drm_file> fil = file;
 	int out_fence_fd = -1;
 	auto pid = GetCurrentProcessForCore()->id;
 	int ret = 0;
@@ -569,7 +570,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		goto err_submit_put;
 	}
 
-	submit->ctx = static_cast<etnaviv_file_private *>(file);
+	submit->ctx = std::static_pointer_cast<etnaviv_file_private>(fil);
 	submit->mmu_context = submit->ctx->mmu;
 	submit->exec_state = args->exec_state;
 	submit->flags = args->flags;
@@ -582,7 +583,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (ret)
 		goto err_submit_put; */
 
-	ret = submit_lookup_objects(submit.get(), file, bos.get(), args->nr_bos);
+	ret = submit_lookup_objects(submit.get(), file.get(), bos.get(), args->nr_bos);
 	if (ret)
 	{
 		DRM_ERROR("lookup_objects failed\n");

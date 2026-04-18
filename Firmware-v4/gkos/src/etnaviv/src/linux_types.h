@@ -183,8 +183,12 @@ struct drm_device
 
 	int flipbuffer(std::shared_ptr<drm_gem_object> &fb);
 };
+
+class DRMScheduler;
+
 struct drm_file
 {
+	std::shared_ptr<DRMScheduler> sched;
 };
 
 /* resv handles locking as well as maintaining a list of fences */
@@ -340,7 +344,7 @@ extern std::atomic<uint32_t> next_fence_id;
 #define DRM_RENDER_ALLOW    32u
 
 typedef int drm_ioctl_t(struct drm_device *dev, void *data,
-			struct drm_file *file_priv);
+			std::shared_ptr<drm_file> &file_priv);
 
 struct drm_ioctl_desc {
 	unsigned int cmd;

@@ -11,7 +11,7 @@
 static Spinlock sl_dri;
 static std::vector<std::shared_ptr<device>> drm_devs;
 
-int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file);
+int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file);
 
 std::atomic<int> fb_dma_addr_next = -1;
 

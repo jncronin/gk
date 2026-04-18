@@ -26,6 +26,7 @@
 #include "etnaviv_mmu.h"
 #include "etnaviv_perfmon.h"
 #include "etnaviv_drm.h"
+#include "etnaviv_sched.h"
 
 std::atomic<uint32_t> next_context_id = 0;
 std::atomic<uint32_t> next_fence_id = 0;
@@ -39,11 +40,11 @@ static void load_gpu(struct drm_device &dev)
 
 }
 
-int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file)
+int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file)
 {
 	auto &priv = dev->dev_private;
 
-	auto ctx = std::make_unique<etnaviv_file_private>();
+	auto ctx = std::make_shared<etnaviv_file_private>();
 	if (!ctx)
 		return -ENOMEM;
 
@@ -55,9 +56,9 @@ int etnaviv_open(struct drm_device *dev, std::unique_ptr<drm_file> *file)
 		return -ENOMEM;
 	}
 
-	auto &gpu = priv->gpu;
-	if(gpu)
-		gpu->sched->init(DRM_SCHED_PRIORITY_NORMAL, 0, gpu->sched);
+	ctx->sched = std::make_shared<DRMScheduler>();
+	etnaviv_sched_init(ctx->sched.get());
+	ctx->sched->init(DRM_SCHED_PRIORITY_NORMAL, 0, ctx->sched);
 
 	*file = std::move(ctx);
 
@@ -228,7 +229,7 @@ static void etnaviv_debugfs_init(struct drm_minor *minor)
  */
 
 static int etnaviv_ioctl_get_param(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	auto &priv = dev->dev_private;
 	struct drm_etnaviv_param *args = reinterpret_cast<drm_etnaviv_param *>(data);
@@ -244,7 +245,7 @@ static int etnaviv_ioctl_get_param(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_gem_new(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_gem_new *args = reinterpret_cast<drm_etnaviv_gem_new *>(data);
 
@@ -252,12 +253,12 @@ static int etnaviv_ioctl_gem_new(struct drm_device *dev, void *data,
 			    ETNA_BO_FORCE_MMU))
 		return -EINVAL;
 
-	return etnaviv_gem_new_handle(dev, file, args->size,
+	return etnaviv_gem_new_handle(dev, file.get(), args->size,
 			args->flags, &args->handle);
 }
 
 static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_gem_cpu_prep *args = reinterpret_cast<drm_etnaviv_gem_cpu_prep *>(data);
 	int ret;
@@ -265,7 +266,7 @@ static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
 	if (args->op & ~(ETNA_PREP_READ | ETNA_PREP_WRITE | ETNA_PREP_NOSYNC))
 		return -EINVAL;
 
-	auto obj = drm_gem_object_lookup(file, args->handle);
+	auto obj = drm_gem_object_lookup(file.get(), args->handle);
 	if (!obj)
 		return -ENOENT;
 
@@ -278,7 +279,7 @@ static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_gem_cpu_fini(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_gem_cpu_fini *args = reinterpret_cast<drm_etnaviv_gem_cpu_fini *>(data);
 	int ret;
@@ -286,7 +287,7 @@ static int etnaviv_ioctl_gem_cpu_fini(struct drm_device *dev, void *data,
 	if (args->flags)
 		return -EINVAL;
 
-	auto obj = drm_gem_object_lookup(file, args->handle);
+	auto obj = drm_gem_object_lookup(file.get(), args->handle);
 	if (!obj)
 		return -ENOENT;
 
@@ -296,7 +297,7 @@ static int etnaviv_ioctl_gem_cpu_fini(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_gem_info *args = reinterpret_cast<drm_etnaviv_gem_info *>(data);
 	int ret;
@@ -304,7 +305,7 @@ static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
 	if (args->pad)
 		return -EINVAL;
 
-	auto obj = drm_gem_object_lookup(file, args->handle);
+	auto obj = drm_gem_object_lookup(file.get(), args->handle);
 	if (!obj)
 		return -ENOENT;
 
@@ -315,7 +316,7 @@ static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_wait_fence(struct drm_device *dev, void *data,
-		struct drm_file *file)
+		std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_wait_fence *args = reinterpret_cast<drm_etnaviv_wait_fence *>(data);
 	auto &priv = dev->dev_private;
@@ -339,7 +340,7 @@ static int etnaviv_ioctl_wait_fence(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_gem_userptr(struct drm_device *dev, void *data,
-	struct drm_file *file)
+	std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_gem_userptr *args = reinterpret_cast<drm_etnaviv_gem_userptr *>(data);
 
@@ -367,7 +368,7 @@ static int etnaviv_ioctl_gem_userptr(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_gem_wait(struct drm_device *dev, void *data,
-	struct drm_file *file)
+	std::shared_ptr<drm_file> &file)
 {
 	auto &priv = dev->dev_private;
 	struct drm_etnaviv_gem_wait *args = reinterpret_cast<drm_etnaviv_gem_wait *>(data);
@@ -404,7 +405,7 @@ static int etnaviv_ioctl_gem_wait(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_pm_query_dom(struct drm_device *dev, void *data,
-	struct drm_file *file)
+	std::shared_ptr<drm_file> &file)
 {
 	auto &priv = dev->dev_private;
 	struct drm_etnaviv_pm_domain *args = reinterpret_cast<drm_etnaviv_pm_domain *>(data);
@@ -420,7 +421,7 @@ static int etnaviv_ioctl_pm_query_dom(struct drm_device *dev, void *data,
 }
 
 static int etnaviv_ioctl_pm_query_sig(struct drm_device *dev, void *data,
-	struct drm_file *file)
+	std::shared_ptr<drm_file> &file)
 {
 	auto &priv = dev->dev_private;
 	struct drm_etnaviv_pm_signal *args = reinterpret_cast<drm_etnaviv_pm_signal *>(data);

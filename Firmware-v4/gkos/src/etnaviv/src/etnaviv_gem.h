@@ -99,7 +99,7 @@ struct etnaviv_gem_submit_bo {
  */
 struct etnaviv_gem_submit {
 	std::unique_ptr<etnaviv_sched_job> sched_job;
-	struct etnaviv_file_private *ctx;
+	std::shared_ptr<etnaviv_file_private> ctx;
 	struct etnaviv_gpu *gpu;
 	std::shared_ptr<etnaviv_iommu_context> mmu_context, prev_mmu_context;
 	std::shared_ptr<dma_fence> out_fence;

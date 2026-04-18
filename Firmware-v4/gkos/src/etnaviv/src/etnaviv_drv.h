@@ -60,7 +60,7 @@ struct etnaviv_drm_private {
 };
 
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
-		struct drm_file *file);
+		std::shared_ptr<drm_file> &file);
 
 int etnaviv_gem_mmap_offset(std::shared_ptr<etnaviv_gem_object> obj, u64 *offset);
 sg_table etnaviv_gem_prime_get_sg_table(struct drm_gem_object *obj);
