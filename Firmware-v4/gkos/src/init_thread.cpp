@@ -53,7 +53,10 @@ void *init_thread(void *)
     //auto proc_fd = syscall_open("/glgears-0.1.1-gkv4/bin/glgears", O_RDONLY, 0, &errno);
     if(proc_fd < 0)
     {
-        klog("init: failed to open test process\n");
+        klog("init: failed to open supervisor process, enabling rawsd for next reboot\n");
+
+        persistent_reboot_flags_set(GK_REBOOTFLAG_RAWSD);
+        return nullptr;
     }
 
     klog("init: opened gksupervisor process fd %d\n", proc_fd);
