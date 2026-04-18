@@ -11,7 +11,7 @@
 
 #define USART6_VMEM ((USART_TypeDef *)PMEM_TO_VMEM(USART6_BASE))
 
-void supervisor_shutdown_system()
+static void supervisor_graceful_close()
 {
     /* First, switch off the screen and sound */
     screen_set_brightness(0, false);
@@ -32,6 +32,12 @@ void supervisor_shutdown_system()
     sd_unmount();
     klog("shutdown: sd disabled\n");
     while(!(USART6_VMEM->ISR & USART_ISR_TXFE));
+}
+
+void supervisor_shutdown_system()
+{
+    klog("shutdown: begin shutdown\n");
+    supervisor_graceful_close();
 
     /* Pull the power plug */
     pmic_switchoff();
@@ -40,6 +46,15 @@ void supervisor_shutdown_system()
     /* Shouldn't get this far */
     klog("shutdown: power did not switch off.  Resetting...\n");
     while(!(USART6_VMEM->ISR & USART_ISR_TXFE));
+    pmic_reset();
+    while(true);
+}
+
+void supervisor_reboot_system()
+{
+    klog("shutdown: begin reset\n");
+    supervisor_graceful_close();
+
     pmic_reset();
     while(true);
 }

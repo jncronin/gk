@@ -21,10 +21,15 @@
 static void *supervisor_update_userspace_thread(void *);
 static void *supervisor_pwrbtn_thread(void *);
 
+extern unsigned int reboot_flags;
+
 bool init_supervisor()
 {
-    sched.Schedule(Thread::Create("update_userspace", supervisor_update_userspace_thread, nullptr, true,
-        GK_PRIORITY_HIGH, p_kernel));
+    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
+    {
+        sched.Schedule(Thread::Create("update_userspace", supervisor_update_userspace_thread, nullptr, true,
+            GK_PRIORITY_HIGH, p_kernel));
+    }
     sched.Schedule(Thread::Create("pwrbtn", supervisor_pwrbtn_thread, nullptr, true,
         GK_PRIORITY_VERYHIGH, p_kernel));
     return true;
@@ -38,7 +43,10 @@ void *supervisor_pwrbtn_thread(void *)
     {
         if(sem_pwrbtn.Wait())
         {
-            supervisor_shutdown_system();
+            if(reboot_flags & GK_REBOOTFLAG_RAWSD)
+                supervisor_reboot_system();
+            else
+                supervisor_shutdown_system();
         }
     }
 }

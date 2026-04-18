@@ -17,21 +17,25 @@ PProcess p_gksupervisor;
 id_t pid_gksupervisor;
 std::unique_ptr<WifiAirocNetInterface> airoc_if;
 
+extern unsigned int reboot_flags;
+
 void *init_thread(void *)
 {
     // Clear out reboot flags (already cached in reboot_flags variable)
-    if(persistent[PERSISTENT_ID_REBOOT_FLAGS])
+    if(reboot_flags)
     {
         PersistentMemoryWriteGuard pmg;
         persistent[PERSISTENT_ID_REBOOT_FLAGS] = 0;
     }
 
     // Provision FS prior to usb start
-    extern unsigned int reboot_flags;
     if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
         fs_provision();
     
     usb_process_start();
+
+    // start supervisor
+    init_supervisor();
 
     if(reboot_flags & GK_REBOOTFLAG_RAWSD)
         return nullptr;
@@ -43,9 +47,6 @@ void *init_thread(void *)
     //airoc_if->OnIPAssign.push_back(std::make_unique<TelnetOnConnectScript>());
     net_register_interface(airoc_if.get());
 #endif
-
-    // start supervisor
-    init_supervisor();
 
     // start gksupervisor
     auto proc_fd = syscall_open("/gksupervisor-0.1.1-gk/bin/gksupervisor", O_RDONLY, 0, &errno);

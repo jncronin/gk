@@ -16,6 +16,9 @@ void supervisor_set_active(bool active, const gk_supervisor_visible_region *regs
 /* Gracefully shuts down the system */
 void supervisor_shutdown_system();
 
+/* Gracefully reboots the system */
+void supervisor_reboot_system();
+
 /* Update the userspace info about the system, and ping gk_menu */
 int supervisor_update_userpace();
 
