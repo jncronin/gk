@@ -213,6 +213,11 @@ static int do_mount()
 #endif
 #endif
 
+    // ensure we have appropriate directories
+    ext4_dir_mk("/etc");
+    ext4_dir_mk("/home");
+    ext4_dir_mk("/home/user");
+
     unmounted = false;
 
     {
