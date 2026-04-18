@@ -113,8 +113,11 @@ int klog(const char *format, ...)
     va_end(args);
     sl_log.unlock();
 
+#if GK_KLOG_IMMEDIATE
     klogbuffer_purge_uart();
-    //klog_updated.Signal();
+#else
+    klog_updated.Signal();
+#endif
 
     return ret;
 }
