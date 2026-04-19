@@ -574,8 +574,8 @@ int fs_provision()
                         
                         klog("fs_provision: failed to provision %s\n", fi.fname);
                     }
-                    had_failure = true;
-                    break;
+                    //had_failure = true;
+                    //break;
                 }
             }
         }
