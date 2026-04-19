@@ -12,6 +12,7 @@
 #include "osnet_onconnect_userprocess.h"
 #include "persistent.h"
 #include "etnaviv.h"
+#include "screen.h"
 
 PProcess p_gksupervisor;
 id_t pid_gksupervisor;
@@ -26,6 +27,21 @@ void *init_thread(void *)
     {
         PersistentMemoryWriteGuard pmg;
         persistent[PERSISTENT_ID_REBOOT_FLAGS] = 0;
+    }
+
+    // Read partition table of SD card, if not present then enter rawsd mode
+
+
+
+    if(reboot_flags & GK_REBOOTFLAG_RAWSD)
+    {
+        // Highlight to the world that we are in raw sd mode
+        klog("Entering Raw SD mode\n");
+        screen_set_background_colour(0xff0000);
+    }
+    else
+    {
+        screen_set_background_colour(0);
     }
 
     // Provision FS prior to usb start

@@ -819,3 +819,10 @@ double screen_get_fps(unsigned int layer)
         return 0.0;
     return fpsc[layer].GetFPS();
 }
+
+int screen_set_background_colour(uint32_t c)
+{
+    LTDC_VMEM->BCCR = c;
+    LTDC_VMEM->SRCR = LTDC_SRCR_VBR;
+    return 0;
+}

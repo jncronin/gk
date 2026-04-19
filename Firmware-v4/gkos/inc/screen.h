@@ -24,6 +24,8 @@ int screen_set_brightness(int brightness, bool persist = true);
 double screen_get_fps(unsigned int layer = 0);
 void *screen_get_overlay_frame_buffer();
 
+int screen_set_background_colour(uint32_t col);
+
 constexpr size_t scr_layer_size_bytes = align_power_2(GK_MAX_SCREEN_WIDTH * GK_MAX_SCREEN_HEIGHT * 4);
 constexpr unsigned int scr_n_layers = 2;
 constexpr unsigned int scr_n_bufs = 3;
