@@ -221,6 +221,12 @@ static ssize_t direct_lseek(void *f, size_t offset)
 static size_t gz_fread(void *ptr, size_t size, void *f)
 {
     auto ret = gzread((gzFile)f, ptr, size);
+    if(ret < 0)
+    {
+        int errnum;
+        auto err = gzerror((gzFile)f, &errnum);
+        klog("gzread error %d: %s\n", errnum, err);
+    }
     return ret;
 }
 
