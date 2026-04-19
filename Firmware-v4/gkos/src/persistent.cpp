@@ -11,11 +11,13 @@ PersistentMemoryWriteGuard::PersistentMemoryWriteGuard()
 {
     m_pmg.lock();
     PWR_VMEM->BDCR1 |= PWR_BDCR1_DBD3P;
+    __asm__ volatile("dsb sy\n" ::: "memory");
 }
 
 PersistentMemoryWriteGuard::~PersistentMemoryWriteGuard()
 {
     PWR_VMEM->BDCR1 &= ~PWR_BDCR1_DBD3P;
+    __asm__ volatile("dsb sy\n" ::: "memory");
     m_pmg.unlock();
 }
 
