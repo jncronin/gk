@@ -27,6 +27,11 @@ static const constexpr uint64_t b_per_bb = VBLOCK_64k / block_size;
 
 PMutex m_cache;
 
+#if GK_SD_VERIFY_WRITES
+PMemBlock pmb_verify;
+VMemBlock vmb_verify;
+#endif
+
 using sdc_idx = uint64_t;
 using lru_list = std::list<sdc_idx>;
 using lru_iter = lru_list::iterator;
@@ -46,6 +51,11 @@ int sd_cache_init()
 {
     vb_cache = vblock_alloc(VBLOCK_512M, false, true, false);
     m_cache = MutexList.Create();
+#if GK_SD_VERIFY_WRITES
+    pmb_verify = Pmem.acquire(VBLOCK_64k);
+    vmb_verify = vblock_alloc(VBLOCK_64k, false, true, false);
+    vmem_map(vmb_verify, pmb_verify);
+#endif
     return vb_cache.valid ? 0 : -1;
 }
 
@@ -276,6 +286,23 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 #endif
         if(wret != 0)
             return wret;
+
+#if GK_SD_VERIFY_WRITES
+        auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)pmb_verify.base, true);
+        if(rret != 0)
+        {
+            klog("sdc: verify write: read failed at block %u (%d)\n", cur_bb * b_per_bb, rret);
+            while(true);
+        }
+        else
+        {
+            InvalidateA35Cache(vmb_verify.base, VBLOCK_64k, CacheType_t::Data, true);
+            if(memcmp((void *)vmb_verify.base, (void *)has_bb.vaddr, VBLOCK_64k))
+            {
+                klog("sdc: verify failed for block %u\n", cur_bb * b_per_bb);
+            }
+        }
+#endif
 
         block_start += blocks_within_bb;
         block_count -= blocks_within_bb;
