@@ -20,6 +20,8 @@
 
 #include "sdif.h"
 
+#include "block_dev.h"
+
 #include <sys/stat.h>
 #include <_sys_dirent.h>
 
@@ -51,7 +53,7 @@ static int sd_close(struct ext4_blockdev *bdev);
 EXT4_BLOCKDEV_STATIC_INSTANCE(sd, 512, 0, sd_open, sd_bread, sd_bwrite, sd_close, nullptr, nullptr);
 #undef static
 
-static ext4_blockdev sd_part;
+extern std::shared_ptr<BlockDevice> ext_dev;
 
 static Mutex m_ext4;
 
@@ -122,53 +124,18 @@ extern "C" void ext4_user_buf_free(void *ptr, size_t n)
 #endif
 }
 
-static int get_mbr_entry()
-{
-	struct ext4_mbr_bdevs bdevs;
-    int r = ext4_mbr_scan(&sd, &bdevs);
-    if (r != EOK) {
-        klog("ext4_mbr_scan error\n");
-        return -2;
-    }
-    r = -1;
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            klog("mbr_entry %d:\n", i);
-            if (!bdevs.partitions[i].bdif)
-            {
-                klog("\tempty/unknown\n");
-                continue;
-            }
-            else if(r == -1)
-            {
-                r = i;
-                sd_part = bdevs.partitions[i];
-            }
-
-            klog("\toffset:  0x%" PRIx32 ", %" PRIu32 "MB\n",
-                (uint32_t)bdevs.partitions[i].part_offset,
-                (uint32_t)(bdevs.partitions[i].part_offset / (1024 * 1024)));
-            klog("\tsize:    0x%" PRIx32 ", %" PRIu32 "MB\n",
-                (uint32_t)bdevs.partitions[i].part_size,
-                (uint32_t)(bdevs.partitions[i].part_size / (1024 * 1024)));
-        }
-    }
-
-    return r;
-}
-
 static int do_mount();
 
 static int prepare_ext4()
 {
-    int mbr_entry = get_mbr_entry();
-    if(mbr_entry < 0)
-        return false;
+    if(!ext_dev)
+        return -1;
+
+    sd.part_offset = 0;
 
     // now check for valid fs
-    klog("ext4: registering partition %d\n", mbr_entry);
-    int r = ext4_device_register(&sd_part, "sd");
+    klog("ext4: registering partition %s\n", ext_dev->name().c_str());
+    int r = ext4_device_register(&sd, "sd");
     if(r != EOK)
     {
         klog("ext4: register failed %d\n", r);
@@ -644,8 +611,8 @@ int sd_open(ext4_blockdev *bdev)
     {
         return ENXIO;
     }
-    bdev->part_size = sd_get_size();
-    bdev->bdif->ph_bcnt = bdev->part_size / bdev->bdif->ph_bsize;
+    bdev->part_size = ext_dev->block_size() * ext_dev->block_count();
+    bdev->bdif->ph_bcnt = ext_dev->block_count();
 
     return EOK;
 }
@@ -664,16 +631,7 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
     }
 #endif
 
-    /* Check for invalid access */
-    extern std::shared_ptr<BlockDevice> ext_dev;
-    auto ed = static_cast<BlockSubDevice *>(ext_dev.get());
-    if(!ed->is_parent_relative_access_valid(blk_id, blk_cnt))
-    {
-        klog("WARN: ext4 read outside partition: block_start: %llu, block_count: %llu\n",
-            blk_id, blk_cnt);
-    }
-
-    auto sdr = sd_transfer(blk_id, blk_cnt, buf, true);
+    auto sdr = ext_dev->transfer(blk_id, blk_cnt, buf, true);
     if(sdr)
     {
         return EIO;
@@ -691,18 +649,7 @@ int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     if(!blk_cnt)
         return EOK;
 
-
-    /* Check for invalid access */
-    extern std::shared_ptr<BlockDevice> ext_dev;
-    auto ed = static_cast<BlockSubDevice *>(ext_dev.get());
-    if(!ed->is_parent_relative_access_valid(blk_id, blk_cnt))
-    {
-        klog("ERROR: ext4 write outside partition: block_start: %llu, block_count: %llu\n",
-            blk_id, blk_cnt);
-        while(true);
-    }
-
-    auto sdr = sd_transfer(blk_id, blk_cnt, (void *)buf, false);
+    auto sdr = ext_dev->transfer(blk_id, blk_cnt, (void *)buf, false);
     if(sdr)
     {
         return EIO;
