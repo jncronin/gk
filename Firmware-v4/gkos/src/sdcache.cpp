@@ -284,6 +284,7 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
     return 0;
 }
 
+#ifndef GK_UNIT_TEST
 class SDBlockDevice : public BlockDevice
 {
 protected:
@@ -329,3 +330,4 @@ std::shared_ptr<BlockDevice> sd_get_device()
 {
     return std::make_shared<SDBlockDevice>();
 }
+#endif
