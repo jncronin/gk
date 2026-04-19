@@ -664,6 +664,15 @@ int sd_bread(struct ext4_blockdev *bdev, void *buf, uint64_t blk_id,
     }
 #endif
 
+    /* Check for invalid access */
+    extern std::shared_ptr<BlockDevice> ext_dev;
+    auto ed = static_cast<BlockSubDevice *>(ext_dev.get());
+    if(!ed->is_parent_relative_access_valid(blk_id, blk_cnt))
+    {
+        klog("WARN: ext4 read outside partition: block_start: %llu, block_count: %llu\n",
+            blk_id, blk_cnt);
+    }
+
     auto sdr = sd_transfer(blk_id, blk_cnt, buf, true);
     if(sdr)
     {
@@ -681,6 +690,17 @@ int sd_bwrite(struct ext4_blockdev *bdev, const void *buf, uint64_t blk_id,
     (void)bdev;
     if(!blk_cnt)
         return EOK;
+
+
+    /* Check for invalid access */
+    extern std::shared_ptr<BlockDevice> ext_dev;
+    auto ed = static_cast<BlockSubDevice *>(ext_dev.get());
+    if(!ed->is_parent_relative_access_valid(blk_id, blk_cnt))
+    {
+        klog("ERROR: ext4 write outside partition: block_start: %llu, block_count: %llu\n",
+            blk_id, blk_cnt);
+        while(true);
+    }
 
     auto sdr = sd_transfer(blk_id, blk_cnt, (void *)buf, false);
     if(sdr)

@@ -281,3 +281,49 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
     }
     return 0;
 }
+
+class SDBlockDevice : public BlockDevice
+{
+protected:
+    size_t nblocks = 0;
+
+public:
+    std::string name()
+    {
+        return "sd";
+    }
+
+    size_t block_size()
+    {
+        return 512U;
+    }
+
+    size_t block_count()
+    {
+        if(nblocks)
+            return nblocks;
+
+        auto sz = sd_get_size();
+        nblocks = sz / block_size();
+        return nblocks;
+    }
+
+    int transfer(size_t block_start, size_t blockcount, void *mem_address, bool is_read)
+    {
+        if(!nblocks)
+            block_count();
+        
+        if((blockcount >= nblocks) || ((block_start + blockcount) > nblocks))
+        {
+            klog("SD device: attempt to transfer to invalid block (block_start: %llu, block_count: %llu, nblocks: %llu)\n",
+                block_start, blockcount, nblocks);
+            return -1;
+        }
+        return sd_transfer(block_start, blockcount, mem_address, is_read);
+    }
+};
+
+std::shared_ptr<BlockDevice> sd_get_device()
+{
+    return std::make_shared<SDBlockDevice>();
+}

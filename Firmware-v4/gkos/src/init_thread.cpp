@@ -13,12 +13,19 @@
 #include "persistent.h"
 #include "etnaviv.h"
 #include "screen.h"
+#include "block_dev.h"
+#include "sd.h"
+#include "mbr.h"
 
 PProcess p_gksupervisor;
 id_t pid_gksupervisor;
 std::unique_ptr<WifiAirocNetInterface> airoc_if;
 
 extern unsigned int reboot_flags;
+
+std::shared_ptr<BlockDevice> sd_dev;
+std::shared_ptr<BlockDevice> ext_dev;
+std::shared_ptr<BlockDevice> fat_dev;
 
 void *init_thread(void *)
 {
@@ -29,15 +36,44 @@ void *init_thread(void *)
         persistent[PERSISTENT_ID_REBOOT_FLAGS] = 0;
     }
 
-    // Read partition table of SD card, if not present then enter rawsd mode
+    // Load SD card.  If not present then panic.
+    sd_dev = std::move(sd_get_device());
+    if(!sd_dev || sd_dev->block_count() == 0)
+    {
+        klog("PANIC: no SD device found\n");
+        screen_set_background_colour(0xff0000);
+    }
 
-
+    // Read partition table of SD card, if no ext partition present then enter rawsd mode
+    auto ptable = mbr_parse(sd_dev);
+    for(auto &pte : ptable)
+    {
+        if(pte.driver == "ext" && !ext_dev)
+        {
+            klog("mbr: found ext partition number %u\n", pte.part_no);
+            ext_dev = pte.d;
+        }
+        else if(pte.driver == "fat" && !fat_dev)
+        {
+            klog("mbr: found fat partition number %u\n", pte.part_no);
+            fat_dev = pte.d;
+        }
+    }
+    if(!ext_dev)
+    {
+        klog("PANIC: ext partition not found.  Entering Raw SD mode for provisioning\n");
+        reboot_flags |= GK_REBOOTFLAG_RAWSD;
+    }
+    if(!fat_dev)
+    {
+        klog("WARNING: fat partition not found.  USB provisioning will require Raw SD mode\n");
+    }
 
     if(reboot_flags & GK_REBOOTFLAG_RAWSD)
     {
         // Highlight to the world that we are in raw sd mode
         klog("Entering Raw SD mode\n");
-        screen_set_background_colour(0xff0000);
+        screen_set_background_colour(0x00ff00);
     }
     else
     {
@@ -45,7 +81,7 @@ void *init_thread(void *)
     }
 
     // Provision FS prior to usb start
-    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD))
+    if(!(reboot_flags & GK_REBOOTFLAG_RAWSD) && fat_dev)
         fs_provision();
     
     usb_process_start();
@@ -71,6 +107,7 @@ void *init_thread(void *)
     {
         klog("init: failed to open supervisor process, enabling rawsd for next reboot\n");
 
+        screen_set_background_colour(0xff0000);
         persistent_reboot_flags_set(GK_REBOOTFLAG_RAWSD);
         return nullptr;
     }
@@ -126,7 +163,7 @@ void *init_thread(void *)
         }    
     }
 
-    init_etnaviv();
+    //init_etnaviv();
 
     while(true)
     {

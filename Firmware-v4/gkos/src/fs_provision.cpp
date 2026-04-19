@@ -141,6 +141,15 @@ DRESULT disk_read(BYTE pdrv, BYTE *buff, LBA_t sector, UINT count)
     unsigned int act_lba = sector + fake_mbr_lba;
     if(!fake_mbr_check_extents(act_lba, count))
         return RES_PARERR;
+
+    /* Check for invalid access */
+    extern std::shared_ptr<BlockDevice> fat_dev;
+    auto ed = static_cast<BlockSubDevice *>(fat_dev.get());
+    if(!ed->is_parent_relative_access_valid(act_lba, count))
+    {
+        klog("WARN: fat read outside partition: block_start: %llu, block_count: %llu\n",
+            sector, count);
+    }
     
     auto sret = sd_transfer(act_lba, count, buff, true);
     if(sret != 0)
@@ -156,6 +165,20 @@ DRESULT disk_write(BYTE pdrv, const BYTE *buff, LBA_t sector, UINT count)
     unsigned int act_lba = sector + fake_mbr_lba;
     if(!fake_mbr_check_extents(act_lba, count))
         return RES_PARERR;
+
+    klog("FAT_WRITE: disabled\n");
+    return RES_NOTRDY;
+
+
+    /* Check for invalid access */
+    extern std::shared_ptr<BlockDevice> fat_dev;
+    auto ed = static_cast<BlockSubDevice *>(fat_dev.get());
+    if(!ed->is_parent_relative_access_valid(act_lba, count))
+    {
+        klog("ERROR: fat write outside partition: block_start: %llu, block_count: %llu\n",
+            sector, count);
+        while(true);
+    }
 
     auto sret = sd_transfer(act_lba, count, (void *)buff, false);
     if(sret != 0)

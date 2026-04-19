@@ -2,7 +2,9 @@
 #define SD_H
 
 #include <cstdint>
+#include <memory>
 #include "osmutex.h"
+#include "block_dev.h"
 
 void init_sd();
 
@@ -20,5 +22,7 @@ uint64_t sd_get_size();
 int sd_unmount();
 int sd_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read);
+
+std::shared_ptr<BlockDevice> sd_get_device();
 
 #endif
