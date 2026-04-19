@@ -248,6 +248,8 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
 void SDMMC1_IRQHandler()
 {
     auto const errors = DCRCFAIL |
+        CCRCFAIL |
+        DABORT |
         DTIMEOUT |
         TXUNDERR | RXOVERR;
     auto sta = SDMMC1_VMEM->STA;
