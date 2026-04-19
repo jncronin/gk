@@ -53,6 +53,7 @@ ssize_t FatFsFile::Read(char *buf, size_t count, int *_errno)
 {
     if(!can_read)
     {
+        klog("FatFsFile: fail due to lack of read permissions\n");
         *_errno = EBADF;
         return -1;
     }
@@ -65,6 +66,7 @@ ssize_t FatFsFile::Read(char *buf, size_t count, int *_errno)
     }
     else
     {
+        klog("FatFsFile: fail due to f_read failing: %d\n", ffret);
         *_errno = EFAULT;
         return -1;
     }
