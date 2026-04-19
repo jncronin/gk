@@ -1,5 +1,6 @@
 #include <map>
 #include <list>
+#include <cassert>
 #ifndef GK_UNIT_TEST
 #include "sd.h"
 #include "vblock.h"
@@ -133,7 +134,7 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
     sdc_list.pop_back();
 
     map_value mv_old = sdc_map[bb_to_erase];
-    sdc_map.erase(bb_to_erase);
+    assert(sdc_map.erase(bb_to_erase) == 1);
     sdc_map[bigblock] = mv_old;
 
     addr_ret ret;
@@ -159,7 +160,7 @@ static int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_a
 int sd_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read)
 {
-    m_cache->lock();
+    while(m_cache->lock() != 0);
     auto ret = is_read ? sdc_read(block_start, block_count, mem_address) :
         sdc_write(block_start, block_count, mem_address);
     m_cache->unlock();
@@ -201,6 +202,7 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
 #endif
         }
 
+        assert((offset_bytes + blocks_within_bb * block_size) <= VBLOCK_64k);
         memcpy((void *)dest_addr, (const void *)(has_bb.vaddr + offset_bytes), 
             blocks_within_bb * block_size);
 
@@ -274,9 +276,10 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
         klog("sdc: write: has_bb.vaddr: %llx, byte_offset_within_bb: %llx, src_addr: %llx, blocks_within_bb: %llu\n",
             has_bb.vaddr, byte_offset_within_bb, src_addr, blocks_within_bb);
 #endif
+        assert((byte_offset_within_bb + blocks_within_bb * block_size) <= VBLOCK_64k);
         memcpy((void *)dest, (const void *)src_addr, blocks_within_bb * block_size);
 
-        // put back in cache
+        // put back in memory
         CleanA35Cache(dest, blocks_within_bb * block_size, CacheType_t::Data, true);
 
         // write out
