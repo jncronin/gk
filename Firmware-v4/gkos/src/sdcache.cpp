@@ -165,6 +165,7 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
         sdc_idx cur_bb = block_start / b_per_bb;
         auto offset_blocks = block_start - cur_bb * b_per_bb;
         auto offset_bytes = offset_blocks * block_size;
+        auto blocks_within_bb = std::min(b_per_bb - offset_blocks, block_count);
 
         auto has_bb = sdc_bigblock_to_addr(cur_bb);
         if(!has_bb.has_data)
@@ -190,11 +191,12 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
 #endif
         }
 
-        memcpy((void *)dest_addr, (const void *)(has_bb.vaddr + offset_bytes), block_size);
+        memcpy((void *)dest_addr, (const void *)(has_bb.vaddr + offset_bytes), 
+            blocks_within_bb * block_size);
 
-        dest_addr += block_size;
-        block_count--;
-        block_start++;
+        dest_addr += blocks_within_bb * block_size;
+        block_count -= blocks_within_bb;
+        block_start += blocks_within_bb;
     }
 
     return 0;
