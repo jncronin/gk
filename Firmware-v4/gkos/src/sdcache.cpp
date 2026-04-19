@@ -300,6 +300,7 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
             if(memcmp((void *)vmb_verify.base, (void *)has_bb.vaddr, VBLOCK_64k))
             {
                 klog("sdc: verify failed for block %u\n", cur_bb * b_per_bb);
+                while(true);
             }
         }
 #endif
