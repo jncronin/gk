@@ -25,6 +25,7 @@
 #define GK_EXT_READONLY             0
 #define GK_EXT_USE_JOURNAL          1
 #define GK_SD_USE_HS_MODE           1
+#define GK_SD_VERIFY_WRITES         1
 #define GK_GPU_SHOW_FPS             0
 #define GK_COUNT_SYSCALLS           0
 #define GK_PROFILE_SYSCALLS         0
