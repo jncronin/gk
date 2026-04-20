@@ -14,6 +14,7 @@
 #include "pmic.h"
 #include "gic.h"
 #include "sdif.h"
+#include <cassert>
 
 #define SDMMC1_VMEM ((SDMMC_TypeDef *)PMEM_TO_VMEM(SDMMC1_BASE))
 #define RCC_VMEM ((RCC_TypeDef *)PMEM_TO_VMEM(RCC_BASE))
@@ -225,6 +226,10 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries)
 {
+    assert(block_count == 128U);
+    assert(mem_address);
+    assert(((uintptr_t)mem_address & 0xffffU) == 0);
+    
     int ret = 0;
     for(int i = 0; i < nretries; i++)
     {
