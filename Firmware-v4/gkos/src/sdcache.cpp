@@ -164,6 +164,10 @@ int sd_transfer(uint32_t block_start, uint32_t block_count,
     auto ret = is_read ? sdc_read(block_start, block_count, mem_address) :
         sdc_write(block_start, block_count, mem_address);
     m_cache->unlock();
+    if(ret)
+    {
+        klog("sd_transfer failing %d\n", ret);
+    }
     return ret;
 }
 
@@ -186,6 +190,7 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
                 has_bb.vaddr, has_bb.paddr);
 #endif
             // load the data
+            assert((cur_bb * b_per_bb) < UINT32_MAX);
             auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
 #if DEBUG_SDC
             klog("sdc: big block load complete, ret %d\n", rret);
@@ -248,6 +253,7 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 #endif
             
             // load the data
+            assert((cur_bb * b_per_bb) < UINT32_MAX);
             auto rret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, true);
 #if DEBUG_SDC
             klog("sdc: big block load complete, ret %d\n", rret);
@@ -283,6 +289,7 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
         CleanA35Cache(dest, blocks_within_bb * block_size, CacheType_t::Data, true);
 
         // write out
+        assert((cur_bb * b_per_bb) < UINT32_MAX);
         auto wret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, false);
 #if DEBUG_SDC
         klog("sdc: big block write complete, ret %d\n", wret);
