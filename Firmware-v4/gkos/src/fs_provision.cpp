@@ -412,6 +412,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
     }
     if(long_fname)
         free(long_fname);
+    return 0;
 }
 
 int fs_provision()
