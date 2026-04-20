@@ -59,69 +59,12 @@ static Mutex m_ext4;
 
 extern "C" void *ext4_user_buf_alloc(size_t n)
 {
-    if(n > VBLOCK_512M)
-    {
-        klog("ext4: buffer size too large: %llu\n", n);
-        return nullptr;
-    }
-    else if(n > VBLOCK_4M)
-    {
-        n = VBLOCK_512M;
-    }
-    else if(n > VBLOCK_64k)
-    {
-        n = VBLOCK_4M;
-    }
-    else
-    {
-        n = VBLOCK_64k;
-    }
-
-    auto vb = vblock_alloc(n, false, true, false, 0, 0, vblock, true);
-    if(vb.valid)
-    {
-#if EXT4_DEBUG
-        {
-            klog("ext4: user_buf_alloc %llx bytes @%llx\n", n, vb.base);
-        }
-#endif
-        return (void *)vb.base;
-    }
-
-    return (void*)nullptr;
+    return malloc(n);
 }
 
 extern "C" void ext4_user_buf_free(void *ptr, size_t n)
 {
-    if(n > VBLOCK_512M)
-    {
-        klog("ext4: buffer size too large: %llu\n", n);
-        return;
-    }
-    else if(n > VBLOCK_4M)
-    {
-        n = VBLOCK_512M;
-    }
-    else if(n > VBLOCK_64k)
-    {
-        n = VBLOCK_4M;
-    }
-    else
-    {
-        n = VBLOCK_64k;
-    }
-
-    VMemBlock reg;
-    reg.base = (uintptr_t)ptr;
-    reg.length = n;
-    reg.valid = true;
-    vblock_free(reg, vblock, true);
-
-#if EXT4_DEBUG
-    {
-        klog("ext4: user_buf_free %llx bytes @%llx\n", n, reg.base);
-    }
-#endif
+    free(ptr);
 }
 
 static int do_mount();
