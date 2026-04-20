@@ -113,6 +113,11 @@ void *drm_sched_worker(void *p)
         /* We now have a job to do - wait on the various fences */
         for(auto &dep : j->deps)
         {
+            if(!dep)
+            {
+                klog("drm_sched_worker: warning: null dependency\n");
+                continue;
+            }
             if(!dep->IsSignalled())
             {
                 klog("drm_sched_worker: waiting on dependency\n");
@@ -136,7 +141,8 @@ void *drm_sched_worker(void *p)
 #if GPU_DEBUG > 2
         klog("drm_sched_worker: job %u dependencies satisfied.\n", j->job_id);
 #endif
-        j->scheduled->Signal();
+        if(j->scheduled)
+            j->scheduled->Signal();
 
         auto finish_fence = s->ops->run_job(j.get());
 
@@ -144,7 +150,7 @@ void *drm_sched_worker(void *p)
         klog("drm_sched_worker: job %u submitted to gpu, awaiting completion\n", j->job_id);
 #endif
 
-        auto job_completed = finish_fence->Wait(clock_cur() + s->timeout);
+        auto job_completed = finish_fence ? finish_fence->Wait(clock_cur() + s->timeout) : true;
         
         if(job_completed)
         {
@@ -158,7 +164,8 @@ void *drm_sched_worker(void *p)
         }
         auto finish_signal = j->finished;
         j = nullptr;        // release any locks prior to signalling out fence
-        finish_signal->Signal();
+        if(finish_signal)
+            finish_signal->Signal();
     }
 }
 
