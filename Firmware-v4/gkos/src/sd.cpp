@@ -165,14 +165,10 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     }
     if(sdmmc[0].sd_status)
     {
-#if DEBUG_SD
-        {
-            
-            klog("sd: post-command: %d: FAIL: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n", cmd_id,
-                SDMMC1_VMEM->STA, sdmmc[0].sd_status, SDMMC1_VMEM->DCTRL, SDMMC1_VMEM->DCOUNT, SDMMC1_VMEM->DLEN, SDMMC1_VMEM->IDMACTRL, SDMMC1_VMEM->IDMABASER);
-        }
-#endif
+        klog("sd: post-command: %d: FAIL: STA: %x (%x), DCTRL: %x, DCOUNT: %x, DLEN: %x, IDMACTRL: %x, IDMABASE: %x\n", cmd_id,
+            SDMMC1_VMEM->STA, sdmmc[0].sd_status, SDMMC1_VMEM->DCTRL, SDMMC1_VMEM->DCOUNT, SDMMC1_VMEM->DLEN, SDMMC1_VMEM->IDMACTRL, SDMMC1_VMEM->IDMABASER);
         sdmmc[0].sd_ready = false;
+        return -1;
     }
 #if DEBUG_SD
     else
