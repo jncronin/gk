@@ -6,6 +6,7 @@
 #include <ff.h>
 #include <diskio.h>
 #include <string>
+#include <cassert>
 #include <ext4_thread.h>
 #include "syscalls_int.h"
 #include "zlib.h"
@@ -379,7 +380,9 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
 
                 if(type == 'L')
                 {
+                    assert((offset + fsize_to_write) < (total_fsize_to_read - 1));
                     memcpy(&long_fname[offset], mem, fsize_to_write);
+                    long_fname[offset + fsize_to_write] = 0;
                 }
                 else
                 {
