@@ -183,6 +183,16 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 #endif
     if(sd_multi)
     {
+        // send stop command
+        [[maybe_unused]] int stop_ret = sdmmc[0].sd_issue_command(12, SDIF::resp_type::R1b);
+#if DEBUG_SD
+        {
+            
+            klog("sd: post-stop command: ret: %x, STA: %x\n",
+                stop_ret, SDMMC1_VMEM->STA);
+        }
+#endif
+
         if(!is_read)
         {
             // poll status register until write done
@@ -195,10 +205,9 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
                     sdmmc[0].sd_ready = false;
                     break;
                 }
-                if(resp != 0xd00)
+                if(resp != 0x900)
                 {
-                    
-                    klog("sd: not in rcv state: %x\n", resp);
+                    //klog("sd: not in tran state: %x\n", resp);
                 }
                 else
                 {
@@ -207,15 +216,6 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
             }
         }
 
-        // send stop command
-        [[maybe_unused]] int stop_ret = sdmmc[0].sd_issue_command(12, SDIF::resp_type::R1b);
-#if DEBUG_SD
-        {
-            
-            klog("sd: post-stop command: ret: %x, STA: %x\n",
-                stop_ret, SDMMC1_VMEM->STA);
-        }
-#endif
         sd_multi = false;
     }
 
