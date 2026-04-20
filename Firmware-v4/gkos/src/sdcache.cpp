@@ -13,7 +13,12 @@
 #include "unittest.h"
 #endif
 
+/* Whether to insert unmapped guard pages between the cache pages */
 #define SD_CACHE_GUARD_PAGES        1
+
+/* Whether to by default map the cache pages as readonly and only allow
+    writes for the duration of the memcpy in sdc_write() */
+#define SD_CACHE_CATCH_OTHER_WRITES 0
 
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries = 10);
@@ -57,7 +62,11 @@ static map_type sdc_map;
 
 int sd_cache_init()
 {
+#if SD_CACHE_CATCH_OTHER_WRITES
+    vb_cache = vblock_alloc(cache_vb_size, false, false, false);
+#else
     vb_cache = vblock_alloc(cache_vb_size, false, true, false);
+#endif
     m_cache = MutexList.Create();
 #if GK_SD_VERIFY_WRITES
     pmb_verify = Pmem.acquire(VBLOCK_64k);
@@ -115,7 +124,11 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
             p_kernel->owned_pages.add(paddr_be);
         }
 #endif
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(vaddr, paddr_be.base, false, false, false);
+#else
         vmem_map(vaddr, paddr_be.base, false, true, false);
+#endif
 
         addr_ret ret;
         ret.has_data = false;
@@ -209,7 +222,13 @@ int sdc_read(sdc_idx block_start, sdc_idx block_count, void *mem_address)
             if(rret != 0)
                 return rret;
             
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(has_bb.vaddr, has_bb.paddr, false, true, false);
+#endif
             InvalidateA35Cache(has_bb.vaddr, VBLOCK_64k, CacheType_t::Data, true);
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(has_bb.vaddr, has_bb.paddr, false, false, false);
+#endif
         }
         else
         {
@@ -272,7 +291,13 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
             if(rret != 0)
                 return rret;
             
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(has_bb.vaddr, has_bb.paddr, false, true, false);
+#endif
             InvalidateA35Cache(has_bb.vaddr, VBLOCK_64k, CacheType_t::Data, true);
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(has_bb.vaddr, has_bb.paddr, false, false, false);
+#endif
         }
         else if(has_bb.has_data)
         {
@@ -294,10 +319,17 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
             has_bb.vaddr, byte_offset_within_bb, src_addr, blocks_within_bb);
 #endif
         assert((byte_offset_within_bb + blocks_within_bb * block_size) <= VBLOCK_64k);
+
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(has_bb.vaddr, has_bb.paddr, false, true, false);
+#endif
         memcpy((void *)dest, (const void *)src_addr, blocks_within_bb * block_size);
 
         // put back in memory
         CleanA35Cache(dest, blocks_within_bb * block_size, CacheType_t::Data, true);
+#if SD_CACHE_CATCH_OTHER_WRITES
+        vmem_map(has_bb.vaddr, has_bb.paddr, false, false, false);
+#endif
 
         // write out
         assert((cur_bb * b_per_bb) < UINT32_MAX);
