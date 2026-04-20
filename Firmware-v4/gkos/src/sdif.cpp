@@ -702,16 +702,21 @@ int SDIF::reset()
             auto fg4_support = (cmd6_buf[14]) & 0xffffUL;
             klog("sd%d: cmd6: fg4_support: %lx\n", iface_id, fg4_support);
             uint32_t mode_set = 0;
+#if GK_SD_USE_HS_DDR50_MODE
             if(is_1v8 && (fg1_support & 0x10) && (fg4_support & 0x2))
             {
                 klog("sd%d: supports ddr50 mode at 1.44W\n", iface_id);
                 mode_set = 0x80ff1ff4;  
             }
-            else if(fg1_support & 0x2)
+            else
+#endif
+#if GK_SD_USE_HS_SDR25_MODE            
+            if(fg1_support & 0x2)
             {
                 klog("sd%d: supports hs/sdr25 mode at 0.72W\n", iface_id);
                 mode_set = 0x80fffff1;
             }
+#endif
 
             if(mode_set)
             {
@@ -763,7 +768,6 @@ int SDIF::reset()
                         fg4_setting);
                 }
 
-#if GK_SD_USE_HS_MODE
                 if(fg1_setting == 1)
                 {
                     set_clock(SDCLK_HS);
@@ -780,7 +784,6 @@ int SDIF::reset()
                         klog("sd%d: set to DDR50 mode\n", iface_id);
                     }
                 }
-#endif
             }
         }
     }
