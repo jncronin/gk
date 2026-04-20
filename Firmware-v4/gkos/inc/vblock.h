@@ -30,11 +30,20 @@ VMemBlock vblock_alloc_fixed(size_t size, uintptr_t addr, bool user, bool write,
 VMemBlock vblock_valid(uintptr_t addr, VBlock &vb = vblock, uint32_t *tag = nullptr);
 int vblock_free(VMemBlock &v, VBlock &vb = vblock, bool unmap = false);
 
-size_t vblock_size_for(size_t n);
-
 #define VBLOCK_64k      65536ULL
 #define VBLOCK_4M       (4ULL*1024*1024)
 #define VBLOCK_512M     (512ULL*1024*1024)
+
+constexpr size_t vblock_size_for(size_t size)
+{
+    if(size <= VBLOCK_64k)
+        return VBLOCK_64k;
+    if(size <= VBLOCK_4M)
+        return VBLOCK_4M;
+    if(size <= VBLOCK_512M)
+        return VBLOCK_512M;
+    return 0;
+}
 
 class VBlock
 {

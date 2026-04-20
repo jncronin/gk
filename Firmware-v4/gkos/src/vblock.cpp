@@ -167,17 +167,6 @@ int vblock_free(VMemBlock &v, VBlock &vb, bool unmap)
     return 0;
 }
 
-size_t vblock_size_for(size_t size)
-{
-    if(size <= VBLOCK_64k)
-        return VBLOCK_64k;
-    if(size <= VBLOCK_4M)
-        return VBLOCK_4M;
-    if(size <= VBLOCK_512M)
-        return VBLOCK_512M;
-    return 0;
-}
-
 void VBlock::init(uintptr_t _base, unsigned int free_pages, unsigned int _level1_count)
 {
     CriticalGuard cg(sl);
