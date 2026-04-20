@@ -25,6 +25,9 @@
 #define DEBUG_SD    0
 #define PROFILE_SDT 0
 
+#define SD_NEVER_MULTI      0
+#define SD_ALWAYS_MULTI     0
+
 extern PProcess p_kernel;
 
 #define SDCLK 200000000
@@ -116,6 +119,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     SDMMC1_VMEM->IDMACTRL = SDMMC_IDMA_IDMAEN;
 
     int cmd_id = 0;
+#if SD_ALWAYS_MULTI == 0
     if(block_count == 1)
     {
         sd_multi = false;
@@ -129,6 +133,7 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
         }
     }
     else
+#endif
     {
         sd_multi = true;
         if(is_read)
@@ -227,8 +232,35 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     assert(block_count == 128U);
     assert(mem_address);
     assert(((uintptr_t)mem_address & 0xffffU) == 0);
-    
+
     int ret = 0;
+#if SD_NEVER_MULTI
+    while(block_count)
+    {
+        for(int i = 0; i < nretries; i++)
+        {
+            ret = sd_perform_transfer_int(block_start, 1,
+                mem_address, is_read);
+            
+            if(ret == 0)
+            {
+                break;
+            }
+        }
+        if(ret)
+        {
+            break;
+        }
+
+        block_start++;
+        block_count--;
+        mem_address = (void *)((uintptr_t)mem_address + 512ULL);
+    }
+    if(ret == 0)
+    {
+        return 0;
+    }
+#else
     for(int i = 0; i < nretries; i++)
     {
         ret = sd_perform_transfer_int(block_start, block_count,
@@ -239,6 +271,7 @@ int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
             return 0;
         }
     }
+#endif
 
     {
         klog("sd_perform_transfer %s of %d blocks at %x failed: %x\n",
