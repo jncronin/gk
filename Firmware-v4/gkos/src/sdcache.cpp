@@ -13,6 +13,8 @@
 #include "unittest.h"
 #endif
 
+#define SD_CACHE_GUARD_PAGES        1
+
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries = 10);
 
@@ -22,7 +24,12 @@ int sd_cache_init();
 static VMemBlock vb_cache;
 static const constexpr unsigned int n_entries = 1024;
 static unsigned int next_entry = 0;
-[[maybe_unused]] static const constexpr auto cache_size = n_entries * VBLOCK_64k;
+[[maybe_unused]] static const constexpr auto cache_size = n_entries * VBLOCK_64k
+#if SD_CACHE_GUARD_PAGES
+* 2
+#endif
+;
+static const constexpr auto cache_vb_size = vblock_size_for(cache_size);
 static const constexpr uint64_t block_size = 512;
 static const constexpr uint64_t b_per_bb = VBLOCK_64k / block_size;
 
@@ -50,7 +57,7 @@ static map_type sdc_map;
 
 int sd_cache_init()
 {
-    vb_cache = vblock_alloc(VBLOCK_512M, false, true, false);
+    vb_cache = vblock_alloc(cache_vb_size, false, true, false);
     m_cache = MutexList.Create();
 #if GK_SD_VERIFY_WRITES
     pmb_verify = Pmem.acquire(VBLOCK_64k);
@@ -91,7 +98,11 @@ static addr_ret sdc_bigblock_to_addr(sdc_idx bigblock)
     // we don't have an entry.  Is there space to add one?
     if(next_entry < n_entries)
     {
-        auto vaddr = vb_cache.data_start() + next_entry * VBLOCK_64k;
+        auto vaddr = vb_cache.data_start() + next_entry * VBLOCK_64k
+#if SD_CACHE_GUARD_PAGES
+        * 2
+#endif
+        ;
         auto paddr_be = Pmem.acquire(VBLOCK_64k);
         if(!paddr_be.valid)
         {
