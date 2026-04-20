@@ -346,7 +346,7 @@ void init_screen()
         LTDC_GCR_DEPOL |
         LTDC_GCR_PCPOL;
     
-    LTDC_VMEM->BCCR = 0xff00ffUL;
+    LTDC_VMEM->BCCR = 0x000000UL;
 
     LTDC_Layer1_VMEM->CR = 0;
     LTDC_Layer2_VMEM->CR = 0;
@@ -358,7 +358,10 @@ void init_screen()
     LTDC_VMEM->GCR |= LTDC_GCR_LTDCEN;
 
     gic_set_target(190, GIC_ENABLED_CORES);
-    gic_set_enable(190);
+    //gic_set_enable(190);
+
+    extern uint8_t img_gk;
+    screen_set_startup_img(&img_gk);
 }
 
 static uintptr_t screen_buf_to_vaddr(unsigned int layer, unsigned int buf)
@@ -677,6 +680,11 @@ void LTDC_IRQHandler()
                             l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
                             cluten = LTDC_LxCR_CLUTEN;
                             break;
+                        case GK_PIXELFORMAT_RGB8:
+                            l->FPF0R = (8U << 14);
+                            l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                            cluten = 0;
+                            break;
                         case GK_PIXELFORMAT_A4L4:
                             l->FPF0R = (4U << 14) | (4U << 5) | (4U << 0);
                             l->FPF1R = (1U << 18) | (4U << 14) | (4U << 5);
@@ -824,5 +832,85 @@ int screen_set_background_colour(uint32_t c)
 {
     LTDC_VMEM->BCCR = c;
     LTDC_VMEM->SRCR = LTDC_SRCR_VBR;
+    return 0;
+}
+
+int screen_set_startup_img(const void *img, unsigned int w, unsigned int h,
+    unsigned int lpf)
+{
+    /* Centre an image in the middle of layer 1 */
+    if(!img)
+    {
+        /* If no image, it means display userspace stuff */
+        gic_set_enable(190);
+        return 0;
+    }
+    
+    gic_clear_enable(190);
+
+    auto l = LTDC_Layer1_VMEM;
+
+    auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
+    auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
+
+    hstart += (scr_w - w) / 2;
+    vstart += (scr_h - h) / 2;
+   
+    l->WHPCR = (hstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
+        ((hstart + w - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
+    l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
+        ((vstart + h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+    l->CKCR = 0;
+
+    uint32_t cluten = 0;
+    auto bpp = screen_get_bpp_for_pf(lpf);
+    if(lpf < 7)
+        l->PFCR = lpf;
+    else
+    {
+        l->PFCR = 7;
+
+        // flexible pixel format
+        switch(lpf)
+        {
+            case GK_PIXELFORMAT_L8:
+                l->FPF0R = (8U << 14);
+                l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                cluten = LTDC_LxCR_CLUTEN;
+                break;
+            case GK_PIXELFORMAT_RGB8:
+                l->FPF0R = (8U << 14);
+                l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                cluten = 0;
+                break;
+            case GK_PIXELFORMAT_A4L4:
+                l->FPF0R = (4U << 14) | (4U << 5) | (4U << 0);
+                l->FPF1R = (1U << 18) | (4U << 14) | (4U << 5);
+                cluten = LTDC_LxCR_CLUTEN;
+                break;
+            case GK_PIXELFORMAT_ARGB4444:
+                l->FPF0R = (4U << 14) | (8U << 9) | (4U << 5) | (12U << 0);
+                l->FPF1R = (2U << 18) | (4U << 14) | (0U << 9) | (4U << 5) | (4U << 0);
+                break;
+            case GK_PIXELFORMAT_RGB565A8:
+                l->FPF0R = (5U << 14) | (11U << 9) | (8U << 5) | (16U << 0);
+                l->FPF1R = (3U << 18) | (5U << 14) | (0U << 9) | (6U << 5) | (5U << 0);
+                break;
+            default:
+                klog("screen: unsupported pixel format: %u\n", lpf);
+                break;
+        }
+    }
+
+    l->CACR = 255;
+    l->DCCR = 0;
+    l->BFCR = ((4U << LTDC_LxBFCR_BF1_Pos) | (5U << LTDC_LxBFCR_BF2_Pos)); // constant alpha for L0
+    l->CFBLR = ((w * bpp) << LTDC_LxCFBLR_CFBP_Pos) |
+        ((w * bpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
+    l->CFBLNR = h;
+    l->CFBAR = (uint32_t)(uintptr_t)vmem_vaddr_to_paddr_quick((uintptr_t)img);
+    l->CR = LTDC_LxCR_LEN | cluten;
+    LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
+
     return 0;
 }

@@ -12,6 +12,7 @@
 #include "zlib.h"
 #include "process.h"
 #include "cache.h"
+#include "screen.h"
 
 #define FS_PROVISION_BLOCK_SIZE     (4*1024*1024)
 
@@ -20,6 +21,11 @@
 #define FS_PROVISION_EXTRACT_FILE_TO "syslog.txt"
 
 #define FS_PROVISION_READ_ONLY      0
+
+extern uint8_t img_provisioning1, img_provisioning2;
+static unsigned int next_img = 0;
+const uint8_t *imgs[] = { &img_provisioning1, &img_provisioning2 };
+static void provisioning_img_flip();
 
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
@@ -340,6 +346,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             }
             else
             {
+                provisioning_img_flip();
 #if !FS_PROVISION_READ_ONLY
                 std::tie(fd, _errno) = deferred_call(syscall_open, fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0);
                 if(fd < 0)
@@ -409,6 +416,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                             (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                     }
 #endif
+                    provisioning_img_flip();
                 }
 
                 offset += fsize_to_read;
@@ -703,3 +711,10 @@ void fs_provision_extract(const std::string &from, const std::string &to)
     }
 }
 #endif
+
+void provisioning_img_flip()
+{
+    screen_set_startup_img(imgs[next_img++]);
+    if(next_img >= (sizeof(imgs) / sizeof(imgs[0])))
+        next_img = 0;
+}

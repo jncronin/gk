@@ -339,6 +339,7 @@ static inline size_t get_bpp(int pf)
         case GK_PIXELFORMAT_L8:
         case GK_PIXELFORMAT_A4L4:
         case GK_PIXELFORMAT_ARGB1555:
+        case GK_PIXELFORMAT_RGB8:
             return 1;
         default:
             return 0;

@@ -73,11 +73,8 @@ void *init_thread(void *)
     {
         // Highlight to the world that we are in raw sd mode
         klog("Entering Raw SD mode\n");
-        screen_set_background_colour(0x00ff00);
-    }
-    else
-    {
-        screen_set_background_colour(0);
+        extern uint8_t img_rawsd;
+        screen_set_startup_img(&img_rawsd);
     }
 
     // Provision FS prior to usb start
@@ -157,6 +154,7 @@ void *init_thread(void *)
         auto t_test = Thread::Create("gksupervisor", test_ep, nullptr, false, GK_PRIORITY_VERYHIGH, p_gksupervisor);
         if(t_test)
         {
+            screen_set_startup_img(nullptr);
             SetFocusProcess(p_gksupervisor);
             klog("init: thread created, scheduling it\n");
             sched.Schedule(t_test);

@@ -60,6 +60,7 @@ target_include_directories(${PROJECT_NAME}
         "${CMAKE_CURRENT_SOURCE_DIR}/../../Firmware/inih"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/etnaviv/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -84,6 +85,7 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../assets/assets.s
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/logger_printf.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/spinlock.s"
         "${CMAKE_CURRENT_SOURCE_DIR}/../common-a/src/copy.s"
