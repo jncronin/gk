@@ -19,6 +19,8 @@
 #define FS_PROVISION_EXTRACT_FILE_FROM "/syslog"
 #define FS_PROVISION_EXTRACT_FILE_TO "syslog.txt"
 
+#define FS_PROVISION_READ_ONLY      0
+
 /* The SD card is split into two parts to allow on-the-fly provisioning.
     We have a small FAT filesystem which is exported via USB MSC.
     
@@ -325,7 +327,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             uint64_t total_fsize_to_read = (fsize + 511ULL) & ~511ULL;
 
             // open ext4 file
-            int fd = -1, _errno;
+            [[maybe_unused]] int fd = -1, _errno;
             if(type == 'L')
             {
                 long_fname = (char *)malloc(total_fsize_to_read);
@@ -338,6 +340,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
             }
             else
             {
+#if !FS_PROVISION_READ_ONLY
                 std::tie(fd, _errno) = deferred_call(syscall_open, fname.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0);
                 if(fd < 0)
                 {
@@ -348,6 +351,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                     free(mem);
                     return -1;
                 }
+#endif
             }
 
             // load in 4 MiB increments
@@ -386,6 +390,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                 }
                 else
                 {
+#if !FS_PROVISION_READ_ONLY
                     auto [ bw, _ ] = deferred_call(syscall_write, fd, (char *)mem, (int)fsize_to_write);
                     if(bw != (int)fsize_to_write)
                     {
@@ -403,6 +408,7 @@ static int fs_provision_tarball(fread_func ff, lseek_func lf, void *f)
                         klog("fs_provision: read %d, wrote %d at offset %d\n",
                             (int)fsize_to_read, (int)fsize_to_write, (int)offset);
                     }
+#endif
                 }
 
                 offset += fsize_to_read;
@@ -541,6 +547,7 @@ int fs_provision()
                         klog("fs_provision: provisioned %s\n", fi.fname);
                     }
 
+#if !FS_PROVISION_READ_ONLY
                     // delete file
                     if(f_unlink(fi.fname) != FR_OK)
                     {
@@ -548,6 +555,7 @@ int fs_provision()
                         klog("fs_provision: failed to delete %s: %d\n",
                             fi.fname, f_unlink(fi.fname));
                     }
+#endif
                 }
                 else
                 {
