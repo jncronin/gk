@@ -160,7 +160,8 @@ void *drm_sched_worker(void *p)
         }
         else
         {
-            klog("drm_sched_worker: job %u timed out\n", j->job_id);
+            klog("drm_sched_worker: job %u (event %d) timed out\n", j->job_id,
+                finish_fence ? finish_fence->event_id : -2);
         }
         auto finish_signal = j->finished;
         j = nullptr;        // release any locks prior to signalling out fence

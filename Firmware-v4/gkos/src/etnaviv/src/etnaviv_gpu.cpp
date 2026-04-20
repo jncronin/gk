@@ -1407,7 +1407,10 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 	 *   and update the sequence number for userspace.
 	 */
 	if (submit->nr_pmrs)
+	{
+		klog("etnaviv: performance monitoring not yet implemented\n");
 		nr_events = 3;
+	}
 
 	ret = event_alloc(gpu, nr_events, event);
 	if (ret) {
@@ -1425,6 +1428,7 @@ std::shared_ptr<dma_fence> etnaviv_gpu_submit(std::shared_ptr<etnaviv_gem_submit
 
 		goto out_unlock;
 	}
+	gpu_fence->event_id = (int)event[0];
 
 	if (gpu->state == ETNA_GPU_STATE_INITIALIZED)
 		etnaviv_gpu_start_fe_idleloop(gpu, submit->mmu_context);
@@ -1613,7 +1617,10 @@ static irqreturn_t irq_handler(int irq, void *data)
 
 			auto fence = gpu->event[event].fence;
 			if (!fence)
+			{
+				klog("etnaviv: event %u signalled without a fence\n", event);
 				continue;
+			}
 
 			gpu->event[event].fence = NULL;
 
@@ -1628,6 +1635,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 			 */
 			//if (fence_after(fence->seqno, gpu->completed_fence))
 			//	gpu->completed_fence = fence->seqno;
+			klog("etnaviv: event %u signalled\n", event);
 			fence->Signal();
 			//dma_fence_signal_timestamp(fence, now);
 			gpu->event[event].submit = nullptr;

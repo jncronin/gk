@@ -24,6 +24,7 @@ class dma_fence
         uint32_t id = 0;
         bool has_id = false;
         std::weak_ptr<UserFenceManager> ufm;
+        int event_id = -1;
 
         void Signal();
         bool IsSignalled() { return s.Value() != 0; }
