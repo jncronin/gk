@@ -1,7 +1,7 @@
 #ifndef GK_CONF_H
 #define GK_CONF_H
 
-#define GK_NUM_CORES                1
+#define GK_NUM_CORES                2
 
 #define GK_OVERCLOCK_MHZ            2200
 
@@ -24,8 +24,8 @@
 #define GK_USE_LSE_RTC              1
 #define GK_EXT_READONLY             0
 #define GK_EXT_USE_JOURNAL          1
-#define GK_SD_USE_HS_SDR25_MODE     0
-#define GK_SD_USE_HS_DDR50_MODE     0
+#define GK_SD_USE_HS_SDR25_MODE     1
+#define GK_SD_USE_HS_DDR50_MODE     1
 #define GK_SD_VERIFY_WRITES         0
 #define GK_GPU_SHOW_FPS             0
 #define GK_COUNT_SYSCALLS           0
