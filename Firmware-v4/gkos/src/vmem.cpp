@@ -143,7 +143,8 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr,
         }
         else
         {
-            klog("vmem: trying to map already mapped page at %llx\n", vaddr);
+            klog("vmem: trying to map already mapped page at %llx (new paddr: %llx, old paddr: %llx)\n",
+                vaddr, paddr, pt[l3_addr] & PAGE_PADDR_MASK);
             return -1;
         }
     }
