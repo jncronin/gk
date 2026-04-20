@@ -229,9 +229,9 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
 int sd_perform_transfer(uint32_t block_start, uint32_t block_count,
     void *mem_address, bool is_read, int nretries)
 {
-    assert(block_count == 128U);
+    //assert(block_count == 128U);
     assert(mem_address);
-    assert(((uintptr_t)mem_address & 0xffffU) == 0);
+    //assert(((uintptr_t)mem_address & 0xffffU) == 0);
 
     int ret = 0;
 #if SD_NEVER_MULTI

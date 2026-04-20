@@ -301,7 +301,8 @@ int sdc_write(sdc_idx block_start, sdc_idx block_count, const void *mem_address)
 
         // write out
         assert((cur_bb * b_per_bb) < UINT32_MAX);
-        auto wret = sd_perform_transfer(cur_bb * b_per_bb, b_per_bb, (void *)has_bb.paddr, false);
+        auto wret = sd_perform_transfer(cur_bb * b_per_bb + b_offset_within_bb,
+            blocks_within_bb, (void *)(has_bb.paddr + byte_offset_within_bb), false);
 #if DEBUG_SDC
         klog("sdc: big block write complete, ret %d\n", wret);
 #endif
