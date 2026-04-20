@@ -154,7 +154,11 @@ static int sd_perform_transfer_int(uint32_t block_start, uint32_t block_count,
     }
 #endif
 
-    assert(sdmmc[0].tfer_complete.Value() == false);
+    if(sdmmc[0].tfer_complete.Value())
+    {
+        klog("sdmmc: spurious tfer_complete set\n");
+        sdmmc[0].tfer_complete.Clear();
+    }
 
     auto ret = sdmmc[0].sd_issue_command(cmd_id, SDIF::resp_type::R1, block_start * (sdmmc[0].is_hc ? 1U : 512U), nullptr, true);
 
