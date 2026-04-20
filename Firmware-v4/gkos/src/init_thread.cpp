@@ -163,7 +163,7 @@ void *init_thread(void *)
         }    
     }
 
-    //init_etnaviv();
+    init_etnaviv();
 
     while(true)
     {
