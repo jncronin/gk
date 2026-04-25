@@ -21,6 +21,12 @@ void init_kheap()
     sbrk_end = be_heap.base;
 }
 
+uintptr_t kheap_size()
+{
+    CriticalGuard cg(sl_heap);
+    return sbrk_end - be_heap.base;
+}
+
 extern "C"
 {
 
