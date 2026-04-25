@@ -17,6 +17,7 @@ struct sg_entry
     void *vaddr;
     uintptr_t paddr;
     size_t len;
+    unsigned int mt;
 };
 
 using sg_table = std::vector<sg_entry>;

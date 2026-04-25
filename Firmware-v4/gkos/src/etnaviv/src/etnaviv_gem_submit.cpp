@@ -53,7 +53,7 @@ std::shared_ptr<etnaviv_gem_submit> submit_create(struct drm_device *dev,
 }
 
 static int submit_lookup_objects(struct etnaviv_gem_submit *submit,
-	struct drm_file *file, struct drm_etnaviv_gem_submit_bo *submit_bos,
+	std::shared_ptr<drm_file> &f, struct drm_etnaviv_gem_submit_bo *submit_bos,
 	unsigned nr_bos)
 {
 	struct drm_etnaviv_gem_submit_bo *bo;
@@ -84,7 +84,7 @@ static int submit_lookup_objects(struct etnaviv_gem_submit *submit,
 		 * all under single table_lock just hit object_idr directly:
 		 */
 		submit->bos[i].obj = std::reinterpret_pointer_cast<etnaviv_gem_object>(
-			drm_gem_object_lookup(file, bo->handle));
+			drm_gem_object_lookup(f, bo->handle));
 		if (!submit->bos[i].obj) {
 			DRM_ERROR("invalid handle %u at index %u\n",
 				  bo->handle, i);
@@ -583,7 +583,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (ret)
 		goto err_submit_put; */
 
-	ret = submit_lookup_objects(submit.get(), file.get(), bos.get(), args->nr_bos);
+	ret = submit_lookup_objects(submit.get(), file, bos.get(), args->nr_bos);
 	if (ret)
 	{
 		DRM_ERROR("lookup_objects failed\n");

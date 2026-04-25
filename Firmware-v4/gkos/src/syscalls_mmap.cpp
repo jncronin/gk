@@ -210,13 +210,9 @@ int syscall_memdealloc(size_t len, const void *addr, int *_errno)
     auto mb = p->user_mem->vblocks.IsAllocated((uintptr_t)addr);
     if(mb.b.valid)
     {
-        if(mb.pmem_is_drm_object)
-        {
-            // don't allow to dealloc drm objects
-            return 0;
-        }
         p->user_mem->vblocks.Dealloc(mb);
-        vmem_unmap(mb.b, p->user_mem->ttbr0, ~0ULL, mb.pmem_is_shared == false);
+        /* Shared and DRM objects handle their own physical memory release */
+        vmem_unmap(mb.b, p->user_mem->ttbr0, ~0ULL, mb.pmem_is_shared == false && mb.pmem_is_drm_object == false);
         return 0;
     }
     else

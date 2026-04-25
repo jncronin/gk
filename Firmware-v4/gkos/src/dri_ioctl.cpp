@@ -11,10 +11,10 @@ static_assert(sizeof(drm_mode_map_dumb) == _IOC_SIZE(DRM_IOCTL_MODE_MAP_DUMB));
 static_assert(sizeof(drm_gem_close) == _IOC_SIZE(DRM_IOCTL_GEM_CLOSE));
 static_assert(sizeof(drm_get_cap) == _IOC_SIZE(DRM_IOCTL_GET_CAP));
 
-static int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_file *f);
-static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_file *f);
-static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, drm_file *f);
-static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, drm_file *f);
+static int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, std::shared_ptr<drm_file> &f);
+static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, std::shared_ptr<drm_file> &f);
+static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, std::shared_ptr<drm_file> &f);
+static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, std::shared_ptr<drm_file> &f);
 
 int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 {
@@ -46,19 +46,19 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
             
         case DRM_IOCTL_MODE_CREATE_DUMB:
             return dri_ioctl_mode_create_dumb(reinterpret_cast<drm_mode_create_dumb *>(ptr),
-                d->drm.get(), df.get());
+                d->drm.get(), df);
 
         case DRM_IOCTL_MODE_MAP_DUMB:
             return dri_ioctl_mode_map_dumb(reinterpret_cast<drm_mode_map_dumb *>(ptr),
-                d->drm.get(), df.get());
+                d->drm.get(), df);
 
         case DRM_IOCTL_GEM_CLOSE:
             return dri_ioctl_gem_close(reinterpret_cast<drm_gem_close *>(ptr),
-                d->drm.get(), df.get());
+                d->drm.get(), df);
 
         case DRM_IOCTL_GET_CAP:
             return dri_ioctl_get_cap(reinterpret_cast<drm_get_cap *>(ptr),
-                d->drm.get(), df.get());
+                d->drm.get(), df);
     }
 
     auto dri_nr = _IOC_NR(nr);
@@ -92,13 +92,13 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 }
 
 // TODO: use a member function within the the subclassed drm_device here
-int etnaviv_gem_new_handle(struct drm_device *dev, struct drm_file *file,
+int etnaviv_gem_new_handle(struct drm_device *dev, std::shared_ptr<drm_file> &f,
 	u32 size, u32 flags, u32 *handle);
 #define ETNA_BO_WC           0x00020000				/* MT_NORMAL_NC */
 
 
 
-int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_file *f)
+int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, std::shared_ptr<drm_file> &f)
 {
     auto pitch = m->width * m->bpp / 8;
     // align to 256 bytes for etnaviv efficiency
@@ -125,7 +125,7 @@ int dri_ioctl_mode_create_dumb(drm_mode_create_dumb *m, drm_device *dev, drm_fil
     }
 }
 
-static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_file *f)
+static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, std::shared_ptr<drm_file> &f)
 {
     auto obj = drm_gem_object_lookup(f, m->handle);
     if(obj)
@@ -146,12 +146,12 @@ static int dri_ioctl_mode_map_dumb(drm_mode_map_dumb *m, drm_device *dev, drm_fi
     }
 }
 
-static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, drm_file *f)
+static int dri_ioctl_gem_close(drm_gem_close *m, drm_device *dev, std::shared_ptr<drm_file> &f)
 {
     return drm_gem_object_close(f, m->handle);
 }
 
-static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, drm_file *f)
+static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, std::shared_ptr<drm_file> &f)
 {
     switch(m->capability)
     {

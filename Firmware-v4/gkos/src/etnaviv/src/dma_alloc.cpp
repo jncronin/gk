@@ -178,16 +178,6 @@ int dma_sync_sgtable_for_device(sg_table &sgt, dma_data_direction dir)
     return 0;
 }
 
-int drm_prime_pages_to_sg(const drm_gem_object &obj, sg_table &sgt)
-{
-    sg_entry sge;
-    sge.vaddr = obj.vaddr;
-    sge.paddr = obj.dma_addr;
-    sge.len = obj.vsize;
-    sgt.push_back(sge);
-    return 0;
-}
-
 int dma_resv_lock_interruptible(dma_resv &resv, WaitWoundContext &ticket)
 {
     return ticket.lock(resv.lock);

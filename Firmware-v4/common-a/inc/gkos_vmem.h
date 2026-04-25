@@ -26,6 +26,7 @@ const uint64_t mair = 0x040044bbff;
 #define PTS_BASE    0xffffffff00000000ULL
 #define UH_START            0xfffffc0000000000ULL
 #define UH_DEVICE_START     0xfffffd0000000000ULL
+#define UH_NC_START         0xfffffe0000000000ULL
 #define LH_END      0x40000000000ULL
 
 #define PAGE_PADDR_MASK         0xffffffff0000ULL

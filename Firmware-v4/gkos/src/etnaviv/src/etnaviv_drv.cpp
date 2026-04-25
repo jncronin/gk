@@ -253,7 +253,7 @@ static int etnaviv_ioctl_gem_new(struct drm_device *dev, void *data,
 			    ETNA_BO_FORCE_MMU))
 		return -EINVAL;
 
-	return etnaviv_gem_new_handle(dev, file.get(), args->size,
+	return etnaviv_gem_new_handle(dev, file, args->size,
 			args->flags, &args->handle);
 }
 
@@ -266,7 +266,7 @@ static int etnaviv_ioctl_gem_cpu_prep(struct drm_device *dev, void *data,
 	if (args->op & ~(ETNA_PREP_READ | ETNA_PREP_WRITE | ETNA_PREP_NOSYNC))
 		return -EINVAL;
 
-	auto obj = drm_gem_object_lookup(file.get(), args->handle);
+	auto obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
 
@@ -287,7 +287,7 @@ static int etnaviv_ioctl_gem_cpu_fini(struct drm_device *dev, void *data,
 	if (args->flags)
 		return -EINVAL;
 
-	auto obj = drm_gem_object_lookup(file.get(), args->handle);
+	auto obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
 
@@ -305,7 +305,7 @@ static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
 	if (args->pad)
 		return -EINVAL;
 
-	auto obj = drm_gem_object_lookup(file.get(), args->handle);
+	auto obj = drm_gem_object_lookup(file, args->handle);
 	if (!obj)
 		return -ENOENT;
 

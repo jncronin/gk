@@ -92,6 +92,8 @@
 #define VBLOCK_64k      65536ULL
 
 /* Define a block of memory */
+
+class drm_gem_object;
 class MemBlock
 {
     public:
@@ -101,6 +103,7 @@ class MemBlock
         std::shared_ptr<File> f{};
         size_t foffset = 0;
         size_t flen = 0;
+        std::shared_ptr<drm_gem_object> drm_obj{};
 
         typedef int (*action_t)(uintptr_t page_vaddr, uintptr_t page_paddr, MemBlock &mb);
 

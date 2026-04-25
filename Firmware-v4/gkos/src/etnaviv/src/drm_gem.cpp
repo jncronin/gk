@@ -7,14 +7,12 @@
 #include "drifile.h"
 #include <atomic>
 #include "screen.h"
+#include "pmem.h"
 
-static Spinlock sl_handles;
-static u32 next_handle = 1;
-static std::unordered_map<u32, std::shared_ptr<drm_gem_object>> handles;
-
+/* mmap offsets are global and weak, handles are per-file and strong */
 static Spinlock sl_mmap_offsets;
 static u32 next_mmap_offset = 1;
-static std::unordered_map<u32, std::shared_ptr<drm_gem_object>> mmap_offsets;
+static std::unordered_map<u32, std::weak_ptr<drm_gem_object>> mmap_offsets;
 
 extern std::atomic<int> fb_dma_addr_next;
 
@@ -37,71 +35,93 @@ int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> 
         drm->dma_addr = scr.second;
         drm->psize = size;
         drm->vsize = size;
+        drm->release_pages = false; // don't free the framebuffer
     }
     else
     {
-        drm->vaddr = dma_alloc(nullptr, size, &drm->dma_addr, GFP_HIGHUSER, drm->mt, 
-            &drm->vsize, &drm->psize);
+        drm->vaddr = 0;
+        drm->vsize = 0;
+        
+        auto pb = Pmem.acquire(size);
+        if(!pb.valid)
+        {
+            return -1;
+        }
+
+        drm->dma_addr = pb.base;
+        drm->psize = pb.length;
+        drm->creating_proc = GetCurrentPProcessForCore();
+        drm->release_pages = true;
+        
+        {
+            CriticalGuard cg(p->owned_pages.sl);
+            p->owned_pages.add(pb);
+        }
     }
     drm->handle = 0;
     drm->dev = dev;
     drm->pid = p->id;
 
-    return drm->vaddr ? 0 : -1;
+    return 0;
 }
 
-int drm_gem_handle_create(drm_file *, std::shared_ptr<drm_gem_object> obj, u32 *phandle)
+int drm_gem_handle_create(std::shared_ptr<drm_file> &f, std::shared_ptr<drm_gem_object> obj, u32 *phandle)
 {
     // ideally these should be per-process stored in the drm_file parameter, but we
     //  don't currently pass this on through the ioctl chain
 
-    CriticalGuard cg(sl_handles);
-    obj->handle = next_handle++;
+    CriticalGuard cg(f->sl_handles);
+    obj->handle = f->next_handle++;
     *phandle = obj->handle;
-    handles[obj->handle] = std::move(obj);
+    f->handles[obj->handle] = std::move(obj);
     return 0;
 }
 
-std::shared_ptr<drm_gem_object> drm_gem_object_lookup(struct drm_file *file, u32 handle)
+std::shared_ptr<drm_gem_object> drm_gem_object_lookup(std::shared_ptr<drm_file> &f, u32 handle)
 {
-    CriticalGuard cg(sl_handles);
-    auto iter = handles.find(handle);
-    if(iter == handles.end())
+    CriticalGuard cg(f->sl_handles);
+    auto iter = f->handles.find(handle);
+    if(iter == f->handles.end())
         return nullptr;
     return iter->second;
 }
 
 drm_gem_object::~drm_gem_object()
 {
-    if(vaddr)
+    if(release_pages)
     {
-        auto p = ProcessList.Get(pid);
-        if(p.v && p.v->user_mem)
+        PMemBlock pb;
+        pb.base = dma_addr;
+        pb.length = psize;
+        pb.is_shared = false;
+        pb.valid = true;
+
+        Pmem.release(pb);
+
+        auto p = creating_proc.lock();
+        if(p)
         {
-            MutexGuard mg(p.v->user_mem->m);
-            auto mb = p.v->user_mem->vblocks.IsAllocated((uintptr_t)vaddr);
-            if(mb.b.valid)
-            {
-                p.v->user_mem->vblocks.Dealloc(mb);
-                vmem_unmap(mb.b, p.v->user_mem->ttbr0, ~0ULL, mb.pmem_is_shared == false);
-            }
+            pb.valid = true;
+            CriticalGuard cg(p->owned_pages.sl);
+            p->owned_pages.release(pb);
         }
     }
 
+#if GPU_DEBUG > 3
     klog("drm_gem_object: destructor\n");
+#endif
 }
 
-int drm_gem_object_close(struct drm_file *file, u32 handle)
+int drm_gem_object_close(std::shared_ptr<drm_file> &f, u32 handle)
 {
-    CriticalGuard cg(sl_handles);
-    auto iter = handles.find(handle);
-    if(iter == handles.end())
+    CriticalGuard cg(f->sl_handles);
+    auto iter = f->handles.find(handle);
+    if(iter == f->handles.end())
     {
         klog("drm_gem_close: handle %u not found\n", handle);
         return -1;
     }
-    auto obj = iter->second;
-    handles.erase(iter);
+    f->handles.erase(iter);
     return 0;
 }
 
@@ -139,7 +159,7 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
             klog("dri: invalid mmap offset: %llx\n", offset);
             return -1;
         }
-        obj = iter->second;
+        obj = iter->second.lock();
     }
 
     // Do some sanity checks
@@ -147,6 +167,7 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
     {
         return -1;
     }
+    MutexGuard mg(*obj->lock);
     if(is_exec)
     {
         klog("dri: mmap attempt for exec memory\n");
@@ -164,7 +185,7 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
         return -1;
     }
 
-    if(!is_fixed && obj->vaddr)
+    if(!is_fixed && obj->vaddr && ((uintptr_t)obj->vaddr < UH_START))
     {
         *retaddr = obj->vaddr;
         return 0;
@@ -173,7 +194,8 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
     // Replicate the mmap code somewhat to get the vaddr
     auto p = GetCurrentProcessForCore();
     auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, len, true, false); // for any extra
-    pmb.pmem_is_shared = true;
+    pmb.drm_obj = obj;
+    pmb.pmem_is_drm_object = true;
 
     VMemBlock vb = InvalidVMemBlock();
     if(*retaddr)
@@ -204,23 +226,16 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
 
     /* If we've reached this far then this is a new mapping for this object
         Add it to sg_table so it gets cache operations done appropriately */
-    sg_entry sge { .vaddr = (void *)vb.data_start(), .paddr = obj->dma_addr, .len = vb.data_length() };
+    auto map_len = PAGE_ALIGN(std::min(len, obj->psize));
+    sg_entry sge { .vaddr = (void *)vb.data_start(), .paddr = obj->dma_addr, .len = map_len, .mt = obj->mt };
     obj->sgt.push_back(sge);
 
-    vb.user = true;
-    vb.write = is_write != 0;
-    vb.exec = false;
-    vb.lower_guard = 0;
-    vb.upper_guard = 0;
-
     // Now map all the physical bits we have
-    auto map_len = PAGE_ALIGN(std::min(len, obj->psize));
-    PMemBlock pb;
-    pb.base = obj->dma_addr;
-    pb.length = map_len;
-    pb.valid = true;
-    pb.is_shared = true;
-    vmem_map(vb, pb, p->user_mem->ttbr0);
+    for(auto i = 0ull; i < map_len; i += PAGE_SIZE)
+    {
+        vmem_map(vb.data_start() + i, obj->dma_addr + i, true, is_write != 0, false, p->user_mem->ttbr0, ~0ULL,
+            nullptr, obj->mt);
+    }
 
     return 0;
 }

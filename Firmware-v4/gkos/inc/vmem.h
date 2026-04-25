@@ -9,6 +9,7 @@
 
 #define PMEM_TO_VMEM(a) (((uintptr_t)(a) + UH_START))
 #define PMEM_TO_VMEM_DEVICE(a) (((uintptr_t)(a) + UH_DEVICE_START))
+#define PMEM_TO_VMEM_NC(a) (((uintptr_t)(a) + UH_NC_START))
 #define VMEM_TO_PMEM(a) (((uintptr_t)(a) - UH_START))
 
 #ifdef PAGE_SIZE

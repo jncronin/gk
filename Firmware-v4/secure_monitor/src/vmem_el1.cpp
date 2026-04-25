@@ -23,6 +23,10 @@
     We then repeat the mapping at
         0xffff fd00 0000 0000
       with all memory as type MT_DEVICE (for debugging how external DMA engines see memory)
+
+    And then again at
+        0xffff fe00 0000 0000
+      with all memory as MT_NORMAL_NC (for drm write combining mode)
     
     This is all possible in the first level (level 2) table using the first 128
         8 byte entries in the 64 kiB page directory.
@@ -105,6 +109,10 @@ void init_vmem(int el)
         // MT_DEVICE mapping
         pd_entries[i + 2048] = (0x20000000ULL * i) |
             (PAGE_ACCESS | PAGE_INNER_SHAREABLE | DT_BLOCK | PAGE_PRIV_RW | PAGE_ATTR(MT_DEVICE));
+
+        // MT_NORMAL_NC mapping
+        pd_entries[i + 4096] = (0x20000000ULL * i) |
+            (PAGE_ACCESS | PAGE_INNER_SHAREABLE | DT_BLOCK | PAGE_PRIV_RW | PAGE_ATTR(MT_NORMAL_NC));
     }
 }
 

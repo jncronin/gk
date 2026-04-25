@@ -61,7 +61,7 @@ static int etnaviv_context_map(struct etnaviv_iommu_context *context,
 
 static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 			     u32 iova, unsigned int va_len,
-			     sg_table &sgt, int prot)
+			     phys_addr_t pa, phys_addr_t da_len, int prot)
 {
 	unsigned int da = iova;
 	[[maybe_unused]] unsigned int i = 0;
@@ -70,28 +70,21 @@ static int etnaviv_iommu_map(struct etnaviv_iommu_context *context,
 	if (!context)
 		return -EINVAL;
 
-	for(auto &sge : sgt) {
-		phys_addr_t pa = sge.paddr;
-		unsigned int da_len = sge.len;
-		unsigned int bytes = std::min(da_len, va_len);
+	unsigned int bytes = std::min(da_len, (phys_addr_t)va_len);
 
-		VERB("map[%d]: %08x pa %p (%x)", i++, da, (void *)pa, bytes);
+	VERB("map[%d]: %08x pa %p (%x)", i++, da, (void *)pa, bytes);
 
-		if (!IS_ALIGNED(iova | pa | bytes, 4096ul)) {
-			dev_err(context->global->dev,
-				"unaligned: iova 0x%x pa %p size 0x%x\n",
-				iova, (void *)pa, bytes);
-			ret = -EINVAL;
-			goto fail;
-		}
-
-		ret = etnaviv_context_map(context, da, pa, bytes, prot);
-		if (ret)
-			goto fail;
-
-		va_len -= bytes;
-		da += bytes;
+	if (!IS_ALIGNED(iova | pa | bytes, 4096ul)) {
+		dev_err(context->global->dev,
+			"unaligned: iova 0x%x pa %p size 0x%x\n",
+			iova, (void *)pa, bytes);
+		ret = -EINVAL;
+		goto fail;
 	}
+
+	ret = etnaviv_context_map(context, da, pa, bytes, prot);
+	if (ret)
+		goto fail;
 
 	context->flush_seq++;
 
@@ -426,8 +419,8 @@ int etnaviv_iommu_map_gem(std::shared_ptr<etnaviv_iommu_context> context,
 	}
 
 	mapping->iova = node->start;
-	ret = etnaviv_iommu_map(context.get(), node->start, etnaviv_obj->size, *sgt,
-				ETNAVIV_PROT_READ | ETNAVIV_PROT_WRITE);
+	ret = etnaviv_iommu_map(context.get(), node->start, etnaviv_obj->size, etnaviv_obj->dma_addr,
+				etnaviv_obj->psize, ETNAVIV_PROT_READ | ETNAVIV_PROT_WRITE);
 
 	if (ret < 0) {
 		context->mm.alloc.Dealloc(node->start);
@@ -488,6 +481,9 @@ etnaviv_iommu_context_init(struct etnaviv_iommu_global *global,
 					  global->memory_base);
 	if (ret)
 		goto out_free;
+
+	klog("etnaviv: cmdbuf suballoc @ iova %08x len %x\n", ctx->cmdbuf_mapping->iova,
+		SUBALLOC_SIZE);
 
 	if (global->version == ETNAVIV_IOMMU_V1 &&
 	    ctx->cmdbuf_mapping->iova > 0x80000000) {

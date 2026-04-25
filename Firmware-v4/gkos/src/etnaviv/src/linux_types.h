@@ -189,6 +189,10 @@ class DRMScheduler;
 struct drm_file
 {
 	std::shared_ptr<DRMScheduler> sched;
+
+	Spinlock sl_handles;
+	u32 next_handle = 1;
+	std::unordered_map<u32, std::shared_ptr<drm_gem_object>> handles;
 };
 
 /* resv handles locking as well as maintaining a list of fences */
@@ -200,9 +204,12 @@ struct dma_resv
 
 struct drm_gem_object
 {
+	std::shared_ptr<Mutex> lock = MutexList.Create();
+
 	dma_addr_t dma_addr;
 	void *vaddr;
 	size_t psize, vsize;
+	bool release_pages;
 	u32 handle;
 	u64 vma_node;		// this is an offset that is used in mmap(drifile, ...) calls.
 						// Needs to be PAGE_SIZE aligned otherwise mmap will fail
@@ -216,17 +223,18 @@ struct drm_gem_object
 
 	drm_device *dev;
 
+	std::weak_ptr<Process> creating_proc;
+
 	virtual ~drm_gem_object();
 };
 
 typedef u64 drm_vma_offset_node;
 
 int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> drm, size_t size);
-int drm_gem_handle_create(struct drm_file *file,
+int drm_gem_handle_create(std::shared_ptr<drm_file> &f,
 	std::shared_ptr<drm_gem_object> obj, u32 *handlep);
-std::shared_ptr<drm_gem_object> drm_gem_object_lookup(struct drm_file *file, u32 handle);
-int drm_gem_object_close(struct drm_file *file, u32 handle);
-int drm_prime_pages_to_sg(const drm_gem_object &obj, sg_table &sgt);
+std::shared_ptr<drm_gem_object> drm_gem_object_lookup(std::shared_ptr<drm_file> &f, u32 handle);
+int drm_gem_object_close(std::shared_ptr<drm_file> &f, u32 handle);
 int drm_gem_create_mmap_offset(std::shared_ptr<drm_gem_object> obj);
 __u64 drm_vma_node_offset_addr(drm_vma_offset_node *node);
 

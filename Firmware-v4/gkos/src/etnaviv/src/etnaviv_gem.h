@@ -46,7 +46,6 @@ struct etnaviv_vram_mapping_hasher
 
 struct etnaviv_gem_object : public drm_gem_object {
 	const struct etnaviv_gem_ops *ops;
-	std::shared_ptr<Mutex> lock = MutexList.Create();
 
 	/*
 	 * The actual size that is visible to the GPU, not necessarily
@@ -125,8 +124,6 @@ int etnaviv_gem_wait_bo(struct etnaviv_gpu *gpu, struct drm_gem_object *obj,
 int etnaviv_gem_new_private(struct drm_device *dev, size_t size, u32 flags,
 	const struct etnaviv_gem_ops *ops, struct etnaviv_gem_object **res);
 void etnaviv_gem_obj_add(struct drm_device *dev, struct drm_gem_object *obj);
-struct page **etnaviv_gem_get_pages(struct etnaviv_gem_object *obj);
-void etnaviv_gem_put_pages(struct etnaviv_gem_object *obj);
 
 std::shared_ptr<etnaviv_vram_mapping>
 etnaviv_gem_mapping_get(
