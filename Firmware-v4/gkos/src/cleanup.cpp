@@ -23,11 +23,11 @@ void *cleanup_thread(void *)
         {
             if(msg.is_thread)
             {
-                ThreadList.Delete(msg.id);
+                ThreadList.Release(msg.id);
             }
             else
             {
-                ProcessList.Delete(msg.id);
+                ProcessList.Release(msg.id);
             }
         }
     }

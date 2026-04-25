@@ -154,6 +154,24 @@ template <typename T> class TIDList : public IDList<T>
             CriticalGuard cg(this->sl);
             _setexitcode(id, ret);
         }
+
+        /* Don't remove the return value, parent etc, but do delete the
+            pointer */
+        void Release(id_t id)
+        {
+            CriticalGuard cg(this->sl);
+            auto iter = this->list.find(id);
+            if(iter == this->list.end())
+            {
+                return;
+            }
+
+            // delete member outside lock
+            PT member = nullptr;
+            std::swap(iter->second.v, member);
+            cg.unlock();
+            member = nullptr;
+        }
 };
 
 template <typename T> class PIDList : public TIDList<T>
