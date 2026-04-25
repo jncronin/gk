@@ -212,7 +212,7 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
         }
         return 0;
     }
-    else
+    else /* is userspace */
     {
         // This can all be interruptible
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
@@ -337,7 +337,6 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
             }
             paddr = pmemret.base;
 
-            if(user)
             {
                 CriticalGuard cg(p->owned_pages.sl);
                 p->owned_pages.add(pmemret);
