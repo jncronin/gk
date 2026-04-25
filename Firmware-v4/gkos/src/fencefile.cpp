@@ -49,5 +49,8 @@ void dma_fence::Signal()
             fm->Deregister(id);
     }
 
+    if(event_id >= 0)
+        klog("fence: event %d signalled\n", event_id);
+
     s.Signal();
 }

@@ -1633,9 +1633,12 @@ static irqreturn_t irq_handler(int irq, void *data)
 			 * - event 1 and event 0 complete
 			 * we can end up processing event 0 first, then 1.
 			 */
+
+			//if((s32)(fence->id - gpu->completed_fence) > 0)
+			//	gpu->completed_fence = fence->id;
 			//if (fence_after(fence->seqno, gpu->completed_fence))
 			//	gpu->completed_fence = fence->seqno;
-			klog("etnaviv: event %u signalled\n", event);
+			//klog("etnaviv: event %u signalled\n", event);
 			fence->Signal();
 			//dma_fence_signal_timestamp(fence, now);
 			gpu->event[event].submit = nullptr;
