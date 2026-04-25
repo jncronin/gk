@@ -10,7 +10,12 @@ static inline void signal_thread_woken(const PThread &t)
 {
     // other cores first
     auto core_id = GetCoreID();
-    CriticalGuard cg(sched.sl_cur_next);
+    CriticalGuard cg(true, sched.sl_cur_next);
+    if(!cg.IsLocked())
+    {
+        // prevent dead locks on sl_cur_next
+        return;
+    }
     for(auto i = 0U; i < sched.ncores; i++)
     {
         if(i == core_id)
