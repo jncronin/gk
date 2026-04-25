@@ -108,15 +108,31 @@ static inline PThread GetCurrentPThreadForCore()
     return ThreadList.Get(GetCurrentThreadForCore()->id).v;
 }
 
-static inline PProcess GetCurrentProcessForCore()
+static inline PProcess GetCurrentPProcessForCore()
 {
     return GetCurrentKernelThreadForCore() ? ProcessList.Get(GetCurrentKernelThreadForCore()->p).v : nullptr;
 }
 
-static inline std::pair<Thread *, PProcess> GetCurrentThreadProcessForCore()
+static inline Process *GetProcessForThread(Thread *t)
+{
+    if(!t)
+        return nullptr;
+    
+    UninterruptibleGuard ug;
+    auto pp = ProcessList.Get(t->p).v;
+    return pp.get();
+}
+
+static inline Process *GetCurrentProcessForCore()
 {
     auto t = GetCurrentKernelThreadForCore();
-    return std::make_pair(t, t ? ProcessList.Get(t->p).v : nullptr);
+    return GetProcessForThread(t);
+}
+
+static inline std::pair<Thread *, Process *> GetCurrentThreadProcessForCore()
+{
+    auto t = GetCurrentKernelThreadForCore();
+    return std::make_pair(t, GetProcessForThread(t));
 }
 
 #endif

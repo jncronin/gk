@@ -37,7 +37,7 @@ int syscall_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     ADDR_CHECK_BUFFER_R((void *)start_func, 1);
 
     auto curt = GetCurrentThreadForCore();
-    auto p = GetCurrentProcessForCore();
+    auto p = GetCurrentPProcessForCore();
 
     auto t = Thread::Create("inproc", (Thread::threadstart_t)start_func, arg, curt->is_privileged,
         curt->base_priority, p, arg2);

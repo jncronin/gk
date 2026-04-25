@@ -59,7 +59,7 @@ void DRMScheduler::init(size_t priority, size_t entity, std::shared_ptr<DRMSched
 
         auto t = Thread::Create("drm_worker_" + std::to_string(priority),
             drm_sched_worker, (void *)ws, true, GK_PRIORITY_HIGH,
-            GetCurrentProcessForCore());
+            GetCurrentPProcessForCore());
         tids[priority] = t->id;
         Schedule(t);
 

@@ -125,7 +125,7 @@ extern "C" uint64_t Exception_Handler(uint64_t esr, uint64_t far,
         while(true);
     }
 
-    if(!t->is_privileged || (p && p != p_kernel))
+    if(!t->is_privileged || (p && p != p_kernel.get()))
     {
         // required for yield()
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");

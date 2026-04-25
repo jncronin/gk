@@ -31,7 +31,7 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
     }
 
     // create process object
-    auto proc = Process::Create(pname, proc_info->is_priv != 0, GetCurrentProcessForCore());
+    auto proc = Process::Create(pname, proc_info->is_priv != 0, GetCurrentPProcessForCore());
     if(!proc)
     {
         klog("process_create: Process::Create failed\n");

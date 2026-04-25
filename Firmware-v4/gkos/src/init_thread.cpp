@@ -110,7 +110,7 @@ void *init_thread(void *)
     }
 
     klog("init: opened gksupervisor process fd %d\n", proc_fd);
-    p_gksupervisor = Process::Create("gksupervisor", false, GetCurrentProcessForCore());
+    p_gksupervisor = Process::Create("gksupervisor", false, GetCurrentPProcessForCore());
 
     Thread::threadstart_t test_ep;
     auto ret = elf_load_fildes(proc_fd, p_gksupervisor, &test_ep);
