@@ -17,6 +17,10 @@ void *dma_alloc(struct device *dev, size_t size,
         return nullptr;
     }
 
+    auto p = GetCurrentProcessForCore();
+    if(!p)
+        return nullptr;
+
     // get pmem first
     auto pmem = Pmem.acquire(size);
     if(!pmem.valid)
@@ -34,10 +38,6 @@ void *dma_alloc(struct device *dev, size_t size,
     }
     else
     {
-        auto p = GetCurrentProcessForCore();
-        if(!p)
-            return nullptr;
-
         // A backing store for any unmapped region - shoudln't get used
         auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, pmem.length, true, false);
         vmem = p->user_mem->vblocks.AllocAny(pmb, false);
@@ -80,6 +80,11 @@ void *dma_alloc(struct device *dev, size_t size,
     }
 
     *dma_addr = pmem.base;
+
+    {
+        CriticalGuard cg(p->owned_pages.sl);
+        p->owned_pages.add(pmem, true);
+    }
 
 #if DMA_DEBUG > 1
     klog("dma_alloc_wc: %llu bytes @ %p physical, %p virtual\n", size, *dma_addr, (void *)vmem.base);

@@ -336,6 +336,12 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
                 return user ? UserThreadFault() : SupervisorThreadFault();
             }
             paddr = pmemret.base;
+
+            if(user)
+            {
+                CriticalGuard cg(p->owned_pages.sl);
+                p->owned_pages.add(pmemret);
+            }
         }
 
         /* Fill before map */

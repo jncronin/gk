@@ -151,6 +151,12 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr,
 
     if(!paddr)
     {
+        // catch user space allocs without a provided page
+        if(act_vaddr < UH_START)
+        {
+            while(true);
+        }
+
         // need to allocate page
         auto paddr_be = Pmem.acquire(VBLOCK_64k);
         if(!paddr_be.valid)

@@ -417,7 +417,6 @@ VMemBlock VBlock::AllocFixedLevel2(uintptr_t addr, uint32_t tag)
     }
     if(level1[idx] == VBLOCK_BLOCK_FREE)
     {
-        // TODO: add all these Pmem.acquires to the process used phys mem list
         level1[idx] = PmemAllocLevel2();
         level1_free--;
     }
@@ -514,7 +513,6 @@ VMemBlock VBlock::AllocFixedLevel3(uintptr_t addr, uint32_t tag)
     }
     if(level1[idx] == VBLOCK_BLOCK_FREE)
     {
-        // TODO: add all these Pmem.acquires to the process used phys mem list
         level1[idx] = PmemAllocLevel2();
         level1_free--;
     }
