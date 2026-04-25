@@ -4,6 +4,8 @@
 #include "process.h"
 #include "i2c.h"
 #include "vmem.h"
+#include "kheap.h"
+#include "pmem.h"
 #include <stm32mp2xx.h>
 
 adouble vsys, isys, psys;
@@ -200,6 +202,37 @@ void *pwr_thread(void *)
             "pwr: bq[8-b]: %02x %02x %02x %02x\n", bq_regs[0], bq_regs[1], bq_regs[2], bq_regs[3]);
         bqbuf[sizeof(bqbuf) - 1] = 0;
         klog(bqbuf);
+#endif
+
+#if GK_ENABLE_MEM_DUMP
+        // put process memory dump here for want of a better place
+        static kernel_time last_mem_dump = kernel_time_invalid();
+        if(clock_cur() >= (last_mem_dump + kernel_time_from_ms(5000)))
+        {
+            klog("MEM_DUMP: kheap:               %llx\n", kheap_size());
+            klog("MEM_DUMP: phys_free:           %llx\n", Pmem.get_free_space());
+
+            {
+                CriticalGuard cg(ProcessList.sl);
+                for(auto &[ id, p ] : ProcessList.list)
+                {
+                    if(!p.has_ended && p.v)
+                    {
+                        CriticalGuard cg2(p.v->sl, p.v->owned_pages.sl);
+
+                        auto gpu_pages = p.v->owned_pages.gpu_pages.npages;
+                        auto normal_pages = p.v->owned_pages.p.size() +
+                            p.v->owned_pages.other_pages.npages;
+                        klog("MEM_DUMP: %19s: %llx (gpu: %llx)\n", p.v->name.c_str(),
+                            (gpu_pages + normal_pages) * PAGE_SIZE,
+                            gpu_pages * PAGE_SIZE);
+                    }
+                }
+            }
+
+            last_mem_dump = clock_cur();
+        }
+
 #endif
 
         Block(clock_cur() + kernel_time_from_ms(1000));

@@ -59,6 +59,7 @@ class Process
                 owned_page_list other_pages, gpu_pages;
 
                 void add(const PMemBlock &b, bool is_gpu = false);
+                void release(const PMemBlock &b);
                 void release_all();
         };
 

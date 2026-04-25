@@ -105,6 +105,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
         uint64_t level_qword_counts[num_levels()];
         uint64_t *b;
         Spinlock sl;
+        uint64_t free_space;
 
         void release_at_level(uint64_t level, uint64_t bitidx)
         {
@@ -228,6 +229,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
                 cpsr = lock();
                 release_at_level(level,
                     addr_to_bitidx_at_level(level, be.base - base_addr));
+                free_space += length;
             }
             else
             {
@@ -258,6 +260,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
                     
                     auto level = buddy_size_to_level(cur_buddy_size);
                     release_at_level(level, addr_to_bitidx_at_level(level, cur_addr));
+                    free_space += cur_buddy_size;
 
                     cur_addr += cur_buddy_size;
                 }
@@ -306,8 +309,17 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
                 ret.base = base_addr + bitret * length;
                 ret.length = length;
                 ret.valid = true;
+                free_space -= length;
             }
 
+            return ret;
+        }
+
+        uint64_t get_free_space()
+        {
+            auto cpsr = lock();
+            auto ret = free_space;
+            unlock(cpsr);
             return ret;
         }
 
@@ -318,6 +330,7 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
             //  may be used in another constructor, and there is no guarantee of order of calling
             //  static constructors
             b = (uint64_t *)mem;
+            free_space = 0;
             memset(b, 0, 8*total_qwords(total_length));
             uint64_t cur_start = 0;
             for(uint64_t i = 0; i < num_levels(); i++)

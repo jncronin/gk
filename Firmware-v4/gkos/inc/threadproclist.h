@@ -38,7 +38,6 @@ using ThreadListMember = ThreadProcListMember<Thread, void *>;
 template <class T> class IDList
 {    
     public:
-        protected:
         std::map<id_t, T> list;
         id_t next_id = 1;
 

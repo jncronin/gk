@@ -90,10 +90,12 @@ void Process::owned_pages_t::add(const PMemBlock &b, bool is_gpu)
         auto ret = gpu_pages.p.AllocFixed({ (uintptr_t)start, (uintptr_t)length }, std::move(sp));
         if(ret == gpu_pages.p.end())
         {
-            klog("process: failed to add pages to gpu list: already present\n");
+            klog("process: failed to add pages %llx - %llx to gpu list: already present\n",
+                start, start + length);
         }
         else
         {
+            klog("process: ADDED %llx - %llx to gpu list\n", start, start + length);
             gpu_pages.npages += length / PAGE_SIZE;
         }
         return;
@@ -103,7 +105,8 @@ void Process::owned_pages_t::add(const PMemBlock &b, bool is_gpu)
         auto ret = other_pages.p.AllocFixed({ (uintptr_t)start, (uintptr_t)length }, std::move(sp));
         if(ret == other_pages.p.end())
         {
-            klog("process: failes to add pages to other list: already present\n");
+            klog("process: failed to add pages %llx - %llx to other list: already present\n",
+                start, start + length);
         }
         else
         {
@@ -155,6 +158,57 @@ void Process::owned_pages_t::release_all()
             l->npages -= iter->first.length / PAGE_SIZE;
             iter = l->p.erase(iter);
         }
+    }
+}
+
+void Process::owned_pages_t::release(const PMemBlock &pb)
+{
+    if(!pb.valid)
+        return;
+    
+    for(auto l : { &other_pages, &gpu_pages })
+    {
+        auto is_alloc = l->p.IsAllocated(pb.base);
+        if(is_alloc == l->p.end())
+            continue;
+
+        if(l == &gpu_pages)
+        {
+            klog("process: REMOVED %llx - %llx from gpu list\n", pb.base, pb.base + pb.length);
+        }
+        
+        if(is_alloc->first.start != pb.base ||
+            is_alloc->first.length != pb.length)
+        {
+            klog("process: WARN: release only a portion off whole allocated physmem area\n");
+        }
+        if(is_alloc->second)
+        {
+            klog("process: WARN: shared pages not yet implemented\n");
+        }
+        l->p.erase(is_alloc);
+        l->npages -= pb.length / PAGE_SIZE;
+        return;
+    }
+
+    bool released_all = true;
+    for(auto pstart = pb.base; pstart < (pb.base + pb.length); pstart += PAGE_SIZE)
+    {
+        auto is_alloc = p.find(pstart >> 16);
+        if(is_alloc != p.end())
+        {
+            p.erase(is_alloc);
+        }
+        else
+        {
+            released_all = false;
+        }
+    }
+
+    if(!released_all)
+    {
+        klog("process: WARN: tried to release memory %llx - %llx which we have no record of\n",
+            pb.base, pb.base + pb.length);
     }
 }
 
