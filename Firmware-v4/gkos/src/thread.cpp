@@ -286,6 +286,11 @@ Thread::~Thread()
             if(cm) cm->force_release(id);
         }
     }
+
+    if(mr_kernel_thread.valid)
+    {
+        vblock_free(mr_kernel_thread, vblock, true);
+    }
 }
 
 ThreadPrivilegeEscalationGuard::ThreadPrivilegeEscalationGuard()
