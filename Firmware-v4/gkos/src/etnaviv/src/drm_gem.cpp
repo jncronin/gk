@@ -219,7 +219,7 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
     pb.base = obj->dma_addr;
     pb.length = map_len;
     pb.valid = true;
-    pb.is_shared = false;
+    pb.is_shared = true;
     vmem_map(vb, pb, p->user_mem->ttbr0);
 
     return 0;

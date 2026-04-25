@@ -38,8 +38,9 @@ void *dma_alloc(struct device *dev, size_t size,
     }
     else
     {
-        // A backing store for any unmapped region - shoudln't get used
+        // A backing store for any unmapped region - shouldn't get used
         auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, pmem.length, true, false);
+        pmb.pmem_is_drm_object = true;
         vmem = p->user_mem->vblocks.AllocAny(pmb, false);
         ttbr0 = p->user_mem->ttbr0;
     }

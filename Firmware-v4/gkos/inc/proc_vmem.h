@@ -109,6 +109,7 @@ class MemBlock
         action_t Sync = nullptr;
 
         bool pmem_is_shared = false;
+        bool pmem_is_drm_object = false;
 
         static MemBlock ZeroBackedReadOnlyMemory(uintptr_t base,
             uintptr_t length,
