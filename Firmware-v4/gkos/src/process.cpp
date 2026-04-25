@@ -95,7 +95,9 @@ void Process::owned_pages_t::add(const PMemBlock &b, bool is_gpu)
         }
         else
         {
+#if DEBUG_OWNED_PAGES
             klog("process: ADDED %llx - %llx to gpu list\n", start, start + length);
+#endif
             gpu_pages.npages += length / PAGE_SIZE;
         }
         return;
@@ -172,10 +174,12 @@ void Process::owned_pages_t::release(const PMemBlock &pb)
         if(is_alloc == l->p.end())
             continue;
 
+#if DEBUG_OWNED_PAGES
         if(l == &gpu_pages)
         {
             klog("process: REMOVED %llx - %llx from gpu list\n", pb.base, pb.base + pb.length);
         }
+#endif
         
         if(is_alloc->first.start != pb.base ||
             is_alloc->first.length != pb.length)
