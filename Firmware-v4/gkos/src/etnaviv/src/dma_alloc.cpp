@@ -112,6 +112,16 @@ void dma_free_wc(struct device *dev, size_t size,
 
     vblock_free(vb);
 
+    {
+        auto p = GetCurrentProcessForCore();
+        CriticalGuard cg(p->owned_pages.sl);
+        PMemBlock pb;
+        pb.base = dma_addr;
+        pb.length = size;
+        pb.valid = true;
+        p->owned_pages.release(pb);
+    }
+
     for(auto i = 0ull; i < size; i += PAGE_SIZE)
     {
         PMemBlock pb;
