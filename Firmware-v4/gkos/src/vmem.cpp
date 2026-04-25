@@ -105,6 +105,8 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr,
     auto l2_addr = (vaddr >> 29) & 0x1fffULL;
     auto l3_addr = (vaddr >> 16) & 0x1fffULL;
 
+    auto p = GetCurrentProcessForCore();
+
     auto pd = (volatile uint64_t *)PMEM_TO_VMEM(ttbr & 0xffffffffffffULL);
     volatile uint64_t *pt;
     if((pd[l2_addr] & 0x1) == 0)
@@ -116,6 +118,11 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr,
         {
             klog("OOM\n");
             return -1;
+        }
+
+        if(act_vaddr < UH_START && p)
+        {
+            p->owned_pages.add(pt_be);
         }
 
         auto pt_paddr = pt_be.base;
@@ -164,6 +171,12 @@ static int vmem_map_int(uintptr_t vaddr, uintptr_t act_vaddr,
             klog("OOM\n");
             return -1;
         }
+
+        if(act_vaddr < UH_START && p)
+        {
+            p->owned_pages.add(paddr_be);
+        }
+
         paddr = paddr_be.base;
     }
 
