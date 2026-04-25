@@ -351,7 +351,8 @@ template<typename KeyT, typename AddrT = uintptr_t> class BlockAllocator
         iterator cbegin() { return l.cbegin(); }
         iterator cend() { return l.cend(); }
         iterator crbegin() { return l.crbegin(); }
-        iterator crend() { return l.crend(); }        
+        iterator crend() { return l.crend(); }   
+        iterator erase(iterator i) { return l.erase(i); }     
 };
 
 #endif

@@ -74,16 +74,47 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
     return ret;
 }
 
-void Process::owned_pages_t::add(const PMemBlock &b)
+void Process::owned_pages_t::add(const PMemBlock &b, bool is_gpu)
 {
+    std::shared_ptr<shared_page> sp = nullptr;
     auto start = b.base & ~(VBLOCK_64k - 1ULL);
     auto end = (b.base + b.length + (VBLOCK_64k - 1ULL)) & ~(VBLOCK_64k - 1ULL);
+    auto length = end - start;
+
+    if(b.is_shared)
+    {
+        klog("process: shared pages not yet implemented\n");
+    }
+    if(is_gpu)
+    {
+        auto ret = gpu_pages.p.AllocFixed({ (uintptr_t)start, (uintptr_t)length }, std::move(sp));
+        if(ret == gpu_pages.p.end())
+        {
+            klog("process: failed to add pages to gpu list: already present\n");
+        }
+        else
+        {
+            gpu_pages.npages += length / PAGE_SIZE;
+        }
+        return;
+    }
+    else if(b.length != PAGE_SIZE || b.is_shared)
+    {
+        auto ret = other_pages.p.AllocFixed({ (uintptr_t)start, (uintptr_t)length }, std::move(sp));
+        if(ret == other_pages.p.end())
+        {
+            klog("process: failes to add pages to other list: already present\n");
+        }
+        else
+        {
+            other_pages.npages += length / PAGE_SIZE;
+        }
+        return;
+    }
 
     while(start < end)
     {
         auto val = (uint32_t)(start >> 16);
-        if(b.is_shared)
-            val |= 0x80000000UL;
         p.insert(val);
         start += VBLOCK_64k;
     }
@@ -93,8 +124,6 @@ void Process::owned_pages_t::release_all()
 {
     for(auto curp : p)
     {
-        if(curp & 0x80000000UL)
-            continue;
         auto addr = ((uint64_t)curp) << 16;
         PMemBlock pb;
         pb.base = addr;
@@ -102,6 +131,30 @@ void Process::owned_pages_t::release_all()
         pb.length = VBLOCK_64k;
         pb.valid = true;
         Pmem.release(pb);
+    }
+    p.clear();
+
+    for(auto l : { &other_pages, &gpu_pages })
+    {
+        for(auto iter = l->p.begin(); iter != l->p.end();)
+        {
+            if(iter->second)
+            {
+                // shared pages not handled yet
+                iter++;
+                continue;
+            }
+
+            PMemBlock pb;
+            pb.base = iter->first.start;
+            pb.length = iter->first.length;
+            pb.is_shared = false;
+            pb.valid = true;
+            Pmem.release(pb);
+
+            l->npages -= iter->first.length / PAGE_SIZE;
+            iter = l->p.erase(iter);
+        }
     }
 }
 

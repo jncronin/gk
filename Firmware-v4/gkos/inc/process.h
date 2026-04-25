@@ -16,6 +16,7 @@
 #include "_gk_event.h"
 #include "osqueue.h"
 #include "proc_vmem.h"
+#include "block_allocator.h"
 
 class Thread;
 class Process;
@@ -23,6 +24,8 @@ class Widget;
 
 using PProcess = std::shared_ptr<Process>;
 using WPProcess = std::weak_ptr<Process>;
+
+class shared_page;
 
 class Process
 {
@@ -42,9 +45,20 @@ class Process
         {
             public:
                 Spinlock sl;
+
+                /* The majority of pages (unshared, page size) go in 'p' for quick access etc.
+                    Larger blocks of pages, or those that are shared or accessed by the gpu,
+                    go in other_pages or gpu_pages respectively.*/
                 std::unordered_set<uint32_t> p{};
 
-                void add(const PMemBlock &b);
+                struct owned_page_list
+                {
+                    BlockAllocator<std::shared_ptr<shared_page>> p{};
+                    uintptr_t npages = 0;
+                };
+                owned_page_list other_pages, gpu_pages;
+
+                void add(const PMemBlock &b, bool is_gpu = false);
                 void release_all();
         };
 
