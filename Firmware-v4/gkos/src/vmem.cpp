@@ -374,6 +374,14 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
                     pb.length = VBLOCK_64k;
                     pb.valid = true;
                     Pmem.release(pb);
+
+                    if(act_vaddr < UH_START)
+                    {
+                        auto p = GetCurrentProcessForCore();
+                        CriticalGuard cg(p->owned_pages.sl);
+                        pb.valid = true;
+                        p->owned_pages.release(pb);
+                    }
                 }
             }
         }
