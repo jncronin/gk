@@ -9,6 +9,9 @@ Reset_Handler:
     adr x2, _vtors
     msr vbar_el3, x2
 
+    // gkos uses tpidr_el1 for current thread - ensure it is initialised to a sensible value
+    msr tpidr_el1, xzr
+
     // keep APs in WFI
     mrs x2, mpidr_el1
     and x2, x2, #0xff
