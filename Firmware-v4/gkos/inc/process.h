@@ -17,6 +17,7 @@
 #include "osqueue.h"
 #include "proc_vmem.h"
 #include "block_allocator.h"
+#include "vmem.h"
 
 class Thread;
 class Process;
@@ -61,6 +62,7 @@ class Process
                 void add(const PMemBlock &b, bool is_gpu = false);
                 void release(const PMemBlock &b);
                 void release_all();
+                bool contains(uintptr_t addr, uintptr_t size = PAGE_SIZE);
         };
 
         class userspace_mem_t
@@ -220,6 +222,11 @@ class Process
 
         Process() = default;
         ~Process();
+
+        /* For debug purposes - check whether the physical pages referenced in the page tables
+            (including the page tables themselves) are mentioned in the processes owned_pages
+            structures */
+        bool check_process_pages_vs_ttbr();
 };
 
 extern PProcess p_kernel;

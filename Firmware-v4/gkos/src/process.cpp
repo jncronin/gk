@@ -13,6 +13,8 @@
 #include "cm33_interface.h"
 #include <atomic>
 
+#define DEBUG_PROCESS_PAGES     1
+
 static std::atomic<pid_t> focus_process = 0;
 extern PProcess p_gksupervisor;
 
@@ -216,6 +218,34 @@ void Process::owned_pages_t::release(const PMemBlock &pb)
     }
 }
 
+bool Process::owned_pages_t::contains(uintptr_t addr, uintptr_t len)
+{
+    if(len > VBLOCK_64k)
+    {
+        auto ret = true;
+
+        for(auto i = 0ull; i < len; i += VBLOCK_64k)
+        {
+            if(!contains(addr + i))
+            {
+                ret = false;
+                break;
+            }
+        }
+
+        return ret;
+    }
+
+    if(p.find(addr >> 16) != p.end())
+        return true;
+    else if(gpu_pages.p.IsAllocated(addr) != gpu_pages.p.end())
+        return true;
+    else if(other_pages.p.IsAllocated(addr) != other_pages.p.end())
+        return true;
+
+    return false;
+}
+
 void Process::Kill(id_t pid, int rc)
 {
     CriticalGuard cg(ProcessList.sl);
@@ -257,10 +287,98 @@ void Process::Kill(id_t pid, int rc)
     CleanupQueue.Push(cleanup_message { .is_thread = false, .id = pid });
 }
 
+bool Process::check_process_pages_vs_ttbr()
+{
+    CriticalGuard cg(sl, owned_pages.sl);
+    if(!user_mem)
+        return true;
+
+    MutexGuard mg(user_mem->m);
+
+    bool ret = true;
+
+    if(!owned_pages.contains(user_mem->ttbr0 & PAGE_PADDR_MASK))
+    {
+        ret = false;
+        klog("process: owned_pages does not include ttbr0 %llx\n", user_mem->ttbr0 & PAGE_PADDR_MASK);
+    }
+
+    // iterate pd entries
+    auto pd = (uint64_t *)PMEM_TO_VMEM(user_mem->ttbr0 & PAGE_PADDR_MASK);
+    for(auto pdi = 0u; pdi < 8191u; pdi++)  // avoid last entry (process interface stuff)
+    {
+        auto pde = pd[pdi];
+        auto pde_format = pde & 0x3;
+
+        if(pde_format == DT_BLOCK)
+        {
+            if(!owned_pages.contains(pde & PAGE_PADDR_MASK, VBLOCK_512M))
+            {
+                ret = false;
+                klog("process: owned_pages does not include block %llx for vaddr %llx\n",
+                    pde & PAGE_PADDR_MASK,
+                    pdi * VBLOCK_512M);
+            }
+        }
+        else if(pde_format == DT_PT)
+        {
+            if(!owned_pages.contains(pde & PAGE_PADDR_MASK))
+            {
+                ret = false;
+                klog("process: owned_pages does not include page table %llx\n",
+                    pde & PAGE_PADDR_MASK);
+            }
+
+            // iterate pt entries
+            auto pt = (uint64_t *)PMEM_TO_VMEM(pde & PAGE_PADDR_MASK);
+
+            for(auto pti = 0u; pti < 8192u; pti++)
+            {
+                auto pte = pt[pti];
+                auto pte_format = pte & 0x3;
+
+                if(pte_format == DT_PAGE)
+                {
+                    if(!owned_pages.contains(pte & PAGE_PADDR_MASK))
+                    {
+                        ret = false;
+                        klog("process: owned_pages does not include page %llx for vaddr %llx\n",
+                            pte & PAGE_PADDR_MASK,
+                            pdi * VBLOCK_512M + pti * VBLOCK_64k);
+                    }
+                }
+            }
+        }
+    }
+
+    if(!ret)
+    {
+        user_mem->vblocks.Traverse([](MemBlock &mb)
+        {
+            klog("mmap: %p - %p, %s%s%s%s %llx %llx\n",
+                (void *)mb.b.data_start(),
+                (void *)mb.b.data_end(),
+                mb.b.user ? "U" : " ",
+                mb.b.write ? "W" : " ",
+                mb.b.exec ? "X" : " ",
+                (mb.f == nullptr) ? "" : " FILE",
+                mb.foffset,
+                mb.flen);
+            return 0;
+        });
+    }
+
+    return ret;
+}
+
 Process::~Process()
 {
     // This should only be called by the cleanup thread finally deleting the entry in ProcessList
     klog("process: %u:%s destructor called\n", id, name.c_str());
+
+#if DEBUG_PROCESS_PAGES
+    check_process_pages_vs_ttbr();
+#endif
 
     // Release resources
     owned_pages.release_all();
