@@ -151,7 +151,8 @@ int dma_sync_sgtable_for_cpu(sg_table &sgt, dma_data_direction dir)
         case dma_data_direction::DMA_BIDIRECTIONAL:
             for(const auto &sge : sgt)
             {
-                InvalidateA35Cache((uintptr_t)sge.vaddr, sge.len, CacheType_t::Data);
+                if(sge.mt == MT_NORMAL)
+                    InvalidateA35Cache((uintptr_t)sge.vaddr, sge.len, CacheType_t::Data);
             }
             break;
         default:
@@ -169,7 +170,8 @@ int dma_sync_sgtable_for_device(sg_table &sgt, dma_data_direction dir)
         case dma_data_direction::DMA_BIDIRECTIONAL:
             for(const auto &sge : sgt)
             {
-                CleanA35Cache((uintptr_t)sge.vaddr, sge.len, CacheType_t::Data);
+                if(sge.mt == MT_NORMAL)
+                    CleanA35Cache((uintptr_t)sge.vaddr, sge.len, CacheType_t::Data);
             }
             break;
         default:
