@@ -299,23 +299,18 @@ int etnaviv_gem_cpu_prep(std::shared_ptr<etnaviv_gem_object> obj, u32 op,
 {
 	auto &etnaviv_obj = obj;
 	[[maybe_unused]] bool write = !!(op & ETNA_PREP_WRITE);
-	[[maybe_unused]] int ret;
 
-	// TODO: add dma sync
-#if 0
+	// wait for gpu to finish with gem objects
 	if (op & ETNA_PREP_NOSYNC) {
-		if (!dma_resv_test_signaled(obj->resv,
-					    dma_resv_usage_rw(write)))
+		if (!obj->resv.IsSignalled(write))
 			return -EBUSY;
 	} else {
-		unsigned long remain = etnaviv_timeout_to_jiffies(timeout);
-
-		ret = dma_resv_wait_timeout(obj->resv, dma_resv_usage_rw(write),
-					    true, remain);
-		if (ret <= 0)
-			return ret == 0 ? -ETIMEDOUT : ret;
+		auto ret = obj->resv.Wait(write, timeout ? (clock_cur() + *timeout) : kernel_time_invalid());
+		if(!ret)
+		{
+			return -ETIMEDOUT;
+		}
 	}
-#endif
 
 	if (etnaviv_obj->flags & ETNA_BO_CACHED) {
 		dma_sync_sgtable_for_cpu(etnaviv_obj->sgt,

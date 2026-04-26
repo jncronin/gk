@@ -659,9 +659,6 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	args->fence_fd = out_fence_fd;
 	args->fence = submit->out_fence_id;
 
-	if(submit->out_fence)
-		submit->out_fence->Wait();
-
 err_submit_job:
 	if (ret)
 	{

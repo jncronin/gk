@@ -200,6 +200,9 @@ struct dma_resv
 {
 	std::shared_ptr<Mutex> lock = MutexList.Create();
 	std::list<std::shared_ptr<dma_fence>> read_fences, write_fences;
+
+	bool IsSignalled(bool for_write);
+	bool Wait(bool for_write, kernel_time tout = kernel_time_invalid());
 };
 
 struct drm_gem_object
