@@ -30,11 +30,11 @@ int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> 
         auto layer = p->screen.screen_layer;
         cg.unlock();
 
-        auto scr = screen_get_layer_vaddr_paddr(layer, fb_idx);
-        drm->vaddr = scr.first;
-        drm->dma_addr = scr.second;
-        drm->psize = size;
-        drm->vsize = size;
+        auto [ _ , scr_paddr ] = screen_get_layer_vaddr_paddr(layer, fb_idx);
+        drm->vaddr = 0;
+        drm->dma_addr = scr_paddr;
+        drm->psize = ALIGN(size, PAGE_SIZE);
+        drm->vsize = 0;
         drm->release_pages = false; // don't free the framebuffer
     }
     else
@@ -67,9 +67,6 @@ int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> 
 
 int drm_gem_handle_create(std::shared_ptr<drm_file> &f, std::shared_ptr<drm_gem_object> obj, u32 *phandle)
 {
-    // ideally these should be per-process stored in the drm_file parameter, but we
-    //  don't currently pass this on through the ioctl chain
-
     CriticalGuard cg(f->sl_handles);
     obj->handle = f->next_handle++;
     *phandle = obj->handle;
@@ -183,12 +180,6 @@ int dri_mmap(size_t len, void **retaddr, int is_sync,
         klog("dri: mmap length too long for underlying object: %llx vs %llx\n",
             len, obj->psize);
         return -1;
-    }
-
-    if(!is_fixed && obj->vaddr && ((uintptr_t)obj->vaddr < UH_START))
-    {
-        *retaddr = obj->vaddr;
-        return 0;
     }
 
     // Replicate the mmap code somewhat to get the vaddr
