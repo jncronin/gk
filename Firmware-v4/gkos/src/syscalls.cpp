@@ -803,6 +803,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_joystick_deadzone:
+            {
+                auto p = reinterpret_cast<__syscall_joystick_deadzone_params *>(r2);
+                int ret = syscall_joystick_deadzone(p->digital, p->analog,
+                    reinterpret_cast<int *>(r3));
+                *reinterpret_cast<int *>(r1) = ret;
+            }
+            break;
+
         case __syscall_gettimeofday:
             {
                 auto p = reinterpret_cast<__syscall_gettimeofday_params *>(r2);

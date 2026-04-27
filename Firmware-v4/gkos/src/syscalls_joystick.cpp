@@ -1,7 +1,7 @@
 #include "syscalls_int.h"
 #include "cm33_data.h"
 
-extern cm33_joy_calib input_joy_calib[3];
+extern cm33_joy_calib input_joy_calib[4];
 extern float input_tilt_centre;
 
 int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
@@ -99,5 +99,31 @@ int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
     input_joy_calib[axis_pair].middle_x = (int16_t)middle_x;
     input_joy_calib[axis_pair].middle_y = (int16_t)middle_y;
 
+    return 0;
+}
+
+int syscall_joystick_deadzone(unsigned int digital, unsigned int analog, int *_errno)
+{
+    if(digital > 32000)
+    {
+        klog("joystick: invalid digital deadzone: %u\n", digital);
+        *_errno = EINVAL;
+        return -1;
+    }
+    if(analog > digital)
+    {
+        klog("joystick: invalid analog deadzone: %u (digital is %u)\n", analog, digital);
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    input_joy_calib[0].digital_dz = digital;
+    input_joy_calib[0].analog_dz = analog;
+    input_joy_calib[1].digital_dz = digital;
+    input_joy_calib[1].analog_dz = analog;
+    input_joy_calib[2].digital_dz = digital;
+    input_joy_calib[2].analog_dz = analog;
+    // dont apply deadzones to throttle
+    
     return 0;
 }

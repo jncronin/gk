@@ -138,6 +138,7 @@ int syscall_cmpxchg(void **ptr, void **oldval, void *newval, size_t len, int *_e
 
 int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
     int top, int bottom, int middle_x, int middle_y, int *_errno);
+int syscall_joystick_deadzone(unsigned int digital, unsigned int analog, int *_errno);
 
 // needed for supervisor
 pid_t syscall_get_focus_pid(int *_errno);
