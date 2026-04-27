@@ -76,8 +76,14 @@ class digi_joy
         static const unsigned int down = 1U << 3;
 
         digi_joy(const int16_t *_x, const int16_t *_y, int16_t _deadzone = 8000) :
-            x(_x), y(_y), deadzone(_deadzone)
+            x(_x), y(_y)
         {
+            set_deadzone(_deadzone);
+        }
+
+        void set_deadzone(int16_t _deadzone)
+        {
+            deadzone = _deadzone;
             dz_sq = (float)(int)_deadzone * (float)(int)_deadzone;
         }
 
@@ -242,24 +248,32 @@ int main()
     dk.joy_a_calib.bottom = -32767;
     dk.joy_a_calib.middle_x = 0;
     dk.joy_a_calib.middle_y = 0;
+    dk.joy_a_calib.analog_dz = 1000;
+    dk.joy_a_calib.digital_dz = 12000;
     dk.joy_b_calib.left = -32767;
     dk.joy_b_calib.right = 32767;
     dk.joy_b_calib.top = 32767;
     dk.joy_b_calib.bottom = -32767;
     dk.joy_b_calib.middle_x = 0;
     dk.joy_b_calib.middle_y = 0;
+    dk.joy_b_calib.analog_dz = 1000;
+    dk.joy_b_calib.digital_dz = 12000;
     dk.throttle_calib.left = -32767;
     dk.throttle_calib.right = 32767;
     dk.throttle_calib.top = 32767;
     dk.throttle_calib.bottom = -32767;
     dk.throttle_calib.middle_x = 0;
     dk.throttle_calib.middle_y = 0;
+    dk.throttle_calib.analog_dz = 0;
+    dk.throttle_calib.digital_dz = 0;
     dk.tilt_calib.left = -32767;
     dk.tilt_calib.right = 32767;
     dk.tilt_calib.top = 32767;
     dk.tilt_calib.bottom = -32767;
     dk.tilt_calib.middle_x = 0;
     dk.tilt_calib.middle_y = 0;
+    dk.tilt_calib.analog_dz = 1000;
+    dk.tilt_calib.digital_dz = 12000;
     dk.rb_r_ptr = 0;
     dk.rb_w_ptr = 0;
     dk.rb_size = rb_size;
@@ -471,6 +485,20 @@ static void joy_apply_calibration(const volatile cm33_joystick *in,
         y = y2;
     }
 
+    // apply analog deadzone
+    if(calib->analog_dz)
+    {
+        auto xsq = (int)x * (int)x;
+        auto ysq = (int)y * (int)y;
+        auto dzsq = (int)calib->analog_dz * (int)calib->analog_dz;
+
+        if((xsq + ysq) < dzsq)
+        {
+            x = 0;
+            y = 0;
+        }
+    }
+
     out->x = x;
     out->y = y;
 }
@@ -576,6 +604,14 @@ static void tick()
     {
         lsm_disable();
     }
+
+    /* Apply digital joystick deadzone, if changed */
+    if(dk.joy_a_calib.digital_dz != dj_A.deadzone)
+        dj_A.set_deadzone(dk.joy_a_calib.digital_dz);
+    if(dk.joy_b_calib.digital_dz != dj_B.deadzone)
+        dj_B.set_deadzone(dk.joy_b_calib.digital_dz);
+    if(dk.tilt_calib.digital_dz != dj_TILT.deadzone)
+        dj_TILT.set_deadzone(dk.tilt_calib.digital_dz);
 
     db_tick(db_VOLUP);
     db_tick(db_VOLDOWN);

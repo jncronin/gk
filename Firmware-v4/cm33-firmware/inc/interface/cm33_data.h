@@ -24,7 +24,7 @@ static_assert(sizeof(cm33_data_userspace) == 26*4);
 
 struct cm33_joy_calib
 {
-    int16_t left, right, top, bottom, middle_x, middle_y, res0, res1;
+    int16_t left, right, top, bottom, middle_x, middle_y, digital_dz, analog_dz;
 };
 
 struct cm33_data_kernel

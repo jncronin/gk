@@ -40,10 +40,10 @@ static std::vector<char> cm33_log_buffer;
 
 cm33_joy_calib input_joy_calib[4] =
 {
-    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
-    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
-    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
-    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0 },
+    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0, .digital_dz = 12000, .analog_dz = 1000 },
+    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0, .digital_dz = 12000, .analog_dz = 1000 },
+    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0, .digital_dz = 12000, .analog_dz = 1000 },
+    { .left = -32767, .right = 32767, .top = 32767, .bottom = -32767, .middle_x = 0, .middle_y = 0, .digital_dz = 0, .analog_dz = 0 },
 };
 static bool input_tilt_enable = false;
 static bool input_touch_enable = false;
@@ -331,6 +331,10 @@ static void *cm33_manager_thread(void *)
             dk->joy_a_calib.middle_x = input_joy_calib[0].middle_x;
         if(dk->joy_a_calib.middle_y != input_joy_calib[0].middle_y)
             dk->joy_a_calib.middle_y = input_joy_calib[0].middle_y;
+        if(dk->joy_a_calib.digital_dz != input_joy_calib[0].digital_dz)
+            dk->joy_a_calib.digital_dz = input_joy_calib[0].digital_dz;
+        if(dk->joy_a_calib.analog_dz != input_joy_calib[0].analog_dz)
+            dk->joy_a_calib.analog_dz = input_joy_calib[0].analog_dz;
 
         if(dk->joy_b_calib.left != input_joy_calib[1].left)
             dk->joy_b_calib.left = input_joy_calib[1].left;
@@ -344,6 +348,10 @@ static void *cm33_manager_thread(void *)
             dk->joy_b_calib.middle_x = input_joy_calib[1].middle_x;
         if(dk->joy_b_calib.middle_y != input_joy_calib[1].middle_y)
             dk->joy_b_calib.middle_y = input_joy_calib[1].middle_y;
+        if(dk->joy_b_calib.digital_dz != input_joy_calib[1].digital_dz)
+            dk->joy_b_calib.digital_dz = input_joy_calib[1].digital_dz;
+        if(dk->joy_b_calib.analog_dz != input_joy_calib[1].analog_dz)
+            dk->joy_b_calib.analog_dz = input_joy_calib[1].analog_dz;
 
         if(dk->tilt_calib.left != input_joy_calib[2].left)
             dk->tilt_calib.left = input_joy_calib[2].left;
@@ -357,6 +365,10 @@ static void *cm33_manager_thread(void *)
             dk->tilt_calib.middle_x = input_joy_calib[2].middle_x;
         if(dk->tilt_calib.middle_y != input_joy_calib[2].middle_y)
             dk->tilt_calib.middle_y = input_joy_calib[2].middle_y;
+        if(dk->tilt_calib.digital_dz != input_joy_calib[2].digital_dz)
+            dk->tilt_calib.digital_dz = input_joy_calib[2].digital_dz;
+        if(dk->tilt_calib.analog_dz != input_joy_calib[2].analog_dz)
+            dk->tilt_calib.analog_dz = input_joy_calib[2].analog_dz;
 
         if(dk->throttle_calib.left != input_joy_calib[3].left)
             dk->throttle_calib.left = input_joy_calib[3].left;
@@ -370,6 +382,10 @@ static void *cm33_manager_thread(void *)
             dk->throttle_calib.middle_x = input_joy_calib[3].middle_x;
         if(dk->throttle_calib.middle_y != input_joy_calib[3].middle_y)
             dk->throttle_calib.middle_y = input_joy_calib[3].middle_y;
+        if(dk->throttle_calib.digital_dz != input_joy_calib[3].digital_dz)
+            dk->throttle_calib.digital_dz = input_joy_calib[3].digital_dz;
+        if(dk->throttle_calib.analog_dz != input_joy_calib[3].analog_dz)
+            dk->throttle_calib.analog_dz = input_joy_calib[3].analog_dz;
 
         // check for messages
         if(dk->rb_paddr)
