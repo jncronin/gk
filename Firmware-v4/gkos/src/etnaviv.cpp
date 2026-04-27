@@ -4,6 +4,7 @@
 #include "pmic.h"
 #include "vmem.h"
 #include "clocks.h"
+#include "drm_device.h"
 #include <assert.h>
 
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
@@ -13,17 +14,26 @@
 #define RIMC_VMEM ((RIMC_TypeDef *)PMEM_TO_VMEM(RIMC_BASE))
 #define RIFSC_VMEM PMEM_TO_VMEM(RIFSC_BASE)
 
+class etnaviv_device : public device
+{
+    public:
+        ~etnaviv_device();
+};
 
-static std::shared_ptr<device> etna_dev;
+static PMutex m_etna_dev;
+static std::weak_ptr<etnaviv_device> etna_dev;
 
 int etnaviv_gpu_combined_init(struct device &dev);
 
+static std::shared_ptr<device> get_etnaviv_device(int);
+
 void init_etnaviv()
 {
+    m_etna_dev = MutexList.Create();
+    
     /* Functions marked __init */
     void etnaviv_validate_init(void);
     etnaviv_validate_init();
-
 
     /* GPU is RISUP 79 / RIMC 9
         Set as same as CA35
@@ -47,28 +57,26 @@ void init_etnaviv()
     *risup_reg = old_val;
     __asm__ volatile("dmb sy\n" ::: "memory");
 
+    drm_dev_register(get_etnaviv_device, 0);
+}
 
-    etna_dev = std::make_shared<device>();
-    if(etnaviv_gpu_combined_init(*etna_dev) == 0)
+/* Ensure we only have one etnaviv device at any one time, and that it is gracefully
+    destroyed when the last reference to it is closed */
+std::shared_ptr<device> get_etnaviv_device(int)
+{
+    MutexGuard cg(*m_etna_dev);
+    auto ret = etna_dev.lock();
+    if(ret)
+        return ret;
+
+    ret = std::make_shared<etnaviv_device>();
+    if(etnaviv_gpu_combined_init(*ret) == 0)
     {
-        drm_dev_register(etna_dev, 0);
+        etna_dev = ret;
+        klog("etnaviv: device created\n");
+        return ret;
     }
-
-
-#if 0
-    /* Just try enabling things, without config, to see what happens */
-    Etnaviv_bus_clock _bc;
-    Etnaviv_core_clock _cc;
-    Etnaviv_reg_clock _rc;
-    Etnaviv_reset_control _rst;
-    Etnaviv_pm_control _pm;
-
-    _rc.enable();
-    _bc.enable();
-    _pm.enable();
-    _rst.Deassert();
-    _cc.enable();
-#endif
+    return nullptr;
 }
 
 int Etnaviv_pm_control::enable()
@@ -134,6 +142,11 @@ int Etnaviv_reg_clock::disable()
     return 0;
 }
 
+Etnaviv_reg_clock::~Etnaviv_reg_clock()
+{
+    disable();
+}
+
 int Etnaviv_bus_clock::enable(uint64_t)
 {
     if(RCC_VMEM->PREDIVxCFGR[59] == 1 &&
@@ -162,6 +175,11 @@ int Etnaviv_bus_clock::disable()
 
     klog("GPU bus clock disabled\n");
     return 0;
+}
+
+Etnaviv_bus_clock::~Etnaviv_bus_clock()
+{
+    disable();
 }
 
 int Etnaviv_core_clock::enable(uint64_t new_freq)
@@ -215,8 +233,14 @@ int Etnaviv_core_clock::disable()
     {
         RCC_VMEM->PLL3CFGR1 &= ~RCC_PLL3CFGR1_PLLEN;
         udelay(10);
+        klog("GPU core clock disabled\n");
     }
     return 0;
+}
+
+Etnaviv_core_clock::~Etnaviv_core_clock()
+{
+    disable();
 }
 
 int usleep(useconds_t usec)
@@ -228,4 +252,17 @@ int usleep(useconds_t usec)
     }
     Block(clock_cur() + kernel_time_from_us(usec));
     return 0;
+}
+
+etnaviv_device::~etnaviv_device()
+{
+    klog("etnaviv: device close\n");
+
+    /* Destroy device - will cause clocks to switch off */
+    drm = nullptr;
+
+    /* Power off */
+    pm->disable();
+
+    pm = nullptr;
 }

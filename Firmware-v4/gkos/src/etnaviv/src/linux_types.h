@@ -23,6 +23,7 @@
 #include "sg_table.h"
 #include "block_allocator.h"
 #include "waitwound.h"
+#include "drm_device.h"
 
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
@@ -373,8 +374,6 @@ struct drm_ioctl_desc {
 		.name = #ioctl						\
 	}
 
-int drm_dev_register(std::shared_ptr<device> &dev, int unused_val);
-
 void *dma_alloc_wc(struct device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp);
 void *dma_alloc(struct device *dev, size_t size,
@@ -457,6 +456,8 @@ class Etnaviv_core_clock : public clk
 
 		int enable(uint64_t freq = ~0ULL);
 		int disable();
+
+		~Etnaviv_core_clock();
 };
 
 class Etnaviv_bus_clock : public clk
@@ -464,6 +465,8 @@ class Etnaviv_bus_clock : public clk
 	public:
 		int enable(uint64_t = 0);
 		int disable();
+
+		~Etnaviv_bus_clock();
 };
 
 class Etnaviv_reg_clock : public clk
@@ -471,6 +474,8 @@ class Etnaviv_reg_clock : public clk
 	public:
 		int enable(uint64_t = 0);
 		int disable();
+
+		~Etnaviv_reg_clock();
 };
 
 typedef int irqreturn_t;

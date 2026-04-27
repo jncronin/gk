@@ -9,7 +9,7 @@
 #include "process.h"
 
 static Spinlock sl_dri;
-static std::vector<std::shared_ptr<device>> drm_devs;
+static std::vector<get_drm_device_t> drm_devs;
 
 int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file);
 
@@ -98,14 +98,14 @@ int DRIFile::Fstat(struct stat *buf, int *_errno)
     return 0;
 }
 
-int drm_dev_register(std::shared_ptr<device> &dev, int)
+int drm_dev_register(get_drm_device_t get_func, int unused_val)
 {
     CriticalGuard cg(sl_dri);
     auto dev_id = drm_devs.size();
-    drm_devs.push_back(dev);
+    drm_devs.push_back(get_func);
     cg.unlock();
 
-    klog("DRM: registered device %u: %s\n", dev_id, dev->drm->name.c_str());
+    klog("DRM: registered device %u\n", dev_id);
     return 0;
 }
 
@@ -164,8 +164,15 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
         return -1;
     }
 
-    auto cdev = drm_devs[dev_id];
+    auto cdev_getter = drm_devs[dev_id];
     cg.unlock();
+
+    auto cdev = cdev_getter(dev_id);
+    if(!cdev)
+    {
+        klog("drm: failed to open device %u\n", dev_id);
+        return -1;
+    }
 
     auto nfile = std::make_shared<DRIFile>();
     nfile->d = cdev;
