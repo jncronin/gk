@@ -11,6 +11,7 @@
 #include "syscalls_int.h"
 #include "supervisor.h"
 #include "cm33_interface.h"
+#include "drm_device.h"
 #include <atomic>
 
 #define DEBUG_PROCESS_PAGES     1
@@ -387,6 +388,11 @@ Process::~Process()
     owned_mutexes.clear();
     owned_rwlocks.clear();
     owned_semaphores.clear();
+
+    if(process_used_gpu >= 0)
+    {
+        drm_dev_close(process_used_gpu);
+    }
 }
 
 extern PMemBlock process_kernel_info_page;

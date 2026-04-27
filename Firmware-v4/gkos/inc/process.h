@@ -227,6 +227,9 @@ class Process
             (including the page tables themselves) are mentioned in the processes owned_pages
             structures */
         bool check_process_pages_vs_ttbr();
+
+        /* TODO: make this more generic with, e.g. registered functions to call on shutdown */
+        int process_used_gpu = -1;
 };
 
 extern PProcess p_kernel;

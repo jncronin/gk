@@ -10,6 +10,7 @@
 
 static Spinlock sl_dri;
 static std::vector<get_drm_device_t> drm_devs;
+static std::vector<close_drm_device_t> drm_close_dev;
 
 int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file);
 
@@ -98,15 +99,27 @@ int DRIFile::Fstat(struct stat *buf, int *_errno)
     return 0;
 }
 
-int drm_dev_register(get_drm_device_t get_func, int unused_val)
+int drm_dev_register(get_drm_device_t get_func, close_drm_device_t close_func, int unused_val)
 {
     CriticalGuard cg(sl_dri);
     auto dev_id = drm_devs.size();
     drm_devs.push_back(get_func);
+    drm_close_dev.push_back(close_func);
     cg.unlock();
 
     klog("DRM: registered device %u\n", dev_id);
     return 0;
+}
+
+int drm_dev_close(int devid)
+{
+    CriticalGuard cg(sl_dri);
+    if(devid < 0 || ((size_t)devid >= drm_close_dev.size()))
+        return -1;
+    auto close_func = drm_close_dev[devid];
+    cg.unlock();
+
+    return close_func(devid);
 }
 
 int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
@@ -173,7 +186,7 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
         klog("drm: failed to open device %u\n", dev_id);
         return -1;
     }
-
+    
     auto nfile = std::make_shared<DRIFile>();
     nfile->d = cdev;
     nfile->dev_name = cdev->drm->name;
@@ -184,6 +197,9 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
     {
         // don't run etnaviv_open sequence if only opened for read (e.g. stat() call)
         etnaviv_open(cdev->drm.get(), &nfile->df);
+
+        auto p = GetCurrentProcessForCore();
+        p->process_used_gpu = dev_id;
     }
 
     *f = nfile;
