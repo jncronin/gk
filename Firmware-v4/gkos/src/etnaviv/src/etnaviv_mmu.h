@@ -8,6 +8,7 @@
 
 #include <unordered_set>
 #include <memory>
+#include <atomic>
 #include "osmutex.h"
 
 #define ETNAVIV_PROT_READ	(1 << 0)
@@ -78,7 +79,7 @@ struct etnaviv_iommu_context {
 	std::shared_ptr<Mutex> lock = MutexList.Create();
 	std::unordered_map<uintptr_t, std::shared_ptr<etnaviv_vram_mapping>> mappings;
 	struct drm_mm mm;
-	unsigned int flush_seq;
+	std::atomic<unsigned int> flush_seq;
 
 	/* Not part of the context, but needs to have the same lifetime */
 	std::shared_ptr<etnaviv_vram_mapping> cmdbuf_mapping = std::make_shared<etnaviv_vram_mapping>();

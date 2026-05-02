@@ -6,6 +6,8 @@
 #ifndef __ETNAVIV_GPU_H__
 #define __ETNAVIV_GPU_H__
 
+#include <atomic>
+
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_gem.h"
 #include "etnaviv_mmu.h"
@@ -159,7 +161,7 @@ class etnaviv_gpu : public etnaviv_dev {
 		int irq = 0;
 
 		std::shared_ptr<etnaviv_iommu_context> mmu_context;
-		unsigned int flush_seq = 0;
+		std::atomic<unsigned int> flush_seq = 0;
 
 		/* Power Control: */
 		std::unique_ptr<clk> clk_bus;
