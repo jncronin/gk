@@ -51,10 +51,6 @@ int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file)
 		return -ENOMEM;
 	}
 
-	ctx->sched = std::make_shared<DRMScheduler>();
-	etnaviv_sched_init(ctx->sched.get());
-	ctx->sched->init(DRM_SCHED_PRIORITY_NORMAL, 0, ctx->sched);
-
 	*file = std::move(ctx);
 
 	return 0;

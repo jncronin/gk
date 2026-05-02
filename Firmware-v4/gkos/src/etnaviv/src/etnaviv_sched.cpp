@@ -130,7 +130,7 @@ int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
 	submit->out_fence = submit->sched_job->finished;
 	submit->out_fence_id = gpu->user_fences->Register(submit->out_fence, gpu->user_fences);
 
-	submit->ctx->sched->push_job(std::move(submit->sched_job));
+	gpu->dsched->push_job(std::move(submit->sched_job));
 
 	gpu->sched_lock->unlock();
 

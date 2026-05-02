@@ -1,14 +1,14 @@
 #ifndef DRM_SCHEDULER_H
 #define DRM_SCHEDULER_H
 
-#include "linux_types.h"
 #include <list>
 #include <queue>
+#include <memory>
+#include <vector>
 #include <osmutex.h>
 #include "kernel_time.h"
 
-/* TODO:
-
+/* 
     DRM scheduler has:
     Multiple priorities of multiple run queues
     We simplify it a bit so that we only have one run queue per prioriry
@@ -22,6 +22,20 @@
 
 #define DRM_SCHED_PRIORITY_NORMAL       0
 #define DRM_SCHED_PRIORITY_COUNT        1
+
+class dma_fence;
+
+struct drm_sched_job
+{
+	std::vector<std::shared_ptr<dma_fence>> deps;
+	std::shared_ptr<dma_fence> scheduled;			// signalled when pushed to gpu
+	std::shared_ptr<dma_fence> finished;			// signalled when completed on gpu
+	kernel_time arm_time;
+	unsigned int job_id;
+	unsigned int priority;
+
+	virtual ~drm_sched_job();
+};
 
 using DRMSchedulerEntity = std::queue<std::unique_ptr<drm_sched_job>>;
 
@@ -41,12 +55,6 @@ struct drm_sched_backend_ops {
     void (*cancel_job)(struct drm_sched_job *sched_job);
 };
 
-class DRMSchedulerPriority
-{
-    Spinlock sl;
-    std::queue<DRMSchedulerEntity> entities;
-};
-
 class DRMScheduler
 {
 public:
@@ -61,7 +69,7 @@ public:
 
     const drm_sched_backend_ops *ops;
     kernel_time timeout;
-    void init(size_t priority, size_t entity, std::shared_ptr<DRMScheduler> &sched);
+    void init(size_t priority, size_t entity);
     int push_job(std::unique_ptr<drm_sched_job> &&j);
 
     DRMScheduler();

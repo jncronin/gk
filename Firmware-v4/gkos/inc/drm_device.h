@@ -3,6 +3,7 @@
 
 #include <string>
 #include "drm_ioctl.h"
+#include "drm_scheduler.h"
 
 class pm_control
 {
@@ -29,6 +30,7 @@ class drm_device
 {
     public:
         std::unique_ptr<pm_control> pm;
+		std::unique_ptr<DRMScheduler> dsched;
 
         const struct drm_ioctl_desc *ioctls;
         size_t num_ioctls;

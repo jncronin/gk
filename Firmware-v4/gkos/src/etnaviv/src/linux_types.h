@@ -178,8 +178,6 @@ class DRMScheduler;
 
 struct drm_file
 {
-	std::shared_ptr<DRMScheduler> sched;
-
 	Spinlock sl_handles;
 	u32 next_handle = 1;
 	std::unordered_map<u32, std::shared_ptr<drm_gem_object>> handles;
@@ -257,18 +255,6 @@ struct iosys_map
 struct drm_sched_entity
 {
 
-};
-
-struct drm_sched_job
-{
-	std::vector<std::shared_ptr<dma_fence>> deps;
-	std::shared_ptr<dma_fence> scheduled;			// signalled when pushed to gpu
-	std::shared_ptr<dma_fence> finished;			// signalled when completed on gpu
-	kernel_time arm_time;
-	unsigned int job_id;
-	unsigned int priority;
-
-	virtual ~drm_sched_job();
 };
 
 struct etnaviv_gem_submit;

@@ -9,7 +9,7 @@
 static void *drm_sched_worker(void *p);
 struct sched_worker_startup
 {
-    std::shared_ptr<DRMScheduler> s;
+    DRMScheduler *s;
     unsigned int priority;
 };
 
@@ -40,7 +40,7 @@ int DRMScheduler::push_job(std::unique_ptr<drm_sched_job> &&j)
     return 0;
 }
 
-void DRMScheduler::init(size_t priority, size_t entity, std::shared_ptr<DRMScheduler> &dsched)
+void DRMScheduler::init(size_t priority, size_t entity)
 {
     CriticalGuard cg(sl);
     if(priority >= DRM_SCHED_PRIORITY_COUNT)
@@ -55,11 +55,11 @@ void DRMScheduler::init(size_t priority, size_t entity, std::shared_ptr<DRMSched
 
         auto ws = new sched_worker_startup();
         ws->priority = priority;
-        ws->s = dsched;
+        ws->s = this;
 
         auto t = Thread::Create("drm_worker_" + std::to_string(priority),
             drm_sched_worker, (void *)ws, true, GK_PRIORITY_HIGH,
-            GetCurrentPProcessForCore());
+            p_kernel);
         tids[priority] = t->id;
         Schedule(t);
 

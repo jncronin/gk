@@ -1835,6 +1835,11 @@ int etnaviv_gpu_combined_init(etnaviv_gpu &dev)
 	dev.ioctls = etnaviv_ioctls;
 	dev.num_ioctls = DRM_ETNAVIV_NUM_IOCTLS;
 
+	/* Scheduler */
+	dev.dsched = std::make_unique<DRMScheduler>();
+	etnaviv_sched_init(dev.dsched.get());
+	dev.dsched->init(DRM_SCHED_PRIORITY_NORMAL, 0);
+
 	return 0;
 }
 
