@@ -459,7 +459,13 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
 etnaviv_iommu_context::~etnaviv_iommu_context()
 {
 	klog("GPU: free IOMMU context\n");
-	etnaviv_cmdbuf_suballoc_unmap(this, cmdbuf_mapping);
+
+	// There is no need to call unmap here because it is all getting destroyed anyway.
+	//  In fact, there is a risk of calling a pure virtual function here because
+	//  this eventually calls this->unmap() which is an overridden virtual function
+	//  that is not necessarily valid in the destructor.
+	
+	//etnaviv_cmdbuf_suballoc_unmap(this, cmdbuf_mapping);
 }
 
 std::shared_ptr<etnaviv_iommu_context>
