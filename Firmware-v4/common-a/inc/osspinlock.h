@@ -8,7 +8,9 @@
 #include <array>
 #include "logger.h"
 
-inline __attribute__((always_inline)) static uint64_t DisableInterrupts()
+typedef uint64_t interrupt_state_t;
+
+inline __attribute__((always_inline)) static interrupt_state_t DisableInterrupts()
 {
     uint64_t cpsr;
     __asm__ volatile(
@@ -18,7 +20,7 @@ inline __attribute__((always_inline)) static uint64_t DisableInterrupts()
     return cpsr;
 }
 
-inline __attribute__((always_inline)) static void RestoreInterrupts(uint64_t cpsr)
+inline __attribute__((always_inline)) static void RestoreInterrupts(interrupt_state_t cpsr)
 {
     __asm__ volatile(
         "msr daif, %[cpsr]\n"
