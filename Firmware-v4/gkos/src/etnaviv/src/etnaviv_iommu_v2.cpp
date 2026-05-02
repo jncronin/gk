@@ -329,8 +329,8 @@ etnaviv_iommuv2_context_alloc(struct etnaviv_iommu_global *global)
 	if (!v2_context->mtlb_cpu)
 		goto out_free_id;
 
-	klog("GPU: IOMMU: MTLB @ %p virt, %p phys\n", v2_context->mtlb_cpu,
-		(void *)v2_context->mtlb_dma);
+	klog("GPU: IOMMU: MTLB @ %p virt, %p phys, id %u\n", v2_context->mtlb_cpu,
+		(void *)v2_context->mtlb_dma, v2_context->id);
 
 	memset32(v2_context->mtlb_cpu, MMUv2_PTE_EXCEPTION,
 		 MMUv2_MAX_STLB_ENTRIES);
