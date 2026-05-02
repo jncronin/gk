@@ -35,23 +35,18 @@ std::atomic<uint32_t> next_fence_id = 0;
  * DRM operations:
  */
 
-static void load_gpu(struct drm_device &dev)
-{
-
-}
-
 int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file)
 {
-	auto &priv = dev->dev_private;
-
 	auto ctx = std::make_shared<etnaviv_file_private>();
 	if (!ctx)
 		return -ENOMEM;
 
+	auto gpu = static_cast<etnaviv_gpu *>(dev);
+
 	ctx->id = next_context_id.fetch_add(1);
 
-	ctx->mmu = etnaviv_iommu_context_init(priv->mmu_global.get(),
-					      priv->cmdbuf_suballoc.get());
+	ctx->mmu = etnaviv_iommu_context_init(gpu->mmu_global.get(),
+					      gpu->cmdbuf_suballoc.get());
 	if (!ctx->mmu) {
 		return -ENOMEM;
 	}
@@ -231,15 +226,15 @@ static void etnaviv_debugfs_init(struct drm_minor *minor)
 static int etnaviv_ioctl_get_param(struct drm_device *dev, void *data,
 		std::shared_ptr<drm_file> &file)
 {
-	auto &priv = dev->dev_private;
 	struct drm_etnaviv_param *args = reinterpret_cast<drm_etnaviv_param *>(data);
 
 	if (args->pipe >= ETNA_MAX_PIPES)
 		return -EINVAL;
 
-	auto &gpu = priv->gpu;
-	if (!gpu)
+	if (!dev)
 		return -ENXIO;
+
+	auto gpu = static_cast<etnaviv_gpu *>(dev);
 
 	return etnaviv_gpu_get_param(*gpu, args->param, &args->value);
 }
@@ -319,7 +314,6 @@ static int etnaviv_ioctl_wait_fence(struct drm_device *dev, void *data,
 		std::shared_ptr<drm_file> &file)
 {
 	struct drm_etnaviv_wait_fence *args = reinterpret_cast<drm_etnaviv_wait_fence *>(data);
-	auto &priv = dev->dev_private;
 	[[maybe_unused]] struct drm_etnaviv_timespec *timeout = &args->timeout;
 
 	if (args->flags & ~(ETNA_WAIT_NONBLOCK))
@@ -328,14 +322,14 @@ static int etnaviv_ioctl_wait_fence(struct drm_device *dev, void *data,
 	if (args->pipe >= ETNA_MAX_PIPES)
 		return -EINVAL;
 
-	auto &gpu = priv->gpu;
-	if (!gpu)
+	if (!dev)
 		return -ENXIO;
+	auto gpu = static_cast<etnaviv_gpu *>(dev);
 
 	if (args->flags & ETNA_WAIT_NONBLOCK)
 		timeout = NULL;
 
-	return etnaviv_gpu_wait_fence_interruptible(gpu.get(), args->fence,
+	return etnaviv_gpu_wait_fence_interruptible(gpu, args->fence,
 						    timeout);
 }
 
@@ -370,7 +364,6 @@ static int etnaviv_ioctl_gem_userptr(struct drm_device *dev, void *data,
 static int etnaviv_ioctl_gem_wait(struct drm_device *dev, void *data,
 	std::shared_ptr<drm_file> &file)
 {
-	auto &priv = dev->dev_private;
 	struct drm_etnaviv_gem_wait *args = reinterpret_cast<drm_etnaviv_gem_wait *>(data);
 	[[maybe_unused]] struct drm_etnaviv_timespec *timeout = &args->timeout;
 	[[maybe_unused]] struct drm_gem_object *obj;
@@ -382,8 +375,7 @@ static int etnaviv_ioctl_gem_wait(struct drm_device *dev, void *data,
 	if (args->pipe >= ETNA_MAX_PIPES)
 		return -EINVAL;
 
-	auto &gpu = priv->gpu;
-	if (!gpu)
+	if (!dev)
 		return -ENXIO;
 
 #if 0
@@ -407,33 +399,31 @@ static int etnaviv_ioctl_gem_wait(struct drm_device *dev, void *data,
 static int etnaviv_ioctl_pm_query_dom(struct drm_device *dev, void *data,
 	std::shared_ptr<drm_file> &file)
 {
-	auto &priv = dev->dev_private;
 	struct drm_etnaviv_pm_domain *args = reinterpret_cast<drm_etnaviv_pm_domain *>(data);
 
 	if (args->pipe >= ETNA_MAX_PIPES)
 		return -EINVAL;
 
-	auto &gpu = priv->gpu;
-	if (!gpu)
+	if (!dev)
 		return -ENXIO;
+	auto gpu = static_cast<etnaviv_gpu *>(dev);
 
-	return etnaviv_pm_query_dom(gpu.get(), args);
+	return etnaviv_pm_query_dom(gpu, args);
 }
 
 static int etnaviv_ioctl_pm_query_sig(struct drm_device *dev, void *data,
 	std::shared_ptr<drm_file> &file)
 {
-	auto &priv = dev->dev_private;
 	struct drm_etnaviv_pm_signal *args = reinterpret_cast<drm_etnaviv_pm_signal *>(data);
 
 	if (args->pipe >= ETNA_MAX_PIPES)
 		return -EINVAL;
 
-	auto &gpu = priv->gpu;
-	if (!gpu)
+	if (!dev)
 		return -ENXIO;
+	auto gpu = static_cast<etnaviv_gpu *>(dev);
 
-	return etnaviv_pm_query_sig(gpu.get(), args);
+	return etnaviv_pm_query_sig(gpu, args);
 }
 
 extern const struct drm_ioctl_desc etnaviv_ioctls[] = {
@@ -450,104 +440,3 @@ extern const struct drm_ioctl_desc etnaviv_ioctls[] = {
 	{ DRM_IOCTL_ETNAVIV_PM_QUERY_DOM, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_dom, "ETNAVIV_PM_QUERY_DOM", sizeof(drm_etnaviv_pm_domain) },
 	{ DRM_IOCTL_ETNAVIV_PM_QUERY_SIG, DRM_RENDER_ALLOW, etnaviv_ioctl_pm_query_sig, "ETNAVIV_PM_QUERY_SIG", sizeof(drm_etnaviv_pm_signal) },
 };
-
-[[maybe_unused]] static void etnaviv_show_fdinfo(struct drm_printer *p, struct drm_file *file)
-{
-	//drm_show_memory_stats(p, file);
-}
-
-#if 0
-static const struct file_operations fops = {
-	.owner = THIS_MODULE,
-	DRM_GEM_FOPS,
-	.show_fdinfo = drm_show_fdinfo,
-};
-#endif
-
-/*
- * Platform driver:
- */
-int etnaviv_bind(struct device &dev)
-{
-	int ret;
-
-	dev.drm = std::make_unique<drm_device>();
-	dev.pm = std::make_unique<Etnaviv_pm_control>();
-	dev.drm->dev_private = std::make_unique<etnaviv_drm_private>();
-
-	//dma_set_max_seg_size(dev, SZ_2G);
-
-	//xa_init_flags(&priv->active_contexts, XA_FLAGS_ALLOC);
-
-	//mutex_init(&priv->gem_lock);
-
-	//INIT_LIST_HEAD(&priv->gem_list);
-	dev.drm->dev_private->num_gpus = 0;
-	dev.drm->dev_private->shm_gfp_mask = 0;
-
-#if 0
-	/*
-	 * If the GPU is part of a system with DMA addressing limitations,
-	 * request pages for our SHM backend buffers from the DMA32 zone to
-	 * hopefully avoid performance killing SWIOTLB bounce buffering.
-	 */
-	if (dma_addressing_limited(dev)) {
-		priv->shm_gfp_mask |= GFP_DMA32;
-		priv->shm_gfp_mask &= ~__GFP_HIGHMEM;
-	}
-#endif
-
-	//priv->cmdbuf_suballoc = etnaviv_cmdbuf_suballoc_new(drm->dev);
-	//if (IS_ERR(priv->cmdbuf_suballoc)) {
-	//	dev_err(drm->dev, "Failed to create cmdbuf suballocator\n");
-	//	ret = PTR_ERR(priv->cmdbuf_suballoc);
-	//	goto out_free_priv;
-	//}
-
-	//dev_set_drvdata(dev, drm);
-
-#if 0
-	ret = component_bind_all(dev, drm);
-	if (ret < 0)
-		goto out_destroy_suballoc;
-#endif
-
-	load_gpu(*dev.drm);
-
-	ret = 0;
-	//ret = drm_dev_register(*dev.drm, 0);
-
-	return ret;
-}
-
-void etnaviv_unbind(struct device *dev)
-{
-#if 0
-	struct drm_device *drm = dev_get_drvdata(dev);
-	struct etnaviv_drm_private *priv = drm->dev_private;
-
-	drm_dev_unregister(drm);
-
-	component_unbind_all(dev, drm);
-
-	etnaviv_cmdbuf_free(priv->flop_reset_data_ppu);
-	kfree(priv->flop_reset_data_ppu);
-
-	etnaviv_cmdbuf_suballoc_destroy(priv->cmdbuf_suballoc);
-
-	xa_destroy(&priv->active_contexts);
-
-	drm->dev_private = NULL;
-	kfree(priv);
-
-	drm_dev_put(drm);
-#endif
-}
-
-
-int etnaviv_init(void)
-{
-	//etnaviv_validate_init();
-
-	return 0;
-}

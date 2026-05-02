@@ -9,7 +9,7 @@
 #include "process.h"
 
 static Spinlock sl_dri;
-static std::vector<std::shared_ptr<device>> drm_devs;
+static std::vector<drm_device *> drm_devs;
 
 int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file);
 
@@ -98,14 +98,14 @@ int DRIFile::Fstat(struct stat *buf, int *_errno)
     return 0;
 }
 
-int drm_dev_register(std::shared_ptr<device> &dev, int)
+int drm_dev_register(drm_device *dev, int)
 {
     CriticalGuard cg(sl_dri);
     auto dev_id = drm_devs.size();
     drm_devs.push_back(dev);
     cg.unlock();
 
-    klog("DRM: registered device %u: %s\n", dev_id, dev->drm->name.c_str());
+    klog("DRM: registered device %u: %s\n", dev_id, dev->name.c_str());
     return 0;
 }
 
@@ -169,14 +169,14 @@ int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write)
 
     auto nfile = std::make_shared<DRIFile>();
     nfile->d = cdev;
-    nfile->dev_name = cdev->drm->name;
+    nfile->dev_name = cdev->name;
     nfile->dir_iter = dev_id;
     nfile->dt = is_render ? DRIFile::dri_type::render : DRIFile::dri_type::card;
 
     if(for_write)
     {
         // don't run etnaviv_open sequence if only opened for read (e.g. stat() call)
-        etnaviv_open(cdev->drm.get(), &nfile->df);
+        etnaviv_open(cdev, &nfile->df);
     }
 
     *f = nfile;

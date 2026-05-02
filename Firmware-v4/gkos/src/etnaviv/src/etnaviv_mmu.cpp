@@ -588,7 +588,7 @@ void etnaviv_iommu_dump(struct etnaviv_iommu_context *context, void *buf)
 int etnaviv_iommu_global_init(struct etnaviv_gpu *gpu)
 {
 	enum etnaviv_iommu_version version = ETNAVIV_IOMMU_V1;
-	auto &priv = gpu->drm->dev_private;
+	auto priv = gpu;
 
 	if (gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION)
 		version = ETNAVIV_IOMMU_V2;

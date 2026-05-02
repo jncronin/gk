@@ -13,10 +13,9 @@
 #define RIMC_VMEM ((RIMC_TypeDef *)PMEM_TO_VMEM(RIMC_BASE))
 #define RIFSC_VMEM PMEM_TO_VMEM(RIFSC_BASE)
 
+std::unique_ptr<etnaviv_gpu> etna_dev;
 
-static std::shared_ptr<device> etna_dev;
-
-int etnaviv_gpu_combined_init(struct device &dev);
+int etnaviv_gpu_combined_init(etnaviv_gpu &dev);
 
 void init_etnaviv()
 {
@@ -48,10 +47,10 @@ void init_etnaviv()
     __asm__ volatile("dmb sy\n" ::: "memory");
 
 
-    etna_dev = std::make_shared<device>();
+    etna_dev = std::make_unique<etnaviv_gpu>();
     if(etnaviv_gpu_combined_init(*etna_dev) == 0)
     {
-        drm_dev_register(etna_dev, 0);
+        drm_dev_register(etna_dev.get(), 0);
     }
 
 

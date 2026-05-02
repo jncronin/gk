@@ -112,76 +112,75 @@ enum etnaviv_gpu_state {
 	ETNA_GPU_STATE_FAULT,
 };
 
-struct etnaviv_gpu {
-	struct drm_device *drm = nullptr;
-	struct thermal_cooling_device *cooling = nullptr;
-	struct device *dev = nullptr;
-	std::shared_ptr<Mutex> lock = MutexList.Create();
-	struct etnaviv_chip_identity identity{};
-	enum etnaviv_sec_mode sec_mode{};
-	WorkQueue wq;
-	std::shared_ptr<Mutex> sched_lock = MutexList.Create();
-	enum etnaviv_gpu_state state{};
+class etnaviv_gpu : public etnaviv_dev {
+	public:
+		struct thermal_cooling_device *cooling = nullptr;
+		std::shared_ptr<Mutex> lock = MutexList.Create();
+		struct etnaviv_chip_identity identity{};
+		enum etnaviv_sec_mode sec_mode{};
+		WorkQueue wq;
+		std::shared_ptr<Mutex> sched_lock = MutexList.Create();
+		enum etnaviv_gpu_state state{};
 
-	/* 'ring'-buffer: */
-	struct etnaviv_cmdbuf buffer{};
-	int exec_state = 0;
+		/* 'ring'-buffer: */
+		struct etnaviv_cmdbuf buffer{};
+		int exec_state = 0;
 
-	/* event management: */
-	//DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
-	struct etnaviv_event event[ETNA_NR_EVENTS];
-	//struct completion event_free;
-	//Spinlock event_spinlock{};
-	//Condition event_free{};
-	FixedQueue<unsigned int, ETNA_NR_EVENTS> free_events;
+		/* event management: */
+		//DECLARE_BITMAP(event_bitmap, ETNA_NR_EVENTS);
+		struct etnaviv_event event[ETNA_NR_EVENTS];
+		//struct completion event_free;
+		//Spinlock event_spinlock{};
+		//Condition event_free{};
+		FixedQueue<unsigned int, ETNA_NR_EVENTS> free_events;
 
-	u32 idle_mask = 0;
+		u32 idle_mask = 0;
 
-	/* Fencing support */
-	//xarray user_fences;
-	u32 next_user_fence = 0;
-	u32 next_fence = 0;
-	u32 completed_fence = 0;
-	//wait_queue_head_t fence_event;
-	u64 fence_context = 0;
-	Spinlock fence_spinlock;
-	std::shared_ptr<UserFenceManager> user_fences = std::make_shared<UserFenceManager>();
+		/* Fencing support */
+		//xarray user_fences;
+		u32 next_user_fence = 0;
+		u32 next_fence = 0;
+		u32 completed_fence = 0;
+		//wait_queue_head_t fence_event;
+		u64 fence_context = 0;
+		Spinlock fence_spinlock;
+		std::shared_ptr<UserFenceManager> user_fences = std::make_shared<UserFenceManager>();
 
-	/* worker for handling 'sync' points: */
-	//struct work_struct sync_point_work;
-	int sync_point_event = 0;
+		/* worker for handling 'sync' points: */
+		//struct work_struct sync_point_work;
+		int sync_point_event = 0;
 
-	/* hang detection */
-	u32 hangcheck_dma_addr = 0;
-	u32 hangcheck_primid = 0;
-	u32 hangcheck_fence = 0;
+		/* hang detection */
+		u32 hangcheck_dma_addr = 0;
+		u32 hangcheck_primid = 0;
+		u32 hangcheck_fence = 0;
 
-	void __iomem *mmio = nullptr;
-	int irq = 0;
+		void __iomem *mmio = nullptr;
+		int irq = 0;
 
-	std::shared_ptr<etnaviv_iommu_context> mmu_context;
-	unsigned int flush_seq = 0;
+		std::shared_ptr<etnaviv_iommu_context> mmu_context;
+		unsigned int flush_seq = 0;
 
-	/* Power Control: */
-	std::unique_ptr<clk> clk_bus;
-	std::unique_ptr<clk> clk_reg;
-	std::unique_ptr<clk> clk_core;
-	std::unique_ptr<clk> clk_shader;
-	std::unique_ptr<reset_control> rst;
+		/* Power Control: */
+		std::unique_ptr<clk> clk_bus;
+		std::unique_ptr<clk> clk_reg;
+		std::unique_ptr<clk> clk_core;
+		std::unique_ptr<clk> clk_shader;
+		std::unique_ptr<reset_control> rst;
 
-	unsigned int freq_scale = 0;
-	unsigned int fe_waitcycles = 0;
-	unsigned long base_rate_core = 0;
-	unsigned long base_rate_shader = 0;
+		unsigned int freq_scale = 0;
+		unsigned int fe_waitcycles = 0;
+		unsigned long base_rate_core = 0;
+		unsigned long base_rate_shader = 0;
 };
 
-static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)
+static inline void gpu_write(etnaviv_gpu *gpu, u32 reg, u32 data)
 {
 	*(volatile uint32_t *)((uintptr_t)gpu->mmio + reg) = data;
 	__asm__ volatile("dsb sy\n" ::: "memory");
 }
 
-static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
+static inline u32 gpu_read(etnaviv_gpu *gpu, u32 reg)
 {
 	/* On some variants, such as the GC7000r6009, some FE registers
 	 * need two reads to be consistent. Do that extra read here and

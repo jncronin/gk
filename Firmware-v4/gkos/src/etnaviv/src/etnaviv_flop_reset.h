@@ -14,8 +14,8 @@ struct etnaviv_gpu;
 
 bool etnaviv_flop_reset_ppu_require(const struct etnaviv_chip_identity *chip_id);
 
-int etnaviv_flop_reset_ppu_init(struct etnaviv_drm_private *priv);
+int etnaviv_flop_reset_ppu_init(etnaviv_gpu *priv);
 
-void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu);
+void etnaviv_flop_reset_ppu_run(etnaviv_gpu *gpu);
 
 #endif

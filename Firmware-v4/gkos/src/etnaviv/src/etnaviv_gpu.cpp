@@ -60,8 +60,6 @@ static const struct platform_device_id gpu_ids[] = {
 
 int etnaviv_gpu_get_param(struct etnaviv_gpu &gpu, u32 param, u64 *value)
 {
-	struct etnaviv_drm_private *priv = gpu.drm->dev_private.get();
-
 	switch (param) {
 	case ETNAVIV_PARAM_GPU_MODEL:
 		*value = gpu.identity.model;
@@ -168,7 +166,7 @@ int etnaviv_gpu_get_param(struct etnaviv_gpu &gpu, u32 param, u64 *value)
 		break;
 
 	case ETNAVIV_PARAM_SOFTPIN_START_ADDR:
-		if (priv->mmu_global->version == ETNAVIV_IOMMU_V2)
+		if (gpu.mmu_global->version == ETNAVIV_IOMMU_V2)
 			*value = ETNAVIV_SOFTPIN_START_ADDRESS;
 		else
 			*value = ~0ULL;
@@ -831,11 +829,10 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 
 int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 {
-	[[maybe_unused]] auto &priv = gpu.drm->dev_private;
 	[[maybe_unused]] dma_addr_t cmdbuf_paddr;
 	[[maybe_unused]] int ret, i;
 
-	ret = gpu.dev->pm->enable();
+	ret = gpu.pm->enable();
 	if (ret < 0) {
 		klog("Failed to enable GPU power domain\n");
 		goto pm_put;
@@ -856,8 +853,8 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 	}
 
 	if (etnaviv_flop_reset_ppu_require(&gpu.identity) &&
-	    !priv->flop_reset_data_ppu) {
-		ret = etnaviv_flop_reset_ppu_init(priv.get());
+	    !gpu.flop_reset_data_ppu) {
+		ret = etnaviv_flop_reset_ppu_init(&gpu);
 		if (ret) {
 			klog(
 				"Unable to initialize PPU flop reset data\n");
@@ -898,7 +895,7 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 		goto fail;
 
 	/* Create buffer: */
-	ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc.get(), &gpu.buffer, 4096u);
+	ret = etnaviv_cmdbuf_init(gpu.cmdbuf_suballoc.get(), &gpu.buffer, 4096u);
 	if (ret) {
 		dev_err(gpu->dev, "could not create command buffer\n");
 		goto fail;
@@ -922,14 +919,14 @@ int etnaviv_gpu_init(struct etnaviv_gpu &gpu)
 	    (gpu.identity.minor_features0 & chipMinorFeatures0_MC20) ||
 	    (gpu.identity.minor_features1 & chipMinorFeatures1_MMU_VERSION)) {
 		if (cmdbuf_paddr >= SZ_2G)
-			priv->mmu_global->memory_base = SZ_2G;
+			gpu.mmu_global->memory_base = SZ_2G;
 		else
-			priv->mmu_global->memory_base = cmdbuf_paddr;
+			gpu.mmu_global->memory_base = cmdbuf_paddr;
 	} else if (cmdbuf_paddr + SZ_128M >= SZ_2G) {
 		dev_info(gpu.dev,
 			 "Need to move linear window on MC1.0, disabling TS\n");
 		gpu.identity.features &= ~chipFeatures_FAST_CLEAR;
-		priv->mmu_global->memory_base = SZ_2G;
+		gpu.mmu_global->memory_base = SZ_2G;
 	}
 
 
@@ -1774,46 +1771,40 @@ etnaviv_gpu_cooling_set_cur_state(struct thermal_cooling_device *cdev,
 #endif
 
 /* combine dev and gpu probe/bind here */
-int etnaviv_gpu_combined_init(struct device &dev)
+int etnaviv_gpu_combined_init(etnaviv_gpu &dev)
 {
 	/* dev_bind() */
-	dev.drm = std::make_unique<drm_device>();
 	dev.pm = std::make_unique<Etnaviv_pm_control>();
-	dev.drm->dev_private = std::make_unique<etnaviv_drm_private>();
 
-	dev.drm->dev_private->num_gpus = 0;
-	dev.drm->dev_private->shm_gfp_mask = 0;
+	dev.num_gpus = 0;
+	dev.shm_gfp_mask = 0;
 
-	dev.drm->dev_private->cmdbuf_suballoc = etnaviv_cmdbuf_suballoc_new(&dev);
+	dev.cmdbuf_suballoc = etnaviv_cmdbuf_suballoc_new(&dev);
 
-	auto gpu = std::make_unique<etnaviv_gpu>();
-	gpu->dev = &dev;
-	gpu->drm = dev.drm.get();
-	
 	/* gpu_probe() */
 
 	/* Map registers: */
-	gpu->mmio = (volatile void *)PMEM_TO_VMEM(GPU_BASE);
+	dev.mmio = (volatile void *)PMEM_TO_VMEM(GPU_BASE);
 
 	/* Get Reset: */
-	gpu->rst = std::make_unique<Etnaviv_reset_control>();
+	dev.rst = std::make_unique<Etnaviv_reset_control>();
 
 	/* Get Clocks: */
-	gpu->clk_reg = std::make_unique<Etnaviv_reg_clock>();
-	gpu->clk_bus = std::make_unique<Etnaviv_bus_clock>();
-	gpu->clk_core = std::make_unique<Etnaviv_core_clock>();
-	gpu->clk_shader = nullptr;
-	gpu->base_rate_core = 800000000;
-	gpu->base_rate_shader = 800000000;
+	dev.clk_reg = std::make_unique<Etnaviv_reg_clock>();
+	dev.clk_bus = std::make_unique<Etnaviv_bus_clock>();
+	dev.clk_core = std::make_unique<Etnaviv_core_clock>();
+	dev.clk_shader = nullptr;
+	dev.base_rate_core = 800000000;
+	dev.base_rate_shader = 800000000;
 
 	/* Power on */
 	dev.pm->enable();
 
 	// errata 2.3.9 - need clk reg/clk bus setup prior to reset assert
-	gpu->clk_reg->enable();
-	gpu->clk_bus->enable();
+	dev.clk_reg->enable();
+	dev.clk_bus->enable();
 
-	auto err = reset_control_assert(*gpu->rst);
+	auto err = reset_control_assert(*dev.rst);
 	if (err)
 	{
 		klog("failed to assert reset\n");
@@ -1821,29 +1812,28 @@ int etnaviv_gpu_combined_init(struct device &dev)
 	}
 
 	/* Get Interrupt: */
-	gpu->irq = 215;
-	gpu_for_irq = gpu.get();
-	gic_set_handler(gpu->irq, gk_gpu_irqhandler);
-	gic_set_target(gpu->irq, GIC_ENABLED_CORES);
-	gic_set_enable(gpu->irq);
+	dev.irq = 215;
+	gpu_for_irq = &dev;
+	gic_set_handler(dev.irq, gk_gpu_irqhandler);
+	gic_set_target(dev.irq, GIC_ENABLED_CORES);
+	gic_set_enable(dev.irq);
 
-	dev.drm->dev_private->gpu = std::move(gpu);
-	dev.drm->dev_private->num_gpus = 1;
+	dev.num_gpus = 1;
 
 	/* Clock */
-	etnaviv_gpu_clk_enable(*dev.drm->dev_private->gpu);
+	etnaviv_gpu_clk_enable(dev);
 
 	/* back in drv_bind() -> load_gpu() -> etnaviv_gpu_init() */
 	/* Initial register access to identify chip */
-	etnaviv_gpu_init(*dev.drm->dev_private->gpu);
+	etnaviv_gpu_init(dev);
 
-	dev.drm->name = "etnaviv";
-	dev.drm->desc = "etnaviv DRM";
-	dev.drm->date = __DATE__;
-	dev.drm->major = 1;
-	dev.drm->minor = 4;
-	dev.drm->ioctls = etnaviv_ioctls;
-	dev.drm->num_ioctls = DRM_ETNAVIV_NUM_IOCTLS;
+	dev.name = "etnaviv";
+	dev.desc = "etnaviv DRM";
+	dev.date = __DATE__;
+	dev.major = 1;
+	dev.minor = 4;
+	dev.ioctls = etnaviv_ioctls;
+	dev.num_ioctls = DRM_ETNAVIV_NUM_IOCTLS;
 
 	return 0;
 }

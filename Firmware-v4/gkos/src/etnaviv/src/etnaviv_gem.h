@@ -9,6 +9,7 @@
 //#include <linux/dma-resv.h>
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_drv.h"
+#include "etnaviv_gpu.h"
 
 struct dma_fence;
 struct etnaviv_gem_ops;
@@ -92,6 +93,9 @@ struct etnaviv_gem_submit_bo {
 	struct std::shared_ptr<etnaviv_vram_mapping> mapping;
 };
 
+struct etnaviv_file_private;
+class etnaviv_dev;
+
 /* Created per submit-ioctl, to track bo's and cmdstream bufs, etc,
  * associated with the cmdstream submission for synchronization (and
  * make it easier to unwind when things go wrong, etc).
@@ -99,7 +103,7 @@ struct etnaviv_gem_submit_bo {
 struct etnaviv_gem_submit {
 	std::unique_ptr<etnaviv_sched_job> sched_job;
 	std::shared_ptr<etnaviv_file_private> ctx;
-	struct etnaviv_gpu *gpu;
+	etnaviv_gpu *gpu;
 	std::shared_ptr<etnaviv_iommu_context> mmu_context, prev_mmu_context;
 	std::shared_ptr<dma_fence> out_fence;
 	int out_fence_id;

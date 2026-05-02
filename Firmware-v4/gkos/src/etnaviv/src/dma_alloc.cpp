@@ -7,7 +7,7 @@
 #include "process.h"
 #include "cache.h"
 
-void *dma_alloc(struct device *dev, size_t size,
+void *dma_alloc(drm_device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp, unsigned int mt, size_t *vsize,
                 size_t *psize)
 {
@@ -93,14 +93,14 @@ void *dma_alloc(struct device *dev, size_t size,
     return (void *)vmem.base;
 }
 
-void *dma_alloc_wc(struct device *dev, size_t size,
+void *dma_alloc_wc(drm_device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp)
 {
     return dma_alloc(dev, size, dma_addr, gfp, MT_NORMAL_NC);
 }
 
 
-void dma_free_wc(struct device *dev, size_t size,
+void dma_free_wc(drm_device *dev, size_t size,
 			       void *cpu_addr, dma_addr_t dma_addr)
 {
     klog("dma_free_wc: %llu bytes @ %p physical, %p virtual\n", size, (void *)dma_addr, cpu_addr);

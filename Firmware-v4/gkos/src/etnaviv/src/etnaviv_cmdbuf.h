@@ -8,11 +8,11 @@
 
 #include "linux_types.h"
 
-struct device;
 struct etnaviv_iommu_context;
 struct etnaviv_vram_mapping;
 struct etnaviv_cmdbuf_suballoc;
 struct etnaviv_perfmon_request;
+class etnaviv_dev;
 
 struct etnaviv_cmdbuf {
 	/* suballocator this cmdbuf is allocated from */
@@ -30,7 +30,7 @@ struct etnaviv_cmdbuf {
 
 struct etnaviv_cmdbuf_suballoc {
 	/* suballocated dma buffer properties */
-	struct device *dev;
+	struct etnaviv_gpu *dev;
 	void *vaddr;
 	dma_addr_t paddr;
 
@@ -42,7 +42,7 @@ struct etnaviv_cmdbuf_suballoc {
 };
 
 std::unique_ptr<etnaviv_cmdbuf_suballoc>
-etnaviv_cmdbuf_suballoc_new(struct device *dev);
+etnaviv_cmdbuf_suballoc_new(etnaviv_dev *dev);
 void etnaviv_cmdbuf_suballoc_destroy(struct etnaviv_cmdbuf_suballoc *suballoc);
 int etnaviv_cmdbuf_suballoc_map(struct etnaviv_cmdbuf_suballoc *suballoc,
 				struct etnaviv_iommu_context *context,

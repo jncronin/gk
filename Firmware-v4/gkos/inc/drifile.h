@@ -10,6 +10,7 @@
 #include <vector>
 #include "osmutex.h"
 #include "linux_types.h"
+#include "drm_device.h"
 
 
 int dri_open(const std::string &fname, PFile *f, bool for_read, bool for_write);
@@ -21,7 +22,7 @@ class DRIFile : public File
         dri_type dt;
         std::string dev_name;
         unsigned int dir_iter = 0;  // re-use as device number for dri_type != dir
-        std::shared_ptr<device> d;
+        drm_device *d;
         std::shared_ptr<drm_file> df;
 
     public:

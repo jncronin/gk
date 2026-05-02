@@ -445,10 +445,8 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		std::shared_ptr<drm_file> &file)
 {
 	//struct etnaviv_file_private *ctx = file->driver_priv;
-	[[maybe_unused]] struct etnaviv_drm_private *priv = dev->dev_private.get();
 	struct drm_etnaviv_gem_submit *args = reinterpret_cast<drm_etnaviv_gem_submit *>(data);
 	std::shared_ptr<etnaviv_gem_submit> submit;
-	struct etnaviv_gpu *gpu;
 	std::shared_ptr<drm_file> fil = file;
 	int out_fence_fd = -1;
 	auto pid = GetCurrentProcessForCore()->id;
@@ -462,12 +460,12 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	gpu = priv->gpu.get();
-	if (!gpu)
+	if (!dev)
 	{
 		DRM_ERROR("no device\n");
 		return -ENXIO;
 	}
+	auto gpu = static_cast<etnaviv_gpu *>(dev);
 
 	if (args->stream_size % 4) {
 		DRM_ERROR("non-aligned cmdstream buffer size: %u\n",
@@ -488,7 +486,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	}
 
 	if ((args->flags & ETNA_SUBMIT_SOFTPIN) &&
-	    priv->mmu_global->version != ETNAVIV_IOMMU_V2) {
+	    gpu->mmu_global->version != ETNAVIV_IOMMU_V2) {
 		DRM_ERROR("softpin requested on incompatible MMU\n");
 		return -EINVAL;
 	}
@@ -562,7 +560,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	}
 	submit->pid = pid;
 
-	ret = etnaviv_cmdbuf_init(priv->cmdbuf_suballoc.get(), &submit->cmdbuf,
+	ret = etnaviv_cmdbuf_init(gpu->cmdbuf_suballoc.get(), &submit->cmdbuf,
 				  ALIGN(args->stream_size, 8) + 8);
 	if (ret)
 	{
@@ -590,7 +588,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		goto err_submit_job;
 	}
 
-	if ((priv->mmu_global->version != ETNAVIV_IOMMU_V2) &&
+	if ((gpu->mmu_global->version != ETNAVIV_IOMMU_V2) &&
 	    !etnaviv_cmd_validate_one(gpu, (u32 *)stream.get(), args->stream_size / 4,
 				      relocs.get(), args->nr_relocs)) {
 		DRM_ERROR("etnaviv_cmd_validate_one failed\n");

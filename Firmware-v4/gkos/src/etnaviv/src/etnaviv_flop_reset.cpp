@@ -177,7 +177,7 @@ static const u32 shader_size = PPU_FLOP_RESET_INSTR_DWORD_COUNT * sizeof(u32);
 static const u32 shader_register_count = 3;
 static const u32 buffer_size = shader_offset + shader_size;
 
-int etnaviv_flop_reset_ppu_init(struct etnaviv_drm_private *priv)
+int etnaviv_flop_reset_ppu_init(etnaviv_gpu *priv)
 {
 	/* Get some space from the ring buffer to put the payload
 	 * (input and output image, and shader), we keep this buffer
@@ -212,9 +212,7 @@ int etnaviv_flop_reset_ppu_init(struct etnaviv_drm_private *priv)
 
 void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu)
 {
-	auto &priv = gpu->drm->dev_private;
-
-	if (!priv->flop_reset_data_ppu) {
+	if (!gpu->flop_reset_data_ppu) {
 		klog(
 			"Oops: Flop reset data was not initialized, skipping\n");
 		return;
@@ -222,7 +220,7 @@ void etnaviv_flop_reset_ppu_run(struct etnaviv_gpu *gpu)
 
 	klog("GPU: queuing flop\n");
 
-	u32 buffer_base = etnaviv_cmdbuf_get_va(priv->flop_reset_data_ppu.get(),
+	u32 buffer_base = etnaviv_cmdbuf_get_va(gpu->flop_reset_data_ppu.get(),
 						gpu->mmu_context->cmdbuf_mapping.get());
 
 	etnaviv_emit_flop_reset_state_ppu(&gpu->buffer, buffer_base, 0,

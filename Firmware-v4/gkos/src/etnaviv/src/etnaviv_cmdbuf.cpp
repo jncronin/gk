@@ -4,20 +4,20 @@
  */
 
 //#include <linux/dma-mapping.h>
-
+#include "drm_device.h"
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_gem.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_mmu.h"
 
 std::unique_ptr<etnaviv_cmdbuf_suballoc>
-etnaviv_cmdbuf_suballoc_new(struct device *dev)
+etnaviv_cmdbuf_suballoc_new(etnaviv_dev *dev)
 {
 	auto suballoc = std::make_unique<etnaviv_cmdbuf_suballoc>();
 	if (!suballoc)
 		return nullptr;
 
-	suballoc->dev = dev;
+	suballoc->dev = static_cast<etnaviv_gpu *>(dev);
 
 	BUILD_BUG_ON(ETNAVIV_SOFTPIN_START_ADDRESS < SUBALLOC_SIZE);
 	suballoc->vaddr = dma_alloc_wc(dev, SUBALLOC_SIZE,

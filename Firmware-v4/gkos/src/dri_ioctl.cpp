@@ -23,42 +23,42 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
         case DRM_IOCTL_VERSION:
             {
                 auto dv = reinterpret_cast<drm_version *>(ptr);
-                dv->version_major = d->drm->major;
-                dv->version_minor = d->drm->minor;
+                dv->version_major = d->major;
+                dv->version_minor = d->minor;
                 dv->version_patchlevel = 0;
                 if(dv->date && dv->date_len)
                 {
-                    strncpy(dv->date, d->drm->date.c_str(), dv->date_len);
+                    strncpy(dv->date, d->date.c_str(), dv->date_len);
                 }
                 if(dv->desc && dv->desc_len)
                 {
-                    strncpy(dv->desc, d->drm->desc.c_str(), dv->desc_len);
+                    strncpy(dv->desc, d->desc.c_str(), dv->desc_len);
                 }
                 if(dv->name && dv->name_len)
                 {
-                    strncpy(dv->name, d->drm->name.c_str(), dv->name_len);
+                    strncpy(dv->name, d->name.c_str(), dv->name_len);
                 }
-                dv->date_len = d->drm->date.length() + 1;
-                dv->desc_len = d->drm->desc.length() + 1;
-                dv->name_len = d->drm->name.length() + 1;
+                dv->date_len = d->date.length() + 1;
+                dv->desc_len = d->desc.length() + 1;
+                dv->name_len = d->name.length() + 1;
             }
             return 0;
             
         case DRM_IOCTL_MODE_CREATE_DUMB:
             return dri_ioctl_mode_create_dumb(reinterpret_cast<drm_mode_create_dumb *>(ptr),
-                d->drm.get(), df);
+                d, df);
 
         case DRM_IOCTL_MODE_MAP_DUMB:
             return dri_ioctl_mode_map_dumb(reinterpret_cast<drm_mode_map_dumb *>(ptr),
-                d->drm.get(), df);
+                d, df);
 
         case DRM_IOCTL_GEM_CLOSE:
             return dri_ioctl_gem_close(reinterpret_cast<drm_gem_close *>(ptr),
-                d->drm.get(), df);
+                d, df);
 
         case DRM_IOCTL_GET_CAP:
             return dri_ioctl_get_cap(reinterpret_cast<drm_get_cap *>(ptr),
-                d->drm.get(), df);
+                d, df);
     }
 
     auto dri_nr = _IOC_NR(nr);
@@ -66,9 +66,9 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
     {
         // this is a driver-specific ioctl
         auto driver_nr = dri_nr - DRM_COMMAND_BASE;
-        if(driver_nr < d->drm->num_ioctls)
+        if(driver_nr < d->num_ioctls)
         {
-            auto &cioc = d->drm->ioctls[driver_nr];
+            auto &cioc = d->ioctls[driver_nr];
             if(cioc.param_size != _IOC_SIZE(nr))
             {
                 klog("DRI_ERROR: ioctl %08x parameter size %u, expected %u\n",
@@ -78,7 +78,7 @@ int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 #if GPU_DEBUG > 2
             klog("DRI: ioctl: %08x starting\n", nr);
 #endif
-            auto ret = cioc.func(d->drm.get(), ptr, df);
+            auto ret = cioc.func(d, ptr, df);
 #if GPU_DEBUG > 2
             klog("DRI: ioctl: %08x returning %d\n", nr, ret);
 #endif

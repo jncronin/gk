@@ -441,7 +441,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
 
 void etnaviv_gem_obj_add(struct drm_device *dev, std::shared_ptr<etnaviv_gem_object> obj)
 {
-	struct etnaviv_drm_private *priv = dev->dev_private.get();
+	auto priv = static_cast<etnaviv_gpu *>(dev);
 
 	priv->gem_lock->lock();
 	priv->gem_list.push_back(obj);

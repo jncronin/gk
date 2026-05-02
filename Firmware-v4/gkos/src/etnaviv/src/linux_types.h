@@ -24,6 +24,8 @@
 #include "block_allocator.h"
 #include "waitwound.h"
 
+#include "drm_device.h"
+
 #define ALIGN(x, y) (((x) + ((y) - 1)) & ~((y) - 1))
 
 #define PAGE_ALIGN(x) ALIGN(x, PAGE_SIZE)
@@ -168,21 +170,9 @@ typedef uintptr_t dma_addr_t;
 #define DECLARE_BITMAP(name, count) uint64_t name[((count + 63) & ~63) / 64] = { 0 }
 
 struct dma_fence;
-struct etnaviv_drm_private;
 class pm_control;
 
 struct drm_gem_object;
-
-struct drm_device
-{
-    std::unique_ptr<etnaviv_drm_private> dev_private;
-	const struct drm_ioctl_desc *ioctls;
-	size_t num_ioctls;
-	std::string name, date, desc;
-	unsigned int major, minor;
-
-	int flipbuffer(std::shared_ptr<drm_gem_object> &fb);
-};
 
 class DRMScheduler;
 
@@ -319,12 +309,6 @@ struct drm_driver
 	unsigned int minor;
 };
 
-struct device
-{
-	std::unique_ptr<drm_device> drm;
-	std::unique_ptr<pm_control> pm;
-};
-
 extern std::atomic<uint32_t> next_context_id;
 extern std::atomic<uint32_t> next_fence_id;
 
@@ -342,46 +326,13 @@ extern std::atomic<uint32_t> next_fence_id;
 
 #include "drm.h"
 
-#define DRM_COMMAND_BASE                0x40
-#define DRM_COMMAND_END			0xA0
-
-#define DRM_IOCTL_NR(n)                _IOC_NR(n)
-#define DRM_IOCTL_TYPE(n)              _IOC_TYPE(n)
-#define DRM_MAJOR       226
-
-#define DRM_AUTH            1u
-#define DRM_MASTER          2u
-#define DRM_ROOT_ONLY       4u
-#define DRM_RENDER_ALLOW    32u
-
-typedef int drm_ioctl_t(struct drm_device *dev, void *data,
-			std::shared_ptr<drm_file> &file_priv);
-
-struct drm_ioctl_desc {
-	unsigned int cmd;
-	unsigned int flags;
-	drm_ioctl_t *func;
-	const char *name;
-	size_t param_size;
-};
-
-#define DRM_IOCTL_DEF_DRV(ioctl, _func, _flags)				\
-	[DRM_IOCTL_NR(DRM_IOCTL_##ioctl) - DRM_COMMAND_BASE] = {	\
-		.cmd = DRM_IOCTL_##ioctl,				\
-		.flags = _flags,					\
-		.func = _func,						\
-		.name = #ioctl						\
-	}
-
-int drm_dev_register(std::shared_ptr<device> &dev, int unused_val);
-
-void *dma_alloc_wc(struct device *dev, size_t size,
+void *dma_alloc_wc(drm_device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp);
-void *dma_alloc(struct device *dev, size_t size,
+void *dma_alloc(drm_device *dev, size_t size,
 				 dma_addr_t *dma_addr, gfp_t gfp, unsigned int mt,
 				size_t *vsize = nullptr, size_t *psize = nullptr);
 
-void dma_free_wc(struct device *dev, size_t size,
+void dma_free_wc(drm_device *dev, size_t size,
 			       void *cpu_addr, dma_addr_t dma_addr);
 
 int bitmap_find_free_region(unsigned long * bitmap,
@@ -426,13 +377,6 @@ static inline int order_base_2(unsigned long long int x)
 #define GFP_KERNEL 		1
 #define GFP_HIGHUSER	2
 
-class reset_control
-{
-	public:
-		virtual int Assert() = 0;
-		virtual int Deassert() = 0;
-};
-
 class Etnaviv_reset_control : public reset_control
 {
 	public:
@@ -442,13 +386,6 @@ class Etnaviv_reset_control : public reset_control
 
 static inline int reset_control_assert(reset_control &rst) { return rst.Assert(); }
 static inline int reset_control_deassert(reset_control &rst) { return rst.Deassert(); }
-
-class clk
-{
-	public:
-		virtual int enable(uint64_t freq = ~0ULL) = 0;
-		virtual int disable() = 0;
-};
 
 class Etnaviv_core_clock : public clk
 {
@@ -474,13 +411,6 @@ class Etnaviv_reg_clock : public clk
 };
 
 typedef int irqreturn_t;
-
-class pm_control
-{
-	public:
-		virtual int enable() = 0;
-		virtual int disable() = 0;
-};
 
 class Etnaviv_pm_control : public pm_control
 {

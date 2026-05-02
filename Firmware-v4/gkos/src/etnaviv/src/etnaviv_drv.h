@@ -6,6 +6,7 @@
 #ifndef __ETNAVIV_DRV_H__
 #define __ETNAVIV_DRV_H__
 
+#include "drm_device.h"
 //#include <linux/io.h>
 //#include <linux/list.h>
 //#include <linux/mm_types.h>
@@ -22,7 +23,6 @@
 #include <memory>
 
 struct etnaviv_cmdbuf;
-struct etnaviv_gpu;
 struct etnaviv_mmu;
 struct etnaviv_gem_object;
 struct etnaviv_gem_submit;
@@ -40,23 +40,23 @@ struct etnaviv_file_private : public drm_file {
 
 struct etnaviv_cmdbuf_suballoc;
 
-struct etnaviv_drm_private {
-	int num_gpus = 0;
-	std::unique_ptr<etnaviv_gpu> gpu;
-	gfp_t shm_gfp_mask = GFP_HIGHUSER;
+class etnaviv_dev : public drm_device {
+	public:
+		int num_gpus = 0;
+		gfp_t shm_gfp_mask = GFP_HIGHUSER;
 
-	std::unique_ptr<etnaviv_cmdbuf_suballoc> cmdbuf_suballoc;
-	std::unique_ptr<etnaviv_iommu_global> mmu_global;
+		std::unique_ptr<etnaviv_cmdbuf_suballoc> cmdbuf_suballoc;
+		std::unique_ptr<etnaviv_iommu_global> mmu_global;
 
-	std::vector<void *> active_contexts;
-	u32 next_context_id;
+		std::vector<void *> active_contexts;
+		u32 next_context_id;
 
-	/* list of GEM objects: */
-	std::shared_ptr<Mutex> gem_lock = MutexList.Create();
-	std::vector<std::weak_ptr<etnaviv_gem_object>> gem_list;
+		/* list of GEM objects: */
+		std::shared_ptr<Mutex> gem_lock = MutexList.Create();
+		std::vector<std::weak_ptr<etnaviv_gem_object>> gem_list;
 
-	/* ppu flop reset data */
-	std::unique_ptr<etnaviv_cmdbuf> flop_reset_data_ppu;
+		/* ppu flop reset data */
+		std::unique_ptr<etnaviv_cmdbuf> flop_reset_data_ppu;
 };
 
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,

@@ -7,6 +7,7 @@
 //#include <drm/drm_print.h>
 
 #include "etnaviv_cmdbuf.h"
+#include "etnaviv_drv.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_gem.h"
 #include "etnaviv_mmu.h"
@@ -21,7 +22,7 @@
 
 #include "etnaviv_flop_reset.h"
 
-[[maybe_unused]] static void etnaviv_cmd_select_pipe(struct etnaviv_gpu *gpu,
+[[maybe_unused]] static void etnaviv_cmd_select_pipe(etnaviv_gpu *gpu,
 	struct etnaviv_cmdbuf *buffer, u8 pipe)
 {
 	u32 flush = 0;
