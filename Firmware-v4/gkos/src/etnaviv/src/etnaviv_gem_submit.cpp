@@ -574,6 +574,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	submit->flags = args->flags;
 
 	submit->sched_job = std::make_unique<etnaviv_sched_job>();
+	submit->sched_job->p = GetCurrentPProcessForCore();
 
 	/*ret = drm_sched_job_init(&submit->sched_job,
 				 &ctx->sched_entity[args->pipe],
