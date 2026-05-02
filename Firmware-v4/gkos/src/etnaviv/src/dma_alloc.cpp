@@ -41,6 +41,7 @@ void *dma_alloc(drm_device *dev, size_t size,
         // A backing store for any unmapped region - shouldn't get used
         auto pmb = MemBlock::ZeroBackedReadOnlyMemory(0, pmem.length, true, false);
         pmb.pmem_is_drm_object = true;
+        MutexGuard mg(p->user_mem->m);
         vmem = p->user_mem->vblocks.AllocAny(pmb, false);
         ttbr0 = p->user_mem->ttbr0;
     }
@@ -111,16 +112,31 @@ void dma_free_wc(drm_device *dev, size_t size,
     vb.valid = true;
     vmem_unmap(vb);
 
-    vblock_free(vb);
-
+    if((uintptr_t)cpu_addr >= UH_START)
     {
-        auto p = GetCurrentProcessForCore();
-        CriticalGuard cg(p->owned_pages.sl);
-        PMemBlock pb;
-        pb.base = dma_addr;
-        pb.length = size;
-        pb.valid = true;
-        p->owned_pages.release(pb);
+        vb.length = ALIGN(vb.length, PAGE_SIZE);
+        vblock_free(vb);
+    }
+    else
+    {
+        auto t = GetCurrentThreadForCore();
+        // ensure we are not in the cleanup thread
+        if(t->is_privileged == false)
+        {
+            auto p = GetCurrentProcessForCore();
+            {
+                CriticalGuard cg(p->owned_pages.sl);
+                PMemBlock pb;
+                pb.base = dma_addr;
+                pb.length = size;
+                pb.valid = true;
+                p->owned_pages.release(pb);
+            }
+            {
+                MutexGuard mg(p->user_mem->m);
+                p->user_mem->vblocks.Dealloc(vb);
+            }
+        }
     }
 
     for(auto i = 0ull; i < size; i += PAGE_SIZE)
