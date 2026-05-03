@@ -233,7 +233,6 @@ int Thread::release_user_thread_lower_half()
 int Thread::Kill(id_t id, void *retval)
 {
     auto pt = ThreadList.Get(id).v;
-
     if(!pt)
     {
         return -1;
@@ -242,6 +241,17 @@ int Thread::Kill(id_t id, void *retval)
     klog("thread: kill %u (%s)\n", id, pt->name.c_str());
 
     CriticalGuard cg(ThreadList.sl, pt->sl);
+
+    // check for deletion prevention guards
+    if(pt->delete_guards)
+    {
+        pt->for_deletion = true;
+        pt->delayed_retval = retval;
+        cg.unlock();
+        klog("thread: kill %u deferred delete\n", id);
+        return 0;
+    }
+
     auto jt = ThreadList._get(pt->join_thread).v;
 
     if(jt)
@@ -261,6 +271,11 @@ int Thread::Kill(id_t id, void *retval)
     
     CleanupQueue.Push(cleanup_message { .is_thread = true, .id = id });
     sched.Unschedule(pt);
+
+    if(pt.get() == GetCurrentThreadForCore())
+    {
+        Yield();
+    }
 
     return 0;
 }
@@ -315,3 +330,25 @@ extern "C" void thread_save_lr(uint64_t elr_el1)
 }
 
 #endif
+
+ThreadDeletionPreventionGuard::ThreadDeletionPreventionGuard()
+{
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg(t->sl);
+    t->delete_guards++;
+}
+
+ThreadDeletionPreventionGuard::~ThreadDeletionPreventionGuard()
+{
+    auto t = GetCurrentThreadForCore();
+    CriticalGuard cg(t->sl);
+    t->delete_guards--;
+
+    if(t->for_deletion && !t->delete_guards)
+    {
+        auto retval = t->delayed_retval;
+        cg.unlock();
+
+        Thread::Kill(t->id, retval);
+    }
+}

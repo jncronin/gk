@@ -62,14 +62,17 @@ class Thread
         std::string name;
         id_t id;
 
+        // keep track of requests for deletion and any guards against this
+        bool for_deletion = false;
+        unsigned int delete_guards = 0;
+        void *delayed_retval = nullptr;
+
         int base_priority;
         bool is_privileged;
 
         VMemBlock mr_kernel_thread = InvalidVMemBlock();
         VMemBlock mr_user_thread = InvalidVMemBlock();
         VMemBlock mr_elf_tls = InvalidVMemBlock();
-
-        void *thread_retval;
 
         /* Used for waiting on inter-process RPC returns */
         SimpleSignal ss;
@@ -155,6 +158,16 @@ class ThreadPrivilegeEscalationGuard
         ~ThreadPrivilegeEscalationGuard();
 
         ThreadPrivilegeEscalationGuard(const ThreadPrivilegeEscalationGuard &) = delete;
+};
+
+/* Prevents the current thread from being deleted during its lifetime, handles deletion */
+class ThreadDeletionPreventionGuard
+{
+    public:
+        ThreadDeletionPreventionGuard();
+        ~ThreadDeletionPreventionGuard();
+
+        ThreadDeletionPreventionGuard(const ThreadDeletionPreventionGuard &) = delete;
 };
 
 #endif
