@@ -56,6 +56,11 @@ int etnaviv_open(struct drm_device *dev, std::shared_ptr<drm_file> *file)
 	return 0;
 }
 
+etnaviv_file_private::~etnaviv_file_private()
+{
+	klog("etnaviv: close file context id %d\n", id);
+}
+
 [[maybe_unused]] static void etnaviv_postclose(struct drm_device *dev, struct drm_file *file)
 {
 #if 0

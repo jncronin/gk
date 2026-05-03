@@ -36,6 +36,8 @@ struct etnaviv_file_private : public drm_file {
 	int id;
 	std::shared_ptr<etnaviv_iommu_context> mmu;
 	struct drm_sched_entity		sched_entity;
+
+	~etnaviv_file_private();
 };
 
 struct etnaviv_cmdbuf_suballoc;
@@ -47,9 +49,6 @@ class etnaviv_dev : public drm_device {
 
 		std::unique_ptr<etnaviv_cmdbuf_suballoc> cmdbuf_suballoc;
 		std::unique_ptr<etnaviv_iommu_global> mmu_global;
-
-		std::vector<void *> active_contexts;
-		u32 next_context_id;
 
 		/* list of GEM objects: */
 		std::shared_ptr<Mutex> gem_lock = MutexList.Create();
