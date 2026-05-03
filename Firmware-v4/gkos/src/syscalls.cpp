@@ -484,6 +484,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_fstat:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<struct __syscall_fstat_params *>(r2);
                 int ret = syscall_fstat(p->fd, p->buf, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -492,6 +493,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_write:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
                 int ret = syscall_write(p->file, p->ptr, p->len, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -500,6 +502,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_read:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<struct __syscall_read_params *>(r2);
                 int ret = syscall_read(p->file, p->ptr, p->len, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -508,6 +511,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_isatty:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = (int)(intptr_t)r2;
                 int ret = syscall_isatty(p, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -516,6 +520,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_lseek:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_lseek_params *>(r2);
                 int ret = syscall_lseek(p->file, p->offset, p->whence, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -524,6 +529,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_open:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_open_params *>(r2);
                 int ret = syscall_open(p->name, p->flags, p->mode, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -532,6 +538,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_close1:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto f = (int)(intptr_t)r2;
                 int ret = syscall_close1(f, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -540,6 +547,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_close2:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto f = (int)(intptr_t)r2;
                 int ret = syscall_close2(f, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -584,6 +592,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_opendir:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto path = reinterpret_cast<const char *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_opendir(path, reinterpret_cast<int *>(r3));
             }
@@ -591,6 +600,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_readdir:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_readdir_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_readdir(p->fd, p->de, reinterpret_cast<int *>(r3));
             }
@@ -606,6 +616,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_proccreate:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_proccreate_params *>(r2);
                 int ret = syscall_proccreate(p->fname, p->proc_info, p->pid, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -677,6 +688,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_mkdir:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_mkdir_params *>(r2);
                 int ret = syscall_mkdir(p->pathname, p->mode, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -685,6 +697,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_unlink:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<char *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_unlink(p, reinterpret_cast<int *>(r3));
             }
@@ -692,6 +705,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_ftruncate:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_ftruncate_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_ftruncate(p->fd, p->length, reinterpret_cast<int *>(r3));
             }
@@ -699,6 +713,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_chdir:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<const char *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_chdir(p, reinterpret_cast<int *>(r3));
             }
@@ -706,6 +721,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_realpath:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_realpath_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_realpath(p->path, p->resolved_path, p->len,
                     reinterpret_cast<int *>(r3));
@@ -739,6 +755,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_mmapv4:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_mmapv4_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_mmapv4(p->len, p->retaddr,
                     p->is_sync, p->is_read, p->is_write, p->is_exec, p->fd, p->is_fixed, p->foffset,
@@ -748,6 +765,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_memdealloc:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_memdealloc_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_memdealloc(p->len, p->retaddr,
                     reinterpret_cast<int *>(r3));
@@ -787,6 +805,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_setprot:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_setprot_params *>(r2);
                 int ret = syscall_setprot(p->addr, p->is_read, p->is_write, p->is_exec, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -892,6 +911,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_socket:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_socket_params *>(r2);
                 int ret = syscall_socket(p->domain, p->type, p->protocol, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -900,6 +920,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_bind:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_bind_params *>(r2);
                 int ret = syscall_bind(p->sockfd, p->addr, p->addrlen, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -908,6 +929,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_listen:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_listen_params *>(r2);
                 int ret = syscall_listen(p->sockfd, p->backlog, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -916,6 +938,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_accept:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_accept_params *>(r2);
                 int ret = syscall_accept(p->sockfd, p->addr, p->addrlen, reinterpret_cast<int *>(r3));
                 *reinterpret_cast<int *>(r1) = ret;
@@ -924,6 +947,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_sendto:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_sendto_params *>(r2);
                 int ret = syscall_sendto(p->sockfd, p->buf, p->len, p->flags, p->dest_addr, p->addrlen,
                     reinterpret_cast<int *>(r3));
@@ -933,6 +957,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_recvfrom:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_recvfrom_params *>(r2);
                 int ret = syscall_recvfrom(p->sockfd, p->buf, p->len, p->flags, p->src_addr, p->addrlen,
                     reinterpret_cast<int *>(r3));
@@ -947,6 +972,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_pipe:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<int *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_pipe(p,
                     reinterpret_cast<int *>(r3));
@@ -955,6 +981,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_dup2:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_dup_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_dup2(p->fd1, p->fd2,
                     reinterpret_cast<int *>(r3));
@@ -1039,6 +1066,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_link:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_link_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_link(p->oldpath, p->newpath,
                     reinterpret_cast<int *>(r3));
@@ -1059,6 +1087,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_ioctl:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_ioctl_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_ioctl(p->fd, p->nr, p->ptr, p->len,
                     reinterpret_cast<int *>(r3));
@@ -1067,6 +1096,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_opengl_makerenderbuffer:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 *reinterpret_cast<int *>(r1) = syscall_opengl_makerenderbuffer(
                     (int)(intptr_t)r2,
                     reinterpret_cast<int *>(r3));
@@ -1075,6 +1105,7 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
 
         case __syscall_opengl_getrenderbuffer:
             {
+                ThreadDeletionPreventionGuard tdpg;
                 *reinterpret_cast<int *>(r1) = syscall_opengl_getrenderbuffer(
                     reinterpret_cast<int *>(r3));
             }

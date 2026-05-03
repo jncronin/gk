@@ -662,7 +662,6 @@ int syscall_dup2(int oldfd, int newfd, int *_errno)
 
 int syscall_ioctl(int fd, unsigned int nr, void *ptr, size_t len, int *_errno)
 {
-    ThreadDeletionPreventionGuard tdpg;
     auto p = GetCurrentProcessForCore();
     CriticalGuard cg(p->open_files.sl);
 

@@ -214,7 +214,8 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
     }
     else /* is userspace */
     {
-        // This can all be interruptible
+        // This can all be interruptible, but must complete
+        ThreadDeletionPreventionGuard tdpg;
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
 
         auto [t, p] = GetCurrentThreadProcessForCore();
