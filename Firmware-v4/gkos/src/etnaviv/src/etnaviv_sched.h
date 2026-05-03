@@ -11,17 +11,10 @@
 
 struct etnaviv_gpu;
 
-static inline
-std::shared_ptr <etnaviv_gem_submit> to_etnaviv_submit(struct drm_sched_job *sched_job)
-{
-	auto esj = reinterpret_cast<etnaviv_sched_job *>(sched_job);
-	return esj->submit;
-}
-
 class DRMScheduler;
 
 int etnaviv_sched_init(DRMScheduler *sched);
 void etnaviv_sched_fini(struct etnaviv_gpu *gpu);
-int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit);
+int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> &submit);
 
 #endif /* __ETNAVIV_SCHED_H__ */

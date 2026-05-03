@@ -198,7 +198,7 @@ static int submit_fence_sync(struct etnaviv_gem_submit *submit)
 					iter = robj.write_fences.erase(iter);
 				else
 				{
-					submit->sched_job->deps.push_back(dep);
+					submit->deps.push_back(dep);
 					iter++;
 				}
 			}
@@ -210,7 +210,7 @@ static int submit_fence_sync(struct etnaviv_gem_submit *submit)
 				iter = robj.read_fences.erase(iter);
 			else
 			{
-				submit->sched_job->deps.push_back(dep);
+				submit->deps.push_back(dep);
 				iter++;
 			}
 		}
@@ -418,26 +418,24 @@ static int submit_perfmon_validate(struct etnaviv_gem_submit *submit,
 
 etnaviv_gem_submit::~etnaviv_gem_submit()
 {
-	auto submit = this;
-
 	unsigned i;
 
-	if (submit->cmdbuf.suballoc)
-		etnaviv_cmdbuf_free(&submit->cmdbuf);
+	if (cmdbuf.suballoc)
+		etnaviv_cmdbuf_free(&cmdbuf);
 
-	for (i = 0; i < submit->nr_bos; i++) {
-		auto etnaviv_obj = submit->bos[i].obj;
+	for (i = 0; i < nr_bos; i++) {
+		auto etnaviv_obj = bos[i].obj;
 
 		/* unpin all objects */
-		if (submit->bos[i].flags & BO_PINNED) {
-			etnaviv_gem_mapping_unreference(submit->bos[i].mapping.get());
+		if (bos[i].flags & BO_PINNED) {
+			etnaviv_gem_mapping_unreference(bos[i].mapping.get());
 			etnaviv_obj->gpu_active.fetch_sub(1);
-			submit->bos[i].mapping = NULL;
-			submit->bos[i].flags &= ~BO_PINNED;
+			bos[i].mapping = NULL;
+			bos[i].flags &= ~BO_PINNED;
 		}
 
 		/* if the GPU submit failed, objects might still be locked */
-		submit_unlock_object(submit, i);
+		submit_unlock_object(this, i);
 	}
 }
 
@@ -573,8 +571,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	submit->exec_state = args->exec_state;
 	submit->flags = args->flags;
 
-	submit->sched_job = std::make_unique<etnaviv_sched_job>();
-	submit->sched_job->p = GetCurrentPProcessForCore();
+	submit->p = GetCurrentPProcessForCore();
 
 	/*ret = drm_sched_job_init(&submit->sched_job,
 				 &ctx->sched_entity[args->pipe],
@@ -605,7 +602,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 			goto err_submit_job;
 		}
 
-		submit->sched_job->deps.push_back(std::move(in_fence));
+		submit->deps.push_back(std::move(in_fence));
 	}
 
 	ret = submit_pin_objects(submit.get());
@@ -661,9 +658,9 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 err_submit_job:
 	if (ret)
 	{
-		submit->sched_job->scheduled = nullptr;
-		submit->sched_job->finished = nullptr;
-		submit->sched_job->deps.clear();
+		submit->scheduled = nullptr;
+		submit->finished = nullptr;
+		submit->deps.clear();
 	}
 err_submit_put:
 

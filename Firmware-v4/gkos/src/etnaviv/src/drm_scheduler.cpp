@@ -13,7 +13,7 @@ struct sched_worker_startup
     unsigned int priority;
 };
 
-int DRMScheduler::push_job(std::unique_ptr<drm_sched_job> &&j)
+int DRMScheduler::push_job(std::shared_ptr<drm_sched_job> &j)
 {
     CriticalGuard cg(sl);
     if(j->priority > DRM_SCHED_PRIORITY_COUNT)
@@ -34,7 +34,7 @@ int DRMScheduler::push_job(std::unique_ptr<drm_sched_job> &&j)
 #endif
 
     auto priority = j->priority;
-    priorities[j->priority].push(std::move(j));
+    priorities[j->priority].push(j);
     sems[priority].Signal();
 
     return 0;
@@ -91,7 +91,7 @@ void *drm_sched_worker(void *p)
         if(s->shutdown_req[priority])
             return nullptr;
 
-        std::unique_ptr<drm_sched_job> j;
+        std::shared_ptr<drm_sched_job> j;
 
         {
             CriticalGuard cg(s->sl);
@@ -144,7 +144,7 @@ void *drm_sched_worker(void *p)
         if(j->scheduled)
             j->scheduled->Signal();
 
-        auto finish_fence = s->ops->run_job(j.get());
+        auto finish_fence = s->ops->run_job(j);
 
 #if GPU_DEBUG > 2
         klog("drm_sched_worker: job %u submitted to gpu, awaiting completion\n", j->job_id);

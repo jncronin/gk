@@ -100,8 +100,7 @@ class etnaviv_dev;
  * associated with the cmdstream submission for synchronization (and
  * make it easier to unwind when things go wrong, etc).
  */
-struct etnaviv_gem_submit {
-	std::unique_ptr<etnaviv_sched_job> sched_job;
+struct etnaviv_gem_submit : public drm_sched_job {
 	std::shared_ptr<etnaviv_file_private> ctx;
 	etnaviv_gpu *gpu;
 	std::shared_ptr<etnaviv_iommu_context> mmu_context, prev_mmu_context;

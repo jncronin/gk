@@ -258,11 +258,6 @@ struct drm_sched_entity
 };
 
 struct etnaviv_gem_submit;
-struct etnaviv_sched_job : public drm_sched_job
-{
-	std::shared_ptr<etnaviv_gem_submit> submit;
-};
-
 struct drm_mm
 {
 	BlockAllocator<int> alloc =

@@ -17,9 +17,9 @@
 [[maybe_unused]] static int etnaviv_job_hang_limit = 0;
 [[maybe_unused]] static int etnaviv_hw_jobs_limit = 4;
 
-static std::shared_ptr<dma_fence> etnaviv_sched_run_job(struct drm_sched_job *sched_job)
+static std::shared_ptr<dma_fence> etnaviv_sched_run_job(std::shared_ptr<drm_sched_job> &sched_job)
 {
-	auto submit = to_etnaviv_submit(sched_job);
+	auto submit = std::static_pointer_cast<etnaviv_gem_submit>(sched_job);
 	std::shared_ptr<dma_fence> fence = NULL;
 
 	if (likely(!sched_job->finished->IsSignalled()))
@@ -31,8 +31,7 @@ static std::shared_ptr<dma_fence> etnaviv_sched_run_job(struct drm_sched_job *sc
 }
 
 
-static enum drm_gpu_sched_stat etnaviv_sched_timedout_job(struct drm_sched_job
-							  *sched_job)
+static enum drm_gpu_sched_stat etnaviv_sched_timedout_job(std::shared_ptr<drm_sched_job> &sched_job)
 {
 	klog("etnaviv_sched_timedout_job not implemented\n");
 	return DRM_GPU_SCHED_STAT_NO_HANG;
@@ -93,13 +92,12 @@ static enum drm_gpu_sched_stat etnaviv_sched_timedout_job(struct drm_sched_job
 #endif
 }
 
-static void etnaviv_sched_free_job(struct drm_sched_job *sched_job)
+static void etnaviv_sched_free_job(std::shared_ptr<drm_sched_job> &sched_job)
 {
-	auto escj = reinterpret_cast<etnaviv_sched_job *>(sched_job);
+	auto escj = std::static_pointer_cast<etnaviv_gem_submit>(sched_job);
 	escj->deps.clear();
 	escj->finished = nullptr;
 	escj->scheduled = nullptr;
-	escj->submit = nullptr;
 }
 
 static const struct drm_sched_backend_ops etnaviv_sched_ops = {
@@ -109,7 +107,7 @@ static const struct drm_sched_backend_ops etnaviv_sched_ops = {
 };
 
 
-int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
+int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> &submit)
 {
 	auto &gpu = submit->gpu;
 
@@ -121,16 +119,16 @@ int etnaviv_sched_push_job(std::shared_ptr<etnaviv_gem_submit> submit)
 	gpu->sched_lock->lock();
 
 	//drm_sched_job_arm(&submit->sched_job);	// prepares the jobs fences
-	submit->sched_job->scheduled = std::make_shared<dma_fence>();
-	submit->sched_job->finished = std::make_shared<dma_fence>();
-	submit->sched_job->submit = submit;		// allow us to extract the job again
-	submit->sched_job->arm_time = clock_cur();
-	submit->sched_job->priority = DRM_SCHED_PRIORITY_NORMAL;
+	submit->scheduled = std::make_shared<dma_fence>();
+	submit->finished = std::make_shared<dma_fence>();
+	submit->arm_time = clock_cur();
+	submit->priority = DRM_SCHED_PRIORITY_NORMAL;
 
-	submit->out_fence = submit->sched_job->finished;
+	submit->out_fence = submit->finished;
 	submit->out_fence_id = gpu->user_fences->Register(submit->out_fence, gpu->user_fences);
 
-	gpu->dsched->push_job(std::move(submit->sched_job));
+	auto job = std::static_pointer_cast<drm_sched_job>(submit);
+	gpu->dsched->push_job(job);
 
 	gpu->sched_lock->unlock();
 

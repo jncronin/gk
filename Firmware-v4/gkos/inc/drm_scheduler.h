@@ -38,7 +38,7 @@ struct drm_sched_job
 	virtual ~drm_sched_job();
 };
 
-using DRMSchedulerEntity = std::queue<std::unique_ptr<drm_sched_job>>;
+using DRMSchedulerEntity = std::queue<std::shared_ptr<drm_sched_job>>;
 
 enum drm_gpu_sched_stat
 {
@@ -49,11 +49,11 @@ enum drm_gpu_sched_stat
 };
 
 struct drm_sched_backend_ops {
-    std::shared_ptr<dma_fence> (*prepare_job)(struct drm_sched_job *sched_job, struct drm_sched_entity *s_entity);
-    std::shared_ptr<dma_fence> (*run_job)(struct drm_sched_job *sched_job);
-    enum drm_gpu_sched_stat (*timedout_job)(struct drm_sched_job *sched_job);
-    void (*free_job)(struct drm_sched_job *sched_job);
-    void (*cancel_job)(struct drm_sched_job *sched_job);
+    std::shared_ptr<dma_fence> (*prepare_job)(std::shared_ptr<drm_sched_job> &sched_job, struct drm_sched_entity *s_entity);
+    std::shared_ptr<dma_fence> (*run_job)(std::shared_ptr<drm_sched_job> &sched_job);
+    enum drm_gpu_sched_stat (*timedout_job)(std::shared_ptr<drm_sched_job> &sched_job);
+    void (*free_job)(std::shared_ptr<drm_sched_job> &sched_job);
+    void (*cancel_job)(std::shared_ptr<drm_sched_job> &sched_job);
 };
 
 class DRMScheduler
@@ -71,7 +71,7 @@ public:
     const drm_sched_backend_ops *ops;
     kernel_time timeout;
     void init(size_t priority, size_t entity);
-    int push_job(std::unique_ptr<drm_sched_job> &&j);
+    int push_job(std::shared_ptr<drm_sched_job> &sched_job);
 
     DRMScheduler();
 };
