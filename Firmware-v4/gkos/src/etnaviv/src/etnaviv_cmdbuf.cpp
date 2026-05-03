@@ -34,6 +34,7 @@ int etnaviv_cmdbuf_suballoc_map(struct etnaviv_cmdbuf_suballoc *suballoc,
 				std::shared_ptr <etnaviv_vram_mapping> mapping,
 				u32 memory_base)
 {
+	klog("etnaviv: suballoc map paddr %p\n", (void *)suballoc->paddr);
 	return etnaviv_iommu_get_suballoc_va(context, mapping, memory_base,
 					     suballoc->paddr, SUBALLOC_SIZE);
 }
@@ -79,7 +80,9 @@ retry:
 	cmdbuf->vaddr = (void *)((uintptr_t)suballoc->vaddr + cmdbuf->suballoc_offset);
 
 #if GPU_DEBUG > 2
-	klog("GPU: cmdbuf: alloc at %p phys\n", cmdbuf->suballoc->paddr + cmdbuf->suballoc_offset);
+	klog("GPU: cmdbuf: alloc %zu at %p phys\n",
+		(size_t)size,
+		cmdbuf->suballoc->paddr + cmdbuf->suballoc_offset);
 #endif
 
 	return 0;
@@ -93,6 +96,12 @@ void etnaviv_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf)
 
 	if (!suballoc)
 		return;
+
+#if GPU_DEBUG > 2
+	klog("GPU: cmdbuf: free %zu at %p phys\n",
+		(size_t)cmdbuf->size,
+		cmdbuf->suballoc->paddr + cmdbuf->suballoc_offset);
+#endif
 
 	suballoc->lock.lock();
 	bitmap_release_region(suballoc->granule_map,

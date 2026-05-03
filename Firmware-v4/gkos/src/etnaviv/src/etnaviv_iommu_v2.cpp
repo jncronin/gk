@@ -42,6 +42,7 @@ struct etnaviv_iommuv2_context : public etnaviv_iommu_context
 
 	~etnaviv_iommuv2_context()
 	{
+		klog("etnaviv: delete IOMMUv2 context %u\n", id);
 		for (auto i = 0; i < MMUv2_MAX_STLB_ENTRIES; i++) {
 			if (stlb_cpu[i])
 				dma_free_wc(nullptr, 4096u,

@@ -83,6 +83,7 @@ void *dma_alloc(drm_device *dev, size_t size,
 
     *dma_addr = pmem.base;
 
+    if(!(gfp & GFP_KERNEL))
     {
         CriticalGuard cg(p->owned_pages.sl);
         p->owned_pages.add(pmem, true);
