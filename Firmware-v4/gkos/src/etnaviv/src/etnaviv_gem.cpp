@@ -149,7 +149,8 @@ etnaviv_gem_get_vram_mapping(struct etnaviv_gem_object *obj,
 	for(auto iter = obj->vram_list.begin(); iter != obj->vram_list.end(); iter++)
 	{
 		auto &mapping = *iter;
-		if(mapping->context.get() == context)
+		auto mcontext = mapping->context.lock();
+		if(mcontext.get() == context)
 		{
 			auto cmapping = mapping;
 			if(delete_from_list)
@@ -191,7 +192,8 @@ etnaviv_gem_mapping_get(
 		 */
 		if (mapping->use == 0) {
 			mmu_context->lock->lock();
-			if (mapping->context == mmu_context)
+			auto mcontext = mapping->context.lock();
+			if (mcontext == mmu_context)
 				if (va && mapping->iova != va) {
 					etnaviv_iommu_reap_mapping(mapping);
 					mapping = nullptr;

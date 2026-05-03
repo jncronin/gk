@@ -117,13 +117,16 @@ static void etnaviv_iommu_remove_mapping(struct etnaviv_iommu_context *context,
 
 void etnaviv_iommu_reap_mapping(std::shared_ptr<etnaviv_vram_mapping> mapping)
 {
-	struct etnaviv_iommu_context *context = mapping->context.get();
+	auto mcontext = mapping->context.lock();
+	if(!mcontext)
+		return;
+	struct etnaviv_iommu_context *context = mcontext.get();
 
 	BUG_ON(!context->lock->held());
 	WARN_ON(mapping->use);
 
 	etnaviv_iommu_remove_mapping(context, mapping);
-	mapping->context = nullptr;
+	mapping->context.reset();
 
 	context->mm.alloc.Dealloc(mapping->vram_node.start);
 }
@@ -443,7 +446,8 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
 	context->lock->lock();
 
 	/* Bail if the mapping has been reaped by another thread */
-	if (!mapping->context) {
+	auto mcontext = mapping->context.lock();
+	if (!mcontext) {
 		context->lock->unlock();
 		return;
 	}
@@ -453,7 +457,7 @@ void etnaviv_iommu_unmap_gem(std::shared_ptr<etnaviv_iommu_context> context,
 		etnaviv_iommu_remove_mapping(context.get(), mapping);
 
 	context->mappings.erase(mapping->vram_node.start);
-	mapping->context = nullptr;
+	mapping->context.reset();
 }
 
 etnaviv_iommu_context::~etnaviv_iommu_context()
@@ -464,7 +468,7 @@ etnaviv_iommu_context::~etnaviv_iommu_context()
 	//  In fact, there is a risk of calling a pure virtual function here because
 	//  this eventually calls this->unmap() which is an overridden virtual function
 	//  that is not necessarily valid in the destructor.
-	
+
 	//etnaviv_cmdbuf_suballoc_unmap(this, cmdbuf_mapping);
 }
 

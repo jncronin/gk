@@ -26,7 +26,7 @@ struct etnaviv_vram_mapping {
 	struct list_head scan_node;
 
 	struct etnaviv_gem_object *object;
-	std::shared_ptr<etnaviv_iommu_context> context;
+	std::weak_ptr<etnaviv_iommu_context> context;
 	drm_mm_node vram_node;
 	unsigned int use;
 	u32 iova;
