@@ -18,8 +18,6 @@ static int dri_ioctl_get_cap(drm_get_cap *m, drm_device *dev, std::shared_ptr<dr
 
 int DRIFile::Ioctl(unsigned int nr, void *ptr, size_t len, int *_errno)
 {
-    ThreadDeletionPreventionGuard tdpg;
-    
     switch(nr)
     {
         case DRM_IOCTL_VERSION:
