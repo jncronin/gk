@@ -2,6 +2,7 @@
 #define CPU_H
 
 #include "buddy.h"
+#include "cpu_a35.h"
 
 class Cpu
 {
