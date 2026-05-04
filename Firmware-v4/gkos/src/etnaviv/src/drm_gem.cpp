@@ -55,7 +55,7 @@ int drm_gem_object_init(struct drm_device *dev, std::shared_ptr<drm_gem_object> 
         
         {
             CriticalGuard cg(p->owned_pages.sl);
-            p->owned_pages.add(pb);
+            p->owned_pages.add(pb, true);
         }
     }
     drm->handle = 0;
