@@ -106,7 +106,6 @@ struct etnaviv_gem_submit : public drm_sched_job {
 	std::shared_ptr<etnaviv_iommu_context> mmu_context, prev_mmu_context;
 	std::shared_ptr<dma_fence> out_fence;
 	int out_fence_id;
-	struct list_head node; /* GPU active submit list */
 	struct etnaviv_cmdbuf cmdbuf;
 	id_t pid;       /* submitting process */
 	u32 exec_state;
