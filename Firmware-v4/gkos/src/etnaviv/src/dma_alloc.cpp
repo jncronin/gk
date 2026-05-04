@@ -111,7 +111,7 @@ void dma_free_wc(drm_device *dev, size_t size,
     vb.base = (uint64_t)cpu_addr;
     vb.length = size;
     vb.valid = true;
-    vmem_unmap(vb);
+    vmem_unmap(vb, ~0ULL, ~0ULL, false);
 
     if((uintptr_t)cpu_addr >= UH_START)
     {
