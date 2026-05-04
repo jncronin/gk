@@ -92,8 +92,8 @@ enum etnaviv_sec_mode {
 };
 
 struct etnaviv_event {
-	struct std::shared_ptr<dma_fence> fence;
-	struct std::shared_ptr<etnaviv_gem_submit> submit;
+	std::shared_ptr<dma_fence> fence;
+	std::shared_ptr<etnaviv_gem_submit> submit;
 
 	void (*sync_point)(struct etnaviv_gpu *gpu, struct etnaviv_event *event);
 };
