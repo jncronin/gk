@@ -382,6 +382,14 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
 
                 if(release_page)
                 {
+                    /* Ensure the ~Process() dtor cannot get called between Pmem.release and 
+                        removal from owned_pages */
+                    PProcess p;
+                    if(act_vaddr < UH_START)
+                    {
+                        p = GetCurrentPProcessForCore();
+                    }
+
                     PMemBlock pb;
                     pb.base = page;
                     pb.length = VBLOCK_64k;
@@ -390,7 +398,6 @@ int vmem_unmap_int(uintptr_t vaddr, uintptr_t len, uintptr_t ttbr, uintptr_t act
 
                     if(act_vaddr < UH_START)
                     {
-                        auto p = GetCurrentProcessForCore();
                         CriticalGuard cg(p->owned_pages.sl);
                         pb.valid = true;
                         p->owned_pages.release(pb);

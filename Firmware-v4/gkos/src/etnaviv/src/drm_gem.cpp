@@ -87,17 +87,18 @@ drm_gem_object::~drm_gem_object()
 {
     if(release_pages)
     {
-        PMemBlock pb;
-        pb.base = dma_addr;
-        pb.length = psize;
-        pb.is_shared = false;
-        pb.valid = true;
-
-        Pmem.release(pb);
-
         auto p = creating_proc.lock();
+        /* If process is already destroyed then don't double-free pages */
         if(p)
         {
+            PMemBlock pb;
+            pb.base = dma_addr;
+            pb.length = psize;
+            pb.is_shared = false;
+            pb.valid = true;
+
+            Pmem.release(pb);
+
             pb.valid = true;
             CriticalGuard cg(p->owned_pages.sl);
             p->owned_pages.release(pb);
