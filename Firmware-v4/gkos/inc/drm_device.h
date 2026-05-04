@@ -37,6 +37,11 @@ class drm_device
         std::string name, date, desc;
         unsigned int major, minor;
 
+		virtual int suspend();
+		virtual int resume();
+
+		unsigned int suspend_timeout_ms = 200;
+
         virtual ~drm_device() = default;
 };
 

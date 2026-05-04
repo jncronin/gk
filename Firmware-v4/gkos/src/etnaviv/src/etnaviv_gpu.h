@@ -170,6 +170,9 @@ class etnaviv_gpu : public etnaviv_dev {
 		std::unique_ptr<clk> clk_shader;
 		std::unique_ptr<reset_control> rst;
 
+		int suspend();
+		int resume();
+
 		unsigned int freq_scale = 0;
 		unsigned int fe_waitcycles = 0;
 		unsigned long base_rate_core = 0;

@@ -24,6 +24,7 @@
 #define DRM_SCHED_PRIORITY_COUNT        1
 
 class dma_fence;
+class drm_device;
 
 struct drm_sched_job
 {
@@ -66,6 +67,8 @@ public:
     std::array<id_t, DRM_SCHED_PRIORITY_COUNT> tids;
     std::array<bool, DRM_SCHED_PRIORITY_COUNT> shutdown_req;
 
+    drm_device *dev = nullptr;
+
     unsigned int next_job_id = 0;       // for debugging
 
     const drm_sched_backend_ops *ops;
@@ -73,7 +76,7 @@ public:
     void init(size_t priority, size_t entity);
     int push_job(std::shared_ptr<drm_sched_job> &sched_job);
 
-    DRMScheduler();
+    DRMScheduler(drm_device *device);
 };
 
 #endif

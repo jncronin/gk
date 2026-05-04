@@ -5,6 +5,7 @@
 #include "scheduler.h"
 #include "process.h"
 #include "fencefile.h"
+#include "drm_device.h"
 
 static void *drm_sched_worker(void *p);
 struct sched_worker_startup
@@ -67,8 +68,9 @@ void DRMScheduler::init(size_t priority, size_t entity)
     }
 }
 
-DRMScheduler::DRMScheduler()
+DRMScheduler::DRMScheduler(drm_device *device)
 {
+    dev = device;
     for(auto i = 0u; i < DRM_SCHED_PRIORITY_COUNT; i++)
     {
         is_init[i] = false;
@@ -81,18 +83,45 @@ void *drm_sched_worker(void *p)
     auto priority = ws->priority;
     auto s = ws->s;
     delete ws;
+    bool in_suspend = false;
 
     klog("drm_sched_worker start, priority %u\n", priority);
 
     while(true)
     {
-        s->sems[priority].Wait();
-
+        auto has_job = s->sems[priority].Wait(clock_cur() +
+            kernel_time_from_ms(s->dev->suspend_timeout_ms));
+        
+        // worker thread shutdown request
         if(s->shutdown_req[priority])
             return nullptr;
 
-        std::shared_ptr<drm_sched_job> j;
+        // suspend on idle logic
+        if(!has_job)
+        {
+            if(!in_suspend)
+            {
+                klog("drm: suspending device\n");
+                in_suspend = s->dev->suspend() == 0;
+            }
+            continue;
+        }
+        else if(in_suspend)
+        {
+            klog("drm: resuming device\n");
+            if(s->dev->resume() == 0)
+            {
+                in_suspend = false;
+            }
+            else
+            {
+                klog("drm: device resume failed\n");
+                continue;
+            }
+        }
 
+        // run job logic
+        std::shared_ptr<drm_sched_job> j;
         {
             CriticalGuard cg(s->sl);
 

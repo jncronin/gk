@@ -1836,7 +1836,7 @@ int etnaviv_gpu_combined_init(etnaviv_gpu &dev)
 	dev.num_ioctls = DRM_ETNAVIV_NUM_IOCTLS;
 
 	/* Scheduler */
-	dev.dsched = std::make_unique<DRMScheduler>();
+	dev.dsched = std::make_unique<DRMScheduler>(&dev);
 	etnaviv_sched_init(dev.dsched.get());
 	dev.dsched->init(DRM_SCHED_PRIORITY_NORMAL, 0);
 
@@ -1962,14 +1962,12 @@ static void etnaviv_gpu_platform_remove(struct platform_device *pdev)
 	mutex_destroy(&gpu->sched_lock);
 }
 
-static int etnaviv_gpu_rpm_suspend(struct device *dev)
-{
-	struct etnaviv_gpu *gpu = dev_get_drvdata(dev);
-	u32 idle, mask;
+#endif
 
-	/* If there are any jobs in the HW queue, we're not idle */
-	if (atomic_read(&gpu->sched.credit_count))
-		return -EBUSY;
+int etnaviv_gpu::suspend()
+{
+	struct etnaviv_gpu *gpu = this;
+	u32 idle, mask;
 
 	/* Check whether the hardware (except FE and MC) is idle */
 	mask = gpu->idle_mask & ~(VIVS_HI_IDLE_STATE_FE |
@@ -1988,12 +1986,12 @@ static int etnaviv_gpu_rpm_suspend(struct device *dev)
 	return etnaviv_gpu_clk_disable(gpu);
 }
 
-static int etnaviv_gpu_rpm_resume(struct device *dev)
+int etnaviv_gpu::resume()
 {
-	struct etnaviv_gpu *gpu = dev_get_drvdata(dev);
+	struct etnaviv_gpu *gpu = this;
 	int ret;
 
-	ret = etnaviv_gpu_clk_enable(gpu);
+	ret = etnaviv_gpu_clk_enable(*gpu);
 	if (ret)
 		return ret;
 
@@ -2008,6 +2006,8 @@ static int etnaviv_gpu_rpm_resume(struct device *dev)
 
 	return 0;
 }
+
+#if 0
 
 static const struct dev_pm_ops etnaviv_gpu_pm_ops = {
 	RUNTIME_PM_OPS(etnaviv_gpu_rpm_suspend, etnaviv_gpu_rpm_resume, NULL)
