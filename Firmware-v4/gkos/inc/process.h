@@ -56,6 +56,7 @@ class Process
                 {
                     BlockAllocator<std::shared_ptr<shared_page>> p{};
                     uintptr_t npages = 0;
+                    void dump();
                 };
                 owned_page_list other_pages, gpu_pages;
 

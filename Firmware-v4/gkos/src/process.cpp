@@ -11,6 +11,7 @@
 #include "syscalls_int.h"
 #include "supervisor.h"
 #include "cm33_interface.h"
+#include "cpu.h"
 #include <atomic>
 
 #define DEBUG_PROCESS_PAGES     1
@@ -92,8 +93,11 @@ void Process::owned_pages_t::add(const PMemBlock &b, bool is_gpu)
         auto ret = gpu_pages.p.AllocFixed({ (uintptr_t)start, (uintptr_t)length }, std::move(sp));
         if(ret == gpu_pages.p.end())
         {
-            klog("process: failed to add pages %llx - %llx to gpu list: already present\n",
+            klog("process: failed to add pages %llx - %llx to gpu list: already present.  Dump and backtrace follows.\n",
                 start, start + length);
+
+            gpu_pages.dump();
+            backtrace();
         }
         else
         {
@@ -109,8 +113,11 @@ void Process::owned_pages_t::add(const PMemBlock &b, bool is_gpu)
         auto ret = other_pages.p.AllocFixed({ (uintptr_t)start, (uintptr_t)length }, std::move(sp));
         if(ret == other_pages.p.end())
         {
-            klog("process: failed to add pages %llx - %llx to other list: already present\n",
+            klog("process: failed to add pages %llx - %llx to other list: already present.  Dump and backtrace follows.\n",
                 start, start + length);
+
+            other_pages.dump();
+            backtrace();
         }
         else
         {
@@ -244,6 +251,15 @@ bool Process::owned_pages_t::contains(uintptr_t addr, uintptr_t len)
         return true;
 
     return false;
+}
+
+void Process::owned_pages_t::owned_page_list::dump()
+{
+    for(const auto &cpp : p)
+    {
+        const auto &cp = cpp.first;
+        klog("PMEM_DUMP: %p - %p\n", (void *)cp.start, (void *)cp.end());
+    }
 }
 
 void Process::Kill(id_t pid, int rc)
