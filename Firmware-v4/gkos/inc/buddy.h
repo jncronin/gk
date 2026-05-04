@@ -115,6 +115,11 @@ template <uint64_t min_buddy_size, uint64_t max_buddy_size, uint64_t base_addr,
                 (bit_within_qwordidx + 1ULL);
 
             auto wptr = &b[level_starts[level] + qwordidx];
+            if(*wptr & (1ULL << bit_within_qwordidx))
+            {
+                klog("buddy: attempt to release memory that is not allocated level %llu at %llu:%llu\n",
+                    level, qwordidx, bit_within_qwordidx);
+            }
             if(*wptr & (1ULL << comp_bit) && level < (num_levels() - 1))
             {
                 // can release at higher level
