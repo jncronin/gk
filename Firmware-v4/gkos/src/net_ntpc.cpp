@@ -32,11 +32,16 @@ void *net_ntpc_thread(void *_p)
         klog("ntpc: socket failed %d\n", errno);
         return nullptr;
     }
-    if(p && p->sockfd) *p->sockfd = lsck;
+    if(p && p->sockfd)
+        *p->sockfd = lsck;
+    else
+    {
+        // Called if we need to close socket ourselves
+        int syscall_pthread_cleanup_push(void (*)(void *), void *, int *);
+        int _errno;
+        syscall_pthread_cleanup_push(ntpc_thread_cleanup, (void *)lsck, &_errno);
+    }
     if(p) delete p;
-    int syscall_pthread_cleanup_push(void (*)(void *), void *, int *);
-    int _errno;
-    syscall_pthread_cleanup_push(ntpc_thread_cleanup, (void *)lsck, &_errno);
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
