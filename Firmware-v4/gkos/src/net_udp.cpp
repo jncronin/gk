@@ -8,6 +8,8 @@ extern Spinlock s_rtt;
 SRAM4_DATA static std::unordered_map<sockaddr_in, UDPSocket *> bound_udp_sockets;
 SRAM4_DATA static Spinlock s_udp;
 
+static bool can_rebind(const UDPSocket &cur_bound, const UDPSocket &new_bind);
+
 int net_handle_udp_packet(const IP4Packet &pkt)
 {
     auto pc = pkt.contents->Ptr(0);
@@ -91,18 +93,25 @@ int UDPSocket::BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno)
         {
             sockaddr_in any_addr = saddr;
             any_addr.sin_addr.s_addr = 0;
-            if(bound_udp_sockets.find(any_addr) != bound_udp_sockets.end())
+            auto any_iter = bound_udp_sockets.find(any_addr);
+            if(any_iter != bound_udp_sockets.end())
+            {
+                if(!can_rebind(*any_iter->second, *this))
+                {
+                    *_errno = EADDRINUSE;
+                    return -1;
+                }
+            }
+        }
+        auto iter = bound_udp_sockets.find(saddr);
+        if(iter != bound_udp_sockets.end())
+        {
+            // already bound
+            if(!can_rebind(*iter->second, *this))
             {
                 *_errno = EADDRINUSE;
                 return -1;
             }
-        }
-        if(bound_udp_sockets.find(saddr) != bound_udp_sockets.end())
-        {
-            // already bound
-            // TODO: handle REUSEADDR/REUSEPORT
-            *_errno = EADDRINUSE;
-            return -1;
         }
 
         bound_udp_sockets[saddr] = this;
@@ -242,6 +251,13 @@ bool UDPSocket::SendToInt(const net_msg &m)
     return sret;        
 }
 
+int UDPSocket::CloseAsync(int *_errno)
+{
+    // Signals that a REUSEADDR socket can be rebound
+    is_closing = true;
+    return 0;
+}
+
 void net_udp_handle_sendto(const net_msg &m)
 {
     m.msg_data.udpsend.sck->SendToInt(m);
@@ -261,4 +277,18 @@ bool net_udp_decorate_packet(pbuf_t buf,
     *reinterpret_cast<uint16_t *>(&hdr[6]) = 0;     // checksum optional for udp in ip4
 
     return net_ip_decorate_packet(buf, dest, src, IPPROTO_UDP, release_buffer, route);
+}
+
+bool can_rebind(const UDPSocket &cur_bound, const UDPSocket &new_bind)
+{
+    /* Allow rebind if both sockets are SO_REUSEADDR and the cur_bound socket is in the
+        closing state */
+    if(cur_bound.reuseaddr && new_bind.reuseaddr && cur_bound.is_closing)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }

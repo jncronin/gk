@@ -453,6 +453,8 @@ class Socket
 
         bool is_bound = false;
         bool is_nonblocking = false;
+        bool is_closing = false;
+        bool reuseaddr = false;
 
         virtual int BindAsync(const sockaddr *addr, socklen_t addrlen, int *_errno);
         virtual int RecvFromAsync(void *buf, size_t len, int flags,
@@ -601,6 +603,8 @@ class UDPSocket : public IP4Socket
         
         size_t operator()(const UDPSocket &s) const noexcept;
         bool operator==(const UDPSocket &other) const noexcept;
+
+        int CloseAsync(int *_errno);
 };
 
 class RawSocket : public Socket

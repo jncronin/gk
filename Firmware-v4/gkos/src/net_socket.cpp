@@ -217,6 +217,7 @@ int socket(int domain, int type, int protocol)
     return ret;
 }
 
+// TODO: have this return a shared_ptr and use ThreadDeletionPreventionGuards in the syscall
 Socket *fildes_to_sck(int fildes)
 {
     auto p = GetCurrentProcessForCore();
@@ -366,4 +367,50 @@ int close(int fd)
     if(retpt1 != 0)
         return retpt1;
     return deferred_call(syscall_close2, fd).first;
+}
+
+int syscall_setsockopt(int sockfd, int level, int option_name, const void *opt_val, socklen_t opt_len,
+    int *_errno)
+{
+    ThreadDeletionPreventionGuard tdpg;
+    auto sck = fildes_to_sck(sockfd);
+    if(!sck)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    switch(option_name)
+    {
+        case SO_REUSEADDR:
+            if(sck->is_bound)
+            {
+                *_errno = EISCONN;
+                return -1;
+            }
+            if(opt_len < sizeof(int))
+            {
+                *_errno = EINVAL;
+                return -1;
+            }
+            if(!opt_val)
+            {
+                *_errno = EINVAL;
+                return -1;
+            }
+            sck->reuseaddr = *(const int *)opt_val != 0;
+            return 0;
+    }
+
+    *_errno = EINVAL;
+    return -1;
+}
+
+int setsockopt(int sockfd, int level, int option_name, const void *opt_val, socklen_t opt_len)
+{
+    int _errno = 0;
+    auto ret = syscall_setsockopt(sockfd, level, option_name, opt_val, opt_len, &_errno);
+    if(_errno)
+        errno = _errno;
+    return ret;
 }

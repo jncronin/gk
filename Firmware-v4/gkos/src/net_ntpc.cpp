@@ -26,7 +26,7 @@ void *net_ntpc_thread(void *_p)
         my_addr = reinterpret_cast<in_addr_t>(p->myaddr.get());
     }
 
-    int lsck = (p && p->sockfd && *p->sockfd >= 0) ? *p->sockfd : socket(AF_INET, SOCK_DGRAM, SO_REUSEADDR);
+    int lsck = (p && p->sockfd && *p->sockfd >= 0) ? *p->sockfd : socket(AF_INET, SOCK_DGRAM, 0);
     if(lsck < 0)
     {
         klog("ntpc: socket failed %d\n", errno);
@@ -42,6 +42,10 @@ void *net_ntpc_thread(void *_p)
         syscall_pthread_cleanup_push(ntpc_thread_cleanup, (void *)lsck, &_errno);
     }
     if(p) delete p;
+
+    // Allow us to rebind a socket in the closing state
+    const int enable = 1;
+    setsockopt(lsck, 0, SO_REUSEADDR, &enable, sizeof(enable));
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;

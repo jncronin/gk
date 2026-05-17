@@ -47,6 +47,8 @@ int syscall_recvfrom(int sockfd, void *buf, size_t len, int flags,
     struct sockaddr *src_addr, socklen_t *addrlen, int *_errno);
 int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
     const sockaddr *dest_addr, socklen_t addrlen, int *_errno);
+int syscall_setsockopt(int sockfd, int level, int option_name, const void *opt_val, socklen_t opt_len,
+    int *_errno);
 
 int syscall_gettimeofday(struct timeval *tv, struct timezone *tz, int *_errno);
 
