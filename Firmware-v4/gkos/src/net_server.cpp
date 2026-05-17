@@ -95,8 +95,8 @@ bool init_net()
 
     Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net));
 
-    uint32_t myip = IP4Addr(192, 168, 7, 1).get();
-    Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net));
+    //uint32_t myip = IP4Addr(192, 168, 7, 1).get();
+    //Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net));
     //Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net));
 
     return true;
