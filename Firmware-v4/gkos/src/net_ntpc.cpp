@@ -26,7 +26,7 @@ void *net_ntpc_thread(void *_p)
         my_addr = reinterpret_cast<in_addr_t>(p->myaddr.get());
     }
 
-    int lsck = (p && p->sockfd && *p->sockfd >= 0) ? *p->sockfd : socket(AF_INET, SOCK_DGRAM, 0);
+    int lsck = (p && p->sockfd && *p->sockfd >= 0) ? *p->sockfd : socket(AF_INET, SOCK_DGRAM, SO_REUSEADDR);
     if(lsck < 0)
     {
         klog("ntpc: socket failed %d\n", errno);
