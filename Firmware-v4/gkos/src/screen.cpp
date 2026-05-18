@@ -640,7 +640,7 @@ void LTDC_IRQHandler()
                 auto len = (lalpha > 0) ? LTDC_LxCR_LEN : 0U;
                 auto cken = (ckey == 0xffffffffU) ? 0U : LTDC_LxCR_CKEN;
 
-                auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer2_VMEM;
+                auto l = (layer == 0) ? LTDC_Layer1_VMEM : LTDC_Layer3_VMEM;
 
                 auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
                 auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
@@ -652,7 +652,9 @@ void LTDC_IRQHandler()
                 disp_w = std::min(disp_w, scr_w);
                 disp_h = std::min(disp_h, scr_h);
 
-                auto scen = ((disp_w > lw) || (disp_h > lh)) ? LTDC_LxCR_SCEN : 0;
+                // Layer 3 does not support scaling.
+                auto scen = (((disp_w > lw) || (disp_h > lh)) && (layer == 0)) ? 
+                    LTDC_LxCR_SCEN : 0;
 
                 auto bpp = screen_get_bpp_for_pf(lpf);
 
