@@ -216,6 +216,7 @@ class Process
         std::string window_title;
         int HandleInputEvent(uint32_t cmd);
         int HandleTouchAsMouseEvent(unsigned int msgtype, unsigned int x, unsigned int y);
+        int HandleMouseMoveEvent(int dx, int dy);
 
         /* create a process */
         static PProcess Create(const std::string &name, bool is_privileged = false,

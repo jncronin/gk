@@ -49,12 +49,24 @@ static_assert(sizeof(cm33_data_kernel) == 22*4);
 #define CM33_DK_SR_OUTPUT_ENABLE    8
 #define CM33_DK_SR_OVERFLOW         16
 #define CM33_DK_SR_TOUCH_ENABLE     32
+#define CM33_DK_SR_LEFT_STICK_MOUSE     64
+#define CM33_DK_SR_RIGHT_STICK_MOUSE    128
+#define CM33_DK_SR_TILT_STICK_MOUSE     256
+#define CM33_DK_SR_THROTTLE_STICK_MOUSE 512
 
 // commands
 #define CM33_DK_CMD_TILT_ENABLE     1
 #define CM33_DK_CMD_TILT_DISABLE    2
 #define CM33_DK_CMD_TOUCH_ENABLE    3
 #define CM33_DK_CMD_TOUCH_DISABLE   4
+#define CM33_DK_CMD_SET_LEFT_STICK_MOUSE        5
+#define CM33_DK_CMD_CLEAR_LEFT_STICK_MOUSE      6
+#define CM33_DK_CMD_SET_RIGHT_STICK_MOUSE       7
+#define CM33_DK_CMD_CLEAR_RIGHT_STICK_MOUSE     8
+#define CM33_DK_CMD_SET_TILT_STICK_MOUSE       9
+#define CM33_DK_CMD_CLEAR_TILT_STICK_MOUSE     10
+#define CM33_DK_CMD_SET_THROTTLE_STICK_MOUSE    11
+#define CM33_DK_CMD_CLEAR_THROTTLE_STICK_MOUSE  12
 
 // messages
 #define CM33_DK_MSG_MASK            (0xffU << 24)
@@ -68,5 +80,6 @@ static_assert(sizeof(cm33_data_kernel) == 22*4);
 #define CM33_DK_MSG_TOUCHPRESS      (0x7U << 24)
 #define CM33_DK_MSG_TOUCHMOVE       (0x8U << 24)
 #define CM33_DK_MSG_TOUCHRELEASE    (0x9U << 24)
+#define CM33_DK_MSG_MOUSEMOVE       (0xaU << 24)
 
 #endif

@@ -499,6 +499,12 @@ int SetFocusProcess(PProcess p)
         cm33_set_touch(false);
     }
 
+    // set cm33 to batch mouse move events, if applicable
+    cm33_set_left_stick_mouse(p->keymap.left_stick == GK_STICK_MOUSE);
+    cm33_set_right_stick_mouse(p->keymap.right_stick == GK_STICK_MOUSE);
+    cm33_set_tilt_stick_mouse(p->keymap.tilt_stick == GK_STICK_MOUSE);
+    cm33_set_throttle_stick_mouse(p->keymap.throttle_stick == GK_STICK_MOUSE);
+
     // restore palette if used
 
 

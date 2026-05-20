@@ -36,6 +36,14 @@ unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
 volatile bool ticked = false;
 static void tick();
 
+static float mouse_dx = 0.0f;
+static float mouse_dy = 0.0f;
+static const float mouse_max_1s = 512.0f;
+static const int tick_freq = 200;
+static const float mouse_scale_per_tick = mouse_max_1s / (float)tick_freq / 32768.0f;
+static const int mouse_freq = 25;
+static const int mouse_ticks = tick_freq / mouse_freq;
+
 TaskHandle_t task_readsensors = nullptr;
 
 class ioexp_pin
@@ -564,6 +572,54 @@ static void tick()
                     ctp_disable();
                 }
                 break;
+            case CM33_DK_CMD_SET_LEFT_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_LEFT_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_CLEAR_LEFT_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_LEFT_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_SET_RIGHT_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_RIGHT_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_CLEAR_RIGHT_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_RIGHT_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_SET_TILT_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_TILT_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_CLEAR_TILT_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_TILT_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_SET_THROTTLE_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_THROTTLE_STICK_MOUSE;
+                }
+                break;
+            case CM33_DK_CMD_CLEAR_THROTTLE_STICK_MOUSE:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_THROTTLE_STICK_MOUSE;
+                }
+                break;
         }
         dk.cr = 0;
         __SEV();
@@ -647,6 +703,52 @@ static void tick()
         db_tick(db_JOY_TILT_RIGHT);
         db_tick(db_JOY_TILT_UP);
         db_tick(db_JOY_TILT_DOWN);
+    }
+
+    if(sr & CM33_DK_SR_LEFT_STICK_MOUSE)
+    {
+        mouse_dx += (float)d.joy_a.x * mouse_scale_per_tick;
+        mouse_dy += (float)d.joy_a.y * mouse_scale_per_tick;
+    }
+    if(sr & CM33_DK_SR_RIGHT_STICK_MOUSE)
+    {
+        mouse_dx += (float)d.joy_b.x * mouse_scale_per_tick;
+        mouse_dy += (float)d.joy_b.y * mouse_scale_per_tick;
+    }
+    if(sr & CM33_DK_SR_TILT_STICK_MOUSE)
+    {
+        mouse_dx += (float)d.joy_tilt.x * mouse_scale_per_tick;
+        mouse_dy += (float)d.joy_tilt.y * mouse_scale_per_tick;
+    }
+    if(sr & CM33_DK_SR_THROTTLE_STICK_MOUSE)
+    {
+        mouse_dx += (float)d.throttle.x * mouse_scale_per_tick;
+        mouse_dy += (float)d.throttle.y * mouse_scale_per_tick;
+    }
+    if(sr & (CM33_DK_SR_LEFT_STICK_MOUSE |
+                CM33_DK_SR_RIGHT_STICK_MOUSE |
+                CM33_DK_SR_TILT_STICK_MOUSE |
+                CM33_DK_SR_THROTTLE_STICK_MOUSE))
+    {
+        static int cur_mouse_tick = 0;
+        cur_mouse_tick++;
+        if(cur_mouse_tick >= mouse_ticks)
+        {
+            if(mouse_dx != 0.0f || mouse_dy != 0.0f)
+            {
+                // report
+                send_message(CM33_DK_MSG_MOUSEMOVE | ((int)mouse_dx & 1023) | (((int)mouse_dy & 1023) << 10));
+            }
+
+            cur_mouse_tick = 0;
+            mouse_dx = 0.0f;
+            mouse_dy = 0.0f;
+        }
+    }
+    else
+    {
+        mouse_dx = 0.0f;
+        mouse_dy = 0.0f;
     }
 
     UninterruptibleGuard ug;

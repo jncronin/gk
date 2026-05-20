@@ -47,6 +47,10 @@ cm33_joy_calib input_joy_calib[4] =
 };
 static bool input_tilt_enable = false;
 static bool input_touch_enable = false;
+static bool input_left_stick_mouse = false;
+static bool input_right_stick_mouse = false;
+static bool input_tilt_stick_mouse = false;
+static bool input_throttle_stick_mouse = false;
 
 static void cm33_irq(exception_regs *, uint64_t);
 
@@ -250,6 +254,16 @@ static void cm33_handle_message(uint32_t msg)
             }
             break;
 
+        case CM33_DK_MSG_MOUSEMOVE:
+            {
+                auto p = GetFocusProcess();
+                if(p)
+                {
+                    p->HandleInputEvent(msg);
+                }
+            }
+            break;
+
         case CM33_DK_MSG_LOG:
             cm33_log_buffer.push_back((char)(msg & ~CM33_DK_MSG_MASK));
             break;
@@ -318,6 +332,38 @@ static void *cm33_manager_thread(void *)
         else if(!input_touch_enable && (dk->sr & CM33_DK_SR_TOUCH_ENABLE))
         {
             cm33_send_cmd(CM33_DK_CMD_TOUCH_DISABLE);
+        }
+        if(input_left_stick_mouse && !(dk->sr & CM33_DK_SR_LEFT_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_SET_LEFT_STICK_MOUSE);
+        }
+        else if(!input_left_stick_mouse && (dk->sr & CM33_DK_SR_LEFT_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_CLEAR_LEFT_STICK_MOUSE);
+        }
+        if(input_right_stick_mouse && !(dk->sr & CM33_DK_SR_RIGHT_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_SET_RIGHT_STICK_MOUSE);
+        }
+        else if(!input_right_stick_mouse && (dk->sr & CM33_DK_SR_RIGHT_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_CLEAR_RIGHT_STICK_MOUSE);
+        }
+        if(input_tilt_stick_mouse && !(dk->sr & CM33_DK_SR_TILT_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_SET_TILT_STICK_MOUSE);
+        }
+        else if(!input_tilt_stick_mouse && (dk->sr & CM33_DK_SR_TILT_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_CLEAR_TILT_STICK_MOUSE);
+        }
+        if(input_throttle_stick_mouse && !(dk->sr & CM33_DK_SR_THROTTLE_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_SET_THROTTLE_STICK_MOUSE);
+        }
+        else if(!input_throttle_stick_mouse && (dk->sr & CM33_DK_SR_THROTTLE_STICK_MOUSE))
+        {
+            cm33_send_cmd(CM33_DK_CMD_CLEAR_THROTTLE_STICK_MOUSE);
         }
         if(dk->joy_a_calib.left != input_joy_calib[0].left)
             dk->joy_a_calib.left = input_joy_calib[0].left;
@@ -428,5 +474,29 @@ int cm33_set_tilt(bool en)
 int cm33_set_touch(bool en)
 {
     input_touch_enable = en;
+    return 0;
+}
+
+int cm33_set_left_stick_mouse(bool en)
+{
+    input_left_stick_mouse = en;
+    return 0;
+}
+
+int cm33_set_right_stick_mouse(bool en)
+{
+    input_right_stick_mouse = en;
+    return 0;
+}
+
+int cm33_set_tilt_stick_mouse(bool en)
+{
+    input_tilt_stick_mouse = en;
+    return 0;
+}
+
+int cm33_set_throttle_stick_mouse(bool en)
+{
+    input_throttle_stick_mouse = en;
     return 0;
 }

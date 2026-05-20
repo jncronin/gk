@@ -7,6 +7,49 @@
 extern PMemBlock process_kernel_info_page;
 extern PProcess p_gksupervisor;
 
+int Process::HandleMouseMoveEvent(int dx, int dy)
+{
+    // scale to screen coordinates
+    dx = (dx * screen.screen_w) / GK_SCREEN_WIDTH;
+    dy = (dy * screen.screen_h) / GK_SCREEN_HEIGHT;
+
+    int newx, newy;
+
+    {
+        CriticalGuard cg(screen.sl);
+
+        newx = (int)screen.cursor_x + dx;
+        if(newx < 0) newx = 0;
+        if(newx >= screen.screen_w) newx = screen.screen_w;
+        screen.cursor_x = newx;
+
+        newy = (int)screen.cursor_y + dy;
+        if(newy < 0) newy = 0;
+        if(newy >= screen.screen_h) newy = screen.screen_h;
+        screen.cursor_y = newy;
+    }
+
+    // Send both absolute and relative messages - this allows SDL to ignore one or the other
+    //  dependent upon mouse mode
+    Event ev;
+
+    ev.type = Event::event_type_t::MouseMove;
+    ev.mouse_data.x = newx;
+    ev.mouse_data.y = newy;
+    ev.mouse_data.buttons = 0;
+    ev.mouse_data.is_rel = false;
+    events.Push(ev);
+    
+    ev.type = Event::event_type_t::MouseMove;
+    ev.mouse_data.x = dx;
+    ev.mouse_data.y = dy;
+    ev.mouse_data.buttons = 0;
+    ev.mouse_data.is_rel = true;
+    events.Push(ev);
+
+    return 0;
+}
+
 int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsigned int y)
 {
     // scale to screen coordinates
@@ -71,6 +114,17 @@ int Process::HandleInputEvent(unsigned int cm33_cmd)
                 return HandleTouchAsMouseEvent(action, key & 1023U, (key >> 10) & 1023U);
             else
                 return 0;
+
+        case CM33_DK_MSG_MOUSEMOVE:
+            {
+                auto udx = key & 1023U;
+                auto udy = (key >> 10) & 1023U;
+
+                // extract signed 10 bit values
+                auto dx = (udx & 512U) ? ((int)udx - 1024) : (int)udx;
+                auto dy = (udy & 512U) ? ((int)udy - 1024) : (int)udy;
+                return HandleMouseMoveEvent(dx, dy);
+            }
     }
 
     if(key >= GK_NUMKEYS)
