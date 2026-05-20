@@ -27,7 +27,7 @@ int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsi
             ev.mouse_data.x = x;
             ev.mouse_data.y = y;
             ev.mouse_data.buttons = 1;
-            ev.mouse_data.is_rel = true;
+            ev.mouse_data.is_rel = false;
             events.Push(ev);
             return 0;
 
@@ -36,7 +36,7 @@ int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsi
             ev.mouse_data.x = x;
             ev.mouse_data.y = y;
             ev.mouse_data.buttons = 1;
-            ev.mouse_data.is_rel = true;
+            ev.mouse_data.is_rel = false;
             events.Push(ev);
             return 0;
 
@@ -45,7 +45,7 @@ int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsi
             ev.mouse_data.x = x;
             ev.mouse_data.y = y;
             ev.mouse_data.buttons = 1;
-            ev.mouse_data.is_rel = true;
+            ev.mouse_data.is_rel = false;
             events.Push(ev);
             return 0;
 
