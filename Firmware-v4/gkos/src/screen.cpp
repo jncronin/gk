@@ -123,11 +123,6 @@ class TripleBufferScreenLayer
             uint32_t ckey;
             bool new_clut;
             std::vector<uint32_t> clut;
-
-            uintptr_t cursor_paddr = 0;
-            unsigned int cursor_pf, cursor_w, cursor_h, cursor_stride;
-            int cursor_x, cursor_y;
-            unsigned int cursor_alpha;
         };
 
         unsigned int update(unsigned int alpha = 255);
@@ -599,15 +594,6 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
 
         cg.unlock();
 
-        uintptr_t cursor_paddr = ~0ULL; // indicates fail to lock p->screen, updated later
-        unsigned int cursor_pf = 0;
-        unsigned int cursor_w = 0;
-        unsigned int cursor_h = 0;
-        unsigned int cursor_stride = 0;
-        int cursor_x = 0;
-        int cursor_y = 0;
-        unsigned int cursor_alpha = 0;
-
         bool new_clut = false;
         std::vector<uint32_t> clut;
 
@@ -623,24 +609,9 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
                     clut = std::move(p->screen.clut);
                     p->screen.clut.clear();
                 }
-
-                if(p->screen.cursor_file && p->screen.cursor_file->GetType() == FileType::FT_DMABuf)
-                {
-                    cursor_paddr = ((DMABufFile *)p->screen.cursor_file.get())->GetMem().base;
-                    cursor_w = p->screen.cursor_w;
-                    cursor_h = p->screen.cursor_h;
-                    cursor_stride = p->screen.cursor_stride;
-                    cursor_pf = p->screen.cursor_pf;
-                    cursor_x = (int)p->screen.cursor_x - (int)p->screen.cursor_hx;
-                    cursor_y = (int)p->screen.cursor_y - (int)p->screen.cursor_hy;
-                    cursor_alpha = p->screen.cursor_alpha;
-                }
             }
         }
-        return { paddr, pf, lw, lh, alpha, ckey, new_clut, clut,
-            cursor_paddr, cursor_pf,
-            cursor_w, cursor_h, cursor_stride,
-            cursor_x, cursor_y, cursor_alpha };
+        return { paddr, pf, lw, lh, alpha, ckey, new_clut, clut };
     }
     else
     {
@@ -799,27 +770,31 @@ void LTDC_IRQHandler()
                 {
                     auto cl = LTDC_Layer2_VMEM;
 
-                    // handle -1 as a temporary failure to read the cursor data - ignore for
-                    //  this frame
-                    if(ldetails.cursor_paddr != ~0ULL)
+                    auto p = GetFocusProcess();
+                    CriticalGuard cg(true, p->screen.sl);
+                    if(cg.IsLocked())
                     {
-                        if(ldetails.cursor_alpha == 0)
+                        if(p->screen.cursor_alpha == 0)
                         {
                             cl->CR = 0;
                         }
 
-                        if(ldetails.cursor_paddr && ldetails.cursor_alpha)
+                        auto cfile = p->screen.cursor_file;
+
+                        auto cpaddr = (cfile && cfile->GetType() == FileType::FT_DMABuf) ?
+                            ((DMABufFile *)cfile.get())->GetMem().base : 0;
+
+                        if(cpaddr && p->screen.cursor_alpha)
                         {
                             cl->CR = 0;
 
-                            auto cpaddr = ldetails.cursor_paddr;
-                            auto cbpp = screen_get_bpp_for_pf(ldetails.cursor_pf);
+                            auto cbpp = screen_get_bpp_for_pf(p->screen.cursor_pf);
 
                             /* Original layer size */
-                            auto clw = ldetails.cursor_w;
-                            auto clh = ldetails.cursor_h;
-                            auto cx = ldetails.cursor_x;
-                            auto cy = ldetails.cursor_y;
+                            auto clw = p->screen.cursor_w;
+                            auto clh = p->screen.cursor_h;
+                            auto cx = (int)p->screen.cursor_x - (int)p->screen.cursor_hx;
+                            auto cy = (int)p->screen.cursor_y - (int)p->screen.cursor_hy;
 
                             /* Handle cursor off the left/top */
                             if(cx < 0)
@@ -831,17 +806,17 @@ void LTDC_IRQHandler()
                             if(cy < 0)
                             {
                                 clh += cy;
-                                cpaddr += (-cy) * ldetails.cursor_stride;
+                                cpaddr += (-cy) * p->screen.cursor_stride;
                                 cy = 0;
                             }
 
                             /* Handle cursor off right/bottom edges */
-                            if((cx + clw) > lw)
+                            if(((unsigned int)cx + clw) > lw)
                             {
                                 auto adj = (cx + clw) - lw;
                                 clw -= adj;
                             }
-                            if((cy + clh) > lh)
+                            if(((unsigned int)cy + clh) > lh)
                             {
                                 auto adj = (cy + clh) - lh;
                                 clh -= adj;
@@ -861,13 +836,13 @@ void LTDC_IRQHandler()
                                 ((cvstart + out_ch - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
                             cl->CKCR = 0;
 
-                            auto ccluten = lpf_to_cluten(ldetails.cursor_pf, cl);
+                            auto ccluten = lpf_to_cluten(p->screen.cursor_pf, cl);
 
-                            cl->CACR = ldetails.cursor_alpha;
+                            cl->CACR = p->screen.cursor_alpha;
                             cl->DCCR = 0UL;
                             cl->BFCR = ((1U << LTDC_LxBFCR_BOR_Pos) |
                                     (6U << LTDC_LxBFCR_BF1_Pos) | (7UL << LTDC_LxBFCR_BF2_Pos)); // blend for L1
-                            cl->CFBLR = (ldetails.cursor_stride << LTDC_LxCFBLR_CFBP_Pos) |
+                            cl->CFBLR = (p->screen.cursor_stride << LTDC_LxCFBLR_CFBP_Pos) |
                                 ((clw * cbpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
                             cl->CFBLNR = clh;
                             cl->CFBAR = (uint32_t)(uintptr_t)cpaddr;
