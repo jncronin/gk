@@ -765,115 +765,142 @@ void LTDC_IRQHandler()
                 }
 
                 l->CR = len | scen | cluten | cken;
-
-                if(layer == 0)
-                {
-                    auto cl = LTDC_Layer2_VMEM;
-
-                    auto p = GetFocusProcess();
-                    CriticalGuard cg(true, p->screen.sl);
-                    if(cg.IsLocked())
-                    {
-                        if(p->screen.cursor_alpha == 0)
-                        {
-                            cl->CR = 0;
-                        }
-
-                        auto cfile = p->screen.cursor_file;
-
-                        auto cpaddr = (cfile && cfile->GetType() == FileType::FT_DMABuf) ?
-                            ((DMABufFile *)cfile.get())->GetMem().base : 0;
-
-                        if(cpaddr && p->screen.cursor_alpha)
-                        {
-                            cl->CR = 0;
-
-                            auto cbpp = screen_get_bpp_for_pf(p->screen.cursor_pf);
-
-                            /* Original layer size */
-                            auto clw = p->screen.cursor_w;
-                            auto clh = p->screen.cursor_h;
-                            auto cx = (int)p->screen.cursor_x - (int)p->screen.cursor_hx;
-                            auto cy = (int)p->screen.cursor_y - (int)p->screen.cursor_hy;
-
-                            /* Handle cursor off the left/top */
-                            if(cx < 0)
-                            {
-                                clw += cx;              // decrease width
-                                cpaddr += (-cx) * bpp;  // increase offset
-                                cx = 0;
-                            }
-                            if(cy < 0)
-                            {
-                                clh += cy;
-                                cpaddr += (-cy) * p->screen.cursor_stride;
-                                cy = 0;
-                            }
-
-                            /* Handle cursor off right/bottom edges */
-                            if(((unsigned int)cx + clw) > lw)
-                            {
-                                auto adj = (cx + clw) - lw;
-                                clw -= adj;
-                            }
-                            if(((unsigned int)cy + clh) > lh)
-                            {
-                                auto adj = (cy + clh) - lh;
-                                clh -= adj;
-                            }
-
-                            /* Scale the cursor position according to the layer 0 screen size */
-                            auto chstart = hstart + (cx * disp_w) / lw;
-                            auto cvstart = vstart + (cy * disp_h) / lh;
-
-                            /* Scale the cursor size according to the layer 0 screen size */
-                            auto out_cw = (clw * disp_w) / lw;
-                            auto out_ch = (clh * disp_h) / lh;
-
-                            cl->WHPCR = (chstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
-                                ((chstart + out_cw - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
-                            cl->WVPCR = (cvstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
-                                ((cvstart + out_ch - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
-                            cl->CKCR = 0;
-
-                            auto ccluten = lpf_to_cluten(p->screen.cursor_pf, cl);
-
-                            cl->CACR = p->screen.cursor_alpha;
-                            cl->DCCR = 0UL;
-                            cl->BFCR = ((1U << LTDC_LxBFCR_BOR_Pos) |
-                                    (6U << LTDC_LxBFCR_BF1_Pos) | (7UL << LTDC_LxBFCR_BF2_Pos)); // blend for L1
-                            cl->CFBLR = (p->screen.cursor_stride << LTDC_LxCFBLR_CFBP_Pos) |
-                                ((clw * cbpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
-                            cl->CFBLNR = clh;
-                            cl->CFBAR = (uint32_t)(uintptr_t)cpaddr;
-                            cl->CR = 0;
-
-                            if(scen)
-                            {
-                                cl->CR = 0 | scen;
-
-                                cl->SISR = (clw << LTDC_LxSISR_SIH_Pos) |
-                                    (clh << LTDC_LxSISR_SIV_Pos);
-                                cl->SOSR = (out_cw << LTDC_LxSOSR_SOH_Pos) |
-                                    (out_ch << LTDC_LxSOSR_SOV_Pos);
-                                cl->SHSFR = ((clw - 1) * 4096) / (out_cw - 1);
-                                cl->SVSFR = ((clh - 1) * 4096) / (out_ch - 1);
-                                cl->SHSPR = l->SHSFR + 4096;
-                                cl->SVSPR = l->SVSFR;
-                                //l->SHSPR = 0;
-                                //l->SVSPR = 0;
-                            }
-
-                            cl->CR = len | scen | ccluten;
-                        }
-                    }
-                }
-
-                screen_flip_in_progress = true;
-                LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
             }
         }
-        
+
+        /* Cursor display */
+        {
+            auto cl = LTDC_Layer2_VMEM;
+
+            auto p = GetFocusProcess();
+            if(p)
+            {
+                CriticalGuard cg(true, p->screen.sl);
+                if(cg.IsLocked())
+                {
+                    if(p->screen.cursor_alpha == 0)
+                    {
+                        cl->CR = 0;
+                    }
+
+                    auto cfile = p->screen.cursor_file;
+                    auto lw = p->screen.screen_w;
+                    auto lh = p->screen.screen_h;
+
+                    auto cpaddr = (cfile && cfile->GetType() == FileType::FT_DMABuf) ?
+                        ((DMABufFile *)cfile.get())->GetMem().base : 0;
+
+                    if(cpaddr && p->screen.cursor_alpha)
+                    {
+                        cl->CR = 0;
+
+                        auto cbpp = screen_get_bpp_for_pf(p->screen.cursor_pf);
+
+                        /* Original layer size */
+                        auto clw = p->screen.cursor_w;
+                        auto clh = p->screen.cursor_h;
+                        auto cx = (int)p->screen.cursor_x - (int)p->screen.cursor_hx;
+                        auto cy = (int)p->screen.cursor_y - (int)p->screen.cursor_hy;
+
+                        /* Handle cursor off the left/top */
+                        if(cx < 0)
+                        {
+                            clw += cx;              // decrease width
+                            cpaddr += (-cx) * cbpp; // increase offset
+                            cx = 0;
+                        }
+                        if(cy < 0)
+                        {
+                            clh += cy;
+                            cpaddr += (-cy) * p->screen.cursor_stride;
+                            cy = 0;
+                        }
+
+                        /* Handle cursor off right/bottom edges */
+                        if(((unsigned int)cx + clw) > lw)
+                        {
+                            auto adj = (cx + clw) - lw;
+                            clw -= adj;
+                        }
+                        if(((unsigned int)cy + clh) > lh)
+                        {
+                            auto adj = (cy + clh) - lh;
+                            clh -= adj;
+                        }
+
+                        /* Recalculate layer 1 offset in case it has not been updated this frame */
+                        auto hstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AHBP_Msk) >> LTDC_BPCR_AHBP_Pos) + 1UL);
+                        auto vstart = (((LTDC_VMEM->BPCR & LTDC_BPCR_AVBP_Msk) >> LTDC_BPCR_AVBP_Pos) + 1UL);
+
+                        // size of the output window - automatically centred on screen.  768x480 is 16:10
+                        unsigned int disp_w = 800;
+                        unsigned int disp_h = 480;
+
+                        disp_w = std::min(disp_w, scr_w);
+                        disp_h = std::min(disp_h, scr_h);
+
+                        auto scen = ((disp_w > lw) || (disp_h > lh)) ? 
+                            LTDC_LxCR_SCEN : 0;
+
+                        hstart += (scr_w - disp_w) / 2;
+                        vstart += (scr_h - disp_h) / 2;
+
+
+                        /* Scale the cursor position according to the layer 0 screen size */
+                        auto chstart = hstart + (cx * disp_w) / lw;
+                        auto cvstart = vstart + (cy * disp_h) / lh;
+
+                        /* Scale the cursor size according to the layer 0 screen size */
+                        auto out_cw = (clw * disp_w) / lw;
+                        auto out_ch = (clh * disp_h) / lh;
+
+                        cl->WHPCR = (chstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
+                            ((chstart + out_cw - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
+                        cl->WVPCR = (cvstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
+                            ((cvstart + out_ch - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+                        cl->CKCR = 0;
+
+                        auto ccluten = lpf_to_cluten(p->screen.cursor_pf, cl);
+
+                        cl->CACR = p->screen.cursor_alpha;
+                        cl->DCCR = 0UL;
+                        cl->BFCR = ((1U << LTDC_LxBFCR_BOR_Pos) |
+                                (6U << LTDC_LxBFCR_BF1_Pos) | (7UL << LTDC_LxBFCR_BF2_Pos)); // blend for L1
+                        cl->CFBLR = (p->screen.cursor_stride << LTDC_LxCFBLR_CFBP_Pos) |
+                            ((clw * cbpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
+                        cl->CFBLNR = clh;
+                        cl->CFBAR = (uint32_t)(uintptr_t)cpaddr;
+                        cl->CR = 0;
+
+                        if(scen)
+                        {
+                            cl->CR = 0 | scen;
+
+                            cl->SISR = (clw << LTDC_LxSISR_SIH_Pos) |
+                                (clh << LTDC_LxSISR_SIV_Pos);
+                            cl->SOSR = (out_cw << LTDC_LxSOSR_SOH_Pos) |
+                                (out_ch << LTDC_LxSOSR_SOV_Pos);
+                            cl->SHSFR = ((clw - 1) * 4096) / (out_cw - 1);
+                            cl->SVSFR = ((clh - 1) * 4096) / (out_ch - 1);
+                            cl->SHSPR = cl->SHSFR + 4096;
+                            cl->SVSPR = cl->SVSFR;
+                            //l->SHSPR = 0;
+                            //l->SVSPR = 0;
+                        }
+
+                        cl->CR = LTDC_LxCR_LEN | scen | ccluten;
+                    }
+                }
+            }
+            else
+            {
+                cl->CR = 0;
+            }
+        }
+
+        screen_flip_in_progress = true;
+        LTDC_VMEM->SRCR = LTDC_SRCR_IMR;
+
         scr_vsync.Signal();
     }
 
