@@ -88,7 +88,16 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
         proc->screen.cursor_pf = GK_PIXELFORMAT_ARGB8888;
         proc->screen.cursor_hx = 1;
         proc->screen.cursor_hy = 20;
-        proc->screen.cursor_alpha = 255;
+        proc->screen.cursor_alpha = 0;
+
+        /* Show cursor if some stick mouse input is enabled */
+        if(proc_info->keymap.left_stick == GK_STICK_MOUSE ||
+            proc_info->keymap.right_stick == GK_STICK_MOUSE ||
+            proc_info->keymap.tilt_stick == GK_STICK_MOUSE ||
+            proc_info->keymap.throttle_stick == GK_STICK_MOUSE)
+        {
+            proc->screen.cursor_alpha = 255;
+        }
 
         if(proc->screen.screen_refresh < GK_MIN_SCREEN_REFRESH
             || proc->screen.screen_refresh > GK_MAX_SCREEN_REFRESH)
