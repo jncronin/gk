@@ -51,6 +51,7 @@
 #define GK_PROCESS_DATA_MAX         1024
 #define GK_MAX_FILES                65536
 #define GK_KLOG_IMMEDIATE           0
+#define GK_DMABUF_MAXSIZE           0x400000
 
 #define GK_TLBI_AFTER_TTBR_CHANGE   1
 

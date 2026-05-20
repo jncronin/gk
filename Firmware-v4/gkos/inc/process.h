@@ -116,6 +116,12 @@ class Process
 
                 bool new_clut = false;
                 std::vector<uint32_t> clut;
+
+                uint16_t cursor_hx = 0, cursor_hy = 0, cursor_w = 0, cursor_h = 0, cursor_stride = 0;
+                uint16_t cursor_x = GK_SCREEN_WIDTH / 2, cursor_y = GK_SCREEN_HEIGHT - 2;
+                uint8_t cursor_pf = 0;
+                PFile cursor_file{};
+                uint8_t cursor_alpha = 0;
         };
 
         struct audio_conf_t

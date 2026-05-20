@@ -588,3 +588,59 @@ int syscall_setbrightness(unsigned int bright, int *_errno)
     screen_set_brightness((int)bright);
     return 0;
 }
+
+int syscall_setcursor(int fd, unsigned int w, unsigned int h, unsigned int hx, unsigned int hy,
+    unsigned int alpha, unsigned int pf, unsigned int stride, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+
+    CriticalGuard cg(p->screen.sl);
+    if(w > GK_SCREEN_WIDTH || h > GK_SCREEN_HEIGHT || pf >= GK_PIXELFORMAT_MAX)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(screen_get_bpp_for_pf(pf) == 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    if(screen_get_bpp_for_pf(pf) * w > stride)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    CriticalGuard cg2(p->open_files.sl);
+
+    if((size_t)fd >= p->open_files.f.size())
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    if(p->open_files.f[fd] == nullptr || p->open_files.f[fd]->GetType() != FileType::FT_DMABuf)
+    {
+        *_errno = EBADF;
+        return -1;
+    }
+
+    if(p->open_files.f[fd]->Flen(_errno) < (h * stride))
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    p->screen.cursor_file = p->open_files.f[fd];
+    p->screen.cursor_w = w;
+    p->screen.cursor_h = h;
+    p->screen.cursor_stride = stride;
+    p->screen.cursor_hx = hx;
+    p->screen.cursor_hy = hy;
+    p->screen.cursor_alpha = alpha;
+    p->screen.cursor_pf = pf;
+
+    return 0;
+}

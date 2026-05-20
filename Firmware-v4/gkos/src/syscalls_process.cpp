@@ -76,6 +76,20 @@ int syscall_proccreate(const char *fname, const proccreate_t *proc_info, pid_t *
             proc->screen.screen_h = GK_MAX_SCREEN_HEIGHT;
         proc->screen.screen_h = (proc->screen.screen_h + 3) & ~3;
 
+        proc->screen.cursor_x = proc->screen.screen_w / 2;
+        proc->screen.cursor_y = proc->screen.screen_h / 2;
+
+        /* Set default cursor */
+        extern PFile f_cursor48;
+        proc->screen.cursor_file = f_cursor48;
+        proc->screen.cursor_w = 48;
+        proc->screen.cursor_h = 48;
+        proc->screen.cursor_stride = 48*4;
+        proc->screen.cursor_pf = GK_PIXELFORMAT_ARGB8888;
+        proc->screen.cursor_hx = 1;
+        proc->screen.cursor_hy = 20;
+        proc->screen.cursor_alpha = 255;
+
         if(proc->screen.screen_refresh < GK_MIN_SCREEN_REFRESH
             || proc->screen.screen_refresh > GK_MAX_SCREEN_REFRESH)
         {

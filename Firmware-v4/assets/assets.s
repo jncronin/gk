@@ -27,3 +27,10 @@ img_provisioning2:
 img_rawsd:
 .incbin "img_rawsd.bin"
 .size img_rawsd, . - img_rawsd
+
+.global img_cursor48
+.type img_cursor48, @object
+.balign 64
+img_cursor48:
+.incbin "img_cursor48.bin"
+.size img_cursor48, . - img_cursor48

@@ -1121,7 +1121,24 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
                 *reinterpret_cast<int *>(r1) = 0;
             }
             break;
-            
+
+        case __syscall_dmabuf_alloc:
+            {
+                ThreadDeletionPreventionGuard tdpg;
+                auto dblen = reinterpret_cast<size_t>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_dmabuf_alloc(dblen,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_setcursor:
+            {
+                ThreadDeletionPreventionGuard tdpg;
+                auto p = reinterpret_cast<__syscall_setcursor_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setcursor(p->fd, p->w, p->h,
+                    p->hx, p->hy, p->alpha, p->pf, p->stride, reinterpret_cast<int *>(r3));
+            }
+            break;
 
 #if 0
 

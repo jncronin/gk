@@ -20,7 +20,8 @@ enum FileType
     FT_Ram,
     FT_FAT,
     FT_DRI,
-    FT_Fence
+    FT_Fence,
+    FT_DMABuf
 };
 
 class File
@@ -140,6 +141,24 @@ class SocketFile : public File
         SocketFile(Socket *sck);
 
         Socket *sck;
+};
+
+class Process;
+using PProcess = std::shared_ptr<Process>;
+using WPProcess = std::weak_ptr<Process>;
+
+/* Represents generic handle to physical memory referenced by a file handle */
+class DMABufFile : public File
+{
+    protected:
+        PMemBlock pmb;
+        WPProcess owning_process;
+
+    public:
+        DMABufFile(PMemBlock pmb, PProcess owning_process);
+        ~DMABufFile();
+        PMemBlock GetMem() const;
+        size_t Flen(int *_errno);
 };
 
 #endif

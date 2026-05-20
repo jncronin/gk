@@ -123,6 +123,9 @@ class TripleBufferScreenLayer
             uint32_t ckey;
             bool new_clut;
             std::vector<uint32_t> clut;
+
+            uintptr_t cursor_paddr = 0;
+            unsigned int cursor_pf, cursor_w, cursor_h, cursor_stride, cursor_x, cursor_y, cursor_alpha;
         };
 
         unsigned int update(unsigned int alpha = 255);
@@ -594,21 +597,48 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
 
         cg.unlock();
 
+        uintptr_t cursor_paddr = ~0ULL; // indicates fail to lock p->screen, updated later
+        unsigned int cursor_pf = 0;
+        unsigned int cursor_w = 0;
+        unsigned int cursor_h = 0;
+        unsigned int cursor_stride = 0;
+        unsigned int cursor_x = 0;
+        unsigned int cursor_y = 0;
+        unsigned int cursor_alpha = 0;
+
         bool new_clut = false;
         std::vector<uint32_t> clut;
 
         if(p)
         {
             CriticalGuard cg2(true, p->screen.sl);
-            if(cg2.IsLocked() && p->screen.new_clut)
+            if(cg2.IsLocked())
             {
-                p->screen.new_clut = false;
-                new_clut = true;
-                clut = std::move(p->screen.clut);
-                p->screen.clut.clear();
+                if(p->screen.new_clut)
+                {
+                    p->screen.new_clut = false;
+                    new_clut = true;
+                    clut = std::move(p->screen.clut);
+                    p->screen.clut.clear();
+                }
+
+                if(p->screen.cursor_file && p->screen.cursor_file->GetType() == FileType::FT_DMABuf)
+                {
+                    cursor_paddr = ((DMABufFile *)p->screen.cursor_file.get())->GetMem().base;
+                    cursor_w = p->screen.cursor_w;
+                    cursor_h = p->screen.cursor_h;
+                    cursor_stride = p->screen.cursor_stride;
+                    cursor_pf = p->screen.cursor_pf;
+                    cursor_x = p->screen.cursor_x - p->screen.cursor_hx;
+                    cursor_y = p->screen.cursor_y - p->screen.cursor_hy;
+                    cursor_alpha = p->screen.cursor_alpha;
+                }
             }
         }
-        return { paddr, pf, lw, lh, alpha, ckey, new_clut, clut };
+        return { paddr, pf, lw, lh, alpha, ckey, new_clut, clut,
+            cursor_paddr, cursor_pf,
+            cursor_w, cursor_h, cursor_stride,
+            cursor_x, cursor_y, cursor_alpha };
     }
     else
     {
@@ -620,6 +650,49 @@ std::pair<unsigned int, unsigned int> TripleBufferScreenLayer::current()
 {
     CriticalGuard cg(sl);
     return std::make_pair(cur_update, last_updated);
+}
+
+static inline uint32_t lpf_to_cluten(unsigned int lpf, LTDC_Layer_TypeDef *l)
+{
+    uint32_t cluten = 0;
+    if(lpf < 7)
+        l->PFCR = lpf;
+    else
+    {
+        l->PFCR = 7;
+
+        // flexible pixel format
+        switch(lpf)
+        {
+            case GK_PIXELFORMAT_L8:
+                l->FPF0R = (8U << 14);
+                l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                cluten = LTDC_LxCR_CLUTEN;
+                break;
+            case GK_PIXELFORMAT_RGB8:
+                l->FPF0R = (8U << 14);
+                l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
+                cluten = 0;
+                break;
+            case GK_PIXELFORMAT_A4L4:
+                l->FPF0R = (4U << 14) | (4U << 5) | (4U << 0);
+                l->FPF1R = (1U << 18) | (4U << 14) | (4U << 5);
+                cluten = LTDC_LxCR_CLUTEN;
+                break;
+            case GK_PIXELFORMAT_ARGB4444:
+                l->FPF0R = (4U << 14) | (8U << 9) | (4U << 5) | (12U << 0);
+                l->FPF1R = (2U << 18) | (4U << 14) | (0U << 9) | (4U << 5) | (4U << 0);
+                break;
+            case GK_PIXELFORMAT_RGB565A8:
+                l->FPF0R = (5U << 14) | (11U << 9) | (8U << 5) | (16U << 0);
+                l->FPF1R = (3U << 18) | (5U << 14) | (0U << 9) | (6U << 5) | (5U << 0);
+                break;
+            default:
+                klog("screen: unsupported pixel format: %u\n", lpf);
+                break;
+        }
+    }
+    return cluten;
 }
 
 void LTDC_IRQHandler()
@@ -666,46 +739,9 @@ void LTDC_IRQHandler()
                 l->WVPCR = (vstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
                     ((vstart + disp_h - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
                 l->CKCR = ckey;
+
+                auto cluten = lpf_to_cluten(lpf, l);
                 
-                uint32_t cluten = 0;
-                if(lpf < 7)
-                    l->PFCR = lpf;
-                else
-                {
-                    l->PFCR = 7;
-
-                    // flexible pixel format
-                    switch(lpf)
-                    {
-                        case GK_PIXELFORMAT_L8:
-                            l->FPF0R = (8U << 14);
-                            l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
-                            cluten = LTDC_LxCR_CLUTEN;
-                            break;
-                        case GK_PIXELFORMAT_RGB8:
-                            l->FPF0R = (8U << 14);
-                            l->FPF1R = (1U << 18) | (8U << 14) | (8U << 5);
-                            cluten = 0;
-                            break;
-                        case GK_PIXELFORMAT_A4L4:
-                            l->FPF0R = (4U << 14) | (4U << 5) | (4U << 0);
-                            l->FPF1R = (1U << 18) | (4U << 14) | (4U << 5);
-                            cluten = LTDC_LxCR_CLUTEN;
-                            break;
-                        case GK_PIXELFORMAT_ARGB4444:
-                            l->FPF0R = (4U << 14) | (8U << 9) | (4U << 5) | (12U << 0);
-                            l->FPF1R = (2U << 18) | (4U << 14) | (0U << 9) | (4U << 5) | (4U << 0);
-                            break;
-                        case GK_PIXELFORMAT_RGB565A8:
-                            l->FPF0R = (5U << 14) | (11U << 9) | (8U << 5) | (16U << 0);
-                            l->FPF1R = (3U << 18) | (5U << 14) | (0U << 9) | (6U << 5) | (5U << 0);
-                            break;
-                        default:
-                            klog("screen: unsupported pixel format: %u\n", lpf);
-                            break;
-                    }
-                }
-
                 if(ldetails.new_clut)
                 {
                     //klog("screen: new clut of size %u\n", ldetails.clut.size());
@@ -756,6 +792,74 @@ void LTDC_IRQHandler()
                 }
 
                 l->CR = len | scen | cluten | cken;
+
+                if(layer == 0)
+                {
+                    auto cl = LTDC_Layer2_VMEM;
+
+                    // handle -1 as a temporary failure to read the cursor data - ignore for
+                    //  this frame
+                    if(ldetails.cursor_paddr != ~0ULL)
+                    {
+                        if(ldetails.cursor_alpha == 0)
+                        {
+                            cl->CR = 0;
+                        }
+
+                        if(ldetails.cursor_paddr && ldetails.cursor_alpha)
+                        {
+                            cl->CR = 0;
+                            /* Scale the cursor position according to the layer 0 screen size */
+                            auto chstart = hstart + (ldetails.cursor_x * disp_w) / lw;
+                            auto cvstart = vstart + (ldetails.cursor_y * disp_h) / lh;
+
+                            /* Scale the cursor size according to the layer 0 screen size */
+                            auto out_cw = (ldetails.cursor_w * disp_w) / lw;
+                            auto out_ch = (ldetails.cursor_h * disp_h) / lh;
+
+                            /* Original layer size */
+                            auto clw = ldetails.cursor_w;
+                            auto clh = ldetails.cursor_h;
+
+                            cl->WHPCR = (chstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
+                                ((chstart + out_cw - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
+                            cl->WVPCR = (cvstart << LTDC_LxWVPCR_WVSTPOS_Pos) |
+                                ((cvstart + out_ch - 1) << LTDC_LxWVPCR_WVSPPOS_Pos);
+                            cl->CKCR = 0;
+
+                            auto ccluten = lpf_to_cluten(ldetails.cursor_pf, cl);
+                            auto cbpp = screen_get_bpp_for_pf(ldetails.cursor_pf);
+
+                            cl->CACR = ldetails.cursor_alpha;
+                            cl->DCCR = 0UL;
+                            cl->BFCR = ((1U << LTDC_LxBFCR_BOR_Pos) |
+                                    (6U << LTDC_LxBFCR_BF1_Pos) | (7UL << LTDC_LxBFCR_BF2_Pos)); // blend for L1
+                            cl->CFBLR = ((clw * cbpp) << LTDC_LxCFBLR_CFBP_Pos) |
+                                ((clw * cbpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
+                            cl->CFBLNR = clh;
+                            cl->CFBAR = (uint32_t)(uintptr_t)ldetails.cursor_paddr;
+                            cl->CR = 0;
+
+                            if(scen)
+                            {
+                                cl->CR = 0 | scen;
+
+                                cl->SISR = (clw << LTDC_LxSISR_SIH_Pos) |
+                                    (clh << LTDC_LxSISR_SIV_Pos);
+                                cl->SOSR = (out_cw << LTDC_LxSOSR_SOH_Pos) |
+                                    (out_ch << LTDC_LxSOSR_SOV_Pos);
+                                cl->SHSFR = ((clw - 1) * 4096) / (out_cw - 1);
+                                cl->SVSFR = ((clh - 1) * 4096) / (out_ch - 1);
+                                cl->SHSPR = l->SHSFR + 4096;
+                                cl->SVSPR = l->SVSFR;
+                                //l->SHSPR = 0;
+                                //l->SVSPR = 0;
+                            }
+
+                            cl->CR = len | scen | ccluten;
+                        }
+                    }
+                }
 
                 screen_flip_in_progress = true;
                 LTDC_VMEM->SRCR = LTDC_SRCR_IMR;

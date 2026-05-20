@@ -55,16 +55,29 @@ int syscall_mmapv4(size_t len, void **retaddr, int is_sync,
             return dri_mmap(len, retaddr, is_sync, is_read, is_write, is_exec,
                 (DRIFile &)p->open_files.f[fd], is_fixed, foffset, _errno);
         }
-
-        if(is_write)
+        else if(p->open_files.f[fd]->GetType() == FileType::FT_DMABuf)
         {
-            pmb = MemBlock::FileBackedReadWriteMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
-                ~0, true, is_exec != 0);
+            map_direct = true;
+            map_direct_pmem = ((DMABufFile *)p->open_files.f[fd].get())->GetMem();
+
+            // for the rest of the mmap area, just zero out
+            pmb = MemBlock::ZeroBackedReadWriteMemory((uintptr_t)*retaddr, len, true, is_exec != 0, 0,
+                is_sync ? MT_NORMAL_WT : MT_NORMAL);
+            pmb.pmem_is_shared = true;
         }
         else
         {
-            pmb = MemBlock::FileBackedReadOnlyMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
-                ~0, true, is_exec != 0);
+            /* Normal file with Read()/Write() methods */
+            if(is_write)
+            {
+                pmb = MemBlock::FileBackedReadWriteMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
+                    ~0, true, is_exec != 0);
+            }
+            else
+            {
+                pmb = MemBlock::FileBackedReadOnlyMemory((uintptr_t)*retaddr, len, p->open_files.f[fd], foffset,
+                    ~0, true, is_exec != 0);
+            }
         }
     }
     else if(fd < -1)

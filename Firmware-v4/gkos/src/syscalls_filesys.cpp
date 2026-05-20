@@ -5,6 +5,7 @@
 #include "ramdisk.h"
 #include "fatfs_file.h"
 #include "pipe.h"
+#include "pmem.h"
 
 #include <cstring>
 #include <fcntl.h>
@@ -681,4 +682,43 @@ int syscall_ioctl(int fd, unsigned int nr, void *ptr, size_t len, int *_errno)
     cg.unlock();
 
     return pf->Ioctl(nr, ptr, len, _errno);
+}
+
+int syscall_dmabuf_alloc(size_t len, int *_errno)
+{
+    if(len > GK_DMABUF_MAXSIZE)
+    {
+        *_errno = E2BIG;
+        return -1;
+    }
+    if(len == 0)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    auto pmb = Pmem.acquire(len);
+    if(!pmb.valid)
+    {
+        *_errno = ENOMEM;
+        return -1;
+    }
+
+    auto p = GetCurrentPProcessForCore();
+    CriticalGuard cg(p->open_files.sl);
+    auto fd = p->open_files.get_free_fildes();
+    if(fd == -1)
+    {
+        Pmem.release(pmb);
+        *_errno = EMFILE;
+        return -1;
+    }
+
+    p->open_files.f[fd] = std::make_shared<DMABufFile>(pmb, p);
+    cg.unlock();
+
+    CriticalGuard cg2(p->owned_pages.sl);
+    p->owned_pages.add(pmb);
+
+    return 0;
 }

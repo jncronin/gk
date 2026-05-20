@@ -47,6 +47,10 @@ void *init_thread(void *);
 // saved copy of the boot interface
 constinit gkos_boot_interface gbi;
 
+// cursors
+PFile f_cursor48{};
+extern uint8_t img_cursor48;
+
 extern "C" int mp_kpremain(const gkos_boot_interface *_gbi, uint64_t magic)
 {
     // These need to happen before __libc_init_array, which may call malloc
@@ -126,6 +130,16 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
         p_kernel->env.envs.push_back("HOME=/home/user");
         p_kernel->env.envs.push_back("USER=user");
         p_kernel->env.envs.push_back("NUMBER_OF_PROCESSORS=" + std::to_string(sched.ncores));
+    }
+
+    // cursors
+    {
+        PMemBlock pmb_cursor48 = Pmem.acquire(48*48*4);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overread"
+        memcpy((void *)PMEM_TO_VMEM_NC(pmb_cursor48.base), (void *)&img_cursor48, 48*48*4);
+#pragma GCC diagnostic pop
+        f_cursor48 = std::make_shared<DMABufFile>(pmb_cursor48, p_kernel);
     }
 
     // Create some threads

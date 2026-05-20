@@ -13,6 +13,12 @@ int Process::HandleTouchAsMouseEvent(unsigned int msg_type, unsigned int x, unsi
     x = (x * screen.screen_w) / GK_SCREEN_WIDTH;
     y = (y * screen.screen_h) / GK_SCREEN_HEIGHT;
 
+    {
+        CriticalGuard cg(screen.sl);
+        screen.cursor_x = x;
+        screen.cursor_y = y;
+    }
+
     Event ev;
     switch(msg_type)
     {

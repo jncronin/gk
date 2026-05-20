@@ -60,7 +60,7 @@ static inline uintptr_t vmem_vaddr_to_paddr_quick(uintptr_t vaddr, uint64_t ttbr
     {
         ttbr0 = cur_ttbr0;
     }
-    if(ttbr0 != cur_ttbr0)
+    if(vaddr < UH_START && ttbr0 != cur_ttbr0)
     {
         /* cannot do quick version here - the requested page directory is not loaded to ttbr0
             use slow page walker instead
