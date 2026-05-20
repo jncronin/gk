@@ -125,7 +125,9 @@ class TripleBufferScreenLayer
             std::vector<uint32_t> clut;
 
             uintptr_t cursor_paddr = 0;
-            unsigned int cursor_pf, cursor_w, cursor_h, cursor_stride, cursor_x, cursor_y, cursor_alpha;
+            unsigned int cursor_pf, cursor_w, cursor_h, cursor_stride;
+            int cursor_x, cursor_y;
+            unsigned int cursor_alpha;
         };
 
         unsigned int update(unsigned int alpha = 255);
@@ -602,8 +604,8 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
         unsigned int cursor_w = 0;
         unsigned int cursor_h = 0;
         unsigned int cursor_stride = 0;
-        unsigned int cursor_x = 0;
-        unsigned int cursor_y = 0;
+        int cursor_x = 0;
+        int cursor_y = 0;
         unsigned int cursor_alpha = 0;
 
         bool new_clut = false;
@@ -629,8 +631,8 @@ TripleBufferScreenLayer::layer_details TripleBufferScreenLayer::vsync()
                     cursor_h = p->screen.cursor_h;
                     cursor_stride = p->screen.cursor_stride;
                     cursor_pf = p->screen.cursor_pf;
-                    cursor_x = p->screen.cursor_x - p->screen.cursor_hx;
-                    cursor_y = p->screen.cursor_y - p->screen.cursor_hy;
+                    cursor_x = (int)p->screen.cursor_x - (int)p->screen.cursor_hx;
+                    cursor_y = (int)p->screen.cursor_y - (int)p->screen.cursor_hy;
                     cursor_alpha = p->screen.cursor_alpha;
                 }
             }
@@ -809,17 +811,49 @@ void LTDC_IRQHandler()
                         if(ldetails.cursor_paddr && ldetails.cursor_alpha)
                         {
                             cl->CR = 0;
-                            /* Scale the cursor position according to the layer 0 screen size */
-                            auto chstart = hstart + (ldetails.cursor_x * disp_w) / lw;
-                            auto cvstart = vstart + (ldetails.cursor_y * disp_h) / lh;
 
-                            /* Scale the cursor size according to the layer 0 screen size */
-                            auto out_cw = (ldetails.cursor_w * disp_w) / lw;
-                            auto out_ch = (ldetails.cursor_h * disp_h) / lh;
+                            auto cpaddr = ldetails.cursor_paddr;
+                            auto cbpp = screen_get_bpp_for_pf(ldetails.cursor_pf);
 
                             /* Original layer size */
                             auto clw = ldetails.cursor_w;
                             auto clh = ldetails.cursor_h;
+                            auto cx = ldetails.cursor_x;
+                            auto cy = ldetails.cursor_y;
+
+                            /* Handle cursor off the left/top */
+                            if(cx < 0)
+                            {
+                                clw += cx;              // decrease width
+                                cpaddr += (-cx) * bpp;  // increase offset
+                                cx = 0;
+                            }
+                            if(cy < 0)
+                            {
+                                clh += cy;
+                                cpaddr += (-cy) * ldetails.cursor_stride;
+                                cy = 0;
+                            }
+
+                            /* Handle cursor off right/bottom edges */
+                            if((cx + clw) > lw)
+                            {
+                                auto adj = (cx + clw) - lw;
+                                clw -= adj;
+                            }
+                            if((cy + clh) > lh)
+                            {
+                                auto adj = (cy + clh) - lh;
+                                clh -= adj;
+                            }
+
+                            /* Scale the cursor position according to the layer 0 screen size */
+                            auto chstart = hstart + (cx * disp_w) / lw;
+                            auto cvstart = vstart + (cy * disp_h) / lh;
+
+                            /* Scale the cursor size according to the layer 0 screen size */
+                            auto out_cw = (clw * disp_w) / lw;
+                            auto out_ch = (clh * disp_h) / lh;
 
                             cl->WHPCR = (chstart << LTDC_LxWHPCR_WHSTPOS_Pos) |
                                 ((chstart + out_cw - 1) << LTDC_LxWHPCR_WHSPPOS_Pos);
@@ -828,16 +862,15 @@ void LTDC_IRQHandler()
                             cl->CKCR = 0;
 
                             auto ccluten = lpf_to_cluten(ldetails.cursor_pf, cl);
-                            auto cbpp = screen_get_bpp_for_pf(ldetails.cursor_pf);
 
                             cl->CACR = ldetails.cursor_alpha;
                             cl->DCCR = 0UL;
                             cl->BFCR = ((1U << LTDC_LxBFCR_BOR_Pos) |
                                     (6U << LTDC_LxBFCR_BF1_Pos) | (7UL << LTDC_LxBFCR_BF2_Pos)); // blend for L1
-                            cl->CFBLR = ((clw * cbpp) << LTDC_LxCFBLR_CFBP_Pos) |
+                            cl->CFBLR = (ldetails.cursor_stride << LTDC_LxCFBLR_CFBP_Pos) |
                                 ((clw * cbpp + 7) << LTDC_LxCFBLR_CFBLL_Pos);
                             cl->CFBLNR = clh;
-                            cl->CFBAR = (uint32_t)(uintptr_t)ldetails.cursor_paddr;
+                            cl->CFBAR = (uint32_t)(uintptr_t)cpaddr;
                             cl->CR = 0;
 
                             if(scen)
