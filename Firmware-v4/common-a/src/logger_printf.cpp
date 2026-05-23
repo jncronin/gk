@@ -292,6 +292,10 @@ int logger_vprintf(logger_printf_outputter &oput, const char *format, va_list va
 
 int logger_string(logger_printf_outputter &oput, const char *str, size_t len)
 {
+    if(str == nullptr)
+    {
+        return logger_string(oput, "<NULL>", sizeof("<NULL>") - 1);
+    }
     if(len == size_t_max)
         len = strlen(str);
 #if GK_FLASH_LOADER
