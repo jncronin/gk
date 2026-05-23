@@ -16,6 +16,7 @@
 #include "block_dev.h"
 #include "sd.h"
 #include "mbr.h"
+#include "klog_file.h"
 
 PProcess p_gksupervisor;
 id_t pid_gksupervisor;
@@ -88,6 +89,10 @@ void *init_thread(void *)
 
     if(reboot_flags & GK_REBOOTFLAG_RAWSD)
         return nullptr;
+
+#if GK_LOG_FILE
+    init_klogfile();
+#endif
     
 #if GK_ENABLE_NETWORK && GK_ENABLE_WIFI
     airoc_if = std::make_unique<WifiAirocNetInterface>();

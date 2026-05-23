@@ -6,6 +6,7 @@
 #include "scheduler.h"
 #include "thread.h"
 #include "process.h"
+#include "klog_file.h"
 #include <stm32mp2xx.h>
 
 #define KLOGMAGIC 0x474f4c4b534f4b47
@@ -87,6 +88,9 @@ static void *klogbuffer_thread(void *)
     {
         klog_updated.Wait(clock_cur() + kernel_time_from_ms(500));
         klogbuffer_purge_uart();
+#if GK_LOG_FILE
+        klogbuffer_purge_file(retram->klog.b_file);
+#endif
     }
 }
 

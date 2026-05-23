@@ -23,6 +23,7 @@ class LockFreeBuffer
         ssize_t write(const void *d, size_t len);
         ssize_t read(void *d, size_t len);
         void init(uint8_t *b, size_t blen);
+        size_t size();
 
         LockFreeBuffer(uint8_t *b, size_t blen);
 };

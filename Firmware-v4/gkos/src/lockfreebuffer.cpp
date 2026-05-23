@@ -58,6 +58,13 @@ ssize_t LockFreeBuffer::write(const void *d, size_t len)
     }
 }
 
+size_t LockFreeBuffer::size()
+{
+    auto l_cons_head = cons_head.load();
+    auto l_prod_tail = prod_tail.load();
+    return (l_prod_tail - l_cons_head) & MASK;
+}
+
 ssize_t LockFreeBuffer::read(void *d, size_t len)
 {
     auto l_cons_head = cons_head.load();

@@ -127,6 +127,8 @@ static int do_mount()
     ext4_dir_mk("/etc");
     ext4_dir_mk("/home");
     ext4_dir_mk("/home/user");
+    ext4_dir_mk("/var");
+    ext4_dir_mk("/var/log");
 
     unmounted = false;
 
