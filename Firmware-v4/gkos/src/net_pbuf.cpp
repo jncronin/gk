@@ -26,7 +26,7 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
                 klog("net: pbuf: pmb invalid\n");
                 return -1;
             }
-            vmb = vblock.Alloc(vblock_size_for(pmb.length));
+            vmb = vblock_alloc(vblock_size_for(pmb.length), false, true, false);
             if(!vmb.valid)
             {
                 klog("net: pbuv: vmb invalid\n");
@@ -56,6 +56,9 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
 
             set_bit(bmp_id, bmp);
             nalloc++;
+            cg.unlock();
+
+            //klog("net: pbuf: alloc bit %u: %p\n", bmp_id, (void *)ret);
             return (char *)ret;
         }
 
@@ -63,13 +66,14 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
         {
             if((uintptr_t)p < vmb.base)
             {
-                klog("net: pbuf: invalid address passed to free: %p\n", p);
+                //klog("net: pbuf: invalid address passed to free (too low): %p vs %p\n", p,
+                //    (void *)vmb.base);
                 return;
             }
             unsigned int cgid = ((uintptr_t)p - vmb.base) / bsize;
             if(cgid >= nbufs)
             {
-                klog("net: pbuf: invalid address passed to free: %p\n", p);
+                //klog("net: pbuf: invalid address passed to free (too high): %p (cgid=%u)\n", p, cgid);
                 return;
             }
 
@@ -85,7 +89,7 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
         }
 };
 
-constexpr const unsigned int npbufs = 4 * PAGE_SIZE / PBUF_SIZE;
+constexpr const unsigned int npbufs = PAGE_SIZE / PBUF_SIZE;
 constexpr const unsigned int nspbufs = PAGE_SIZE / SPBUF_SIZE;
 
 static PBufAllocator<PBUF_SIZE, npbufs> ba;
