@@ -91,13 +91,11 @@ int net_ret_to_errno(int ret)
 
 bool init_net()
 {
+    void init_pbufs();
+    init_pbufs();
+    
     p_net = Process::Create("net", true, p_kernel);
-
     Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net));
-
-    //uint32_t myip = IP4Addr(192, 168, 7, 1).get();
-    //Schedule(Thread::Create("dhcpd", net_dhcpd_thread, (void *)myip, true, GK_PRIORITY_NORMAL, p_net));
-    //Schedule(Thread::Create("telnet", net_telnet_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net));
 
     return true;
 }

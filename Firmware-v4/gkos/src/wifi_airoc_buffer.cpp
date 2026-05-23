@@ -26,6 +26,7 @@ void cy_buffer_release(whd_buffer_t buffer, whd_buffer_dir_t direction)
 
 uint8_t* cy_buffer_get_current_piece_data_pointer(whd_buffer_t buffer)
 {
+    if(!buffer) return nullptr;
     return (uint8_t *)((pbuf_t)buffer)->Ptr();
 }
 

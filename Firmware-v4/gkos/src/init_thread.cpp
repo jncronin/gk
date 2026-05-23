@@ -93,6 +93,10 @@ void *init_thread(void *)
 #if GK_LOG_FILE
     init_klogfile();
 #endif
+
+#if GK_ENABLE_NETWORK
+    init_net();
+#endif
     
 #if GK_ENABLE_NETWORK && GK_ENABLE_WIFI
     airoc_if = std::make_unique<WifiAirocNetInterface>();

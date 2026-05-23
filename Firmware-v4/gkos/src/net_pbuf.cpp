@@ -2,64 +2,64 @@
 #include <osmutex.h>
 #include <stdlib.h>
 #include "osspinlock.h"
-
-struct pbuf_data
-{
-    unsigned int id;
-    bool is_allocated = false;
-};
+#include "pmem.h"
+#include "vmem.h"
+#include "vblock.h"
+#include "linux_types.h"
+#include "logger.h"
 
 template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
 {
     protected:
-        char *pbufs;
-        pbuf_data *pd;
-        unsigned int next_pbuf = 0;
         Spinlock sl;
-        unsigned int nalloc = 0;
+        DECLARE_BITMAP(bmp, nbufs);
+        PMemBlock pmb;
+        VMemBlock vmb;
+        size_t nalloc = 0;
 
     public:
-        PBufAllocator(char *_pbufs, pbuf_data *_pd)
+        void init()
         {
-            pbufs = _pbufs;
-            pd = _pd;
-            for(unsigned int i = 0; i < nbufs; i++)
-            {
-                new (&pd[i]) pbuf_data();
-            }
+            pmb = Pmem.acquire(bsize * nbufs);
+            vmb = vblock.Alloc(pmb.length);
+            vmem_map(vmb, pmb);
+
+            klog("net: pbufs: %u of size %u at %p virt/%p phys\n",
+                nbufs, bsize, (void *)vmb.base, (void *)pmb.base);
         }
 
         char *alloc()
         {
             CriticalGuard cg(sl);
-            if(nalloc == nbufs)
+
+            auto bmp_id = find_first_zero_bit(bmp, nbufs);
+            if(bmp_id == nbufs)
                 return nullptr;
-            
-            for(unsigned int i = 0; i < nbufs; i++)
-            {
-                auto act_id = (i + next_pbuf) % nbufs;
-                if(pd[act_id].is_allocated == false)
-                {
-                    pd[act_id].id = act_id;
-                    pd[act_id].is_allocated = true;
-                    next_pbuf++;
-                    nalloc++;
-                    return &pbufs[act_id * bsize];
-                }
-            }
-            return nullptr;
+
+            auto ret = vmb.base + bmp_id * bsize;
+
+            set_bit(bmp_id, bmp);
+            nalloc++;
+            return (char *)ret;
         }
 
         void free(char *p)
         {
-            if(p < pbufs) return;
-            unsigned int cgid = (p - pbufs) / bsize;
-            if(cgid < nbufs)
+            if((uintptr_t)p < vmb.base)
             {
-                CriticalGuard cg(sl);
-                pd[cgid].is_allocated = false;
-                nalloc--;
+                klog("net: pbuf: invalid address passed to free: %p\n", p);
+                return;
             }
+            unsigned int cgid = ((uintptr_t)p - vmb.base) / bsize;
+            if(cgid >= nbufs)
+            {
+                klog("net: pbuf: invalid address passed to free: %p\n", p);
+                return;
+            }
+
+            CriticalGuard cg(sl);
+            clear_bit(cgid, bmp);
+            nalloc--;
         }
 
         size_t nfree()
@@ -69,16 +69,17 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
         }
 };
 
-constexpr const unsigned int npbufs = 32;
-constexpr const unsigned int nspbufs = 256;
+constexpr const unsigned int npbufs = 4 * PAGE_SIZE / PBUF_SIZE;
+constexpr const unsigned int nspbufs = PAGE_SIZE / SPBUF_SIZE;
 
-NET_BSS __attribute__((aligned(64))) static char pbufs[npbufs * PBUF_SIZE];
-NET_BSS __attribute__((aligned(64))) static char spbufs[nspbufs * SPBUF_SIZE];
+static PBufAllocator<PBUF_SIZE, npbufs> ba;
+static PBufAllocator<SPBUF_SIZE, nspbufs> sba;
 
-NET_BSS static pbuf_data pd[npbufs];
-NET_BSS static pbuf_data spd[nspbufs];
-SRAM4_DATA static PBufAllocator<PBUF_SIZE, npbufs> ba(pbufs, pd);
-SRAM4_DATA static PBufAllocator<SPBUF_SIZE, nspbufs> sba(spbufs, spd);
+void init_pbufs()
+{
+    ba.init();
+    sba.init();
+}
 
 pbuf_t net_allocate_pbuf(size_t n, size_t offset)
 {
@@ -88,6 +89,10 @@ pbuf_t net_allocate_pbuf(size_t n, size_t offset)
         auto ret = sba.alloc();
         if(ret)
         {
+            if((uintptr_t)ret & 0x3)
+            {
+                klog("ERROR: unaligned spbuf\n");
+            }
             auto b = (pbuf_t)ret;
             *b = PBuf();
             b->off = offset + sizeof(PBuf);
@@ -101,6 +106,10 @@ pbuf_t net_allocate_pbuf(size_t n, size_t offset)
         auto ret = ba.alloc();
         if(ret)
         {
+            if((uintptr_t)ret & 0x3)
+            {
+                klog("ERROR: unaligned pbuf\n");
+            }
             auto b = (pbuf_t)ret;
             *b = PBuf();
             b->off = offset + sizeof(PBuf);

@@ -156,9 +156,6 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
     init_pwr();
     init_cm33_interface();
     init_pmic();
-#if GK_ENABLE_NETWORK
-    init_net();
-#endif
 
     klogbuffer_purge_uart();
 
