@@ -89,11 +89,16 @@ int net_ret_to_errno(int ret)
     }
 }
 
+int init_pbufs();
+
 bool init_net()
 {
-    void init_pbufs();
-    init_pbufs();
-    
+    if(init_pbufs() != 0)
+    {
+        klog("net: init_pbufs() failed\n");
+        return false;
+    }
+
     p_net = Process::Create("net", true, p_kernel);
     Schedule(Thread::Create("net", net_thread, nullptr, true, GK_PRIORITY_NORMAL, p_net));
 

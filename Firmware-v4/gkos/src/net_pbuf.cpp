@@ -18,14 +18,30 @@ template <unsigned int bsize, unsigned int nbufs> class PBufAllocator
         size_t nalloc = 0;
 
     public:
-        void init()
+        int init()
         {
             pmb = Pmem.acquire(bsize * nbufs);
-            vmb = vblock.Alloc(pmb.length);
-            vmem_map(vmb, pmb);
+            if(!pmb.valid)
+            {
+                klog("net: pbuf: pmb invalid\n");
+                return -1;
+            }
+            vmb = vblock.Alloc(vblock_size_for(pmb.length));
+            if(!vmb.valid)
+            {
+                klog("net: pbuv: vmb invalid\n");
+                return -1;
+            }
+            
+            if(vmem_map(vmb, pmb) != 0)
+            {
+                klog("net: pbuf: vmem_map failed\n");
+                return -1;
+            }
 
             klog("net: pbufs: %u of size %u at %p virt/%p phys\n",
                 nbufs, bsize, (void *)vmb.base, (void *)pmb.base);
+            return 0;
         }
 
         char *alloc()
@@ -75,10 +91,19 @@ constexpr const unsigned int nspbufs = PAGE_SIZE / SPBUF_SIZE;
 static PBufAllocator<PBUF_SIZE, npbufs> ba;
 static PBufAllocator<SPBUF_SIZE, nspbufs> sba;
 
-void init_pbufs()
+int init_pbufs()
 {
-    ba.init();
-    sba.init();
+    if(ba.init() != 0)
+    {
+        klog("net: pbuf: ba.init() failed\n");
+        return -1;
+    }
+    if(sba.init() != 0)
+    {
+        klog("net: pbuf: sba.init() failed\n");
+        return -1;
+    }
+    return 0;
 }
 
 pbuf_t net_allocate_pbuf(size_t n, size_t offset)

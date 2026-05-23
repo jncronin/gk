@@ -26,8 +26,7 @@ int vmem_map(const VMemBlock &vaddr, const PMemBlock &paddr, uintptr_t ttbr0, ui
             }
             else
             {
-                klog("vmem_map: provided paddr not big enough for vaddr\n");
-                return -1;
+                return 0;   // allow Pmem < Vmem
             }
         }
         else
