@@ -181,6 +181,7 @@ int syscall_dmabuf_alloc(size_t dmabuf_len, int *_errno);
 
 int syscall_setcursor(int fd, unsigned int w, unsigned int h, unsigned int hx, unsigned int hy,
     unsigned int alpha, unsigned int pf, unsigned int stride, int *_errno);
+int syscall_warpcursor(unsigned int x, unsigned int y, int *_errno);
 
 static inline int deferred_return(int *_errno = nullptr, kernel_time until = kernel_time_invalid())
 {

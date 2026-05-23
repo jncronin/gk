@@ -593,6 +593,11 @@ int syscall_setcursor(int fd, unsigned int w, unsigned int h, unsigned int hx, u
     unsigned int alpha, unsigned int pf, unsigned int stride, int *_errno)
 {
     auto p = GetCurrentProcessForCore();
+    if(!p)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
 
     CriticalGuard cg(p->screen.sl);
     if(fd < 0)
@@ -647,5 +652,24 @@ int syscall_setcursor(int fd, unsigned int w, unsigned int h, unsigned int hx, u
     p->screen.cursor_alpha = alpha;
     p->screen.cursor_pf = pf;
 
+    return 0;
+}
+
+int syscall_warpcursor(unsigned int x, unsigned int y, int *_errno)
+{
+    auto p = GetCurrentProcessForCore();
+    if(!p)
+    {
+        *_errno = EINVAL;
+        return -1;
+    }
+
+    CriticalGuard cg(p->screen.sl);
+    if(x >= p->screen.screen_w)
+        x = p->screen.screen_w - 1;
+    if(y >= p->screen.screen_h)
+        y = p->screen.screen_h - 1;
+    p->screen.cursor_x = x;
+    p->screen.cursor_y = y;
     return 0;
 }
