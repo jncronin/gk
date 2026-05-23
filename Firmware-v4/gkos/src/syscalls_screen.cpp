@@ -597,10 +597,9 @@ int syscall_setcursor(int fd, unsigned int w, unsigned int h, unsigned int hx, u
     CriticalGuard cg(p->screen.sl);
     if(fd < 0)
     {
-        p->screen.cursor_alpha = 0;
-        p->screen.cursor_file = nullptr;
+        p->screen.cursor_alpha = alpha;
     }
-    
+
     if(w > GK_SCREEN_WIDTH || h > GK_SCREEN_HEIGHT || pf >= GK_PIXELFORMAT_MAX)
     {
         *_errno = EINVAL;
