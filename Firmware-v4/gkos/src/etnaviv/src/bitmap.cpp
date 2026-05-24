@@ -79,32 +79,32 @@ void bitmap_set (unsigned long *bitmap, unsigned int start, unsigned int nbits)
 void set_bit(long nr, volatile unsigned long *addr)
 {
     volatile uint64_t *bmp = (volatile uint64_t *)addr;
-    auto word_addr = nr / sizeof(*bmp);
-    auto bit_addr = nr % sizeof(*bmp);
+    auto word_addr = nr / (sizeof(*bmp) * 8);
+    auto bit_addr = nr % (sizeof(*bmp) * 8);
     bmp[word_addr] = bmp[word_addr] | (1UL << bit_addr);
 }
 
 void clear_bit(long nr, volatile unsigned long *addr)
 {
     volatile uint64_t *bmp = (volatile uint64_t *)addr;
-    auto word_addr = nr / sizeof(*bmp);
-    auto bit_addr = nr % sizeof(*bmp);
+    auto word_addr = nr / (sizeof(*bmp) * 8);
+    auto bit_addr = nr % (sizeof(*bmp) * 8);
     bmp[word_addr] = bmp[word_addr] & ~(1UL << bit_addr);
 }
 
 bool test_bit(long nr, volatile unsigned long *addr)
 {
     volatile uint64_t *bmp = (volatile uint64_t *)addr;
-    auto word_addr = nr / sizeof(*bmp);
-    auto bit_addr = nr % sizeof(*bmp);
+    auto word_addr = nr / (sizeof(*bmp) * 8);
+    auto bit_addr = nr % (sizeof(*bmp) * 8);
     return (bmp[word_addr] & (1UL << bit_addr)) != 0;
 }
 
 unsigned int find_next_bit(const unsigned long *addr, unsigned int nbits, unsigned int from)
 {
     auto bmp = (uint64_t *)addr;
-    auto start_word = from / sizeof(*bmp);
-    auto start_bit = from % sizeof(*bmp);
+    auto start_word = from / (sizeof(*bmp) * 8);
+    auto start_bit = from % (sizeof(*bmp) * 8);
     auto start_mask = (~0ULL) << start_bit;
     auto nwords = ALIGN(nbits, sizeof(*bmp) * 8) / (sizeof(*bmp) * 8);
 
