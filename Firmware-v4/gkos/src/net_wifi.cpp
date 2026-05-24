@@ -9,75 +9,34 @@
 #include <limits>
 #include <algorithm>
 
-static std::vector<std::pair<std::string, std::string>> known_nets;
-static kernel_time last_update;
+static PMutex m_known_nets;
+static std::vector<std::shared_ptr<WifiNetInterface::wifi_network>> known_nets;
 
-#define MYFGETS_BUFLEN 512
-static char myfgets_buffer[MYFGETS_BUFLEN];
-
-static char *myfgets(char *buf, int num, void *str)
+int init_wifi()
 {
-    auto blen = std::min(MYFGETS_BUFLEN, num);
-
-    auto br = deferred_call(syscall_read, (int)(intptr_t)str, myfgets_buffer, blen - 1).first;
-    if(br <= 0)
-        return nullptr;
-    myfgets_buffer[blen-1] = 0;
-
-    auto first_nline = strchr(myfgets_buffer, '\n');
-    if(first_nline)
-    {
-        // truncate the returned data and backtrack the file pointer
-        first_nline[1] = 0;
-
-        auto backtrack_by = br - (first_nline - myfgets_buffer) - 1;
-        deferred_call(syscall_lseek, (int)(intptr_t)str, -backtrack_by, SEEK_CUR);
-    }
-
-    strncpy(buf, myfgets_buffer, num);
-    return buf;
+    m_known_nets = MutexList.Create();
+    known_nets.clear();
+    return 0;
 }
 
-std::vector<std::pair<std::string, std::string>> net_get_known_networks()
+std::vector<std::shared_ptr<WifiNetInterface::wifi_network>> net_get_known_networks()
 {
-    if(kernel_time_is_valid(last_update) && clock_cur() < (last_update + kernel_time_from_ms(500)))
-    {
-        return known_nets;
-    }
-
-    last_update = clock_cur();
-
-    auto fd = deferred_call(syscall_open, "/etc/wifi.secrets", O_RDONLY, 0).first;
-    if(fd < 0)
-    {
-        klog("net: couldn't open /etc/wifi.secrets\n");
-        return known_nets;
-    }
-
-    INIReader ini(myfgets, (void *)fd);
-    close(fd);
-
-    if(ini.ParseError() != 0)
-    {
-        klog("net: couldn't open /etc/wifi.secrets: %d\n", ini.ParseError());
-        return known_nets;
-    }
-
-    known_nets.clear();
-
-    for(const auto &sect : ini.Sections())
-    {
-        auto ssid = ini.Get(sect, "SSID", "");
-        auto psk = ini.Get(sect, "secret", "");
-
-        if(ssid != "" && psk != "")
-        {
-            known_nets.push_back(std::make_pair(ssid, psk));
-            klog("net: read ssid: %s, secret: %s\n", ssid.c_str(), psk.c_str());
-        }
-    }
-
+    MutexGuard mg(*m_known_nets);
     return known_nets;
+}
+
+int net_clear_known_networks()
+{
+    MutexGuard mg(*m_known_nets);
+    known_nets.clear();
+    return 0;
+}
+
+int net_add_known_network(std::shared_ptr<WifiNetInterface::wifi_network> n)
+{
+    MutexGuard mg(*m_known_nets);
+    known_nets.push_back(n);
+    return 0;
 }
 
 const std::vector<WifiNetInterface::wifi_network> &WifiNetInterface::ListNetworks() const
@@ -120,8 +79,9 @@ int WifiNetInterface::IdleTask()
 
         for(const auto &cur_net : _known_nets)
         {
-            const auto &ssid = cur_net.first;
-            const auto &pwd = cur_net.second;
+            const auto &ssid = cur_net->ssid;
+            const auto &creds = cur_net->credentials;
+            const auto &cred_type = cur_net->cred_type;
 
             wifi_network wn{};
             bool found = false;
@@ -139,7 +99,8 @@ int WifiNetInterface::IdleTask()
                     }
                     found = true;
                     wn = cur_wn;
-                    wn.password = pwd;
+                    wn.cred_type = cred_type;
+                    wn.credentials = creds;
                 }
             }
 
@@ -148,7 +109,8 @@ int WifiNetInterface::IdleTask()
                 wn.ch = -1;
                 wn.rssi = std::numeric_limits<decltype(wn.rssi)>::min();
                 wn.ssid = ssid;
-                wn.password = pwd;
+                wn.cred_type = cred_type;
+                wn.credentials = creds;
             }
 
             try_connect_networks.push_back(wn);

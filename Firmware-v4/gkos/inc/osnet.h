@@ -213,12 +213,29 @@ int net_deregister_interface_internal(NetInterface *iface);
 class WifiNetInterface : public NetInterface
 {
     public:
+        enum class credentials_type
+        {
+            Open = 0,
+            PSK,
+        };
+
+        struct wifi_network_credentials
+        {
+            virtual ~wifi_network_credentials() = default;
+        };
+
+        struct psk_credentials : public wifi_network_credentials
+        {
+            std::string password;
+        };
+
         struct wifi_network
         {
             std::string ssid;
             int ch;
             int rssi;
-            std::string password = "";
+            credentials_type cred_type;
+            std::shared_ptr<wifi_network_credentials> credentials;
             void *dev_data;
         };
 
@@ -764,7 +781,9 @@ void net_tcp_handle_sendto(const net_msg &m);
 
 int net_dhcpc_begin_for_iface(NetInterface *iface);
 
-std::vector<std::pair<std::string, std::string>> net_get_known_networks();
+std::vector<std::shared_ptr<WifiNetInterface::wifi_network>> net_get_known_networks();
+int net_clear_known_networks();
+int net_add_known_network(std::shared_ptr<WifiNetInterface::wifi_network> n);
 
 struct net_ntpc_thread_params
 {

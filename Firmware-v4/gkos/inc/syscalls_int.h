@@ -183,6 +183,10 @@ int syscall_setcursor(int fd, unsigned int w, unsigned int h, unsigned int hx, u
     unsigned int alpha, unsigned int pf, unsigned int stride, int *_errno);
 int syscall_warpcursor(unsigned int x, unsigned int y, int *_errno);
 
+int syscall_wifi_clearknownnetworks(int *_errno);
+int syscall_wifi_addopennetwork(const char *ssid, int ch, int *_errno);
+int syscall_wifi_addpsknetwork(const char *ssid, int ch, const char *psk, int *_errno);
+
 static inline int deferred_return(int *_errno = nullptr, kernel_time until = kernel_time_invalid())
 {
     auto t = GetCurrentKernelThreadForCore();

@@ -357,8 +357,44 @@ int WifiAirocNetInterface::Connect(const wifi_network &wn)
     whd_ssid_t ssid;
     ssid.length = wn.ssid.length();
     memcpy(ssid.value, wn.ssid.c_str(), std::min(32UL,wn.ssid.length()));
-    auto ret = whd_wifi_join(whd_iface, &ssid, (whd_security_t)(uintptr_t)wn.dev_data,
-        (const uint8_t *)wn.password.c_str(), (uint8_t)wn.password.length());
+
+    whd_result_t ret;
+    auto sec_type = (whd_security_t)(uintptr_t)wn.dev_data;
+
+    switch(sec_type)
+    {
+        case WHD_SECURITY_OPEN:
+            ret = whd_wifi_join(whd_iface, &ssid, sec_type, nullptr, 0);
+            break;
+
+        case WHD_SECURITY_WPA_TKIP_PSK:
+        case WHD_SECURITY_WPA_AES_PSK:
+        case WHD_SECURITY_WPA2_AES_PSK:
+        case WHD_SECURITY_WPA2_AES_PSK_SHA256:
+        case WHD_SECURITY_WPA2_TKIP_PSK:
+        case WHD_SECURITY_WPA2_MIXED_PSK:
+        case WHD_SECURITY_WPA3_SAE:
+        case WHD_SECURITY_WPA3_WPA2_PSK:
+            if(wn.cred_type != WifiNetInterface::credentials_type::PSK)
+            {
+                klog("net: airoc: credential type %d invalid for network %s expecting sec_type %d\n",
+                    (int)wn.cred_type, wn.ssid.c_str(), (int)sec_type);
+                return -1;
+            }
+            else
+            {
+                auto psk_creds = std::static_pointer_cast<WifiNetInterface::psk_credentials>(wn.credentials);
+                ret = whd_wifi_join(whd_iface, &ssid, sec_type,
+                    (const uint8_t *)psk_creds->password.c_str(), (uint8_t)psk_creds->password.length());
+            }
+            break;
+
+        default:
+            klog("net: airoc: unsupported sec_type %d for ssid %s\n", (int)sec_type, wn.ssid.c_str());
+            return -1;
+
+    }
+
     if(ret == WHD_SUCCESS)
     {
         klog("airoc: joined network %s\n", wn.ssid.c_str());

@@ -18,6 +18,7 @@
 #include "util.h"
 #include "screen.h"
 #include "persistent.h"
+#include "osnet.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -1144,6 +1145,31 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             {
                 auto p = reinterpret_cast<__syscall_warpcursor_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_warpcursor(p->x, p->y,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_wifi_clearknownnetworks:
+            {
+                *reinterpret_cast<int *>(r1) = syscall_wifi_clearknownnetworks(
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_wifi_addopennetwork:
+            {
+                ThreadDeletionPreventionGuard tdpg;
+                auto p = reinterpret_cast<__syscall_wifi_addopennetwork_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_wifi_addopennetwork(p->ssid, p->ch,
+                    reinterpret_cast<int *>(r3));
+            }
+            break;
+
+            case __syscall_wifi_addpsknetwork:
+            {
+                ThreadDeletionPreventionGuard tdpg;
+                auto p = reinterpret_cast<__syscall_wifi_addpsknetwork_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_wifi_addpsknetwork(p->ssid, p->ch, p->psk,
                     reinterpret_cast<int *>(r3));
             }
             break;

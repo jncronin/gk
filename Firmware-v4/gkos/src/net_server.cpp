@@ -90,12 +90,18 @@ int net_ret_to_errno(int ret)
 }
 
 int init_pbufs();
+int init_wifi();
 
 bool init_net()
 {
     if(init_pbufs() != 0)
     {
         klog("net: init_pbufs() failed\n");
+        return false;
+    }
+    if(init_wifi() != 0)
+    {
+        klog("net: init_wifi() failed\n");
         return false;
     }
 
