@@ -67,8 +67,8 @@ void *net_ntpc_thread(void *_p)
         if(!kernel_time_is_valid(last_ntp_update) || clock_cur() >= last_ntp_update + kernel_time_from_ms(1000 * 60 * 60))
         {
             // update time every hour
-            /* Send to time.windows.com = 51.145.123.29 */
-            IP4Addr ntp_server(51, 145, 123, 29);
+            /* Send to google ntp */
+            IP4Addr ntp_server(216, 239, 35, 0);
             struct sockaddr_in ntp_dest;
             ntp_dest.sin_addr.s_addr = ntp_server.get();
             ntp_dest.sin_family = AF_INET;
