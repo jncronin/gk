@@ -52,3 +52,11 @@ The 5 above mentioned binaries exist in their own directories with the relevant 
 - stm32-ddr-phy-binary: the firmware for the DDR.  Used by SSBL-A.  Submodule from STMicroelectronics repository.
 - STM32CubeMP2: CMSIS definitions for the chip.  Submodule from STMicroelectronics repository.
 - unit_tests: host-side tests of various components of gkos.
+
+Additionally, gkos v4 includes code from various components of the earlier gkos project in the Firmware directory including:
+- gk-userlandinterface: syscall interface to the userland
+- lwext4: Ext4 driver
+- zlib: used for decompressing provisioning files
+
+# License #
+gkos v4 is Copyright (C) John Cronin 2024 - 2026 and released under the terms of the GPL v2 (see COPYING).  It includes third party code under the licenses in the relevant subdirectories which remain the copyright of their respective authors.
