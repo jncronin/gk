@@ -1,11 +1,19 @@
 %TF.GenerationSoftware,KiCad,Pcbnew,9.0.5*%
+<<<<<<< HEAD
 %TF.CreationDate,2026-02-23T17:17:35+00:00*%
+=======
+%TF.CreationDate,2026-03-10T20:01:46+00:00*%
+>>>>>>> controls-v3
 %TF.ProjectId,gk-controls,676b2d63-6f6e-4747-926f-6c732e6b6963,rev?*%
 %TF.SameCoordinates,Original*%
 %TF.FileFunction,Profile,NP*%
 %FSLAX46Y46*%
 G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
+<<<<<<< HEAD
 G04 Created by KiCad (PCBNEW 9.0.5) date 2026-02-23 17:17:35*
+=======
+G04 Created by KiCad (PCBNEW 9.0.5) date 2026-03-10 20:01:46*
+>>>>>>> controls-v3
 %MOMM*%
 %LPD*%
 G01*
