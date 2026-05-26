@@ -1,5 +1,5 @@
 #include "osfile.h"
-#include "etnaviv/src/linux_types.h"
+#include "linux_types.h"
 #include "osmutex.h"
 #include <vector>
 #include "drifile.h"

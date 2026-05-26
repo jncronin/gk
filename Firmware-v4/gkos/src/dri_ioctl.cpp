@@ -1,5 +1,5 @@
 #include "osfile.h"
-#include "etnaviv/src/linux_types.h"
+#include "linux_types.h"
 #include "osmutex.h"
 #include "_gk_ioctls.h"
 #include <cstring>

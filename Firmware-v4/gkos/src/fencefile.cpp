@@ -1,6 +1,6 @@
 #include "fencefile.h"
 #include "process.h"
-#include "etnaviv/src/user_fences.h"
+#include "user_fences.h"
 
 std::shared_ptr<dma_fence> sync_file_get_fence(int fd)
 {
