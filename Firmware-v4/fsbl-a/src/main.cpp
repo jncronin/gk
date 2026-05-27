@@ -483,6 +483,7 @@ int main(uint32_t bootrom_val)
     
     EV_ORANGE.set_as_output();
 
+#if 0
     // say hi
     for(int n = 0; n < 10; n++)
     {
@@ -491,6 +492,7 @@ int main(uint32_t bootrom_val)
         EV_ORANGE.clear();
         for(int i = 0; i < 2500000; i++);
     }
+#endif
 
     void (*ssbl)(uint32_t bootrom_val) = (void (*)(uint32_t))0x60020000;
     extern uint64_t AP_Target;
