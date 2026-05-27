@@ -37,7 +37,7 @@
   EndianMode = 0
   ChipName = "ST STM32MP257F_A35_0_GK_Loader"
 [FLASH]
-  aRangeSel[1] = 0-1023
+  aRangeSel[2] = 96-767,771-1023
   BankName = "OSPI1"
   BankSelMode = 1
   BaseAddr = 0x60000000
