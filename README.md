@@ -8,13 +8,13 @@ gkv4 represents a significant upgrade over the original gk with improved speed, 
 
 ## Overview ##
 
-gkv4 is a small, battery powered handheld gaming console running on a STM32MP2 MPU (dual Cortex-A35 cores with additional Cortex-M33 core).  It runs a custom OS called gkos which allows near-instantaneous (MCU-like) cold boot times but is powerful enough to run most POSIX userspace applications.  See (https://github.com/jncronin/gk-userland) for the userland support including cross GCC toolchains and useful libraries.
+gkv4 is a small, battery powered handheld gaming console running on a STM32MP2 MPU (dual Cortex-A35 cores with additional Cortex-M33 core).  It runs a custom OS called gkos which allows near-instantaneous (MCU-like) cold boot times but is powerful enough to run most POSIX userspace applications.  See <https://github.com/jncronin/gk-userland> for the userland support including cross GCC toolchains and useful libraries.
 
 Game/emulator support:
 - Mednafen for NES, SNES, SMS, MD and Lynx support
 - Hatari for Atari ST
 - PCSX_rearmed for PS1
-- Mupen64plus (see fork at (https://github.com/jncronin/mupen64-combined)) for N64 (GPU-accelerated)
+- Mupen64plus (see fork at <https://github.com/jncronin/mupen64-combined>) for N64 (GPU-accelerated)
 - Atari++ for Atari XL
 - DOSBox-X (achieves 25000 cycles/second, 199561 parrots, 74 XT on speedtst.com, roughly 486 50 MHz equivalent)
 - Native ports of:
@@ -27,7 +27,7 @@ Game/emulator support:
 
 ## Hardware Specifications ##
 
-PCBs, schematics and case STL files are available in (https://github.com/jncronin/gk/gk-pcbv4).
+PCBs, schematics and case STL files are available in <https://github.com/jncronin/gk/tree/main/gk-pcbv4>.
 
 - STM32MP255D processor with variable clock rate (defined on a per-game basis).  Debug and trace ports exposed.
 - LPDDR4 RAM (1 GiB in current version)
@@ -51,7 +51,7 @@ Total current draw is heavily dependent on screen brightness but is typically 1.
 
 ## Software ##
 
-gkos is a custom OS written from scratch in C++.  It is available in the (https://github.com/jncronin/gk/Firmware-v4) directory.  Features:
+gkos is a custom OS written from scratch in C++.  It is available in the <https://github.com/jncronin/gk/tree/main/Firmware-v4> directory.  Features:
 
 - Armv8-A SMP scheduler with multiple active processes + threads
 - Syscall interface with wrappers for most POSIX functions
