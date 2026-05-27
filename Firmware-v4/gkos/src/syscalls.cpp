@@ -19,6 +19,7 @@
 #include "screen.h"
 #include "persistent.h"
 #include "osnet.h"
+#include "supervisor.h"
 
 #define DEBUG_SYSCALLS  0
 
@@ -1165,12 +1166,38 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
-            case __syscall_wifi_addpsknetwork:
+        case __syscall_wifi_addpsknetwork:
             {
                 ThreadDeletionPreventionGuard tdpg;
                 auto p = reinterpret_cast<__syscall_wifi_addpsknetwork_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_wifi_addpsknetwork(p->ssid, p->ch, p->psk,
                     reinterpret_cast<int *>(r3));
+            }
+            break;
+
+        case __syscall_shutdown:
+            if(GetCurrentPProcessForCore() == p_gksupervisor)
+            {
+                supervisor_shutdown_system();
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            else
+            {
+                *reinterpret_cast<int *>(r3) = EACCES;
+                *reinterpret_cast<int *>(r1) = -1;
+            }
+            break;
+
+        case __syscall_reboot:
+            if(GetCurrentPProcessForCore() == p_gksupervisor)
+            {
+                supervisor_reboot_system();
+                *reinterpret_cast<int *>(r1) = 0;
+            }
+            else
+            {
+                *reinterpret_cast<int *>(r3) = EACCES;
+                *reinterpret_cast<int *>(r1) = -1;
             }
             break;
 

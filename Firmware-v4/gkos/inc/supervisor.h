@@ -3,7 +3,7 @@
 
 #include "process.h"
 #include "_gk_proccreate.h"
-extern PProcess p_supervisor;
+extern PProcess p_gksupervisor;
 
 bool init_supervisor();
 
