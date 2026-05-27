@@ -8,11 +8,15 @@
 static void *klogfile_thread(void *);
 static BinarySemaphore sem_klogfile;
 static LockFreeBuffer *buf = nullptr;
+static bool logfile_stop = false;
+
+static PThread t_logfile;
 
 void init_klogfile()
 {
-    sched.Schedule(Thread::Create("klogfile", klogfile_thread, nullptr, true, GK_PRIORITY_IDLE + 1,
-        p_kernel));
+    t_logfile = Thread::Create("klogfile", klogfile_thread, nullptr, true, GK_PRIORITY_IDLE + 1,
+        p_kernel);
+    sched.Schedule(t_logfile);
 }
 
 int klogbuffer_purge_file(LockFreeBuffer &_buf)
@@ -33,6 +37,11 @@ void *klogfile_thread(void *)
 
     while(true)
     {
+        if(logfile_stop)
+        {
+            t_logfile = nullptr;
+            return nullptr;
+        }
         if(!sem_klogfile.Wait(clock_cur() + kernel_time_from_ms(500)))
             continue;
         if(buf == nullptr)
@@ -97,4 +106,17 @@ void *klogfile_thread(void *)
             }
         }
     }
+}
+
+int klogfile_close()
+{
+    logfile_stop = true;
+    sem_klogfile.Signal();
+
+    while(t_logfile != nullptr)
+    {
+        Yield();
+    }
+
+    return 0;
 }

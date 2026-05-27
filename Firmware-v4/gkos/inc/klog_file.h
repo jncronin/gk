@@ -5,5 +5,6 @@
 
 void init_klogfile();
 int klogbuffer_purge_file(LockFreeBuffer &buf);
+int klogfile_close();
 
 #endif

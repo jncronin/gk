@@ -7,6 +7,7 @@
 #include "sound.h"
 //#include "reset.h"
 #include "vmem.h"
+#include "klog_file.h"
 #include <stm32mp2xx.h>
 
 #define USART6_VMEM ((USART_TypeDef *)PMEM_TO_VMEM(USART6_BASE))
@@ -19,6 +20,9 @@ static void supervisor_graceful_close()
     
     //LTDC->GCR = 0;
     klog("shutdown: screen off\n");
+
+    /* Disable logging to file */
+    klogfile_close();
 
     /* To shut down, we need to make sure there are no SD card transactions ongoing */
     extern bool usb_israwsd;
