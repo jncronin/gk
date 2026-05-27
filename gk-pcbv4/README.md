@@ -10,3 +10,5 @@ There are 4 separate PCBs included:
 - controls-trigger: This is a single/two layer PCB simply containing the pads for the two back trigger buttons.  It is provided as a separate board to allow a certain amount of vertical separation from the controls board such that the triggers (which rotate rather than push) have better alignment with the pads.
 
 For the various button pads a 5mm high rubber contact e.g. Xbox controller ABXY contact is expected.
+
+Schematics, PCB designs and 3D models in this directory are Copyright (C) John Cronin 2024-2026 and released under the CERN-OHL-W license (see LICENSE in this directory).
