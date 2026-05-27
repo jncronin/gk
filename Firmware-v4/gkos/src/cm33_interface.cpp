@@ -51,6 +51,7 @@ static bool input_left_stick_mouse = false;
 static bool input_right_stick_mouse = false;
 static bool input_tilt_stick_mouse = false;
 static bool input_throttle_stick_mouse = false;
+static int input_throttle_stick_ndetents = 0;
 
 static void cm33_irq(exception_regs *, uint64_t);
 
@@ -365,6 +366,14 @@ static void *cm33_manager_thread(void *)
         {
             cm33_send_cmd(CM33_DK_CMD_CLEAR_THROTTLE_STICK_MOUSE);
         }
+        
+        auto sr_ndetents = (int)((dk->sr & CM33_DK_SR_THROTTLE_STICK_DETENT_MASK) >>
+            CM33_DK_SR_THROTTLE_STICK_DETENT_SHIFT);
+        if(sr_ndetents != input_throttle_stick_ndetents)
+        {
+            cm33_send_cmd(CM33_DK_CMD_THROTTLE_STICK_DETENT + input_throttle_stick_ndetents);
+        }
+
         if(dk->joy_a_calib.left != input_joy_calib[0].left)
             dk->joy_a_calib.left = input_joy_calib[0].left;
         if(dk->joy_a_calib.right != input_joy_calib[0].right)
@@ -498,5 +507,24 @@ int cm33_set_tilt_stick_mouse(bool en)
 int cm33_set_throttle_stick_mouse(bool en)
 {
     input_throttle_stick_mouse = en;
+    return 0;
+}
+
+int cm33_set_throttle_stick_detent(bool en, int ndetents)
+{
+    if(en)
+    {
+        if(ndetents < 1 || ndetents > (CM33_DK_CMD_THROTTLE_STICK_DETENT_END - CM33_DK_CMD_THROTTLE_STICK_DETENT))
+        {
+            return -1;
+        }
+
+        input_throttle_stick_ndetents = ndetents;
+    }
+    else
+    {
+        input_throttle_stick_ndetents = 0;
+    }
+
     return 0;
 }

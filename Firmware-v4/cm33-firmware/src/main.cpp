@@ -46,6 +46,8 @@ static const int mouse_ticks = tick_freq / mouse_freq;
 
 TaskHandle_t task_readsensors = nullptr;
 
+void send_message(uint32_t msg);
+
 class ioexp_pin
 {
     public:
@@ -173,6 +175,51 @@ class joy_pin
         }
 };
 
+class throttle_detent
+{
+    protected:
+        int last_val = 0;
+        int ndetents = 0;
+
+    public:
+        int set_detents(int _ndetents)
+        {
+            ndetents = _ndetents;
+            return 0;
+        }
+
+        int val_to_detent(int v)
+        {
+            /* For an example of 4 detents, we have detents centred on the following:
+                0, 33, 66, 100
+                
+                The detent width is 100/(n-1) i.e. 33
+                The 3 dividing lines are 16.6, 50, 83.3
+
+                val to detent mapping therefore requires a shift:
+                    (v + (detent_width / 2)) / detent_width
+            */
+
+            auto dwidth = 65536 / (ndetents - 1);
+            return ((v + 32768) + dwidth / 2) / dwidth;
+        }
+
+        void tick(int new_val)
+        {
+            // register motion if we've moved a small amount from the last
+            if(std::abs(last_val - new_val) < 1024)
+                return;
+            last_val = new_val;
+
+            if(ndetents == 0)
+                return;
+
+            auto detent = val_to_detent(last_val);
+            send_message(CM33_DK_MSG_PRESS | (GK_THROTTLE_DETENT_0 + detent));
+            send_message(CM33_DK_MSG_RELEASE | (GK_THROTTLE_DETENT_0 + detent));
+        }
+};
+
 const ioexp_pin BTN_MCU_A(1U << 0);
 const ioexp_pin BTN_MCU_B(1U << 1);
 const ioexp_pin BTN_MCU_X(1U << 2);
@@ -195,6 +242,8 @@ digi_joy dj_B((const int16_t *)&d.joy_b.x,
     (const int16_t *)&d.joy_b.y);
 digi_joy dj_TILT((const int16_t *)&d.joy_tilt.x,
     (const int16_t *)&d.joy_tilt.y, 12000);
+
+throttle_detent td;
 
 const joy_pin JOY_A_LEFT(dj_A, digi_joy::left);
 const joy_pin JOY_A_RIGHT(dj_A, digi_joy::right);
@@ -621,7 +670,16 @@ static void tick()
                 }
                 break;
         }
+
+        if(dk.cr >= CM33_DK_CMD_THROTTLE_STICK_DETENT &&
+            dk.cr <= CM33_DK_CMD_THROTTLE_STICK_DETENT_END)
+        {
+            auto new_detent = dk.cr - CM33_DK_CMD_THROTTLE_STICK_DETENT;
+            dk.sr = (dk.sr & ~CM33_DK_SR_THROTTLE_STICK_DETENT_MASK) |
+                (new_detent << CM33_DK_SR_THROTTLE_STICK_DETENT_SHIFT);
+        }
         dk.cr = 0;
+
         __SEV();
     }
 
@@ -749,6 +807,21 @@ static void tick()
     {
         mouse_dx = 0.0f;
         mouse_dy = 0.0f;
+    }
+
+    /* Throttle detent */
+    static unsigned int ndetents = 0;
+    auto new_detent = (dk.sr & CM33_DK_SR_THROTTLE_STICK_DETENT_MASK) >>
+        CM33_DK_SR_THROTTLE_STICK_DETENT_SHIFT;
+    if(ndetents != new_detent)
+    {
+        td.set_detents(new_detent);
+
+        ndetents = new_detent;
+    }
+    if(ndetents)
+    {
+        td.tick(d.throttle.y);
     }
 
     UninterruptibleGuard ug;

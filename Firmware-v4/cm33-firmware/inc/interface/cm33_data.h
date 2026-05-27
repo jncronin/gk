@@ -53,6 +53,8 @@ static_assert(sizeof(cm33_data_kernel) == 22*4);
 #define CM33_DK_SR_RIGHT_STICK_MOUSE    128
 #define CM33_DK_SR_TILT_STICK_MOUSE     256
 #define CM33_DK_SR_THROTTLE_STICK_MOUSE 512
+#define CM33_DK_SR_THROTTLE_STICK_DETENT_SHIFT      10
+#define CM33_DK_SR_THROTTLE_STICK_DETENT_MASK       0x3c00
 
 // commands
 #define CM33_DK_CMD_TILT_ENABLE     1
@@ -67,6 +69,8 @@ static_assert(sizeof(cm33_data_kernel) == 22*4);
 #define CM33_DK_CMD_CLEAR_TILT_STICK_MOUSE     10
 #define CM33_DK_CMD_SET_THROTTLE_STICK_MOUSE    11
 #define CM33_DK_CMD_CLEAR_THROTTLE_STICK_MOUSE  12
+#define CM33_DK_CMD_THROTTLE_STICK_DETENT       13
+#define CM33_DK_CMD_THROTTLE_STICK_DETENT_END   (CM33_DK_CMD_THROTTLE_STICK_DETENT + 15)
 
 // messages
 #define CM33_DK_MSG_MASK            (0xffU << 24)

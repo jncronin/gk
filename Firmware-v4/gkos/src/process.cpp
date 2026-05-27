@@ -505,6 +505,17 @@ int SetFocusProcess(PProcess p)
     cm33_set_tilt_stick_mouse(p->keymap.tilt_stick == GK_STICK_MOUSE);
     cm33_set_throttle_stick_mouse(p->keymap.throttle_stick == GK_STICK_MOUSE);
 
+    // enable throttle detents, if applicable
+    if(p->keymap.throttle_stick >= GK_STICK_THROTTLE_DETENT && 
+        p->keymap.throttle_stick <= GK_STICK_THROTTLE_DETENT_MAX)
+    {
+        cm33_set_throttle_stick_detent(true, p->keymap.throttle_stick - GK_STICK_THROTTLE_DETENT + 1);
+    }
+    else
+    {
+        cm33_set_throttle_stick_detent(false, 0);
+    }
+
     // restore palette if used
 
 

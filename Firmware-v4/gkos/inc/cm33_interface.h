@@ -8,5 +8,6 @@ int cm33_set_left_stick_mouse(bool en);
 int cm33_set_right_stick_mouse(bool en);
 int cm33_set_tilt_stick_mouse(bool en);
 int cm33_set_throttle_stick_mouse(bool en);
+int cm33_set_throttle_stick_detent(bool en, int ndetents);
 
 #endif
