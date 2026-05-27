@@ -17,6 +17,7 @@ static const constexpr pin EV_BLUE      { GPIOJ, 7 };
 static const constexpr pin EV_RED       { GPIOH, 4 };
 static const constexpr pin EV_GREEN     { GPIOD, 8 };
 static const constexpr pin EV_ORANGE    { GPIOJ, 6 };
+static const constexpr pin GK_BTNLED_R  { GPIOJ, 6 };
 
 gkos_boot_interface gbi{};
 
@@ -38,6 +39,7 @@ int main(uint32_t bootrom_val)
     init_clocks();
     
     EV_BLUE.set_as_output();
+    GK_BTNLED_R.set_as_output();
 
     /* We use certain ADC channels that can come from several pins.  To stop them being connected
         together internally (default pin mode is analog) we set them as input here */
@@ -49,15 +51,6 @@ int main(uint32_t bootrom_val)
     };
     for(const auto &p : analog_pins)
         p.set_as_input();
-
-    // say hi
-    for(int n = 0; n < 10; n++)
-    {
-        EV_BLUE.set();
-        for(int i = 0; i < 2500000; i++);
-        EV_BLUE.clear();
-        for(int i = 0; i < 2500000; i++);
-    }
 
     /* Only allow access to SRAMs for CA35.  We later (in gkos) give CM33 access to some */
     // Cannot access RISAB3/4 without the relevant SRAM being clocked
@@ -114,6 +107,19 @@ int main(uint32_t bootrom_val)
         while(!(USART6->ISR & USART_ISR_TXFE));
         pmic_write_register(0x10, 0x81);
         while(true);
+    }
+
+    // say hi if reset via CPU or via NRST
+    if(reset_sr == 0x40 || reset_sr == 0x01)
+    {
+        const pin &hi_pin = (pmic_read_register(0) == 0x22) ? GK_BTNLED_R : EV_BLUE;
+        for(int n = 0; n < 40; n++)
+        {
+            hi_pin.set();
+            for(int i = 0; i < 2500000; i++);
+            hi_pin.clear();
+            for(int i = 0; i < 2500000; i++);
+        }
     }
 
     init_ddr();
