@@ -4,6 +4,8 @@ This respository provides PCB schematics, firmware and debugging support for the
 
 gkv4 represents a significant upgrade over the original gk with improved speed, a bigger screen, more gamepad buttons and hardware-accelerated 3D rendering.
 
+[Videos of the gkv4 in action](https://www.youtube.com/playlist?list=PLvXUUReQ2h1UtwOlHrIKgTddPxBIt5pAU)
+
 ![An image of the gk showing its menu screen](./img/gkmenu.jpg)
 
 ## Overview ##
