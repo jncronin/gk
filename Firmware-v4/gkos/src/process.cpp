@@ -282,6 +282,7 @@ void Process::Kill(id_t pid, int rc)
         }
     }
 
+    klog("syscall_kill: kill pid %d, rc %d\n", pid, rc);
     ProcessList._setexitcode(pid, rc);
     cg.unlock();
 
@@ -294,6 +295,8 @@ void Process::Kill(id_t pid, int rc)
     for(auto t_wait : p.v->waiting_threads)
     {
         auto pt_wait = ThreadList.Get(t_wait);
+        klog("syscall_kill: kill pid %d, wakeup %d (%s)\n", pid, t_wait, pt_wait.v == nullptr ? "dead thread" :
+            pt_wait.v->name.c_str());
         if(pt_wait.v)
         {
             pt_wait.v->blocking.unblock();
