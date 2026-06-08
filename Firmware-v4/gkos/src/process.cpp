@@ -286,8 +286,14 @@ void Process::Kill(id_t pid, int rc)
     ProcessList._setexitcode(pid, rc);
     cg.unlock();
 
+    id_t cur_thread_to_kill = 0;
     for(auto t : p.v->threads)
     {
+        if(t == GetCurrentThreadForCore()->id)
+        {
+            cur_thread_to_kill = t;
+            continue;
+        }
         Thread::Kill(t, (void *)0);
     }
 
@@ -304,6 +310,12 @@ void Process::Kill(id_t pid, int rc)
     }
 
     CleanupQueue.Push(cleanup_message { .is_thread = false, .id = pid });
+
+    // kill the current thread last
+    if(cur_thread_to_kill)
+    {
+        Thread::Kill(cur_thread_to_kill, (void *)0);
+    }
 }
 
 bool Process::check_process_pages_vs_ttbr()
