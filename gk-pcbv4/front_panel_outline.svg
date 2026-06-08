@@ -20,15 +20,16 @@
      inkscape:pageopacity="0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="0.61112516"
-     inkscape:cx="193.08647"
-     inkscape:cy="268.35747"
+     inkscape:zoom="9.7780025"
+     inkscape:cx="228.42089"
+     inkscape:cy="421.14941"
      inkscape:window-width="1600"
      inkscape:window-height="930"
      inkscape:window-x="-6"
      inkscape:window-y="-6"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g131" />
+     inkscape:current-layer="g131"
+     showgrid="false" />
   <desc
      id="desc1">front_panel_outline.dxf - scale = 1.000000, origin = (0.000000, 0.000000), method = auto</desc>
   <defs
@@ -384,10 +385,6 @@
        d="m 442.15102,706.88405 c -0.026,-0.4056 -0.032,-0.857 -0.027,-1.3342"
        style="fill:none;stroke:#000000"
        id="path80" />
-    <path
-       d="m 442.15102,706.88405 h 6.328 z"
-       style="fill:none;stroke:#000000"
-       id="path81" />
     <path
        d="m 443.35632,708.92265 c -0.1564,0 -0.2986,-0.023 -0.426,-0.076 -0.1035,-0.043 -0.1936,-0.1043 -0.2725,-0.1839 -0.1008,-0.1018 -0.1857,-0.2359 -0.2562,-0.4075 -0.1031,-0.2509 -0.1749,-0.5811 -0.2198,-1.0052 -0.012,-0.1172 -0.023,-0.2394 -0.031,-0.3662"
        style="fill:none;stroke:#000000"
