@@ -40,7 +40,7 @@ class drm_device
 		virtual int suspend();
 		virtual int resume();
 
-		unsigned int suspend_timeout_ms = 200;
+		unsigned int suspend_timeout_ms = 3000;
 
         virtual ~drm_device() = default;
 };
