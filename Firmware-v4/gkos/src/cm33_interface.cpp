@@ -52,6 +52,9 @@ static bool input_right_stick_mouse = false;
 static bool input_tilt_stick_mouse = false;
 static bool input_throttle_stick_mouse = false;
 static int input_throttle_stick_ndetents = 0;
+static bool input_left_stick_4way = false;
+static bool input_right_stick_4way = false;
+static bool input_tilt_stick_4way = false;
 
 static void cm33_irq(exception_regs *, uint64_t);
 
@@ -366,7 +369,31 @@ static void *cm33_manager_thread(void *)
         {
             cm33_send_cmd(CM33_DK_CMD_CLEAR_THROTTLE_STICK_MOUSE);
         }
-        
+        if(input_left_stick_4way && !(dk->sr & CM33_DK_SR_LEFT_STICK_4WAY))
+        {
+            cm33_send_cmd(CM33_DK_CMD_LEFT_STICK_4WAY);
+        }
+        else if(!input_left_stick_4way && (dk->sr & CM33_DK_SR_LEFT_STICK_4WAY))
+        {
+            cm33_send_cmd(CM33_DK_CMD_LEFT_STICK_8WAY);
+        }
+        if(input_right_stick_4way && !(dk->sr & CM33_DK_SR_RIGHT_STICK_4WAY))
+        {
+            cm33_send_cmd(CM33_DK_CMD_RIGHT_STICK_4WAY);
+        }
+        else if(!input_right_stick_4way && (dk->sr & CM33_DK_SR_RIGHT_STICK_4WAY))
+        {
+            cm33_send_cmd(CM33_DK_CMD_RIGHT_STICK_8WAY);
+        }
+        if(input_tilt_stick_4way && !(dk->sr & CM33_DK_SR_TILT_STICK_4WAY))
+        {
+            cm33_send_cmd(CM33_DK_CMD_TILT_STICK_4WAY);
+        }
+        else if(!input_tilt_stick_4way && (dk->sr & CM33_DK_SR_TILT_STICK_4WAY))
+        {
+            cm33_send_cmd(CM33_DK_CMD_TILT_STICK_8WAY);
+        }
+
         auto sr_ndetents = (int)((dk->sr & CM33_DK_SR_THROTTLE_STICK_DETENT_MASK) >>
             CM33_DK_SR_THROTTLE_STICK_DETENT_SHIFT);
         if(sr_ndetents != input_throttle_stick_ndetents)
@@ -507,6 +534,24 @@ int cm33_set_tilt_stick_mouse(bool en)
 int cm33_set_throttle_stick_mouse(bool en)
 {
     input_throttle_stick_mouse = en;
+    return 0;
+}
+
+int cm33_set_left_stick_4way(bool en)
+{
+    input_tilt_stick_4way = en;
+    return 0;
+}
+
+int cm33_set_right_stick_4way(bool en)
+{
+    input_right_stick_4way = en;
+    return 0;
+}
+
+int cm33_set_tilt_stick_4way(bool en)
+{
+    input_tilt_stick_4way = en;
     return 0;
 }
 

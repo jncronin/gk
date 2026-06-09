@@ -84,6 +84,7 @@ class digi_joy
         static const unsigned int right = 1U << 1;
         static const unsigned int up = 1U << 2;
         static const unsigned int down = 1U << 3;
+        bool no_diagonals = false;
 
         digi_joy(const int16_t *_x, const int16_t *_y, int16_t _deadzone = 8000) :
             x(_x), y(_y)
@@ -114,41 +115,69 @@ class digi_joy
             ang = std::atan2(-cy, cx);
 
             // check all angles
-            if(ang > (float)M_PI * 7.0f / 8.0f)
+            if(!no_diagonals)
             {
-                btns = left;
-            }
-            else if(ang > (float)M_PI * 5.0f / 8.0f)
-            {
-                btns = left | up;
-            }
-            else if(ang > (float)M_PI * 3.0f / 8.0f)
-            {
-                btns = up;
-            }
-            else if(ang > (float)M_PI * 1.0f / 8.0f)
-            {
-                btns = right | up;
-            }
-            else if(ang > (float)M_PI * -1.0f / 8.0f)
-            {
-                btns = right;
-            }
-            else if(ang > (float)M_PI * -3.0f / 8.0f)
-            {
-                btns = right | down;
-            }
-            else if(ang > (float)M_PI * -5.0f / 8.0f)
-            {
-                btns = down;
-            }
-            else if(ang > (float)M_PI * -7.0f / 8.0f)
-            {
-                btns = left | down;
+                // check all 8 possible directions
+                if(ang > (float)M_PI * 7.0f / 8.0f)
+                {
+                    btns = left;
+                }
+                else if(ang > (float)M_PI * 5.0f / 8.0f)
+                {
+                    btns = left | up;
+                }
+                else if(ang > (float)M_PI * 3.0f / 8.0f)
+                {
+                    btns = up;
+                }
+                else if(ang > (float)M_PI * 1.0f / 8.0f)
+                {
+                    btns = right | up;
+                }
+                else if(ang > (float)M_PI * -1.0f / 8.0f)
+                {
+                    btns = right;
+                }
+                else if(ang > (float)M_PI * -3.0f / 8.0f)
+                {
+                    btns = right | down;
+                }
+                else if(ang > (float)M_PI * -5.0f / 8.0f)
+                {
+                    btns = down;
+                }
+                else if(ang > (float)M_PI * -7.0f / 8.0f)
+                {
+                    btns = left | down;
+                }
+                else
+                {
+                    btns = left;
+                }
             }
             else
             {
-                btns = left;
+                // just check up/down/left/right i.e. 90 degree segments
+                if(ang > (float)M_PI * 3.0f / 4.0f)
+                {
+                    btns = left;
+                }
+                else if(ang > (float)M_PI * 1.0f / 4.0f)
+                {
+                    btns = up;
+                }
+                else if(ang > (float)M_PI * -1.0f / 4.0f)
+                {
+                    btns = right;
+                }
+                else if(ang > (float)M_PI * -3.0f / 4.0f)
+                {
+                    btns = down;
+                }
+                else
+                {
+                    btns = left;
+                }
             }
         }
 };
@@ -669,6 +698,42 @@ static void tick()
                     dk.sr = dk.sr & ~CM33_DK_SR_THROTTLE_STICK_MOUSE;
                 }
                 break;
+            case CM33_DK_CMD_LEFT_STICK_8WAY:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_LEFT_STICK_4WAY;
+                }
+                break;
+            case CM33_DK_CMD_LEFT_STICK_4WAY:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_LEFT_STICK_4WAY;
+                }
+                break;
+            case CM33_DK_CMD_RIGHT_STICK_8WAY:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_RIGHT_STICK_4WAY;
+                }
+                break;
+            case CM33_DK_CMD_RIGHT_STICK_4WAY:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_RIGHT_STICK_4WAY;
+                }
+                break;
+            case CM33_DK_CMD_TILT_STICK_8WAY:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr & ~CM33_DK_SR_TILT_STICK_4WAY;
+                }
+                break;
+            case CM33_DK_CMD_TILT_STICK_4WAY:
+                {
+                    UninterruptibleGuard ug;
+                    dk.sr = dk.sr | CM33_DK_SR_TILT_STICK_4WAY;
+                }
+                break;
         }
 
         if(dk.cr >= CM33_DK_CMD_THROTTLE_STICK_DETENT &&
@@ -691,13 +756,19 @@ static void tick()
             (((unsigned int)ioexp_vals[1]) << 8);
     }
 
-    joystick_tick();
-
     uint32_t sr;
     {
         UninterruptibleGuard ug;
         sr = dk.sr;
     }
+
+    // set 4/8 way digital debounce
+    dj_A.no_diagonals = (sr & CM33_DK_SR_LEFT_STICK_4WAY) != 0;
+    dj_B.no_diagonals = (sr & CM33_DK_SR_RIGHT_STICK_4WAY) != 0;
+    dj_TILT.no_diagonals = (sr & CM33_DK_SR_TILT_STICK_4WAY) != 0;
+
+    joystick_tick();
+
 
     if(sr & CM33_DK_SR_TILT_ENABLE)
     {

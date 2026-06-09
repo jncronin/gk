@@ -461,18 +461,22 @@ int SetFocusProcess(PProcess p)
     memset(kinfo->joystick_axes, 0, sizeof(kinfo->joystick_axes));
     memset(kinfo->mouse_axes, 0, sizeof(kinfo->mouse_axes));
 
-    set_joystick_mapping(p->keymap.left_stick,
+    set_joystick_mapping(p->keymap.left_stick & GK_STICK_LOW_MASK,
         (int16_t *)(GK_JOYSTICK_ADDRESS),
         (int16_t *)(GK_JOYSTICK_ADDRESS + 4));
-    set_joystick_mapping(p->keymap.right_stick,
+    set_joystick_mapping(p->keymap.right_stick & GK_STICK_LOW_MASK,
         (int16_t *)(GK_JOYSTICKB_ADDRESS),
         (int16_t *)(GK_JOYSTICKB_ADDRESS + 4));
-    set_joystick_mapping(p->keymap.tilt_stick,
+    set_joystick_mapping(p->keymap.tilt_stick & GK_STICK_LOW_MASK,
         (int16_t *)(GK_TILT_ADDRESS),
         (int16_t *)(GK_TILT_ADDRESS + 4));
-    set_joystick_mapping(p->keymap.throttle_stick,
+    set_joystick_mapping(p->keymap.throttle_stick & GK_STICK_LOW_MASK,
         (int16_t *)(GK_THROTTLE_ADDRESS + 4),
         (int16_t *)(GK_THROTTLE_ADDRESS + 4));
+
+    cm33_set_left_stick_4way((p->keymap.left_stick & GK_STICK_4WAY) != 0);
+    cm33_set_right_stick_4way((p->keymap.right_stick & GK_STICK_4WAY) != 0);
+    cm33_set_tilt_stick_4way((p->keymap.tilt_stick & GK_STICK_4WAY) != 0);
 
     unsigned int nbuttons = 0;
     for(auto i = 0U; i < GK_NUMKEYS; i++)
