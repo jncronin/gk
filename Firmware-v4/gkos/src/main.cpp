@@ -137,6 +137,7 @@ extern "C" int mp_kmain(const gkos_boot_interface *_gbi, uint64_t magic)
         PMemBlock pmb_cursor48 = Pmem.acquire(48*48*4);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overread"
+#pragma GCC diagnostic ignored "-Warray-bounds"
         memcpy((void *)PMEM_TO_VMEM_NC(pmb_cursor48.base), (void *)&img_cursor48, 48*48*4);
 #pragma GCC diagnostic pop
         f_cursor48 = std::make_shared<DMABufFile>(pmb_cursor48, p_kernel);
