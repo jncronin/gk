@@ -219,7 +219,7 @@ uint64_t TranslationFault_Handler(bool user, bool write, bool exec, uint64_t far
         __asm__ volatile("msr daifclr, #0b0010\n" ::: "memory");
 
         auto [t, p] = GetCurrentThreadProcessForCore();
-        if(t == nullptr)
+        if(t == nullptr || p == nullptr)
         {
             klog("pf: lower half from kernel init\n");
             return SupervisorThreadFault();
