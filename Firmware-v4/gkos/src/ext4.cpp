@@ -113,12 +113,14 @@ static int do_mount()
     if(r != EOK)
     {
         klog("ext4: recover failed %d\n", r);
+        return r;
     }
 
     r = ext4_journal_start("/");
     if(r != EOK)
     {
         klog("ext4: journal_start failed %d\n", r);
+        return r;
     }
 #endif
 #endif
@@ -144,7 +146,10 @@ static int check_mounted()
     if(usb_israwsd)
         return -1;
     if(unmounted)
-        prepare_ext4();
+    {
+        if(prepare_ext4())
+            return -1;
+    }
     if(unmounted)
         return -1;
     else
