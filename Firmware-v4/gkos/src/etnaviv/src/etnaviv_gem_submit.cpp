@@ -447,7 +447,10 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	std::shared_ptr<etnaviv_gem_submit> submit;
 	std::shared_ptr<drm_file> fil = file;
 	int out_fence_fd = -1;
-	auto pid = GetCurrentProcessForCore()->id;
+	auto p = GetCurrentProcessForCore();
+	if(!p)
+		return -1;
+	auto pid = p->id;
 	int ret = 0;
 	WaitWoundContext ticket;
 
@@ -515,7 +518,6 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	memcpy(stream.get(), (void *)args->stream, args->stream_size);
 
 	if (args->flags & ETNA_SUBMIT_FENCE_FD_OUT) {
-		auto p = GetCurrentProcessForCore();
 		CriticalGuard cg(p->open_files.sl);
 		out_fence_fd = p->open_files.get_free_fildes();
 		if (out_fence_fd < 0) {
@@ -670,7 +672,6 @@ err_submit_ww_acquire:
 err_submit_cmds:
 	if (ret && (out_fence_fd >= 0))
 	{
-		auto p = GetCurrentProcessForCore();
 		CriticalGuard cg(p->open_files.sl);
 		p->open_files.f[out_fence_fd] = nullptr;
 	}

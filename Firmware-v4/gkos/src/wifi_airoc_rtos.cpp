@@ -101,6 +101,10 @@ cy_rslt_t cy_rtos_mutex_init(cy_mutex_t* mutex, bool recursive)
     }
     
     auto p = GetCurrentProcessForCore();
+    if(!p)
+    {
+        return CY_FAIL;
+    }
     *mutex = p->owned_mutexes.add(m);
     
     return CY_RSLT_SUCCESS;
