@@ -396,7 +396,7 @@ typedef int irqreturn_t;
 class Etnaviv_pm_control : public pm_control
 {
 	public:
-		int enable();
+		int enable(unsigned int voltage = 0);
 		int disable();
 };
 

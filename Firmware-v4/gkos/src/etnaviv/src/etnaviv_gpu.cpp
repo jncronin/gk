@@ -1664,7 +1664,7 @@ static int etnaviv_gpu_clk_enable(struct etnaviv_gpu &gpu)
 	if(gpu.clk_core)
 		gpu.clk_core->enable();
 	if(gpu.clk_shader)
-		gpu.clk_core->enable();
+		gpu.clk_shader->enable();
 
 	return 0;
 }
@@ -1794,8 +1794,8 @@ int etnaviv_gpu_combined_init(etnaviv_gpu &dev)
 	dev.clk_bus = std::make_unique<Etnaviv_bus_clock>();
 	dev.clk_core = std::make_unique<Etnaviv_core_clock>();
 	dev.clk_shader = nullptr;
-	dev.base_rate_core = 800000000;
-	dev.base_rate_shader = 800000000;
+	dev.base_rate_core = 900000000;
+	dev.base_rate_shader = 900000000;
 
 	/* Power on */
 	dev.pm->enable();

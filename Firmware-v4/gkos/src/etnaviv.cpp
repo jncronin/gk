@@ -70,12 +70,14 @@ void init_etnaviv()
 #endif
 }
 
-int Etnaviv_pm_control::enable()
+int Etnaviv_pm_control::enable(unsigned int voltage)
 {
-    if(PWR_VMEM->CR12 & PWR_CR12_VDDGPURDY)
-        return 0;
+    if(voltage < 800)
+        voltage = 800;
+    if(voltage > 961)
+        voltage = 961;
     
-    pmic_set_power(PMIC_Power_Target::GPU, 800);
+    pmic_set_power(PMIC_Power_Target::GPU, voltage);
     udelay(1000);
     PWR_VMEM->CR12 |= PWR_CR12_GPUVMEN;
     __DSB();
@@ -180,19 +182,33 @@ int Etnaviv_core_clock::enable(uint64_t new_freq)
         new_freq = 800000000;
     freq = new_freq;
 
+    RCC_VMEM->PLL3CFGR1 &= ~RCC_PLL3CFGR1_PLLEN;
+    __DSB();
+    while(RCC_VMEM->PLL3CFGR1 & RCC_PLL3CFGR1_PLLRDY);
+
     // set reference clock to HSE40
     RCC_VMEM->MUXSELCFGR = (RCC_VMEM->MUXSELCFGR & ~RCC_MUXSELCFGR_MUXSEL7_Msk) |
         (1U << RCC_MUXSELCFGR_MUXSEL7_Pos);
     __DSB();
 
-    if(freq != 800000000)
+    if(freq != 800000000 && freq != 900000000)
     {
-        klog("GPU frequencies other than 800 MHz not yet implemented (%llu requested)\n",
+        klog("GPU frequencies other than 800/900 MHz not yet implemented (%llu requested)\n",
             freq);
+        freq = 800000000;
     }
 
+    if(freq > 800000000)
+    {
+        // overdrive voltage range
+        Etnaviv_pm_control pmc;
+        pmc.enable(900);
+    }
+
+    unsigned int fbdiv = freq / 10000000u;
+
     RCC_VMEM->PLL3CFGR2 = (2UL << RCC_PLL3CFGR2_FREFDIV_Pos) |
-        (80UL << RCC_PLL3CFGR2_FBDIV_Pos);
+        (fbdiv << RCC_PLL3CFGR2_FBDIV_Pos);
     RCC_VMEM->PLL3CFGR3 = 0x04000000;
     RCC_VMEM->PLL3CFGR4 = 0x00000200;
     RCC_VMEM->PLL3CFGR5 = 0;
@@ -203,7 +219,13 @@ int Etnaviv_core_clock::enable(uint64_t new_freq)
     __DSB();
     while(!(RCC_VMEM->PLL3CFGR1 & RCC_PLL3CFGR1_PLLRDY));
 
-    klog("GPU core clock enabled\n");
+    klog("GPU core clock enabled @ %u MHz\n", freq / 1000000U);
+
+    if(freq <= 800000000)
+    {
+        Etnaviv_pm_control pmc;
+        pmc.enable(800);
+    }
 
     return 0;
 }

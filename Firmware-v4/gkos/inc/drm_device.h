@@ -8,7 +8,7 @@
 class pm_control
 {
 	public:
-		virtual int enable() = 0;
+		virtual int enable(unsigned int voltage = 0) = 0;
 		virtual int disable() = 0;
 };
 
