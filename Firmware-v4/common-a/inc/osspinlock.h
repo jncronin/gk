@@ -8,6 +8,13 @@
 #include <array>
 #include "logger.h"
 
+static inline unsigned int get_core_id()
+{
+    uint64_t mpidr_el1;
+    __asm__ volatile("mrs %[mpidr_el1], mpidr_el1\n" : [mpidr_el1] "=r" (mpidr_el1));
+    return (unsigned int)(mpidr_el1 & 0xffU);
+}
+
 typedef uint64_t interrupt_state_t;
 
 inline __attribute__((always_inline)) static interrupt_state_t DisableInterrupts()
@@ -62,14 +69,22 @@ class CriticalGuard
         using sl_t = std::tuple_element_t<0, std::tuple<Spinlock_t...>>;
         std::array<bool, sizeof...(Spinlock_t)> locked = {};
 
+        // Variable backoff logic
+        const unsigned int base_window = 16;
+        const unsigned int max_window = 1024;
+        const unsigned int core_step = 8;
+        unsigned int prng_state, current_window = base_window;
+
     public:
         CriticalGuard(Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false), _try_only(false)
         {
+            prng_state = (unsigned int)(uintptr_t)this;
             relock();
         }
 
         CriticalGuard(bool try_once, Spinlock_t &... args) : sl(args...), is_locked(false), has_disabled_ints(false), _try_only(try_once)
         {
+            prng_state = (unsigned int)(uintptr_t)this;
             relock();
         }
 
@@ -92,6 +107,8 @@ class CriticalGuard
                     return;
                 }
 
+                unsigned int core_id = get_core_id();
+
                 i = 0U;
                 std::apply([&](Spinlock_t &... apply_args) { (... , apply_args.unlock(locked[i++])); }, sl);
                 restore_interrupts();
@@ -101,6 +118,18 @@ class CriticalGuard
                     // only try once - code can see if we're locked by using IsLocked()
                     return;
                 }
+
+                // Variable backoff logic
+
+                // XORshift prng
+                prng_state ^= prng_state << 13;
+                prng_state ^= prng_state >> 7;
+                prng_state ^= prng_state << 17;
+
+                auto delay = prng_state % current_window + core_id * core_step;
+
+                for(auto j = 0u; j < delay; j++)
+                    __asm__ volatile("yield\n" ::: "memory");
             }
         }
 
