@@ -179,7 +179,7 @@ int Etnaviv_core_clock::enable(uint64_t new_freq)
     }
 
     if(new_freq == ~0ULL)
-        new_freq = 800000000;
+        new_freq = GK_GPU_MHZ * 1000000;
     freq = new_freq;
 
     RCC_VMEM->PLL3CFGR1 &= ~RCC_PLL3CFGR1_PLLEN;
@@ -191,7 +191,7 @@ int Etnaviv_core_clock::enable(uint64_t new_freq)
         (1U << RCC_MUXSELCFGR_MUXSEL7_Pos);
     __DSB();
 
-    if(freq != 800000000 && freq != 900000000)
+    if(freq < 400000000 || freq > 1000000000)
     {
         klog("GPU frequencies other than 800/900 MHz not yet implemented (%llu requested)\n",
             freq);

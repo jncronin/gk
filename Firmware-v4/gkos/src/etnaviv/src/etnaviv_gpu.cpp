@@ -1794,8 +1794,8 @@ int etnaviv_gpu_combined_init(etnaviv_gpu &dev)
 	dev.clk_bus = std::make_unique<Etnaviv_bus_clock>();
 	dev.clk_core = std::make_unique<Etnaviv_core_clock>();
 	dev.clk_shader = nullptr;
-	dev.base_rate_core = 900000000;
-	dev.base_rate_shader = 900000000;
+	dev.base_rate_core = GK_GPU_MHZ * 1000000;
+	dev.base_rate_shader = GK_GPU_MHZ * 1000000;
 
 	/* Power on */
 	dev.pm->enable();
