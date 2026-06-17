@@ -3,9 +3,40 @@
 
 #include <cstdint>
 #include <cstring>
+
+#ifndef __GK_UNIT_TEST__
 #include "osmutex.h"
 #include "logger.h"
 #include "ostypes.h"
+#else
+#include <atomic>
+#include <cstdio>
+class Spinlock
+{
+protected:
+    std::atomic<bool> is_locked = false;
+
+public:
+    void lock() { while (is_locked); is_locked = true; }
+    void unlock() { is_locked = false; }
+};
+
+#define klog printf
+
+static int DisableInterrupts()
+{
+    return 0;
+}
+
+static void RestoreInterrupts(int) {}
+
+#include <bit>
+static int __builtin_clzll(uint64_t x)
+{
+    return std::countl_zero(x);
+}
+
+#endif
 
 constexpr static bool is_power_of_2(uint64_t v)
 {
