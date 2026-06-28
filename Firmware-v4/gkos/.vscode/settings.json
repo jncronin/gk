@@ -1,6 +1,7 @@
 {
     "cmake.configureSettings": {
         "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/../cmake/toolchain-a35-hosted.cmake",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
     },
     "cortex-debug.armToolchainPrefix": "aarch64-none-elf",
     "files.associations": {
