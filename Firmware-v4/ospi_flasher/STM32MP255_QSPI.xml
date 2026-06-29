@@ -1,0 +1,8 @@
+<Database>
+    <Device InheritFrom="STM32MP255F_A35_0">
+        <ChipInfo Name="STM32MP257F_A35_0_GK_Loader" />
+        <FlashBankInfo Name="QSPI" BaseAddr="0x60000000" AlwaysPresent="1">
+            <LoaderInfo Name="JC Loader" MaxSize="0x10000000" Loader="c:\Users\jncro\source\repos\gk\Firmware-v4\ospi_flasher\build\ospi_flasher.FLM" LoaderType="FLASH_ALGO_TYPE_OPEN" />
+        </FlashBankInfo>
+    </Device>
+</Database>

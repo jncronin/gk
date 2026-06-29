@@ -596,3 +596,4 @@ jlink-log.txt
 !Firmware-v4/gkos/libstdc++.a
 !Firmware-v4/gkos/libsupc++.a
 *.chitubox
+!Firmware-v4/ospi_flasher/STM32MP255_QSPI.xml
