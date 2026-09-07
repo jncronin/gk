@@ -8,6 +8,7 @@
 #include "osqueue.h"
 #include "process.h"
 #include "supervisor.h"
+#include "gk_conf.h"
 
 #define RISAF2_VMEM ((RISAF_TypeDef *)PMEM_TO_VMEM(RISAF2_BASE))
 #define RAMCFG_VMEM ((RAMCFG_TypeDef *)PMEM_TO_VMEM(RAMCFG_BASE))
@@ -16,6 +17,7 @@
 #define RISAB2_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB2_BASE))
 #define RISAB3_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB3_BASE))
 #define RISAB4_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB4_BASE))
+#define RISAB5_VMEM ((RISAB_TypeDef *)PMEM_TO_VMEM(RISAB5_BASE))
 #define RISC_VMEM ((RISC_TypeDef *)PMEM_TO_VMEM(RISC_BASE))
 #define CA35SYSCFG_VMEM ((CA35SYSCFG_TypeDef *)PMEM_TO_VMEM(CA35SYSCFG_BASE))
 #define EXTI1_VMEM ((EXTI_TypeDef *)PMEM_TO_VMEM(EXTI1_BASE))
@@ -66,7 +68,11 @@ static void sram_setup()
     __asm__ volatile ("dsb sy\n" ::: "memory");
 
     // RISAB3 (SRAM1) and RISAB4 (SRAM2) each have 32 pages of 8 blocks each
-    for(auto risab : { RISAB1_VMEM, RISAB2_VMEM, RISAB3_VMEM, RISAB4_VMEM })
+    for(auto risab : { RISAB1_VMEM, RISAB2_VMEM, RISAB3_VMEM, RISAB4_VMEM
+#if GK_CM33_ACCESS_RISAB5
+        , RISAB5_VMEM
+#endif
+    })
     {
         for(unsigned int page = 0; page < 32; page++)
         {
@@ -79,11 +85,12 @@ static void sram_setup()
         }
 
         // Give unprivileged (SRAM1) or privileged (SRAM2) read/write access to CIDs 0,1,2
+        //  RISAB5 (RETRAM) is read only if access is enabled
         for(unsigned int cid = 0; cid < 3; cid++)
         {
             risab->CID[cid].PRIVCFGR = (risab == RISAB3_VMEM) ? 0U : 0xffffffffU;
             risab->CID[cid].RDCFGR = 0xffffffffU;
-            risab->CID[cid].WRCFGR = 0xffffffffU;
+            risab->CID[cid].WRCFGR = (risab == RISAB5_VMEM) ? 0U : 0xffffffffU;
         }
     }
 
