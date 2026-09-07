@@ -76,6 +76,11 @@ int klogbuffer_purge_uart()
 
 ssize_t log_fwrite(const void *buf, size_t count)
 {
+    if(retram->klog.magic != KLOGMAGIC)
+    {
+        return -1;
+    }
+
     auto fret = retram->klog.b_file.write(buf, count);
     auto uret = retram->klog.b_uart.write(buf, count);
 
