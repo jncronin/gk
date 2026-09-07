@@ -117,6 +117,11 @@ int main(uint32_t bootrom_val)
             while(true);
         }
 
+        /* Set ponkey longpress delay to 3s */
+        auto pkey_lkp_cr = pmic_read_register(0x12);
+        pkey_lkp_cr = (pkey_lkp_cr & ~0xfu) | 0x2u;
+        pmic_write_register(0x12, pkey_lkp_cr);
+
         // say hi if reset via CPU or via NRST
         if(reset_sr == 0x40 || reset_sr == 0x01)
         {
