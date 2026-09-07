@@ -302,6 +302,10 @@ void Scheduler::StartForCurrentCore [[noreturn]] ()
 
     // switch to first thread by triggering SVC1
     __asm__ volatile(
+        "isb\n"
+        "tlbi vmalle1\n"
+        "dsb ish\n"
+        "isb \n"
         "msr tpidr_el1, xzr\n"
         "msr tpidr_el0, xzr\n"
         "msr daifclr, #0xf\n"
