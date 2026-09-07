@@ -756,8 +756,12 @@ static void tick()
     auto &i2c1 = i2c(1);
     if(i2c1.RegisterRead(0x20, (uint8_t)0, ioexp_vals, 2) == 2)
     {
-        ioexp_keystate = (unsigned int)ioexp_vals[0] |
-            (((unsigned int)ioexp_vals[1]) << 8);
+        // catch debug version with no buttons
+        if(ioexp_vals[0] || (ioexp_vals[1] & 0x7f))
+        {
+            ioexp_keystate = (unsigned int)ioexp_vals[0] |
+                (((unsigned int)ioexp_vals[1]) << 8);
+        }
     }
 
     uint32_t sr;
