@@ -280,6 +280,6 @@ void start_ap(unsigned int ap_no)
         [epoint] "r" (ap_epoint),
         [ap_stack] "r" (vm_ap_stack.data_end())
         :
-        "x0", "x1", "x2", "x3", "x4", "x5"
+        "x0", "x1", "x2", "x3", "x4", "x5", "x6"
     );
 }
