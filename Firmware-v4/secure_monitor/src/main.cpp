@@ -202,11 +202,12 @@ extern "C" void ap_kmain(uint64_t magic)
                 tcr_el1 |= (0x3ULL << 28);                      // shareable page tables
                 tcr_el1 |= 3ULL << 30;                  // 64 kiB granule
                 tcr_el1 |= 2ULL << 32;                  // intermediate physical address 40 bits
-                tcr_el1 |= (0x1ULL << 3) | (0x1ULL << 10);
+                tcr_el1 |= (0x1ULL << 8) | (0x1ULL << 10);
                 tcr_el1 |= (0x3ULL << 12);
                 tcr_el1 |= (0x1ULL << 36);
                 tcr_el1 |= (0x1ULL << 14);
-                tcr_el1 |= (0x1ULL << 7);
+                tcr_el1 |= (0x1ULL << 7);               // disable lower half for now
+                tcr_el1 |= (64ULL - 42ULL) << 0;        // 42 bit lower half paging
 
 
             __asm__ volatile(
