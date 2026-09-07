@@ -90,7 +90,7 @@ static void sram_setup()
         {
             risab->CID[cid].PRIVCFGR = (risab == RISAB3_VMEM) ? 0U : 0xffffffffU;
             risab->CID[cid].RDCFGR = 0xffffffffU;
-            risab->CID[cid].WRCFGR = (risab == RISAB5_VMEM) ? 0U : 0xffffffffU;
+            risab->CID[cid].WRCFGR = (risab == RISAB5_VMEM && cid == 2) ? 0U : 0xffffffffU;
         }
     }
 
