@@ -416,7 +416,12 @@ void vmem_invlpg(uintptr_t vaddr, uintptr_t ttbr)
     // All ttbr1 pages are marked as global, vae1s ignores the asid here and instead acts like vaae1s
     __asm__ volatile(
         "dsb ish\n"
+#if GK_NUM_CORES == 1
         "tlbi vae1, %[addr_enc]\n"
+#else
+        "tlbi vae1is, %[addr_enc]\n"
+#endif
+
         "dsb ish\n"
         "isb\n"
         : :
