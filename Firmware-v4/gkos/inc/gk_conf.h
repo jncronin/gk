@@ -58,7 +58,7 @@
 /* Set to allow CM33 to access RETRAM so debuggers attached to it can see log messages */
 #define GK_CM33_ACCESS_RISAB5       1
 
-#define GK_TLBI_AFTER_TTBR_CHANGE   1
+#define GK_TLBI_AFTER_TTBR_CHANGE   0
 
 #define GK_DEBUG_BLOCKING           1
 
