@@ -5714,7 +5714,7 @@
 				)
 			)
 		)
-		(property "Footprint" "oled_lib:OLED_0_5inch_14pin"
+		(property "Footprint" "oled_lib:FPC_0.62mm_14pin"
 			(at 132.08 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -7713,7 +7713,7 @@
 				)
 			)
 		)
-		(property "Footprint" "oled_lib:OLED_0_5inch_14pin"
+		(property "Footprint" "oled_lib:FPC_0.62mm_14pin"
 			(at 30.48 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -10394,7 +10394,7 @@
 				)
 			)
 		)
-		(property "Footprint" "oled_lib:OLED_0_5inch_14pin"
+		(property "Footprint" "oled_lib:FPC_0.62mm_14pin"
 			(at 81.28 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -11223,7 +11223,7 @@
 				)
 			)
 		)
-		(property "Footprint" "oled_lib:OLED_0_5inch_14pin"
+		(property "Footprint" "oled_lib:FPC_0.62mm_14pin"
 			(at 182.88 25.4 0)
 			(hide yes)
 			(show_name no)

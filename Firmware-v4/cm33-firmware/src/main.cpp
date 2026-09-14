@@ -15,6 +15,7 @@
 #include "task.h"
 
 #include "ctp.h"
+#include "oled.h"
 
 #include "interface/cm33_data.h"
 
@@ -394,6 +395,8 @@ int main()
     NVIC_SetPriority(TIM6_IRQn, 8);     // check this - we have 4 priority bits
     NVIC_EnableIRQ(TIM6_IRQn);
     __enable_irq();
+
+    init_oled();
 
     xTaskCreate(readsensors_task, "sensors", 2048, nullptr, configMAX_PRIORITIES - 1,
         &task_readsensors);
