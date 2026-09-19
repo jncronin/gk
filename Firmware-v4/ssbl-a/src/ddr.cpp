@@ -237,18 +237,18 @@ void ddr_set_mt(uint32_t mt)
 
     // Aim for 8x target and post divide to give a reasonable VCO value.
     uint32_t divider = 8;
-    uint32_t vco_val = 0;
+    uint64_t vco_val = 0;
     while(divider > 0 && divider <= 16)
     {
-        vco_val = pll2_freq * divider;
+        vco_val = (uint64_t)pll2_freq * (uint64_t)divider;
         if(vco_val < 800000000)
         {
-            divider /= 2;
+            divider *= 2;
             continue;
         }
         if(vco_val > 3200000000)
         {
-            divider *= 2;
+            divider /= 2;
             continue;
         }
         break;
