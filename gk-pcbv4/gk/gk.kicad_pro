@@ -454,7 +454,12 @@
     "equivalence_files": []
   },
   "erc": {
-    "erc_exclusions": [],
+    "erc_exclusions": [
+      [
+        "pin_to_pin|2159000|1143000|a927f4d0-8f2b-4e07-9619-bf5c2b797cfd|f809132c-18cc-4202-bacf-62652bc9c89b|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d|/a049c72e-5361-408c-ab21-661d491fee9d/2403dd54-21d5-4af4-8b44-b803e4ca621d",
+        ""
+      ]
+    ],
     "meta": {
       "version": 0
     },
@@ -639,11 +644,14 @@
       "duplicate_sheet_names": "error",
       "endpoint_off_grid": "warning",
       "extra_units": "error",
+      "field_name_whitespace": "warning",
       "footprint_filter": "ignore",
       "footprint_link_issues": "warning",
       "four_way_junction": "ignore",
       "global_label_dangling": "warning",
+      "ground_pin_not_ground": "warning",
       "hier_label_mismatch": "error",
+      "isolated_pin_label": "warning",
       "label_dangling": "error",
       "label_multiple_wires": "warning",
       "lib_symbol_issues": "warning",
@@ -666,6 +674,7 @@
       "similar_power": "warning",
       "simulation_model_issue": "ignore",
       "single_global_label": "ignore",
+      "stacked_pin_name": "warning",
       "unannotated": "error",
       "unconnected_wire_endpoint": "warning",
       "undefined_netclass": "error",
@@ -951,6 +960,10 @@
   },
   "schematic": {
     "annotate_start_num": 0,
+    "annotation": {
+      "method": 0,
+      "sort_order": 0
+    },
     "bom_export_filename": "${PROJECTNAME}.csv",
     "bom_fmt_presets": [],
     "bom_fmt_settings": {
@@ -1030,6 +1043,7 @@
       "default_line_thickness": 6.0,
       "default_text_size": 50.0,
       "field_names": [],
+      "hop_over_size_choice": 0,
       "intersheets_ref_own_page": false,
       "intersheets_ref_prefix": "",
       "intersheets_ref_short": false,
@@ -1053,6 +1067,7 @@
     "net_format_name": "",
     "page_layout_descr_file": "",
     "plot_directory": "",
+    "reuse_designators": true,
     "space_save_all_events": true,
     "spice_current_sheet_as_root": false,
     "spice_external_command": "spice \"%I\"",
@@ -1066,14 +1081,16 @@
       {
         "filename": "gk.kicad_sch",
         "name": "gk",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "a049c72e-5361-408c-ab21-661d491fee9d"
       }
-    ]
+    ],
+    "used_designators": "#PWR301",
+    "variants": []
   },
   "sheets": [
     [
       "a049c72e-5361-408c-ab21-661d491fee9d",
-      "Root"
+      "gk"
     ],
     [
       "5d3e3f87-3a06-4a9c-997c-b1d3247d6a4d",
