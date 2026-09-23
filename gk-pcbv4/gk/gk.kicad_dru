@@ -1,35 +1,29 @@
 (version 1)
 (rule "ddr_dqs2_length"
 	(condition "A.NetClass == 'DDR_DQS2'")
-	(constraint length (opt 25.42mm) (min 25.52mm) (max 26.62mm))
-	(constraint skew (max 1mil))
-)
-(rule "ddr_data2_length"
-	(condition "A.NetClass == 'DDR_DATA2'")
-	(constraint length (min 25.02mm) (opt 25.52mm) (max 26.02mm))
+	(constraint skew (max 6mil))
 )
 (rule "ddr_dqs1_length"
 	(condition "A.NetClass == 'DDR_DQS1'")
-	(constraint length (opt 26.03mm) (min 26.23mm) (max 26.43mm))
-	(constraint skew (max 1mil))
+	(constraint skew (max 6mil))
 )
-(rule "ddr_data1_length"
-	(condition "A.NetClass == 'DDR_DATA1'")
-	(constraint length (min 25.73mm) (opt 26.23mm) (max 26.73mm))
+(rule "ddr_dqs3_length"
+	(condition "A.NetClass == 'DDR_DQS3'")
+	(constraint skew (max 6mil))
+)
+(rule "ddr_dqs4_length"
+	(condition "A.NetClass == 'DDR_DQS4'")
+	(constraint skew (max 6mil))
 )
 (rule "ddr_ck_length"
-	(condition "A.NetClass == 'DDR_CLK'")
-	(constraint length (opt 34.3mm) (min 34.5mm) (max 34.7mm))
-	(constraint skew (max 1mil))
+	(condition "A.NetClass == 'DDR_CLK_A'")
+	(constraint skew (max 6mil))
 )
-(rule "ddr_ca_length"
-	(condition "A.NetClass == 'DDR_CA'")
-	(constraint length (min 34.0mm) (opt 34.5mm) (max 35.0mm))
+(rule "ddr_ck_b_length"
+	(condition "A.NetClass == 'DDR_CLK_B'")
+	(constraint skew (max 6mil))
 )
-(rule "trace_length"
-	(condition "A.NetClass == 'TRACE'")
-	(constraint length (min 38.15mm) (opt 38.3mm) (max 38.45mm))
-)
+
 (rule "ltdc_length"
 	(condition "A.NetClass == 'LTDC'")
 	(constraint length (min 65mm) (opt 78mm) (max 80mm))
@@ -58,5 +52,5 @@
 
 (rule "sdmmc1_length"
 	(condition "A.NetClass == 'SDMMC1'")
-	(constraint length (min 49mm) (opt 50mm) (max 51mm))
+	(constraint length (min 46mm) (opt 47mm) (max 48mm))
 )

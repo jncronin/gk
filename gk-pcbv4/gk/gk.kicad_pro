@@ -62,7 +62,7 @@
           "hatch_thickness": 1.0,
           "min_clearance": 0.1524,
           "min_island_area": 10.0,
-          "min_thickness": 0.25,
+          "min_thickness": 0.1524,
           "pad_connection": 1,
           "remove_islands": 0,
           "thermal_relief_gap": 0.5,
@@ -90,19 +90,11 @@
           ""
         ],
         [
-          "courtyards_overlap|55613000|136919000|9b253422-6bda-4799-828f-2dc36856aed5|b55467fb-8244-4a21-97dc-40d531b80c03",
-          ""
-        ],
-        [
           "courtyards_overlap|74917000|49289000|79caf32e-5d10-4032-9c42-907f1a5d436f|b681264e-da51-47bc-bada-d78119f1c91d",
           ""
         ],
         [
           "courtyards_overlap|80483491|85199439|26928f3e-085f-4930-a4e0-a961bf77edd9|a2c22804-e4a6-464e-bf4b-5adc6a2b17e7",
-          ""
-        ],
-        [
-          "courtyards_overlap|81393491|85199439|26928f3e-085f-4930-a4e0-a961bf77edd9|da638c27-91f5-42aa-8566-21203726a50d",
           ""
         ],
         [
@@ -118,19 +110,7 @@
           ""
         ],
         [
-          "nonmirrored_text_on_back_layer|120450000|47800000|161a4bc2-8d42-4f54-ab2b-af09291d84be|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "nonmirrored_text_on_back_layer|122450000|47750000|0fa93401-716c-4200-81e9-90549149b9dd|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
           "silk_edge_clearance|106065791|31029439|30867ffd-978a-4d4a-a726-17eaf4b3b758|8b61ebb3-caaf-41cb-941e-d0a9f22886a6",
-          ""
-        ],
-        [
-          "silk_edge_clearance|135688095|31029439|30867ffd-978a-4d4a-a726-17eaf4b3b758|1aa85dc1-5c3d-475d-8d06-d32b3d9c3903",
           ""
         ],
         [
@@ -146,10 +126,6 @@
           ""
         ],
         [
-          "silk_edge_clearance|65688095|31029439|30867ffd-978a-4d4a-a726-17eaf4b3b758|c26b5649-d77c-4113-857e-cd8d936327e8",
-          ""
-        ],
-        [
           "silk_edge_clearance|72578491|31029439|30867ffd-978a-4d4a-a726-17eaf4b3b758|9bb53980-bc9a-4e86-b1e7-0c3bfb29081d",
           ""
         ],
@@ -159,70 +135,6 @@
         ],
         [
           "silk_edge_clearance|96665791|31029439|30867ffd-978a-4d4a-a726-17eaf4b3b758|8a9c53f6-156f-4610-9e95-eaf9dcbe2063",
-          ""
-        ],
-        [
-          "silk_over_copper|108940992|97586939|00f217ba-e214-4bb5-b757-80b8a45368c2|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|110427191|129922956|2f45972d-4f14-40ea-a58e-64033995aeaa|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|118375910|137940000|2986dd74-9103-4861-bd5d-976813ac7c12|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|118410000|129940000|8cc7a301-0724-407b-be90-180b9f5a0f65|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|118410000|137940000|0d3b0b41-5db5-4233-965b-481347dc44f0|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|43029999|128944613|c36180e4-8cd7-4818-a6a7-ec8b33068ac7|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|50227587|55979441|01cbc902-491e-43d1-a98e-03849cdc84a4|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|82048490|84104439|2dc6dfc8-3226-466e-9ec5-0de6ef3d41e4|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|82228491|84370650|6d937460-80b5-424f-aafd-3e2c45ed9244|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|84377191|129922395|471934ee-5a8e-4ec4-b5d6-a2ddf472479e|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|92325910|137939439|3b20a3d4-ba34-4120-877f-40a898f0b4b0|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|92360000|129939439|763ff4a6-576e-4529-89de-faf0632ff27e|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "silk_over_copper|92360000|137939439|a6321900-4292-4636-9225-36b1f0ce5a71|00000000-0000-0000-0000-000000000000",
-          ""
-        ],
-        [
-          "starved_thermal|61704491|77740439|98e9e9a9-959f-49e1-9046-25abee89c57b|fb3e7bf7-eb2a-47d9-b328-c25f86004d10|B.Cu",
-          ""
-        ],
-        [
-          "starved_thermal|61704491|81748439|98e9e9a9-959f-49e1-9046-25abee89c57b|caf73283-4374-4b1a-a978-93779e3f58b9|B.Cu",
-          ""
-        ],
-        [
-          "starved_thermal|79468491|87654439|0cc90b1b-616f-4f3a-87f4-720acdf016d6|d987c26c-d6cb-48d0-85d1-5dd9c27e9e4a|B.Cu",
           ""
         ],
         [
@@ -285,7 +197,7 @@
         "silk_over_copper": "warning",
         "silk_overlap": "ignore",
         "skew_out_of_range": "error",
-        "solder_mask_bridge": "error",
+        "solder_mask_bridge": "warning",
         "starved_thermal": "error",
         "text_height": "warning",
         "text_on_edge_cuts": "error",
@@ -713,38 +625,75 @@
         "wire_width": 6
       },
       {
-        "clearance": 0.254,
-        "name": "DDR_CA",
+        "clearance": 0.199,
+        "name": "DDR_CA_A",
         "pcb_color": "rgb(41, 255, 0)",
-        "priority": 14,
+        "priority": 20,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.19812,
+        "track_width": 0.19,
         "tuning_profile": ""
       },
       {
-        "clearance": 0.254,
+        "clearance": 0.199,
+        "name": "DDR_CA_B",
+        "pcb_color": "rgb(20, 128, 0)",
+        "priority": 4,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.19,
+        "tuning_profile": ""
+      },
+      {
+        "clearance": 0.199,
         "diff_pair_gap": 0.1524,
         "diff_pair_width": 0.13335,
-        "name": "DDR_CLK",
+        "name": "DDR_CLK_A",
         "pcb_color": "rgb(254, 255, 0)",
-        "priority": 15,
+        "priority": 21,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
-        "clearance": 0.2286,
+        "clearance": 0.199,
+        "diff_pair_gap": 0.1524,
+        "diff_pair_width": 0.13335,
+        "name": "DDR_CLK_B",
+        "pcb_color": "rgb(127, 128, 0)",
+        "priority": 5,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "tuning_profile": ""
+      },
+      {
+        "clearance": 0.199,
         "name": "DDR_DATA1",
         "pcb_color": "rgb(0, 241, 255)",
-        "priority": 13,
+        "priority": 19,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.09525,
         "tuning_profile": ""
       },
       {
-        "clearance": 0.2286,
+        "clearance": 0.199,
         "name": "DDR_DATA2",
         "pcb_color": "rgb(241, 0, 255)",
-        "priority": 12,
+        "priority": 18,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.09525,
+        "tuning_profile": ""
+      },
+      {
+        "clearance": 0.199,
+        "name": "DDR_DATA3",
+        "pcb_color": "rgb(0, 121, 128)",
+        "priority": 3,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.09525,
+        "tuning_profile": ""
+      },
+      {
+        "clearance": 0.199,
+        "name": "DDR_DATA4",
+        "pcb_color": "rgb(121, 0, 128)",
+        "priority": 2,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.09525,
         "tuning_profile": ""
@@ -754,7 +703,7 @@
         "diff_pair_width": 0.0889,
         "name": "DDR_DQS1",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 9,
+        "priority": 15,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
@@ -763,56 +712,74 @@
         "diff_pair_width": 0.0889,
         "name": "DDR_DQS2",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 8,
+        "priority": 14,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
-        "name": "LTDC",
-        "pcb_color": "rgb(0, 201, 149)",
-        "priority": 5,
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "tuning_profile": ""
-      },
-      {
-        "name": "OCTOSPI1",
+        "diff_pair_gap": 0.14732,
+        "diff_pair_width": 0.0889,
+        "name": "DDR_DQS3",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 4,
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "tuning_profile": ""
-      },
-      {
-        "name": "SAI2",
-        "pcb_color": "rgb(255, 109, 238)",
         "priority": 1,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
-        "name": "SAI3",
-        "pcb_color": "rgb(255, 109, 238)",
-        "priority": 2,
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "tuning_profile": ""
-      },
-      {
-        "name": "SDMMC1",
+        "diff_pair_gap": 0.14732,
+        "diff_pair_width": 0.0889,
+        "name": "DDR_DQS4",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
         "priority": 0,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
+        "name": "LTDC",
+        "pcb_color": "rgb(0, 201, 149)",
+        "priority": 11,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "tuning_profile": ""
+      },
+      {
+        "name": "OCTOSPI1",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 10,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "tuning_profile": ""
+      },
+      {
+        "name": "SAI2",
+        "pcb_color": "rgb(255, 109, 238)",
+        "priority": 7,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "tuning_profile": ""
+      },
+      {
+        "name": "SAI3",
+        "pcb_color": "rgb(255, 109, 238)",
+        "priority": 8,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "tuning_profile": ""
+      },
+      {
+        "name": "SDMMC1",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 6,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "tuning_profile": ""
+      },
+      {
         "name": "SPI3",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 3,
+        "priority": 9,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
         "name": "TRACE",
         "pcb_color": "rgb(210, 255, 122)",
-        "priority": 7,
+        "priority": 13,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.183642,
         "tuning_profile": ""
@@ -822,21 +789,21 @@
         "diff_pair_width": 0.2032,
         "name": "USB",
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "priority": 6,
+        "priority": 12,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
         "name": "VDD_DDR1",
         "pcb_color": "rgb(188, 124, 255)",
-        "priority": 11,
+        "priority": 17,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       },
       {
         "name": "VDD_DDR2",
         "pcb_color": "rgb(255, 162, 115)",
-        "priority": 10,
+        "priority": 16,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "tuning_profile": ""
       }
@@ -855,19 +822,19 @@
     "netclass_assignments": null,
     "netclass_patterns": [
       {
-        "netclass": "DDR_CLK",
+        "netclass": "DDR_CLK_A",
         "pattern": "DDR_CK_A_[NP]"
       },
       {
-        "netclass": "DDR_CA",
+        "netclass": "DDR_CA_A",
         "pattern": "DDR_CKE0_A"
       },
       {
-        "netclass": "DDR_CA",
+        "netclass": "DDR_CA_A",
         "pattern": "DDR_CA*_A"
       },
       {
-        "netclass": "DDR_CA",
+        "netclass": "DDR_CA_A",
         "pattern": "DDR_CS0_A"
       },
       {
@@ -941,6 +908,46 @@
       {
         "netclass": "SDMMC1",
         "pattern": "SDMMC1*"
+      },
+      {
+        "netclass": "DDR_CLK_B",
+        "pattern": "DDR_CK_B_[NP]"
+      },
+      {
+        "netclass": "DDR_CA_B",
+        "pattern": "DDR_CKE0_B"
+      },
+      {
+        "netclass": "DDR_CA_B",
+        "pattern": "DDR_CA*_B"
+      },
+      {
+        "netclass": "DDR_CA_B",
+        "pattern": "DDR_CS0_B"
+      },
+      {
+        "netclass": "DDR_DATA3",
+        "pattern": "DDR_DQ[0-7]_B"
+      },
+      {
+        "netclass": "DDR_DQS3",
+        "pattern": "DDR_DQS0_B_[NP]"
+      },
+      {
+        "netclass": "DDR_DATA3",
+        "pattern": "DDR_DMI0_B"
+      },
+      {
+        "netclass": "DDR_DATA4",
+        "pattern": "DDR_DQ([89]|1[0-5])_B"
+      },
+      {
+        "netclass": "DDR_DQS4",
+        "pattern": "DDR_DQS1_B_[NP]"
+      },
+      {
+        "netclass": "DDR_DATA4",
+        "pattern": "DDR_DMI1_B"
       }
     ]
   },
