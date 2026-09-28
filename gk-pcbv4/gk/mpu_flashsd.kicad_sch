@@ -11453,6 +11453,10 @@
 		(uuid "75038455-a0fd-4227-8a3f-b1317d51dba1")
 	)
 	(no_connect
+		(at 104.14 80.01)
+		(uuid "77d5e6ea-98e4-4cdd-9da8-1d6fc88b7d87")
+	)
+	(no_connect
 		(at 201.93 116.84)
 		(uuid "79fdefe3-2346-412e-a1c0-a597a3c97cc1")
 	)
@@ -11631,6 +11635,10 @@
 	(no_connect
 		(at 201.93 78.74)
 		(uuid "fbdbcd27-5923-4ada-acec-008203d6b2a2")
+	)
+	(no_connect
+		(at 104.14 105.41)
+		(uuid "fd7cc61d-0c62-44ba-bf81-69e6fbcfdd83")
 	)
 	(wire
 		(pts
@@ -12374,16 +12382,6 @@
 	)
 	(wire
 		(pts
-			(xy 100.33 80.01) (xy 104.14 80.01)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b92b018a-dc90-4522-8a3b-5e614cf8a1f1")
-	)
-	(wire
-		(pts
 			(xy 190.5 22.86) (xy 194.31 22.86)
 		)
 		(stroke
@@ -12995,30 +12993,6 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
-			)
-		)
-	)
-	(global_label "BTN_MCU_RB"
-		(shape input)
-		(at 104.14 105.41 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "3621925d-7ddc-44a8-b066-e0d2fddfb25f")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 89.0596 105.41 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
 			)
 		)
 	)
@@ -14915,30 +14889,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-			)
-		)
-	)
-	(global_label "BTN_MCU_LB"
-		(shape input)
-		(at 100.33 80.01 90)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "e5820006-a1c3-4cea-b449-aed75c7cc8aa")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 100.33 65.1715 90)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 			)
 		)
 	)
