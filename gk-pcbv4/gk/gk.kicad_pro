@@ -556,14 +556,11 @@
       "duplicate_sheet_names": "error",
       "endpoint_off_grid": "warning",
       "extra_units": "error",
-      "field_name_whitespace": "warning",
       "footprint_filter": "ignore",
       "footprint_link_issues": "warning",
       "four_way_junction": "ignore",
       "global_label_dangling": "warning",
-      "ground_pin_not_ground": "warning",
       "hier_label_mismatch": "error",
-      "isolated_pin_label": "warning",
       "label_dangling": "error",
       "label_multiple_wires": "warning",
       "lib_symbol_issues": "warning",
@@ -1091,7 +1088,7 @@
         "uuid": "a049c72e-5361-408c-ab21-661d491fee9d"
       }
     ],
-    "used_designators": "#PWR162,#PWR301,#FLG1-2",
+    "used_designators": "",
     "variants": []
   },
   "sheets": [

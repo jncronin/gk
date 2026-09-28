@@ -60,7 +60,7 @@
           "hatch_smoothing_level": 0,
           "hatch_smoothing_value": 0.1,
           "hatch_thickness": 1.0,
-          "min_clearance": 0.5,
+          "min_clearance": 0.4,
           "min_island_area": 10.0,
           "min_thickness": 0.25,
           "pad_connection": 1,
@@ -138,7 +138,7 @@
         "too_many_vias": "error",
         "track_angle": "error",
         "track_dangling": "warning",
-        "track_not_centered_on_via": "ignore",
+        "track_not_centered_on_via": "warning",
         "track_on_post_machined_layer": "error",
         "track_segment_length": "error",
         "track_width": "error",
@@ -686,7 +686,7 @@
         "uuid": "c0d0aaf9-05d9-40e1-957a-689bd7466176"
       }
     ],
-    "used_designators": "R11,R47-49,J7-10,#PWR11-12,#PWR28,#PWR38,#PWR74-79",
+    "used_designators": "R11,R47-57,J7-11,#PWR11-12,#PWR28-29,#PWR38,#PWR66,#PWR74-87,U5,C25-27,H5,H7",
     "variants": []
   },
   "sheets": [
