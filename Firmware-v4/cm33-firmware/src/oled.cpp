@@ -1,6 +1,10 @@
 #include "oled.h"
 #include "i2c.h"
 #include "logger.h"
+#include "FreeRTOS.h"
+#include "task.h"
+
+static void oled_task(void *);
 
 static const char ch1115_init[] = 
 {
@@ -23,6 +27,12 @@ static const char ch1115_init[] =
 
 void init_oled()
 {
+    xTaskCreate(oled_task, "oled", 2048, nullptr, configMAX_PRIORITIES - 1,
+        nullptr);
+}
+
+void oled_task(void *)
+{
     // Set OLED_NRES as output
     auto &i2c1 = i2c(1);
     char i2cmsg = 0x7f;
@@ -42,4 +52,9 @@ void init_oled()
     // Init OLED CH1115
     i2cret = i2c1.Write(0x3c, ch1115_init, sizeof(ch1115_init));
     klog("D: %d\n", i2cret);
+
+    while(true)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }
