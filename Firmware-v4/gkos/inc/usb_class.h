@@ -55,7 +55,7 @@ class usb_msc_status : public usb_class_status
 uint8_t usb_cdc_setup(usb_handle *pdev, uint16_t itf, uint8_t bRequest);
 uint8_t usb_cdc_acm_init(usb_handle *pdev, uint8_t cfgidx, uint16_t itf,
     uint8_t ep_notif, uint8_t epin, uint8_t epout);
-uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum);
+uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum, size_t dlen);
 uint8_t usb_cdc_data_in(usb_handle *pdev, uint8_t epnum);
 
 class usb_cdc_status : public usb_class_status

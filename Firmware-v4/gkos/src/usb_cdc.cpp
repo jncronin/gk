@@ -73,7 +73,7 @@ uint8_t usb_cdc_data_in(usb_handle *pdev, uint8_t epnum)
     return USBD_OK;
 }
 
-uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum)
+uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum, size_t dlen)
 {
     auto ci = usb_ep_to_status<usb_cdc_status>(pdev, epnum);
     if(!ci)
@@ -81,10 +81,11 @@ uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum)
         return USBD_FAIL;
     }
 
-    klog("usb_cdc: DATA OUT\n");
-
     size_t rx_len = 0;
     auto rxbuf = ci->get_rx_buffer(&rx_len);
+
+    klog("usb_cdc: DATA OUT: %.*s\n", dlen, rxbuf);
+
     return usb_core_receive(pdev, epnum, rxbuf, rx_len);
 }
 

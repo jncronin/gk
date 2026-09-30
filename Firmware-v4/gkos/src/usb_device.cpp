@@ -406,7 +406,7 @@ static enum usb_status usb_core_data_out(struct usb_handle *pdev, uint8_t epnum,
 		}
 	} else if (pdev->_class->data_out != NULL &&
 		   (pdev->dev_state == USBD_STATE_CONFIGURED)) {
-		pdev->_class->data_out(pdev, epnum);
+		pdev->_class->data_out(pdev, epnum, pdata, pdev->data->out_ep[epnum].xfer_count);
 	}
 
 	return USBD_OK;

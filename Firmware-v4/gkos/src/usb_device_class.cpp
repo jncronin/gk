@@ -76,7 +76,7 @@ uint8_t usb_class_iso_out_incomplete(struct usb_handle *pdev, uint8_t epnum)
     return USBD_OK;
 }
 
-uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
+uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum, void *d, size_t dlen)
 {
 //    klog("usb: class_data_out(..., %u)\n", epnum);
 
@@ -88,7 +88,7 @@ uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
 #endif
 #if GK_LOG_USB
         case EPNUM_CDC_LOG_OUT:
-            return usb_cdc_data_out(pdev, epnum);
+            return usb_cdc_data_out(pdev, epnum, dlen);
 #endif
 
         default:
