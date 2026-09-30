@@ -210,6 +210,7 @@ struct usbd_ep {
 	uint8_t *xfer_buff;
 	uint32_t xfer_len;
 	uint32_t xfer_count;
+	uint32_t maxvirtpacket;
 };
 
 enum pcd_lpm_state {

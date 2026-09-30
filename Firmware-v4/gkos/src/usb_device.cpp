@@ -825,8 +825,12 @@ enum usb_status register_usb_driver(struct usb_handle *pdev,
 
 	/* Copy endpoint information */
 	for (i = 0U; i < USBD_EP_NB; i++) {
-		pdev->ep_in[i].maxpacket = pdev->data->in_ep[i].maxpacket;
-		pdev->ep_out[i].maxpacket = pdev->data->out_ep[i].maxpacket;
+		pdev->ep_in[i].maxpacket =
+			pdev->data->in_ep[i].maxvirtpacket ? pdev->data->in_ep[i].maxvirtpacket :
+				pdev->data->in_ep[i].maxpacket;
+		pdev->ep_out[i].maxpacket =
+			pdev->data->out_ep[i].maxvirtpacket ? pdev->data->out_ep[i].maxvirtpacket :
+				pdev->data->out_ep[i].maxpacket;
 	}
 
 	return USBD_OK;

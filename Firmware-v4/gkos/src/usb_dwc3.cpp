@@ -2026,6 +2026,15 @@ static usb_status usb_dwc3_configure_ep(void *handle, usbd_ep *ep)
 {
 	dwc3_handle_t *dwc3_handle = (dwc3_handle_t *)handle;
 
+	if(ep->num == 0 && ep->is_in)
+	{
+		ep->maxvirtpacket = ep->maxpacket * NUM_EP0_IN_TRBS;
+	}
+	else
+	{
+		ep->maxvirtpacket = ep->maxpacket;
+	}
+
 	auto phy_epnum = ep->num * 2U + (ep->is_in ? 1U : 0U);
 
 	auto ret = dwc3_ep_configure(dwc3_handle, ep->num, ep->is_in, ep->type,
