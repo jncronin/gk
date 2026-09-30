@@ -313,9 +313,13 @@ static enum usb_status usb_core_itf_req(struct usb_handle *pdev,
 	}
 
 	if (LOBYTE(req->index) <= USBD_MAX_NUM_INTERFACES) {
-		pdev->_class->setup(pdev, req);
-
-		if (req->length == 0U) {
+		if(pdev->_class->setup(pdev, req) == USBD_FAIL)
+		{
+			VERBOSE("class setup %u failed\n", LOBYTE(req->index));
+			usb_core_set_stall(pdev, EP0_IN);
+			usb_core_set_stall(pdev, EP0_OUT);
+		}
+		else if (req->length == 0U) {
 			usb_core_transmit_ep0(pdev, NULL, 0U);
 		}
 	} else {

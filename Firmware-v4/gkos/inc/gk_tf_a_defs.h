@@ -1,6 +1,9 @@
 #ifndef GK_TF_A_DEFS_H
 #define GK_TF_A_DEFS_H
 
+#define DEBUG_TF_A_VERBOSE		0
+#define DEBUG_TF_A_INFO			0
+
 /* Utility functions/macros used by ported TF-A code */
 
 #include <stdint.h>
