@@ -762,27 +762,68 @@ static enum usb_status dwc3_ep_start_xfer(dwc3_handle_t *dwc3_handle, struct usb
 		dwc3_ep->flags &= ~USB_DWC3_EP_ISOC_START_PENDING;
 	}
 
-	dwc3_ep->trb_addr->bpl = lower_32_bits(dwc3_ep->dma_addr);
-	dwc3_ep->trb_addr->bph = upper_32_bits(dwc3_ep->dma_addr);
-	dwc3_ep->trb_addr->size = DWC3_TRB_SIZE_LENGTH(ep->xfer_len);
-	/* also initializes other bits to 0 */
-	dwc3_ep->trb_addr->ctrl = dwc3_get_trb_ctltype(dwc3_ep->trb_flag & USB_DWC3_TRBCTL_MASK);
+	unsigned num_trbs = 1U;
+	if(ep->is_in && ep->num == 0)
+	{
+		// EP0 in can handle packets larger than max_packet_size
+		//  Needs to always finish with a packet < max_packet_size (even ZLP), so account for that here
+		//  e.g. if packet size is 64 need to send 2 packets: one of size 64 and one ZLP
+		num_trbs = (ep->xfer_len + ep->maxpacket) / ep->maxpacket;
+		if(num_trbs > NUM_EP0_IN_TRBS)
+		{
+			ERROR("usb: too many trbs required for in transfer: %u vs %u\n", num_trbs, NUM_EP0_IN_TRBS);
+			return usb_status::USBD_FAIL;
+		}
 
-	dwc3_ep->trb_addr->ctrl |= ((ep->num == 0U) ? DWC3_TRB_CTRL_ISP_IMI : 0U);
+		klog("usb: ep0_in with %u trbs\n", num_trbs);
+	}
 
-	dwc3_ep->trb_addr->ctrl |= DWC3_TRB_CTRL_IOC;
+	uintptr_t dma_offset = 0;
+	for(unsigned cur_trb = 0; cur_trb < num_trbs; cur_trb++)
+	{
+		uint32_t trb_data_len = ep->xfer_len - dma_offset;
+		if(trb_data_len > ep->maxpacket && num_trbs > 1)
+		{
+			// truncate only for chained data
+			trb_data_len = ep->maxpacket;
+		}
+
+		volatile usb_dwc3_trb_t *trb = dwc3_ep->trb_addr + cur_trb;
+		
+		trb->bpl = lower_32_bits(dwc3_ep->dma_addr + dma_offset);
+		trb->bph = upper_32_bits(dwc3_ep->dma_addr + dma_offset);
+		trb->size = DWC3_TRB_SIZE_LENGTH(trb_data_len);
+		/* also initializes other bits to 0 */
+		trb->ctrl = dwc3_get_trb_ctltype(dwc3_ep->trb_flag & USB_DWC3_TRBCTL_MASK);
+
+		trb->ctrl |= ((ep->num == 0U) ? DWC3_TRB_CTRL_ISP_IMI : 0U);
+
+		if(cur_trb == num_trbs - 1)
+		{
+			// last TRB
+			trb->ctrl |= DWC3_TRB_CTRL_IOC;
+
+			if (ep->type != EP_TYPE_ISOC) {
+				trb->ctrl |= DWC3_TRB_CTRL_LST;
+			}
+		}
+		else
+		{
+			// intermediate TRB
+			trb->ctrl |= DWC3_TRB_CTRL_CHN;
+			klog("usb: intermediate trb %u, offset %zu, length %u\n", cur_trb, dma_offset, trb_data_len);
+		}
+
+		trb->ctrl |= DWC3_TRB_CTRL_HWO;
+
+		dma_offset += trb_data_len;
+	}
 
 	if ((ep->type == EP_TYPE_ISOC) && ((dwc3_ep->flags & USB_DWC3_EP_ISOC_STARTED) != 0U)) {
 		cmd = USB_DWC3_DEPCMD_UPDATETRANSFER;
 	} else {
 		cmd = USB_DWC3_DEPCMD_STARTTRANSFER;
 	}
-
-	if (ep->type != EP_TYPE_ISOC) {
-		dwc3_ep->trb_addr->ctrl |= DWC3_TRB_CTRL_LST;
-	}
-
-	dwc3_ep->trb_addr->ctrl |= DWC3_TRB_CTRL_HWO;
 
 	(void)memset(&params, 0x00, sizeof(params));
 
@@ -2408,17 +2449,21 @@ void usb_dwc3_init_driver(struct usb_handle *usb_core_handle, struct pcd_handle 
 
 #define PHYS_AREA	STM32MP_USB_DWC3_BASE
 
-#define EVTBUF_AREA_OFFSET	0U
+#define EP0_IN_TRB_OFFSET	0U
+#define EVTBUF_AREA_OFFSET	(NUM_EP0_IN_TRBS * sizeof(usb_dwc3_trb_t))
 #define TRB_OUT_AREA_OFFSET	(EVTBUF_AREA_OFFSET + USB_DWC3_EVENT_BUFFER_SIZE)
 #define TRB_IN_AREA_OFFSET	(TRB_OUT_AREA_OFFSET + sizeof(usb_dwc3_trb_t) * USB_DWC3_NUM_OUT_EP)
 #define SETUP_AREA_OFFSET	(TRB_IN_AREA_OFFSET + sizeof(usb_dwc3_trb_t) * USB_DWC3_NUM_IN_EP)
 
 	void *coh_area = (void *)(uintptr_t)PHYS_AREA;
 
+#define EP0_IN_TRB_AREA ((uintptr_t)coh_area + EP0_IN_TRB_OFFSET)
 #define EVTBUF_AREA	((uintptr_t)coh_area + EVTBUF_AREA_OFFSET)
 #define TRB_OUT_AREA	((uintptr_t)coh_area + TRB_OUT_AREA_OFFSET)
 #define TRB_IN_AREA	((uintptr_t)coh_area + TRB_IN_AREA_OFFSET)
 #define SETUP_AREA	((uintptr_t)coh_area + SETUP_AREA_OFFSET)
+
+	static_assert((SETUP_AREA_OFFSET + USB_SETUP_PACKET_SIZE) < PAGE_SIZE);
 
 	dwc3_handle->setup_dma_addr = (uintptr_t)api_getdmaaddr((void *)SETUP_AREA,
 								USB_SETUP_PACKET_SIZE, 1);
@@ -2447,11 +2492,25 @@ void usb_dwc3_init_driver(struct usb_handle *usb_core_handle, struct pcd_handle 
 	/* MAP TRB Coherent and DMA address for all endpoints */
 	for(unsigned int ep_num = 0; ep_num < USB_DWC3_NUM_IN_EP; ep_num++)
 	{
-		dwc3_handle->IN_ep[ep_num].trb_dma_addr = (uint32_t)api_getdmaaddr((void *)(TRB_IN_AREA + ep_num * sizeof(usb_dwc3_trb_t)),
-										sizeof(usb_dwc3_trb_t), 1);
+		uintptr_t vaddr = 0U;
+		size_t trb_size = 0U;
+
+		if(ep_num == 0)
+		{
+			vaddr = EP0_IN_TRB_AREA;
+			trb_size = NUM_EP0_IN_TRBS * sizeof(usb_dwc3_trb_t);
+		}
+		else
+		{
+			vaddr = TRB_IN_AREA + ep_num * sizeof(usb_dwc3_trb_t);
+			trb_size = sizeof(usb_dwc3_trb_t);
+		}
+
+		dwc3_handle->IN_ep[ep_num].trb_dma_addr = (uint32_t)api_getdmaaddr((void *)vaddr,
+										trb_size, 1);
 		assert(dwc3_handle->IN_ep[ep_num].trb_dma_addr != 0U);
 
-		dwc3_handle->IN_ep[ep_num].trb_addr = (usb_dwc3_trb_t *)(TRB_IN_AREA + ep_num * sizeof(usb_dwc3_trb_t));
+		dwc3_handle->IN_ep[ep_num].trb_addr = (usb_dwc3_trb_t *)vaddr;
 		assert(dwc3_handle->IN_ep[ep_num].trb_addr != NULL);
 	}
 
