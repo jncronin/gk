@@ -5,8 +5,8 @@
  */
 
 // modified for gkos
-#define DEBUG_TF_A_VERBOSE		0
-#define DEBUG_TF_A_INFO			0
+#define DEBUG_TF_A_VERBOSE		1
+#define DEBUG_TF_A_INFO			1
 #include "gk_tf_a_defs.h"
 
 #include "ostypes.h"
@@ -796,8 +796,6 @@ static enum usb_status dwc3_ep_start_xfer(dwc3_handle_t *dwc3_handle, struct usb
 		/* also initializes other bits to 0 */
 		trb->ctrl = dwc3_get_trb_ctltype(dwc3_ep->trb_flag & USB_DWC3_TRBCTL_MASK);
 
-		trb->ctrl |= ((ep->num == 0U) ? DWC3_TRB_CTRL_ISP_IMI : 0U);
-
 		if(cur_trb == num_trbs - 1)
 		{
 			// last TRB
@@ -806,6 +804,8 @@ static enum usb_status dwc3_ep_start_xfer(dwc3_handle_t *dwc3_handle, struct usb
 			if (ep->type != EP_TYPE_ISOC) {
 				trb->ctrl |= DWC3_TRB_CTRL_LST;
 			}
+
+			trb->ctrl |= ((ep->num == 0U) ? DWC3_TRB_CTRL_ISP_IMI : 0U);
 		}
 		else
 		{
@@ -1361,6 +1361,8 @@ static enum usb_action dwc3_handle_ep_event(dwc3_handle_t *dwc3_handle, uint32_t
 			   dwc3_get_ep_trbstatus(dwc3_ep));
 
 		if ((ep_addr & EP_DIR_MASK) == EP_DIR_IN) {  /* IN EP */
+			klog("usb: epin: xfer_count: %u, xfer_len: %u, trblen: %u\n",
+				ep->xfer_count, ep->xfer_len, dwc3_get_ep_trblen(dwc3_ep));
 			ep->xfer_count = ep->xfer_len - dwc3_get_ep_trblen(dwc3_ep);
 
 			dwc3_ep->flags &= ~USB_DWC3_EP_REQ_QUEUED;
@@ -1537,6 +1539,8 @@ static enum usb_action dwc3_handle_ep_event(dwc3_handle_t *dwc3_handle, uint32_t
 		VERBOSE("Invalid type %d: %s: %d\n", type, __func__, __LINE__);
 		break;
 	}
+
+	klog("usb: it_handler returning %d\n", (int)action);
 
 	return action;
 }

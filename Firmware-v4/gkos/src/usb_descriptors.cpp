@@ -64,7 +64,7 @@ const uint8_t device_desc[] =
 
 const uint8_t desc_fs_configuration[] =
 {
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0, 500),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL + 1, 0, CONFIG_TOTAL_LEN + TUD_CDC_DESC_LEN, 0, 500),
 
 #if __USB_NETWORK
     TUD_RNDIS_DESCRIPTOR(ITF_NUM_ETH, 5, EPNUM_ETH_NOTIF, 8, EPNUM_ETH_OUT, EPNUM_ETH_IN, CFG_TUD_NET_ENDPOINT_SIZE),
@@ -79,6 +79,8 @@ const uint8_t desc_fs_configuration[] =
 #if GK_ENABLE_USB_MASS_STORAGE
     TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 6, EPNUM_MSC_OUT, EPNUM_MSC_IN, 512),
 #endif
+    TUD_CDC_DESCRIPTOR(1, 4, EPNUM_CDC_LOG_NOTIF, 8, EPNUM_CDC_LOG_OUT, EPNUM_CDC_LOG_IN, CFG_TUD_CDC_EP_BUFSIZE),
+
 };
 
 static const uint8_t usb_qualifier_desc_buf[] = {
@@ -188,14 +190,14 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 static uint8_t *usb_device_desc(uint16_t *length)
 {
   *length = sizeof(device_desc);
-//  klog("usb_device_desc: length: %u, data: %p\n", *length, device_desc);
+  klog("usb_device_desc: length: %u, data: %p\n", *length, device_desc);
   return (uint8_t *)device_desc;
 }
 
 static uint8_t *usb_config_desc(uint16_t *length)
 {
   *length = sizeof(desc_fs_configuration);
-//  klog("usb_config_desc: length: %u, data: %p\n", *length, desc_fs_configuration);
+  klog("usb_config_desc: length: %u, data: %p\n", *length, desc_fs_configuration);
   return (uint8_t *)desc_fs_configuration;
 }
 

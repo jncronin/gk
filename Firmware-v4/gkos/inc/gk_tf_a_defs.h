@@ -109,16 +109,16 @@ static inline void inv_dcache_range(uintptr_t addr, size_t size)
 }
 
 #include "logger.h"
-#define ERROR klog
+#define ERROR(...) klog("usb: " __VA_ARGS__)
 
 #if DEBUG_TF_A_VERBOSE
-#define VERBOSE klog
+#define VERBOSE(...) klog("usb: " __VA_ARGS__)
 #else
 #define VERBOSE(...)
 #endif
 
 #if DEBUG_TF_A_INFO
-#define INFO klog
+#define INFO(...) klog("usb: " __VA_ARGS__)
 #else
 #define INFO(...)
 #endif
