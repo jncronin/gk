@@ -29,6 +29,8 @@ template <class... T> int WaitMultipleTimed(kernel_time tout, T &... args)
             
             if(args.TryAcquire(tout))
                 passed_on = i + 1;
+            
+            i++;
         } (), ...);
 
         if(passed_on || clock_cur() > tout)
