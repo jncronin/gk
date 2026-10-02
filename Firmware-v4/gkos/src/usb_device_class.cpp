@@ -3,6 +3,10 @@
 #include "gk_conf.h"
 #include "usb_class.h"
 
+#if GK_LOG_USB
+extern LockFreeBuffer log_usb_buf;
+#endif
+
 //TODO: initialize usb_device_class similar to plat/st/common/usb_class.c
 
 uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
@@ -14,7 +18,7 @@ uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
 #endif
 #if GK_LOG_USB
     usb_cdc_acm_init(pdev, cfgidx, (uint16_t)ITF_NUM_LOG_CDC, EPNUM_CDC_LOG_NOTIF,
-        EPNUM_CDC_LOG_IN, EPNUM_CDC_LOG_OUT);
+        EPNUM_CDC_LOG_IN, EPNUM_CDC_LOG_OUT, &log_usb_buf, nullptr);
 #endif
 
     return USBD_OK;

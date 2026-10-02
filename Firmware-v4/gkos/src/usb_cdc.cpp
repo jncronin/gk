@@ -6,7 +6,8 @@
 #include <cstring>
 
 uint8_t usb_cdc_acm_init(usb_handle *pdev, uint8_t cfgidx, uint16_t itf,
-    uint8_t ep_notif, uint8_t epin, uint8_t epout)
+    uint8_t ep_notif, uint8_t epin, uint8_t epout,
+    LockFreeBuffer *send_buf, LockFreeBuffer *recv_buf)
 {
     (void)cfgidx;       // enable in all configurations
 
@@ -16,6 +17,11 @@ uint8_t usb_cdc_acm_init(usb_handle *pdev, uint8_t cfgidx, uint16_t itf,
     usb_core_configure_ep(pdev, ep_notif, USBD_EP_TYPE_INTR, 8);
     usb_core_configure_ep(pdev, epin, USBD_EP_TYPE_BULK, 512);
     usb_core_configure_ep(pdev, epout, USBD_EP_TYPE_BULK, 512);
+
+    ci->ep_in = epin;
+    ci->ep_out = epout;
+    ci->send_data = send_buf;
+    ci->recv_data = recv_buf;
 
     auto &uci = *(usb_class_info *)pdev->class_data;
     uci[ep_notif] = ci;
@@ -68,9 +74,7 @@ uint8_t usb_cdc_data_in(usb_handle *pdev, uint8_t epnum)
     {
         return USBD_FAIL;
     }
-
-    klog("usb_cdc: DATA IN\n");
-    return USBD_OK;
+    return ci->tfer_in(pdev, true);
 }
 
 uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum, size_t dlen)
@@ -128,4 +132,24 @@ uint8_t *usb_cdc_acm_status::get_tx_buffer(size_t *tx_len)
         return (uint8_t *)vb_tx.base;
     }
     return nullptr;
+}
+
+uint8_t usb_cdc_acm_status::tfer_in(usb_handle *pdev, bool prev_in_complete)
+{
+    if(!send_data)
+        return USBD_FAIL;
+    if(!prev_in_complete && in_queued)
+        return USBD_OK;
+
+    size_t txbuf_size = 0;
+    auto txbuf = get_tx_buffer(&txbuf_size);
+    txbuf_size = std::min(txbuf_size, (size_t)pdev->data->in_ep[ep_in & EP_NUM_MASK].maxpacket);
+
+    auto nread = send_data->read(txbuf, txbuf_size);
+    if(nread <= 0)
+        return USBD_FAIL;
+
+    in_queued = true;
+
+    return usb_core_transmit(pdev, ep_in, txbuf, (uint32_t)nread);
 }

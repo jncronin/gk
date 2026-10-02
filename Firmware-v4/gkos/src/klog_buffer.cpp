@@ -8,6 +8,7 @@
 #include "process.h"
 #include "klog_file.h"
 #include <stm32mp2xx.h>
+#include "klog_usb.h"
 
 #define KLOGMAGIC 0x474f4c4b534f4b47
 
@@ -81,10 +82,19 @@ ssize_t log_fwrite(const void *buf, size_t count)
         return -1;
     }
 
+#if GK_LOG_FILE
     auto fret = retram->klog.b_file.write(buf, count);
+#else
+    ssize_t fret = 0;
+#endif
+#if GK_LOG_USB
+    auto usbret = usb_log_write(buf, count);
+#else
+    ssize_t usbret = 0;
+#endif
     auto uret = retram->klog.b_uart.write(buf, count);
 
-    return std::max(fret, uret);
+    return std::max(std::max(fret, uret), usbret);
 }
 
 static void *klogbuffer_thread(void *)

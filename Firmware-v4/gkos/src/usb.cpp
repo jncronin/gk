@@ -12,6 +12,7 @@
 #include "pmem.h"
 #include "osqueue.h"
 #include "pmic.h"
+#include "klog_usb.h"
 
 #include "usb_device.h"
 #include "usb_dwc3.h"
@@ -41,12 +42,6 @@ extern usb_desc usb_desc_callback;
 #define PWR_VMEM ((PWR_TypeDef *)PMEM_TO_VMEM(PWR_BASE))
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
 #define RIFSC_VMEM (PMEM_TO_VMEM(RIFSC_BASE))
-
-// messages to send to usb system
-#define USB_MESSAGE_INT             0x1
-#define USB_MESSAGE_VBUS_DOWN       0x2
-#define USB_MESSAGE_VBUS_UP         0x3
-
 
 // message queue
 FixedQueue<uint32_t, 32> usb_queue;
@@ -249,6 +244,16 @@ void *usb_task(void *pvParams)
                 gic_set_enable(259);
                 gic_set_enable(260);
                 break;
+
+#if GK_LOG_USB
+            case USB_MESSAGE_LOG_UPDATE:
+                {
+                    auto acm = usb_ep_to_status<usb_cdc_acm_status>(&usb_core, EPNUM_CDC_LOG_IN);
+                    if(acm)
+                        acm->tfer_in(&usb_core, false);
+                }
+                break;
+#endif
 
             default:
                 klog("usb: spurious message: %u\n", cur_msg);

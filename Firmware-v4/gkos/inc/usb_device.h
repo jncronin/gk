@@ -11,6 +11,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "gk_tf_a_defs.h"
 
 //#include <lib/utils_def.h>
 

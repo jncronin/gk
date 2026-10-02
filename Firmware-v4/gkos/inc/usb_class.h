@@ -7,6 +7,7 @@
 #include "usb_device.h"
 #include "vmem.h"
 #include "pmem.h"
+#include "lockfreebuffer.h"
 
 class usb_class_status
 {
@@ -54,7 +55,8 @@ class usb_msc_status : public usb_class_status
 #if GK_ENABLE_USB_NETWORK || GK_ENABLE_USB_CDC || GK_LOG_USB
 uint8_t usb_cdc_setup(usb_handle *pdev, uint16_t itf, uint8_t bRequest);
 uint8_t usb_cdc_acm_init(usb_handle *pdev, uint8_t cfgidx, uint16_t itf,
-    uint8_t ep_notif, uint8_t epin, uint8_t epout);
+    uint8_t ep_notif, uint8_t epin, uint8_t epout,
+    LockFreeBuffer *send_buf, LockFreeBuffer *recv_buf);
 uint8_t usb_cdc_data_out(usb_handle *pdev, uint8_t epnum, size_t dlen);
 uint8_t usb_cdc_data_in(usb_handle *pdev, uint8_t epnum);
 
@@ -63,7 +65,9 @@ class usb_cdc_status : public usb_class_status
     public:
         virtual uint8_t *get_rx_buffer(size_t *rx_buf_len) = 0;
         virtual uint8_t *get_tx_buffer(size_t *tx_buf_len) = 0;
+        virtual uint8_t tfer_in(usb_handle *pdev, bool prev_in_complete) = 0;
         uint8_t line_coding[8] = { 0 };
+        uint8_t ep_in, ep_out;
         ~usb_cdc_status() = default;
 };
 
@@ -76,10 +80,17 @@ class usb_cdc_acm_status : public usb_cdc_status
     public:
         uint8_t *get_rx_buffer(size_t *rx_buf_len);
         uint8_t *get_tx_buffer(size_t *tx_buf_len);
+        uint8_t tfer_in(usb_handle *dev, bool prev_in_complete);
+
+        bool in_queued = false;
+        LockFreeBuffer *send_data = nullptr;
+        LockFreeBuffer *recv_data = nullptr;
 
         usb_cdc_acm_status();
         ~usb_cdc_acm_status();
 };
+
+void usb_cdc_acm_tfer_in(usb_handle *pdev, usb_cdc_acm_status *s);
 
 #endif
 
