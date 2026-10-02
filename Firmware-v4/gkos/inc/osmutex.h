@@ -140,6 +140,8 @@ class CountingSemaphore
     public:
         bool Wait(kernel_time tout = kernel_time());
         bool WaitOnce(kernel_time tout = kernel_time());
+        bool TryAcquire(kernel_time tout = kernel_time());
+        void RemoveFromWaitList();
         void Signal();
         unsigned int Value();
         CountingSemaphore(unsigned int value = 0) : ss(value) {};
