@@ -25,6 +25,16 @@ bool BinarySemaphore::Value()
     return ss.Value() != 0U;
 }
 
+bool BinarySemaphore::TryAcquire(kernel_time tout)
+{
+    return ss.TryAcquire(tout, SimpleSignal::Set, 0U);
+}
+
+void BinarySemaphore::RemoveFromWaitList()
+{
+    ss.RemoveFromWaitList();
+}
+
 bool CountingSemaphore::Wait(kernel_time tout)
 {
     return ss.Wait(SimpleSignal::Sub, 1U, tout);

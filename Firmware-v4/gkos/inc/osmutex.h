@@ -107,7 +107,9 @@ class SimpleSignal
         enum SignalOperation { Noop, Set, Or, And, Xor, Add, Sub, AddIfLessThanMax };
         uint32_t Wait(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
         uint32_t WaitOnce(SignalOperation op = Noop, uint32_t val = 0, kernel_time tout = kernel_time());
+        bool TryAcquire(kernel_time tout = kernel_time(), SignalOperation op = Noop, uint32_t val = 0);
         uint32_t Value();
+        void RemoveFromWaitList();
         void Signal(SignalOperation op = Set, uint32_t val = 0x1);
         SimpleSignal(uint32_t val = 0, uint32_t max_val = std::numeric_limits<decltype(max_value)>::max());
 
@@ -123,6 +125,8 @@ class BinarySemaphore
     public:
         bool Wait(kernel_time tout = kernel_time());
         bool WaitOnce(kernel_time tout = kernel_time());
+        bool TryAcquire(kernel_time tout = kernel_time());
+        void RemoveFromWaitList();
         void Signal();
         void Clear();
         bool Value();
