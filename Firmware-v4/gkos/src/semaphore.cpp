@@ -54,3 +54,13 @@ unsigned int CountingSemaphore::Value()
 {
     return ss.Value();
 }
+
+bool CountingSemaphore::TryAcquire(kernel_time tout)
+{
+    return ss.TryAcquire(tout, SimpleSignal::Sub, 1U);
+}
+
+void CountingSemaphore::RemoveFromWaitList()
+{
+    ss.RemoveFromWaitList();
+}
