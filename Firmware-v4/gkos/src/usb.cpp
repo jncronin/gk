@@ -13,6 +13,7 @@
 #include "osqueue.h"
 #include "pmic.h"
 #include "klog_usb.h"
+#include "waitmultiple.h"
 
 #include "usb_device.h"
 #include "usb_dwc3.h"
@@ -43,8 +44,8 @@ extern usb_desc usb_desc_callback;
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
 #define RIFSC_VMEM (PMEM_TO_VMEM(RIFSC_BASE))
 
-// message queue
-FixedQueue<uint32_t, 32> usb_queue;
+static CountingSemaphore usb_int_sem;
+extern BinarySemaphore usb_log_sem;
 
 void init_usb()
 {
@@ -158,7 +159,8 @@ extern void USB3DR_IRQHandler()
     gic_clear_enable(259);
     gic_clear_enable(260);
 
-    usb_queue.Push(USB_MESSAGE_INT);
+    usb_int_sem.Signal();
+    //usb_queue.Push(USB_MESSAGE_INT);
     //usb_core_handle_it(&usb_core);
 }
 
@@ -230,8 +232,7 @@ void *usb_task(void *pvParams)
 
     while(true)
     {
-        uint32_t cur_msg = 0;
-        while(!usb_queue.Pop(&cur_msg));
+        int cur_msg = WaitMultipleTimed(kernel_time_invalid(), usb_int_sem, usb_log_sem);
 
 #if DEBUG_USB
         klog("usb: loop\n");
@@ -239,14 +240,14 @@ void *usb_task(void *pvParams)
 
         switch(cur_msg)
         {
-            case USB_MESSAGE_INT:
+            case 0:
                 usb_core_handle_it(&usb_core);
                 gic_set_enable(259);
                 gic_set_enable(260);
                 break;
 
 #if GK_LOG_USB
-            case USB_MESSAGE_LOG_UPDATE:
+            case 1:
                 {
                     auto acm = usb_ep_to_status<usb_cdc_acm_status>(&usb_core, EPNUM_CDC_LOG_IN);
                     if(acm)
