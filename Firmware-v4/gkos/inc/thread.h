@@ -26,7 +26,7 @@ class Thread
             public:
                 Spinlock sl{};
                 bool b_indefinite = false;
-                bool missed_wake_up = false;
+                bool may_sleep = false;     // checked during call to block_if_may_sleep()
                 kernel_time b_until = kernel_time_invalid();
                 id_t b_thread = 0;
 #if GK_DEBUG_BLOCKING
@@ -52,6 +52,8 @@ class Thread
                 bool block(Barrier *q, kernel_time tout = kernel_time_invalid());
                 bool block(kernel_time tout);
                 bool block_indefinite();
+                bool block_if_may_sleep(kernel_time tout);
+                void set_may_sleep(bool val);
         };
 
         blocking_t blocking;
