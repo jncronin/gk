@@ -5,35 +5,35 @@
 
 /* This method handles waiting on multiple primitives.
     The logic is to check all, and if not available add to the waiting list for that
-        primitive, if such a thing exists.  If available stop the loop.
+        primitive, if such a thing exists.
     If none available then Block (possibly with a timeout).  If woken check the loop again.
     
     Once we exit the loop (either something was selected or we timed out), then remove
         outselves from the waiting list for the primitives, if applicable. 
         
-    Returns index of the passed primitive, or -1 for time out.
+    Returns bitmap representing the (possibly multiple) acquired primitives.
 */
 
-template <class... T> int WaitMultipleTimed(kernel_time tout, T &... args)
+template <class... T> size_t WaitMultipleTimed(kernel_time tout, T &... args)
 {
-    int passed_on = 0;
+    static_assert(sizeof...(args) <= (sizeof(size_t) * 8));
+    size_t passed_on = 0;
     while(true)
     {
         passed_on = 0;
         int i = 0;
 
         ([&]
-        {
-            if(passed_on)
-                return;
-            
+        {            
             if(args.TryAcquire(tout))
-                passed_on = i + 1;
+            {
+                passed_on |= (size_t)1 << i;
+            }
             
             i++;
         } (), ...);
 
-        if(passed_on || clock_cur() > tout)
+        if(passed_on || (kernel_time_is_valid(tout) && clock_cur() > tout))
             break;
 
         Block(tout);
@@ -44,7 +44,12 @@ template <class... T> int WaitMultipleTimed(kernel_time tout, T &... args)
         args.RemoveFromWaitList();
     } (), ...);
 
-    return passed_on - 1;
+    return passed_on;
+}
+
+template <class... T> size_t WaitMultiple(T &... args)
+{
+    return WaitMultipleTimed(kernel_time_invalid(), args...);
 }
 
 #endif
