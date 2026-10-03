@@ -47,4 +47,9 @@ template <class... T> size_t WaitMultipleTimed(kernel_time tout, T &... args)
     return passed_on;
 }
 
+template <class... T> size_t WaitMultiple(T &... args)
+{
+    return WaitMultipleTimed(kernel_time_invalid(), args...);
+}
+
 #endif
