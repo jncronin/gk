@@ -262,7 +262,7 @@ bool Thread::blocking_t::block_if_may_sleep(kernel_time tout)
     if(!may_sleep)
         return false;
     b_until = tout;
-    b_indefinite = false;
+    b_indefinite = true;
     b_thread = 0;
 #if GK_DEBUG_BLOCKING
     b_condition = nullptr;
