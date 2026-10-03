@@ -33,8 +33,8 @@ uint8_t usb_class_de_init(struct usb_handle *pdev, uint8_t cfgidx)
 uint8_t usb_class_data_in(struct usb_handle *pdev, uint8_t epnum)
 {
 //    klog("usb: class_data_in(..., %u)\n", epnum);
-
-    switch(epnum | 0x80)
+    epnum |= 0x80;
+    switch(epnum)
     {
 #if GK_ENABLE_USB_MASS_STORAGE
         case EPNUM_MSC_IN:
