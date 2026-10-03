@@ -33,7 +33,7 @@ template <class... T> int WaitMultipleTimed(kernel_time tout, T &... args)
             i++;
         } (), ...);
 
-        if(passed_on || clock_cur() > tout)
+        if(passed_on || (kernel_time_is_valid(tout) && clock_cur() > tout))
             break;
 
         Block(tout);
