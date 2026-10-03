@@ -5,6 +5,8 @@
 #include "vblock.h"
 #include <cstring>
 
+#if GK_LOG_USB
+
 uint8_t usb_cdc_acm_init(usb_handle *pdev, uint8_t cfgidx, uint16_t itf,
     uint8_t ep_notif, uint8_t epin, uint8_t epout,
     LockFreeBuffer *send_buf, LockFreeBuffer *recv_buf)
@@ -159,3 +161,5 @@ uint8_t usb_cdc_acm_status::tfer_in(usb_handle *pdev, bool prev_in_complete)
 
     return usb_core_transmit(pdev, ep_in, txbuf, (uint32_t)nread);
 }
+
+#endif

@@ -3,12 +3,13 @@
 #include "usb.h"
 #include "klog_usb.h"
 
+BinarySemaphore usb_log_sem;
+
 #if GK_LOG_USB
 static uint8_t log_usb_buf_d[GK_LOG_SIZE] = { 0 };
 
 LockFreeBuffer log_usb_buf(log_usb_buf_d, GK_LOG_SIZE);
 
-BinarySemaphore usb_log_sem;
 
 ssize_t usb_log_write(const void *d, size_t len)
 {
