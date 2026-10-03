@@ -136,10 +136,13 @@ uint8_t *usb_cdc_acm_status::get_tx_buffer(size_t *tx_len)
 
 uint8_t usb_cdc_acm_status::tfer_in(usb_handle *pdev, bool prev_in_complete)
 {
-    if(!send_data)
-        return USBD_FAIL;
     if(!prev_in_complete && in_queued)
         return USBD_OK;
+    if(!send_data)
+    {
+        in_queued = false;
+        return USBD_FAIL;
+    }
 
     size_t txbuf_size = 0;
     auto txbuf = get_tx_buffer(&txbuf_size);
@@ -147,7 +150,10 @@ uint8_t usb_cdc_acm_status::tfer_in(usb_handle *pdev, bool prev_in_complete)
 
     auto nread = send_data->read(txbuf, txbuf_size);
     if(nread <= 0)
+    {
+        in_queued = false;
         return USBD_FAIL;
+    }
 
     in_queued = true;
 
