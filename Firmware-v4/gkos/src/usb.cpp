@@ -232,33 +232,29 @@ void *usb_task(void *pvParams)
 
     while(true)
     {
-        int cur_msg = WaitMultipleTimed(kernel_time_invalid(), usb_int_sem, usb_log_sem);
+        auto cur_msg = WaitMultipleTimed(kernel_time_invalid(), usb_int_sem, usb_log_sem);
 
 #if DEBUG_USB
         klog("usb: loop\n");
 #endif
 
-        switch(cur_msg)
+        klog("usb: cur_msg: %zd\n", cur_msg);
+        if(cur_msg > 0)
         {
-            case 0:
+            if(cur_msg & 0x1)
+            {
                 usb_core_handle_it(&usb_core);
                 gic_set_enable(259);
                 gic_set_enable(260);
-                break;
-
+            }
 #if GK_LOG_USB
-            case 1:
-                {
-                    auto acm = usb_ep_to_status<usb_cdc_acm_status>(&usb_core, EPNUM_CDC_LOG_IN);
-                    if(acm)
-                        acm->tfer_in(&usb_core, false);
-                }
-                break;
+            if(cur_msg & 0x2)
+            {
+                auto acm = usb_ep_to_status<usb_cdc_acm_status>(&usb_core, EPNUM_CDC_LOG_IN);
+                if(acm)
+                    acm->tfer_in(&usb_core, false);
+            }
 #endif
-
-            default:
-                klog("usb: spurious message: %u\n", cur_msg);
-                break;
         }
     }
 }

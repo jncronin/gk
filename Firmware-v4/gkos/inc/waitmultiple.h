@@ -14,26 +14,35 @@
     Returns bitmap representing the (possibly multiple) acquired primitives.
 */
 
-template <class... T> size_t WaitMultipleTimed(kernel_time tout, T &... args)
+template <class... T> ssize_t WaitMultipleTimed(kernel_time tout, T &... args)
 {
-    static_assert(sizeof...(args) <= (sizeof(size_t) * 8));
-    size_t passed_on = 0;
+    static_assert(sizeof...(args) <= (sizeof(size_t) * 8 - 1));
+    ssize_t passed_on = 0;
+    ssize_t failed_on = 0;
     while(true)
     {
         passed_on = 0;
         int i = 0;
 
         ([&]
-        {            
-            if(args.TryAcquire(tout))
+        {
+            if(passed_on || failed_on)
+                return;
+            
+            auto curret = args.TryAcquire(tout);
+            if(curret > 0)
             {
-                passed_on |= (size_t)1 << i;
+                passed_on = (ssize_t)1 << i;
+            }
+            else if(curret < 0)
+            {
+                failed_on = (ssize_t)1 << i;
             }
             
             i++;
         } (), ...);
 
-        if(passed_on || (kernel_time_is_valid(tout) && clock_cur() > tout))
+        if(passed_on || failed_on || (kernel_time_is_valid(tout) && clock_cur() > tout))
             break;
 
         Block(tout);
@@ -44,7 +53,10 @@ template <class... T> size_t WaitMultipleTimed(kernel_time tout, T &... args)
         args.RemoveFromWaitList();
     } (), ...);
 
-    return passed_on;
+    if(passed_on)
+        return passed_on;
+    else
+        return -failed_on;
 }
 
 template <class... T> size_t WaitMultiple(T &... args)

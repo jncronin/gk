@@ -12,6 +12,7 @@ BinarySemaphore usb_log_sem;
 
 ssize_t usb_log_write(const void *d, size_t len)
 {
+    return len;
     auto ret = log_usb_buf.write(d, len);
     if(ret > 0)
     {

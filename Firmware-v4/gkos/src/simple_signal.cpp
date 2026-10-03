@@ -10,26 +10,31 @@ extern BinarySemaphore klog_updated;
 SimpleSignal::SimpleSignal(uint32_t v, uint32_t max_val) : signal_value(v), max_value(max_val)
 {}
 
-bool SimpleSignal::TryAcquire(kernel_time tout, SignalOperation op, uint32_t vop)
+ssize_t SimpleSignal::TryAcquire(kernel_time tout, SignalOperation op, uint32_t vop)
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
+    if(!t)
+        return -1;
     if(waiting_thread && waiting_thread != t->id)
-        return false;
+        return -1;
     if(signal_value)
     {
+        auto ret = (ssize_t)signal_value;
         do_op(op, vop);
         waiting_thread = 0;
-        return true;
+        return ret;
     }
     waiting_thread = t->id;
-    return false;
+    return 0;
 }
 
 void SimpleSignal::RemoveFromWaitList()
 {
     CriticalGuard cg(sl);
     auto t = GetCurrentThreadForCore();
+    if(!t)
+        return;
     if(waiting_thread && waiting_thread == t->id)
         waiting_thread = 0;
 }

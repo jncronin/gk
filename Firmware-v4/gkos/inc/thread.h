@@ -26,6 +26,7 @@ class Thread
             public:
                 Spinlock sl{};
                 bool b_indefinite = false;
+                bool missed_wake_up = false;
                 kernel_time b_until = kernel_time_invalid();
                 id_t b_thread = 0;
 #if GK_DEBUG_BLOCKING
@@ -42,15 +43,15 @@ class Thread
                 bool is_blocking(kernel_time *tout = nullptr,
                     PThread *t = nullptr);
                 void unblock();
-                void block(PThread t, kernel_time tout = kernel_time_invalid());
-                void block(Condition *c, kernel_time tout = kernel_time_invalid());
-                void block(SimpleSignal *ss, kernel_time tout = kernel_time_invalid());
-                void block(UserspaceSemaphore *uss, kernel_time tout = kernel_time_invalid());
-                void block(RwLock *uss, kernel_time tout = kernel_time_invalid());
-                void block(void *q, kernel_time tout = kernel_time_invalid());
-                void block(Barrier *q, kernel_time tout = kernel_time_invalid());
-                void block(kernel_time tout);
-                void block_indefinite();
+                bool block(PThread t, kernel_time tout = kernel_time_invalid());
+                bool block(Condition *c, kernel_time tout = kernel_time_invalid());
+                bool block(SimpleSignal *ss, kernel_time tout = kernel_time_invalid());
+                bool block(UserspaceSemaphore *uss, kernel_time tout = kernel_time_invalid());
+                bool block(RwLock *uss, kernel_time tout = kernel_time_invalid());
+                bool block(void *q, kernel_time tout = kernel_time_invalid());
+                bool block(Barrier *q, kernel_time tout = kernel_time_invalid());
+                bool block(kernel_time tout);
+                bool block_indefinite();
         };
 
         blocking_t blocking;

@@ -25,7 +25,7 @@ bool BinarySemaphore::Value()
     return ss.Value() != 0U;
 }
 
-bool BinarySemaphore::TryAcquire(kernel_time tout)
+ssize_t BinarySemaphore::TryAcquire(kernel_time tout)
 {
     return ss.TryAcquire(tout, SimpleSignal::Set, 0U);
 }
@@ -55,7 +55,7 @@ unsigned int CountingSemaphore::Value()
     return ss.Value();
 }
 
-bool CountingSemaphore::TryAcquire(kernel_time tout)
+ssize_t CountingSemaphore::TryAcquire(kernel_time tout)
 {
     return ss.TryAcquire(tout, SimpleSignal::Sub, 1U);
 }
