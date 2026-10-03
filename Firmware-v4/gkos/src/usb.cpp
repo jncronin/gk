@@ -238,7 +238,6 @@ void *usb_task(void *pvParams)
         klog("usb: loop\n");
 #endif
 
-        klog("usb: cur_msg: %zd\n", cur_msg);
         if(cur_msg > 0)
         {
             if(cur_msg & 0x1)
