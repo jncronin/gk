@@ -793,4 +793,6 @@ struct net_ntpc_thread_params
 
 void *net_ntpc_thread(void *p);
 
+std::vector<IP4Addr> net_dns_lookup(const std::string &host);
+
 #endif

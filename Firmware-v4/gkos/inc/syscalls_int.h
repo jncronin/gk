@@ -149,6 +149,8 @@ int syscall_joystick_calib(unsigned int axis_pair, int left, int right,
     int top, int bottom, int middle_x, int middle_y, int *_errno);
 int syscall_joystick_deadzone(unsigned int digital, unsigned int analog, int *_errno);
 
+int syscall_adddnsentry(const char *host, size_t nentries, const __syscall_ipaddr *addrs, int *_errno);
+
 // needed for supervisor
 pid_t syscall_get_focus_pid(int *_errno);
 pid_t syscall_get_proc_ppid(pid_t pid, int *_errno);

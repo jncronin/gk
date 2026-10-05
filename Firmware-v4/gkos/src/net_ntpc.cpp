@@ -68,7 +68,17 @@ void *net_ntpc_thread(void *_p)
         {
             // update time every hour
             /* Send to google ntp */
-            IP4Addr ntp_server(216, 239, 35, 0);
+            //IP4Addr ntp_server(216, 239, 35, 0);
+
+            auto ntp_ip = net_dns_lookup("time.google.com");
+            if(ntp_ip.empty())
+            {
+                klog("ntpc: couldn't resolve time.google.com\n");
+                close(lsck);
+                return nullptr;
+            }
+            auto ntp_server = ntp_ip[0];
+
             struct sockaddr_in ntp_dest;
             ntp_dest.sin_addr.s_addr = ntp_server.get();
             ntp_dest.sin_family = AF_INET;
