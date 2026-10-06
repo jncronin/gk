@@ -497,8 +497,8 @@ class IP4Socket : public Socket
     public:
         IP4Socket(bool _is_dgram) : is_dgram(_is_dgram) {}
         
-        IP4Addr bound_addr;
-        uint16_t port;
+        IP4Addr bound_addr = IP4Addr(0U);
+        uint16_t port = 0;
         bool is_dgram;
 
         struct read_waiting_thread

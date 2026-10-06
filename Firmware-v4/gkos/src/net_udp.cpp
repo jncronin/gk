@@ -213,6 +213,55 @@ bool UDPSocket::SendToInt(const net_msg &m)
     // store to a packet
     CriticalGuard cg(sl);
 
+    // if we are not bound to a port/addr, we need to choose the appropriate source address, and a random port
+    IP4Route *route_ptr = nullptr;
+    IP4Route route;
+    if(!bound_addr.get() || !port)
+    {
+        IP4Addr targ_addr(m.msg_data.udpsend.dest_addr->sin_addr.s_addr);
+        // we need to identify the appropriate route, and use the ip address of that route
+        if(net_ip_get_route_for_address(targ_addr, &route) != NET_OK)
+        {
+            klog("net: udp: sendto: socket not bound and no route found for %s\n", targ_addr.ToString().c_str());
+            return false;
+        }
+        route_ptr = &route; // may as well cache the route so no need to calculate later
+        bound_addr = route.addr.addr;
+
+        // now find a free port
+        for(auto test_port = 1024u; test_port < 65000u; test_port++)
+        {
+            CriticalGuard cg2(s_udp);
+            sockaddr_in test_addr_any, test_addr;
+            test_addr_any.sin_family = AF_INET;
+            test_addr_any.sin_addr.s_addr = 0;
+            test_addr_any.sin_port = htons(test_port);
+
+            test_addr.sin_family = AF_INET;
+            test_addr.sin_addr.s_addr = bound_addr;
+            test_addr.sin_port = htons(test_port);
+
+            if(bound_udp_sockets.find(test_addr_any) ==
+                bound_udp_sockets.end() &&
+                bound_udp_sockets.find(test_addr) ==
+                bound_udp_sockets.end())
+            {
+                // found an appropriate port
+                bound_udp_sockets[test_addr] = this;
+                port = test_addr.sin_port;
+                break;
+            }
+        }
+
+        if(!port)
+        {
+            klog("net: udp: sendto: socket not bound and free port not found\n");
+            return false;
+        }
+        klog("net: udp: sendto: socket not bound - binding to %s:%u\n",
+            bound_addr.ToString().c_str(), ntohs(port));
+    }
+
     const auto &msg = m.msg_data.udpsend;
     auto pbuf = net_allocate_pbuf(msg.n);
     if(!pbuf)
@@ -235,7 +284,7 @@ bool UDPSocket::SendToInt(const net_msg &m)
         //SharedMemoryGuard(msg.dest_addr, sizeof(sockaddr_in), true, false);
         sret = net_udp_decorate_packet(pbuf,
             msg.dest_addr->sin_addr.s_addr, msg.dest_addr->sin_port,
-            bound_addr, port, true);
+            bound_addr, port, true, route_ptr);
     }
     if(sret)
     {

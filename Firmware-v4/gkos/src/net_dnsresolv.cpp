@@ -18,14 +18,12 @@ struct addrlist
 };
 
 static std::unordered_map<std::string, addrlist> dns_addrs;
-//static PMutex m_resolver = MutexList.Create();
-//static PMutex m_resolver_cache = MutexList.Create();
-static Mutex m_resolver, m_resolver_cache;
-
+static PMutex m_resolver;
+static PMutex m_resolver_cache;
 
 static const addrlist check_cache(const std::string &host)
 {
-    MutexGuard mg(m_resolver_cache);
+    MutexGuard mg(*m_resolver_cache);
     auto iter = dns_addrs.find(host);
     if(iter == dns_addrs.end())
     {
@@ -39,7 +37,7 @@ static const addrlist check_cache(const std::string &host)
 
 std::vector<IP4Addr> net_dns_lookup(const std::string &host)
 {
-    MutexGuard mg(m_resolver);
+    MutexGuard mg(*m_resolver);
 
     /* check cache */
     auto cache_resp = check_cache(host);
@@ -113,7 +111,18 @@ int syscall_adddnsentry(const char *host, size_t nentries, const __syscall_ipadd
     }
     std::string s_host(host);
 
-    MutexGuard mg(m_resolver_cache);
+    MutexGuard mg(*m_resolver_cache);
     dns_addrs[s_host] = alist;
     return 0;
+}
+
+int init_dns()
+{
+    m_resolver = MutexList.Create();
+    m_resolver_cache = MutexList.Create();
+
+    if(m_resolver && m_resolver_cache)
+        return 0;
+    else
+        return -1;
 }
