@@ -197,17 +197,13 @@ int oled_write_screen(unsigned int scr_id, const void *scr_data)
     return 0;
 }
 
-static uint8_t test_data[1024];
+static const uint8_t test_data[1024] =
+#include "oled_circle_test.h"
+;
 
 void oled_task(void *)
 {
     oled_reset();
-
-    /* test data - checkerboard 2x2 */
-    for(auto i = 0u; i < 1024u; i++)
-    {
-        test_data[i] = ((i & 0x3) < 0x2) ? 0x33u : 0xccu;
-    }
 
     for(auto i = 0u; i < 8; i++)
     {
