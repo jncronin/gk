@@ -745,6 +745,12 @@ static void tick()
                     dk.sr = dk.sr | CM33_DK_SR_TILT_STICK_4WAY;
                 }
                 break;
+            case CM33_DK_CMD_OLED_ENABLE:
+                oled_enable(1);
+                break;
+            case CM33_DK_CMD_OLED_DISABLE:
+                oled_enable(0);
+                break;
         }
 
         if(dk.cr >= CM33_DK_CMD_THROTTLE_STICK_DETENT &&

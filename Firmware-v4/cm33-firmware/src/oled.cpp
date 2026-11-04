@@ -7,11 +7,19 @@
 
 #include "semphr.h"
 
+#include "interface/cm33_data.h"
+#include "guard.h"
+
 extern SemaphoreHandle_t m_i2c1;
+extern cm33_data_kernel dk;
+
+static bool oled_is_init = false;
 
 static void oled_task(void *);
 
 static unsigned int oleds_available = 0;
+
+static TaskHandle_t oled_thread;
 
 static const char ch1115_init[] = 
 {
@@ -29,14 +37,27 @@ static const char ch1115_init[] =
     0xd9, 0x22,
     0xdb, 0x20,
     0xa4,
-    0xa6,
+    0xa6
+};
+
+static const char ch1115_on[] =
+{
+    0x00,
     0xaf
 };
+
+static const char ch1115_off[] =
+{
+    0x00,
+    0xae
+};
+
+static int oled_enable_int(int en);
 
 void init_oled()
 {
     xTaskCreate(oled_task, "oled", 2048, nullptr, configMAX_PRIORITIES - 1,
-        nullptr);
+        &oled_thread);
 }
 
 static int oled_nres(int val)
@@ -46,12 +67,20 @@ static int oled_nres(int val)
     xSemaphoreTake(m_i2c1, portMAX_DELAY);
     auto i2cret = i2c1.RegisterWrite(0x20, (uint8_t)0x03, &i2cmsg, 1);
     xSemaphoreGive(m_i2c1);
+
+    if(!val)
+    {
+        oled_is_init = false;
+        UninterruptibleGuard ug;
+        dk.sr &= ~CM33_DK_SR_OLED_ENABLED;
+    }
     return (i2cret == 1) ? 0 : -1;
 }
 
 static int oled_reset()
 {
     oleds_available = 0;
+    oled_is_init = false;
 
     klog("oled: begin reset\n");
 
@@ -64,6 +93,8 @@ static int oled_reset()
     if(i2cret != 1)
     {
         klog("oled: PCAL6426 not responding: %d\n", i2cret);
+        UninterruptibleGuard ug;
+        dk.sr &= ~(CM33_DK_SR_OLED_AVAILABLE | CM33_DK_SR_OLED_AVAILABLE);
         return -1;
     }
 
@@ -73,6 +104,8 @@ static int oled_reset()
     if(oled_nres(1) != 0)
     {
         klog("oled: PCAL6426 not responding");
+        UninterruptibleGuard ug;
+        dk.sr &= ~(CM33_DK_SR_OLED_AVAILABLE | CM33_DK_SR_OLED_AVAILABLE);
         return -1;
     }
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -80,6 +113,8 @@ static int oled_reset()
     if(oled_nres(0) != 0)
     {
         klog("oled: PCAL6426 not responding");
+        UninterruptibleGuard ug;
+        dk.sr &= ~(CM33_DK_SR_OLED_AVAILABLE | CM33_DK_SR_OLED_AVAILABLE);
         return -1;
     }
     vTaskDelay(pdMS_TO_TICKS(50));
@@ -87,6 +122,8 @@ static int oled_reset()
     if(oled_nres(1) != 0)
     {
         klog("oled: PCAL6426 not responding");
+        UninterruptibleGuard ug;
+        dk.sr &= ~(CM33_DK_SR_OLED_AVAILABLE | CM33_DK_SR_OLED_AVAILABLE);
         return -1;
     }
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -101,6 +138,8 @@ static int oled_reset()
         klog("oled: TCA9546A not responding: %d\n", i2cret);
         oleds_available = 0;
         oled_nres(0);
+        UninterruptibleGuard ug;
+        dk.sr &= ~(CM33_DK_SR_OLED_AVAILABLE | CM33_DK_SR_OLED_AVAILABLE);
         return -2;
     }
 
@@ -138,10 +177,20 @@ static int oled_reset()
     }
 
     klog("oled: initialized oleds at addresses: %u\n", oleds_available);
+
+    oled_is_init = true;
+
+    UninterruptibleGuard ug;
+    if(oleds_available)
+        dk.sr |= CM33_DK_SR_OLED_AVAILABLE;
+    else
+        dk.sr &= ~CM33_DK_SR_OLED_AVAILABLE;
+    dk.sr &= ~CM33_DK_SR_OLED_ENABLED;
+
     return 0;
 }
 
-int oled_write_screen(unsigned int scr_id, const void *scr_data)
+static int oled_write_screen(unsigned int scr_id, const void *scr_data, bool enable = true)
 {
     // Enable TCA9546A channel i - it doesn't have internal registers
     auto &i2c1 = i2c(1);
@@ -155,6 +204,8 @@ int oled_write_screen(unsigned int scr_id, const void *scr_data)
         klog("oled: TCA9546A not responding: %d\n", i2cret);
         oleds_available = 0;
         oled_nres(0);
+        UninterruptibleGuard ug;
+        dk.sr &= ~(CM33_DK_SR_OLED_AVAILABLE | CM33_DK_SR_OLED_AVAILABLE);
         return -2;
     }
 
@@ -194,28 +245,78 @@ int oled_write_screen(unsigned int scr_id, const void *scr_data)
         page_cmd[1] = page_cmd[1] + 1;
     }
 
+    if(enable)
+    {
+        xSemaphoreTake(m_i2c1, portMAX_DELAY);
+        i2cret = i2c1.Write(0x3c, ch1115_on, sizeof(ch1115_on));
+        xSemaphoreGive(m_i2c1);
+    }
+
     return 0;
 }
 
-static const uint8_t test_data[1024] =
-#include "oled_circle_test.h"
-;
-
 void oled_task(void *)
 {
+    /* First check for presence of oleds then power down */
     oled_reset();
-
-    for(auto i = 0u; i < 8; i++)
-    {
-        if(oleds_available & (1u << i))
-        {
-            klog("oled: writing test pattern to screen %u\n", i);
-            oled_write_screen(i, test_data);
-        }
-    }
+    oled_nres(0);
 
     while(true)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        uint32_t cmd;
+        if(xTaskNotifyWait(0, 0, &cmd, portMAX_DELAY) == pdTRUE)
+        {
+            oled_enable_int(cmd ? 1 : 0);
+        }
     }
+}
+
+int oled_enable_int(int en)
+{
+    if(!en)
+    {
+        return oled_nres(0);
+    }
+
+    if(!oled_is_init)
+    {
+        auto res_ret = oled_reset();
+        if(res_ret != 0)
+            return res_ret;
+    }
+
+    uint32_t scrs_to_enable = 0;
+    {
+        UninterruptibleGuard ug;
+        scrs_to_enable = oleds_available | dk.oleds_to_enable;
+    }
+
+    int nsuccess = 0;
+    for(auto i = 0u; i < 8u; i++)
+    {
+        if(!(scrs_to_enable & (1u << i)))
+            continue;
+        if(oled_write_screen(i, (const void *)dk.oled_img[i]) == 0)
+            nsuccess++;
+    }
+
+    {
+        UninterruptibleGuard ug;
+        if(nsuccess)
+            dk.sr |= CM33_DK_SR_OLED_ENABLED;
+        else
+            dk.sr &= ~CM33_DK_SR_OLED_ENABLED;
+    }
+
+    return nsuccess;
+}
+
+int oled_enable(int en)
+{
+    if(!oled_thread)
+        return -1;
+
+    xTaskNotify(oled_thread, en ? 1U : 0U, eSetValueWithOverwrite);
+
+    return 0;
 }

@@ -39,9 +39,12 @@ struct cm33_data_kernel
     volatile uint32_t rb_w_ptr;
     volatile uint32_t rb_r_ptr;
     volatile uint32_t rb_paddr;
+
+    volatile uint32_t oleds_to_enable;
+    volatile uint8_t oled_img[8][1024];
 };
 
-static_assert(sizeof(cm33_data_kernel) == 26*4);
+static_assert(sizeof(cm33_data_kernel) == 27*4 + 8 * 1024);
 
 // status register
 #define CM33_DK_SR_READY            1
@@ -59,6 +62,8 @@ static_assert(sizeof(cm33_data_kernel) == 26*4);
 #define CM33_DK_SR_LEFT_STICK_4WAY      0x4000
 #define CM33_DK_SR_RIGHT_STICK_4WAY     0x8000
 #define CM33_DK_SR_TILT_STICK_4WAY      0x10000
+#define CM33_DK_SR_OLED_AVAILABLE       0x20000
+#define CM33_DK_SR_OLED_ENABLED         0x40000
 
 // commands
 #define CM33_DK_CMD_TILT_ENABLE     1
@@ -82,6 +87,8 @@ static_assert(CM33_DK_CMD_LEFT_STICK_8WAY == CM33_DK_CMD_THROTTLE_STICK_DETENT_E
 #define CM33_DK_CMD_RIGHT_STICK_4WAY            32
 #define CM33_DK_CMD_TILT_STICK_8WAY             33
 #define CM33_DK_CMD_TILT_STICK_4WAY             34
+#define CM33_DK_CMD_OLED_ENABLE                 35
+#define CM33_DK_CMD_OLED_DISABLE                36
 
 // messages
 #define CM33_DK_MSG_MASK            (0xffU << 24)
