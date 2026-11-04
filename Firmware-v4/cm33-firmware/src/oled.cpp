@@ -60,7 +60,7 @@ int oled_write_screen(const void *scr_data)
             return -1;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        //vTaskDelay(pdMS_TO_TICKS(10));
 
         // send the data
         auto data = (const void *)(&((const uint8_t *)scr_data)[128 * i]);
