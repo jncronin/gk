@@ -51,36 +51,26 @@ int oled_write_screen(const void *scr_data)
     auto &i2c1 = i2c(1);
     for(auto i = 0u; i < 8u; i++)
     {
-        // send page by page, 32 bytes at a time
-
-        for(auto j = 0u; j < 4u; j++)
+        // send page by page
+        auto i2cret = i2c1.Write(0x3c, page_cmd, sizeof(page_cmd));
+        klog("oled: page_cmd: %d\n", i2cret);
+        if(i2cret != sizeof(page_cmd))
         {
-            // first send set page/column commands
-            auto col = j * 32;
-            page_cmd[3] = (col & 0xfu);
-            page_cmd[5] = 0x10u | ((col >> 4) & 0x7u);
+            xSemaphoreGive(m_i2c1);
+            return -1;
+        }
 
-            auto i2cret = i2c1.Write(0x3c, page_cmd, sizeof(page_cmd));
-            klog("oled: page_cmd: %d\n", i2cret);
-            if(i2cret != sizeof(page_cmd))
-            {
-                xSemaphoreGive(m_i2c1);
-                return -1;
-            }
+        vTaskDelay(pdMS_TO_TICKS(10));
 
-            vTaskDelay(pdMS_TO_TICKS(10));
-
-            // send the data
-            auto data = (const void *)(&((const uint8_t *)scr_data)[128 * i + 32 * j]);
-            i2cret = i2c1.RegisterWrite(0x3c, (uint8_t)0x40 /* data comes next */,
-                data, 32);
-            //i2cret = i2c1.Write(0x3c, test_data, 33);
-            klog("oled: data: %d\n", i2cret);
-            if(i2cret != 32)
-            {
-                xSemaphoreGive(m_i2c1);
-                return -1;
-            }
+        // send the data
+        auto data = (const void *)(&((const uint8_t *)scr_data)[128 * i]);
+        i2cret = i2c1.RegisterWrite(0x3c, (uint8_t)0x40 /* data comes next */,
+            data, 128);
+        klog("oled: data: %d\n", i2cret);
+        if(i2cret != 128)
+        {
+            xSemaphoreGive(m_i2c1);
+            return -1;
         }
 
         // update page
