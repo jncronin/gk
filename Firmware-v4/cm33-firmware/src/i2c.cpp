@@ -308,6 +308,7 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
             err = WaitTimeout(wait_flag);
             if(err != wait_flag)
             {
+                klog("i2c: err: %08x, n_xmit: %u, n_tc_end: %u\n", err, n_xmit, n_tc_end);
                 return -1;
             }
             auto buf_addr = cur_buf_p(buf, nbytes, buf2, nbytes2, n_xmit);

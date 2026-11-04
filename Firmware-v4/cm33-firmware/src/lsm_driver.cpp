@@ -6,6 +6,11 @@
 #include "Fusion.h"
 #include "interface/cm33_data.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+extern SemaphoreHandle_t m_i2c1;
+
 using filter_precision = float;
 static kernel_time last_filter = kernel_time_invalid();
 static FusionAhrs filter;
@@ -177,13 +182,19 @@ bool Set_G_FS(int fullScale)
 extern "C" uint8_t LSM6DSL_IO_Write(void *handle, uint8_t WriteAddr, uint8_t *pBuffer, uint16_t nBytesToWrite)
 {
     auto &i2c1 = i2c(1);
-    return i2c1.RegisterWrite(addr, WriteAddr, pBuffer, nBytesToWrite) > 0 ? 0 : 1;
+    xSemaphoreTake(m_i2c1, portMAX_DELAY);
+    auto ret = i2c1.RegisterWrite(addr, WriteAddr, pBuffer, nBytesToWrite) > 0 ? 0 : 1;
+    xSemaphoreGive(m_i2c1);
+    return ret;
 }
 
 extern "C" uint8_t LSM6DSL_IO_Read(void *handle, uint8_t ReadAddr, uint8_t *pBuffer, uint16_t nBytesToRead)
 {
     auto &i2c1 = i2c(1);
-    return i2c1.RegisterRead(addr, ReadAddr, pBuffer, nBytesToRead) > 0 ? 0 : 1;
+    xSemaphoreTake(m_i2c1, portMAX_DELAY);
+    auto ret = i2c1.RegisterRead(addr, ReadAddr, pBuffer, nBytesToRead) > 0 ? 0 : 1;
+    xSemaphoreGive(m_i2c1);
+    return ret;
 }
 
 int lsm_reset()

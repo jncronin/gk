@@ -13,6 +13,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #include "ctp.h"
 #include "oled.h"
@@ -46,6 +47,7 @@ static const int mouse_freq = 25;
 static const int mouse_ticks = tick_freq / mouse_freq;
 
 TaskHandle_t task_readsensors = nullptr;
+SemaphoreHandle_t m_i2c1 = nullptr;
 
 void send_message(uint32_t msg);
 
@@ -397,6 +399,8 @@ int main()
     __enable_irq();
 
     init_oled();
+
+    m_i2c1 = xSemaphoreCreateMutex();
 
     xTaskCreate(readsensors_task, "sensors", 2048, nullptr, configMAX_PRIORITIES - 1,
         &task_readsensors);
@@ -757,6 +761,7 @@ static void tick()
 
     uint8_t ioexp_vals[2];
     auto &i2c1 = i2c(1);
+    xSemaphoreTake(m_i2c1, portMAX_DELAY);
     if(i2c1.RegisterRead(0x20, (uint8_t)0, ioexp_vals, 2) == 2)
     {
         // catch debug version with no buttons
@@ -766,6 +771,7 @@ static void tick()
                 (((unsigned int)ioexp_vals[1]) << 8);
         }
     }
+    xSemaphoreGive(m_i2c1);
 
     uint32_t sr;
     {
