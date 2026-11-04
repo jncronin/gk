@@ -13,7 +13,16 @@
     Each byte within a page represents a 8 pixel high column, with LSB at the top.
 
     The OLED only supports 1 = white and 0 = black
+
+    The bottom button (GK_KEYA) needs 180 degree rotation, the others need 90 degree
+        anticlockwise rotation
 */
+
+static const int rots[] =
+{
+    180, 270, 270, 270,
+    0, 0, 0, 0
+};
 
 static inline uint8_t icol_to_bit(unsigned int pf_from, uint32_t from)
 {
@@ -97,7 +106,7 @@ static inline uint8_t icol_to_bit(unsigned int pf_from, uint32_t from)
     return (ret_val >= 65025) ? 0x1u : 0x0u;
 }
 
-static int update_oled_buffer(void *buf, const Process::oled_t *odata)
+static int update_oled_buffer(void *buf, const Process::oled_t *odata, int rot)
 {
     if(!buf)
         return -1;
@@ -141,9 +150,29 @@ static int update_oled_buffer(void *buf, const Process::oled_t *odata)
             for(auto ibit = 0u; ibit < 8u; ibit++)
             {
                 auto iy = ipage * 8 + ibit;
+                auto ix = icol;
                 uint8_t bit_val;
 
-                if(icol >= odata->w || iy >= odata->h)
+                // handle rotation
+                auto old_iy = iy;
+                auto old_ix = ix;
+                switch(rot)
+                {
+                    case 90:
+                        ix = old_iy;
+                        iy = odata->h - old_ix;
+                        break;
+                    case 180:
+                        ix = odata->w - old_ix;
+                        iy = odata->h - old_iy;
+                        break;
+                    case 270:
+                        ix = odata->h - old_iy;
+                        iy = old_ix;
+                        break;
+                }
+
+                if(ix >= odata->w || iy >= odata->h)
                 {
                     // outside input image - encode black
                     bit_val = 0u;
@@ -151,7 +180,7 @@ static int update_oled_buffer(void *buf, const Process::oled_t *odata)
                 else
                 {
                     // lookup from the image
-                    uint32_t ic = *(uint32_t *)(vaddr + iy * odata->stride + icol * bpp);
+                    uint32_t ic = *(uint32_t *)(vaddr + iy * odata->stride + ix * bpp);
                     bit_val = icol_to_bit(odata->pf, ic);
                 }
 
@@ -171,7 +200,7 @@ int Process::ShowOled(int scr_id)
         return -1;
 
     CriticalGuard cg(oleds[scr_id].sl);
-    if(update_oled_buffer(cm33_get_oled_buffer(scr_id), &oleds[scr_id]) != 0)
+    if(update_oled_buffer(cm33_get_oled_buffer(scr_id), &oleds[scr_id], rots[scr_id]) != 0)
         return -1;
     if(cm33_set_oled_scr(scr_id, oleds[scr_id].file != nullptr) != 0)
         return -1;
@@ -187,7 +216,7 @@ int Process::ShowOleds()
     for(auto scr_id = 0u; scr_id < GK_OLED_COUNT; scr_id++)
     {
         CriticalGuard cg(oleds[scr_id].sl);
-        if(update_oled_buffer(cm33_get_oled_buffer(scr_id), &oleds[scr_id]) == 0 &&
+        if(update_oled_buffer(cm33_get_oled_buffer(scr_id), &oleds[scr_id], rots[scr_id]) == 0 &&
             cm33_set_oled_scr(scr_id, oleds[scr_id].file != nullptr) == 0 &&
             oleds[scr_id].file != nullptr)
         {
