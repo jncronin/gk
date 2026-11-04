@@ -10,6 +10,7 @@ int syscall_setoled(int pid, int scr_id,
     unsigned int pf, unsigned int stride, int *_errno)
 {
     PProcess p;
+    Process *curp = GetCurrentProcessForCore();
 
     /* First get the process - we allow this syscall to refer to child
         processes as well, so that gkmenu can set images for children */
@@ -19,7 +20,7 @@ int syscall_setoled(int pid, int scr_id,
     }
     else
     {
-        if(!is_parent_of(pid, GetCurrentProcessForCore()->id))
+        if(!is_parent_of(pid, curp->id))
         {
             *_errno = EACCES;
             return -1;
@@ -57,32 +58,32 @@ int syscall_setoled(int pid, int scr_id,
         return -1;
     }
 
-    CriticalGuard cg(p->oleds[scr_id].sl, p->open_files.sl);
+    CriticalGuard cg(p->oleds[scr_id].sl, curp->open_files.sl);
     if(fd < 0)
     {
         p->oleds[scr_id].file = nullptr;
     }
     else
     {
-        if((size_t)fd >= p->open_files.f.size())
+        if((size_t)fd >= curp->open_files.f.size())
         {
             *_errno = EBADF;
             return -1;
         }
 
-        if(p->open_files.f[fd] == nullptr || p->open_files.f[fd]->GetType() != FileType::FT_DMABuf)
+        if(curp->open_files.f[fd] == nullptr || curp->open_files.f[fd]->GetType() != FileType::FT_DMABuf)
         {
             *_errno = EBADF;
             return -1;
         }
 
-        if(p->open_files.f[fd]->Flen(_errno) < (h * stride))
+        if(curp->open_files.f[fd]->Flen(_errno) < (h * stride))
         {
             *_errno = EINVAL;
             return -1;
         }
 
-        p->oleds[scr_id].file = p->open_files.f[fd];
+        p->oleds[scr_id].file = curp->open_files.f[fd];
         p->oleds[scr_id].w = w;
         p->oleds[scr_id].h = h;
         p->oleds[scr_id].pf = pf;
