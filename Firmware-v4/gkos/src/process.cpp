@@ -18,6 +18,7 @@
 
 static std::atomic<pid_t> focus_process = 0;
 extern PProcess p_gksupervisor;
+extern PFile f_cursor48;
 
 PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess parent)
 {
@@ -73,6 +74,16 @@ PProcess Process::Create(const std::string &_name, bool _is_privileged, PProcess
     }
 
     ret->window_title = _name;
+
+    /* For now, set cursor image as oled buttons */
+    for(int i = 0; i < 4; i++)
+    {
+        ret->oleds[i].file = f_cursor48;
+        ret->oleds[i].w = 48;
+        ret->oleds[i].h = 48;
+        ret->oleds[i].stride = 48*4;
+        ret->oleds[i].pf = GK_PIXELFORMAT_ARGB8888;
+    }
 
     return ret;
 }
@@ -546,6 +557,9 @@ int SetFocusProcess(PProcess p)
     {
         clock_set_cpu_and_vddcpu(p->cpu_freq);
     }
+
+    // update oleds
+    p->ShowOleds();
 
     // tell p_supervisor about it
     if(p_gksupervisor)

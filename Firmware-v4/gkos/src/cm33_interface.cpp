@@ -57,6 +57,8 @@ static int input_throttle_stick_ndetents = 0;
 static bool input_left_stick_4way = false;
 static bool input_right_stick_4way = false;
 static bool input_tilt_stick_4way = false;
+static bool oled_to_enable = false;
+static bool oled_to_disable = false;
 
 static void cm33_irq(exception_regs *, uint64_t);
 
@@ -488,6 +490,17 @@ static void *cm33_manager_thread(void *)
         if(dk->throttle_calib.analog_dz != input_joy_calib[3].analog_dz)
             dk->throttle_calib.analog_dz = input_joy_calib[3].analog_dz;
 
+        if(oled_to_enable)
+        {
+            cm33_send_cmd(CM33_DK_CMD_OLED_ENABLE);
+            oled_to_enable = false;
+        }
+        if(oled_to_disable)
+        {
+            cm33_send_cmd(CM33_DK_CMD_OLED_DISABLE);
+            oled_to_disable = false;
+        }
+
         // check for messages
         if(dk->rb_paddr)
         {
@@ -591,4 +604,35 @@ int cm33_set_throttle_stick_detent(bool en, int ndetents)
     }
 
     return 0;
+}
+
+int cm33_set_oled(bool en)
+{
+    if(en)
+        oled_to_enable = true;
+    else
+        oled_to_disable = true;
+    return 0;
+}
+
+int cm33_set_oled_scr(int scr_id, bool en)
+{
+    if(scr_id < 0 || scr_id >= GK_OLED_COUNT)
+        return -1;
+    if(en)
+    {
+        dk->oleds_to_enable |= 1u << scr_id;
+    }
+    else
+    {
+        dk->oleds_to_enable &= ~(1u << scr_id);
+    }
+    return 0;
+}
+
+void *cm33_get_oled_buffer(int scr_id)
+{
+    if(scr_id < 0 || scr_id >= GK_OLED_COUNT)
+        return nullptr;
+    return (void *)dk->oled_img[scr_id];
 }

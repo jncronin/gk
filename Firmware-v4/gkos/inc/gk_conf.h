@@ -55,6 +55,10 @@
 #define GK_DMABUF_MAXSIZE           0x400000
 #define GK_DMAFENCE_BUSYWAIT_US     1000
 
+#define GK_OLED_COUNT               8
+#define GK_OLED_W                   48
+#define GK_OLED_H                   48
+
 /* Set to allow CM33 to access RETRAM so debuggers attached to it can see log messages */
 #define GK_CM33_ACCESS_RISAB5       1
 

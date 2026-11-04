@@ -1250,6 +1250,15 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
             }
             break;
 
+        case __syscall_setoled:
+            {
+                ThreadDeletionPreventionGuard tdpg;
+                auto p = reinterpret_cast<__syscall_setoled_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_setoled(p->pid, p->scr_id,
+                    p->fd, p->w, p->h, p->pf, p->stride, reinterpret_cast<int *>(r3));
+            }
+            break;
+
 #if 0
 
         case __syscall_setsupervisorvisible:

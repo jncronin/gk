@@ -181,6 +181,14 @@ class Process
             std::vector<img> imgs;
         };
 
+        struct oled_t
+        {
+            Spinlock sl;
+            uint16_t w, h, stride;
+            uint8_t pf = 0;
+            PFile file{};
+        };
+
         std::string name;
         std::vector<id_t> threads;
         id_t id, ppid;
@@ -236,6 +244,11 @@ class Process
 
         /* Threads waiting on us to end */
         std::unordered_set<id_t> waiting_threads;
+
+        /* OLED images to show for this process */
+        oled_t oleds[8];
+        int ShowOled(int scr_id);       // update the actual display
+        int ShowOleds();                // update the actual displays
 
         Process() = default;
         ~Process();
