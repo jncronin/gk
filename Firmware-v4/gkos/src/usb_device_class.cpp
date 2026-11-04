@@ -3,6 +3,10 @@
 #include "gk_conf.h"
 #include "usb_class.h"
 
+#if GK_LOG_USB
+extern LockFreeBuffer log_usb_buf;
+#endif
+
 //TODO: initialize usb_device_class similar to plat/st/common/usb_class.c
 
 uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
@@ -11,6 +15,10 @@ uint8_t usb_class_init(struct usb_handle *pdev, uint8_t cfgidx)
 
 #if GK_ENABLE_USB_MASS_STORAGE
     usb_msc_init(pdev, cfgidx);
+#endif
+#if GK_LOG_USB
+    usb_cdc_acm_init(pdev, cfgidx, (uint16_t)ITF_NUM_LOG_CDC, EPNUM_CDC_LOG_NOTIF,
+        EPNUM_CDC_LOG_IN, EPNUM_CDC_LOG_OUT, &log_usb_buf, nullptr);
 #endif
 
     return USBD_OK;
@@ -25,12 +33,16 @@ uint8_t usb_class_de_init(struct usb_handle *pdev, uint8_t cfgidx)
 uint8_t usb_class_data_in(struct usb_handle *pdev, uint8_t epnum)
 {
 //    klog("usb: class_data_in(..., %u)\n", epnum);
-
-    switch(epnum | 0x80)
+    epnum |= 0x80;
+    switch(epnum)
     {
 #if GK_ENABLE_USB_MASS_STORAGE
         case EPNUM_MSC_IN:
             return usb_msc_data_in(pdev, epnum);
+#endif
+#if GK_LOG_USB
+        case EPNUM_CDC_LOG_IN:
+            return usb_cdc_data_in(pdev, epnum);
 #endif
 
         default:
@@ -68,7 +80,7 @@ uint8_t usb_class_iso_out_incomplete(struct usb_handle *pdev, uint8_t epnum)
     return USBD_OK;
 }
 
-uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
+uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum, void *d, size_t dlen)
 {
 //    klog("usb: class_data_out(..., %u)\n", epnum);
 
@@ -78,6 +90,10 @@ uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
         case EPNUM_MSC_OUT:
             return usb_msc_data_out(pdev, epnum);
 #endif
+#if GK_LOG_USB
+        case EPNUM_CDC_LOG_OUT:
+            return usb_cdc_data_out(pdev, epnum, dlen);
+#endif
 
         default:
             return USBD_FAIL;
@@ -86,28 +102,27 @@ uint8_t usb_class_data_out(struct usb_handle *pdev, uint8_t epnum)
 
 uint8_t usb_class_setup(struct usb_handle *pdev, struct usb_setup_req *req)
 {
-//    klog("usb: class_setup(..., bm_request=%u, b_request=%u)\n",
-//        req->bm_request, req->b_request);
+    klog("usb: class_setup(..., bm_request=%u, b_request=%u)\n",
+        req->bm_request, req->b_request);
 
     switch (req->bm_request & USB_REQ_TYPE_MASK)
     {
         case USB_REQ_TYPE_CLASS:
-            switch (req->b_request)
+            switch (req->index)
             {
 #if GK_ENABLE_USB_MASS_STORAGE
-                case 254:
-                case 255:
+                case (uint16_t)ITF_NUM_MSC:
                     return usb_msc_setup(pdev, req->b_request);
 #endif
-
-
-                default:
-                    return USBD_FAIL;
+#if GK_LOG_USB
+                case (uint16_t)ITF_NUM_LOG_CDC:
+                    return usb_cdc_setup(pdev, req->index, req->b_request);
+#endif                    
             }
             break;
     }
 
-    return USBD_OK;
+    return USBD_FAIL;
 }
 
 usb_class usb_class_handlers = {

@@ -52,6 +52,13 @@ bool Thread::blocking_t::is_blocking(kernel_time *tout, PThread *bt)
 void Thread::blocking_t::unblock()
 {
     CriticalGuard cg(sl);
+
+    // catch wakeups sent before the thread has blocked
+    if(may_sleep)
+    {
+        may_sleep = false;
+    }
+
     b_until = kernel_time_invalid();
     b_indefinite = false;
     b_thread = 0;
@@ -67,7 +74,7 @@ void Thread::blocking_t::unblock()
 #endif
 }
 
-void Thread::blocking_t::block(PThread t, kernel_time tout)
+bool Thread::blocking_t::block(PThread t, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -83,9 +90,10 @@ void Thread::blocking_t::block(PThread t, kernel_time tout)
 #else
     b_prim = false;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(Condition *c, kernel_time tout)
+bool Thread::blocking_t::block(Condition *c, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -101,9 +109,10 @@ void Thread::blocking_t::block(Condition *c, kernel_time tout)
 #else
     b_prim = true;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(SimpleSignal *ss, kernel_time tout)
+bool Thread::blocking_t::block(SimpleSignal *ss, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -119,9 +128,10 @@ void Thread::blocking_t::block(SimpleSignal *ss, kernel_time tout)
 #else
     b_prim = true;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(UserspaceSemaphore *uss, kernel_time tout)
+bool Thread::blocking_t::block(UserspaceSemaphore *uss, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -137,9 +147,10 @@ void Thread::blocking_t::block(UserspaceSemaphore *uss, kernel_time tout)
 #else
     b_prim = true;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(RwLock *rwl, kernel_time tout)
+bool Thread::blocking_t::block(RwLock *rwl, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -155,9 +166,10 @@ void Thread::blocking_t::block(RwLock *rwl, kernel_time tout)
 #else
     b_prim = true;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(void *q, kernel_time tout)
+bool Thread::blocking_t::block(void *q, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -173,9 +185,10 @@ void Thread::blocking_t::block(void *q, kernel_time tout)
 #else
     b_prim = true;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(Barrier *barrier, kernel_time tout)
+bool Thread::blocking_t::block(Barrier *barrier, kernel_time tout)
 {
     CriticalGuard cg(sl);
     b_until = tout;
@@ -191,14 +204,15 @@ void Thread::blocking_t::block(Barrier *barrier, kernel_time tout)
 #else
     b_prim = true;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block_indefinite()
+bool Thread::blocking_t::block_indefinite()
 {
-    auto [t, p] = GetCurrentThreadProcessForCore();
-    klog("block: block_indefinite called: %s:%s\n",
-        p ? p->name.c_str() : "<DELETED PROCESS>",
-        t ? t->name.c_str() : "<DELETED THREAD>");
+    //auto [t, p] = GetCurrentThreadProcessForCore();
+    //klog("block: block_indefinite called: %s:%s\n",
+    //    p ? p->name.c_str() : "<DELETED PROCESS>",
+    //    t ? t->name.c_str() : "<DELETED THREAD>");
 
     CriticalGuard cg(sl);
     b_until = kernel_time_invalid();
@@ -214,14 +228,15 @@ void Thread::blocking_t::block_indefinite()
 #else
     b_prim = false;
 #endif
+    return true;
 }
 
-void Thread::blocking_t::block(kernel_time tout)
+bool Thread::blocking_t::block(kernel_time tout)
 {
     if(kernel_time_is_valid(tout) == false || tout <= clock_cur())
     {
         unblock();
-        return;
+        return false;
     }
 
     CriticalGuard cg(sl);
@@ -238,4 +253,32 @@ void Thread::blocking_t::block(kernel_time tout)
 #else
     b_prim = false;
 #endif
+    return true;
+}
+
+bool Thread::blocking_t::block_if_may_sleep(kernel_time tout)
+{
+    CriticalGuard cg(sl);
+    if(!may_sleep)
+        return false;
+    b_until = tout;
+    b_indefinite = true;
+    b_thread = 0;
+#if GK_DEBUG_BLOCKING
+    b_condition = nullptr;
+    b_ss = nullptr;
+    b_uss = nullptr;
+    b_rwl = nullptr;
+    b_queue = nullptr;
+    b_barrier = nullptr;
+#else
+    b_prim = false;
+#endif
+    return true;
+}
+
+void Thread::blocking_t::set_may_sleep(bool val)
+{
+    CriticalGuard cg(sl);
+    may_sleep = val;
 }

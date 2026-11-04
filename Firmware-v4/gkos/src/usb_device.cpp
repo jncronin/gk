@@ -313,9 +313,13 @@ static enum usb_status usb_core_itf_req(struct usb_handle *pdev,
 	}
 
 	if (LOBYTE(req->index) <= USBD_MAX_NUM_INTERFACES) {
-		pdev->_class->setup(pdev, req);
-
-		if (req->length == 0U) {
+		if(pdev->_class->setup(pdev, req) == USBD_FAIL)
+		{
+			VERBOSE("class setup %u failed\n", LOBYTE(req->index));
+			usb_core_set_stall(pdev, EP0_IN);
+			usb_core_set_stall(pdev, EP0_OUT);
+		}
+		else if (req->length == 0U) {
 			usb_core_transmit_ep0(pdev, NULL, 0U);
 		}
 	} else {
@@ -402,7 +406,7 @@ static enum usb_status usb_core_data_out(struct usb_handle *pdev, uint8_t epnum,
 		}
 	} else if (pdev->_class->data_out != NULL &&
 		   (pdev->dev_state == USBD_STATE_CONFIGURED)) {
-		pdev->_class->data_out(pdev, epnum);
+		pdev->_class->data_out(pdev, epnum, pdata, pdev->data->out_ep[epnum].xfer_count);
 	}
 
 	return USBD_OK;
@@ -825,8 +829,12 @@ enum usb_status register_usb_driver(struct usb_handle *pdev,
 
 	/* Copy endpoint information */
 	for (i = 0U; i < USBD_EP_NB; i++) {
-		pdev->ep_in[i].maxpacket = pdev->data->in_ep[i].maxpacket;
-		pdev->ep_out[i].maxpacket = pdev->data->out_ep[i].maxpacket;
+		pdev->ep_in[i].maxpacket =
+			pdev->data->in_ep[i].maxvirtpacket ? pdev->data->in_ep[i].maxvirtpacket :
+				pdev->data->in_ep[i].maxpacket;
+		pdev->ep_out[i].maxpacket =
+			pdev->data->out_ep[i].maxvirtpacket ? pdev->data->out_ep[i].maxvirtpacket :
+				pdev->data->out_ep[i].maxpacket;
 	}
 
 	return USBD_OK;

@@ -22,6 +22,7 @@
 #define USB3_MAX_PACKET_SIZE        USB3_HS_MAX_PACKET_SIZE
 #endif
 #define USB_SETUP_PACKET_SIZE       12U
+#define NUM_EP0_IN_TRBS		64U
 
 /* USB_DWC3_EPTypeDef->trb_flag */
 #define USB_DWC3_TRBCTL_NORMAL            1

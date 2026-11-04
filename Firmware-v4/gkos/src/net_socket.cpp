@@ -7,7 +7,7 @@ static inline int net_deferred_return(int retval, int *_errno)
     if(retval == -2)
     {
         auto t = GetCurrentThreadForCore();
-        t->blocking.block(&t->ss);
+        while(!t->ss.Wait(SimpleSignal::Set, 0U));
         if(t->ss_p.ival1 != 0)
         {
             if(_errno)
@@ -276,7 +276,104 @@ int syscall_recvfrom(int sockfd, void *buf, size_t len, int flags,
         return -1;
     }
 
-    return net_deferred_return(sck->RecvFromAsync(buf, len, flags, src_addr, addrlen, _errno), _errno);
+    /* If userspace call then we need to first get the socket data in kernel memory
+        (because net_ functions occur in a separate process) then copy back
+        to userspace on success. */
+    void *kbuf;
+    sockaddr *ksrc_addr;
+    socklen_t *kaddrlen;
+    if((uintptr_t)buf < UH_START)
+    {
+        kbuf = malloc(len);
+        if(!kbuf)
+        {
+            *_errno = ENOMEM;
+            return -1;
+        }
+        klog("recvfrom: allocate %zu bytes for kbuf @ %p\n", len, kbuf);
+    }
+    else
+    {
+        kbuf = (void *)buf;
+    }
+    if(src_addr && (uintptr_t)src_addr < UH_START)
+    {
+        if(!addrlen || !*addrlen)
+        {
+            if(kbuf && kbuf != buf)
+            {
+                free(kbuf);
+            }
+            *_errno = EINVAL;
+            return -1;
+        }
+        ksrc_addr = (sockaddr *)malloc(*addrlen);
+        klog("recvfrom: allocate %zu bytes for ksrc_addr @ %p\n", *addrlen, ksrc_addr);
+        if(!ksrc_addr)
+        {
+            if(kbuf && kbuf != buf)
+            {
+                free(kbuf);
+            }
+            *_errno = ENOMEM;
+            return -1;
+        }
+    }
+    else
+    {
+        ksrc_addr = src_addr;
+    }
+    if(addrlen && (uintptr_t)addrlen < UH_START)
+    {
+        kaddrlen = (socklen_t *)malloc(sizeof(socklen_t));
+        if(!kaddrlen)
+        {
+            if(kbuf && kbuf != buf)
+            {
+                free(kbuf);
+            }
+            if(ksrc_addr && ksrc_addr != src_addr)
+            {
+                free(ksrc_addr);
+            }
+            *_errno = ENOMEM;
+            return -1;
+        }
+        klog("recvfrom: allocate %zu bytes for kaddrlen @ %p\n", sizeof(socklen_t), kaddrlen);
+        *kaddrlen = *addrlen;
+    }
+    else
+    {
+        kaddrlen = addrlen;
+    }
+
+    GetCurrentThreadForCore()->ss.Signal(SimpleSignal::Set, 0U);
+    auto ret = net_deferred_return(sck->RecvFromAsync(kbuf, len, flags, ksrc_addr, kaddrlen, _errno), _errno);
+
+    // copy kernel buffers to userspace
+    if(kbuf && kbuf != buf)
+    {
+        if(ret >= 0)
+            memcpy(buf, kbuf, (size_t)ret);
+        klog("recvfrom: free kbuf @ %p\n", kbuf);
+        free(kbuf);
+    }
+    if(ksrc_addr && ksrc_addr != src_addr)
+    {
+        if(ret >= 0)
+            memcpy(src_addr, ksrc_addr, *kaddrlen);
+        klog("recvfrom: free ksrc_addr @ %p\n", ksrc_addr);
+        free(ksrc_addr);
+    }
+    if(kaddrlen && kaddrlen != addrlen)
+    {
+        if(ret >= 0)
+            *addrlen = *kaddrlen;
+        klog("recvfrom: free kaddrlen @ %p\n", kaddrlen);
+        free(kaddrlen);
+    }
+
+    return ret;
 }
 
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
@@ -311,7 +408,61 @@ int syscall_sendto(int sockfd, const void *buf, size_t len, int flags,
         return -1;
     }
 
-    return net_deferred_return(sck->SendToAsync(buf, len, flags, dest_addr, addrlen, _errno), _errno);
+    /* If userspace call then we need to copy the data into kernel memory.
+        An optimization here would be to copy direct to a pbuf. */
+    void *kbuf;
+    sockaddr *kdest_addr;
+    if((uintptr_t)buf < UH_START)
+    {
+        kbuf = malloc(len);
+        if(!kbuf)
+        {
+            *_errno = ENOMEM;
+            return -1;
+        }
+        klog("sendto: allocate %zu bytes for kbuf @ %p\n", len, kbuf);
+        memcpy(kbuf, buf, len);
+    }
+    else
+    {
+        kbuf = (void *)buf;
+    }
+
+    if(dest_addr && (uintptr_t)dest_addr < UH_START)
+    {
+        kdest_addr = (sockaddr *)malloc(addrlen);
+        if(!kdest_addr)
+        {
+            if(kbuf && kbuf != buf)
+            {
+                free(kbuf);
+            }
+            *_errno = ENOMEM;
+            return -1;
+        }
+        memcpy(kdest_addr, dest_addr, addrlen);
+        klog("sendto: allocate %zu bytes for kdest_addr @ %p\n", addrlen, kdest_addr);
+    }
+    else
+    {
+        kdest_addr = (sockaddr *)dest_addr;
+    }
+
+    GetCurrentThreadForCore()->ss.Signal(SimpleSignal::Set, 0U);
+    auto ret = net_deferred_return(sck->SendToAsync(kbuf, len, flags, kdest_addr, addrlen, _errno), _errno);
+
+    if(kbuf && kbuf != buf)
+    {
+        klog("sendto: free kbuf @ %p\n", kbuf);
+        free(kbuf);
+    }
+    if(kdest_addr && kdest_addr != dest_addr)
+    {
+        klog("sendto: free kdest_addr @ %p\n", kdest_addr);
+        free(kdest_addr);
+    }
+
+    return ret;
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,

@@ -11,6 +11,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "gk_tf_a_defs.h"
 
 //#include <lib/utils_def.h>
 
@@ -136,7 +137,7 @@ struct usb_class {
 	uint8_t (*ep0_rx_ready)(struct usb_handle *pdev);
 	/* Class Specific Endpoints */
 	uint8_t (*data_in)(struct usb_handle *pdev, uint8_t epnum);
-	uint8_t (*data_out)(struct usb_handle *pdev, uint8_t epnum);
+	uint8_t (*data_out)(struct usb_handle *pdev, uint8_t epnum, void *d, size_t dlen);
 	uint8_t (*sof)(struct usb_handle *pdev);
 	uint8_t (*iso_in_incomplete)(struct usb_handle *pdev, uint8_t epnum);
 	uint8_t (*iso_out_incomplete)(struct usb_handle *pdev, uint8_t epnum);
@@ -210,6 +211,7 @@ struct usbd_ep {
 	uint8_t *xfer_buff;
 	uint32_t xfer_len;
 	uint32_t xfer_count;
+	uint32_t maxvirtpacket;
 };
 
 enum pcd_lpm_state {

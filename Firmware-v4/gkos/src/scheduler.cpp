@@ -364,19 +364,23 @@ void Scheduler::report_chosen(Thread *old_t, Thread *new_t)
 void Block(kernel_time until, PThread block_on)
 {
     auto t = GetCurrentThreadForCore();
+    if(!t)
+        return;
+    bool do_yield;
     if(kernel_time_is_valid(until) == false && !block_on)
     {
-        t->blocking.block_indefinite();
+        do_yield = t->blocking.block_indefinite();
     }
     else if(block_on)
     {
-        t->blocking.block(block_on, until);
+        do_yield = t->blocking.block(block_on, until);
     }
     else
     {
-        t->blocking.block(until);
+        do_yield = t->blocking.block(until);
     }
-    Yield();
+    if(do_yield)
+        Yield();
 }
 
 void Scheduler::Unschedule(PThread t)

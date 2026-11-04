@@ -140,6 +140,7 @@ uint8_t usb_msc_init(usb_handle *pdev, uint8_t cfgidx)
     auto &uci = *(usb_class_info *)pdev->class_data;
     uci[EPNUM_MSC_IN] = ci;
     uci[EPNUM_MSC_OUT] = ci;
+    uci[((uint16_t)ITF_NUM_MSC) << 8] = ci;
 
     usb_core_receive(pdev, EPNUM_MSC_OUT, msc_buffer, 31);  // receive first cbw
 

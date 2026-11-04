@@ -25,6 +25,16 @@ bool BinarySemaphore::Value()
     return ss.Value() != 0U;
 }
 
+ssize_t BinarySemaphore::TryAcquire(kernel_time tout)
+{
+    return ss.TryAcquire(tout, SimpleSignal::Set, 0U);
+}
+
+void BinarySemaphore::RemoveFromWaitList()
+{
+    ss.RemoveFromWaitList();
+}
+
 bool CountingSemaphore::Wait(kernel_time tout)
 {
     return ss.Wait(SimpleSignal::Sub, 1U, tout);
@@ -43,4 +53,14 @@ void CountingSemaphore::Signal()
 unsigned int CountingSemaphore::Value()
 {
     return ss.Value();
+}
+
+ssize_t CountingSemaphore::TryAcquire(kernel_time tout)
+{
+    return ss.TryAcquire(tout, SimpleSignal::Sub, 1U);
+}
+
+void CountingSemaphore::RemoveFromWaitList()
+{
+    ss.RemoveFromWaitList();
 }

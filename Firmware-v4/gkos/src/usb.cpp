@@ -12,6 +12,8 @@
 #include "pmem.h"
 #include "osqueue.h"
 #include "pmic.h"
+#include "klog_usb.h"
+#include "waitmultiple.h"
 
 #include "usb_device.h"
 #include "usb_dwc3.h"
@@ -42,14 +44,8 @@ extern usb_desc usb_desc_callback;
 #define SYSCFG_VMEM ((SYSCFG_TypeDef *)PMEM_TO_VMEM(SYSCFG_BASE))
 #define RIFSC_VMEM (PMEM_TO_VMEM(RIFSC_BASE))
 
-// messages to send to usb system
-#define USB_MESSAGE_INT             0x1
-#define USB_MESSAGE_VBUS_DOWN       0x2
-#define USB_MESSAGE_VBUS_UP         0x3
-
-
-// message queue
-FixedQueue<uint32_t, 32> usb_queue;
+static CountingSemaphore usb_int_sem;
+extern BinarySemaphore usb_log_sem;
 
 void init_usb()
 {
@@ -163,7 +159,8 @@ extern void USB3DR_IRQHandler()
     gic_clear_enable(259);
     gic_clear_enable(260);
 
-    usb_queue.Push(USB_MESSAGE_INT);
+    usb_int_sem.Signal();
+    //usb_queue.Push(USB_MESSAGE_INT);
     //usb_core_handle_it(&usb_core);
 }
 
@@ -207,7 +204,10 @@ void *usb_task(void *pvParams)
     }
 
     pcd_handle.in_ep[0].maxpacket = 64;
+    pcd_handle.in_ep[0].maxvirtpacket = pcd_handle.in_ep[0].maxpacket * NUM_EP0_IN_TRBS;
     pcd_handle.out_ep[0].maxpacket = 64;
+    pcd_handle.out_ep[0].maxvirtpacket = pcd_handle.out_ep[0].maxpacket;
+;
     usb_dwc3_init_driver(&usb_core, &pcd_handle, &dwc3_handle, (void *)PMEM_TO_VMEM(0x48300000ULL));
 
     usb_core.ep0_state = USBD_EP0_DATA_IN;
@@ -232,24 +232,28 @@ void *usb_task(void *pvParams)
 
     while(true)
     {
-        uint32_t cur_msg = 0;
-        while(!usb_queue.Pop(&cur_msg));
+        auto cur_msg = WaitMultipleTimed(kernel_time_invalid(), usb_int_sem, usb_log_sem);
 
 #if DEBUG_USB
         klog("usb: loop\n");
 #endif
 
-        switch(cur_msg)
+        if(cur_msg > 0)
         {
-            case USB_MESSAGE_INT:
+            if(cur_msg & 0x1)
+            {
                 usb_core_handle_it(&usb_core);
                 gic_set_enable(259);
                 gic_set_enable(260);
-                break;
-
-            default:
-                klog("usb: spurious message: %u\n", cur_msg);
-                break;
+            }
+#if GK_LOG_USB
+            if(cur_msg & 0x2)
+            {
+                auto acm = usb_ep_to_status<usb_cdc_acm_status>(&usb_core, EPNUM_CDC_LOG_IN);
+                if(acm)
+                    acm->tfer_in(&usb_core, false);
+            }
+#endif
         }
     }
 }

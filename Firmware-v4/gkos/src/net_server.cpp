@@ -91,6 +91,7 @@ int net_ret_to_errno(int ret)
 
 int init_pbufs();
 int init_wifi();
+int init_dns();
 
 bool init_net()
 {
@@ -102,6 +103,11 @@ bool init_net()
     if(init_wifi() != 0)
     {
         klog("net: init_wifi() failed\n");
+        return false;
+    }
+    if(init_dns() != 0)
+    {
+        klog("net: init_dns() failed\n");
         return false;
     }
 

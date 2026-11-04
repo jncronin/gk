@@ -1256,6 +1256,12 @@ void SyscallHandler(syscall_no sno, void *r1, void *r2, void *r3, uintptr_t lr, 
                 auto p = reinterpret_cast<__syscall_setoled_params *>(r2);
                 *reinterpret_cast<int *>(r1) = syscall_setoled(p->pid, p->scr_id,
                     p->fd, p->w, p->h, p->pf, p->stride, reinterpret_cast<int *>(r3));
+                    
+        case __syscall_adddnsentry:
+            {
+                auto p = reinterpret_cast<__syscall_adddnsentry_params *>(r2);
+                *reinterpret_cast<int *>(r1) = syscall_adddnsentry(p->host, p->nentries, p->addrs,
+                    reinterpret_cast<int *>(r3));
             }
             break;
 
