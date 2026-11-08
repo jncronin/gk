@@ -5060,13 +5060,14 @@
 		)
 		(uuid "1b08a503-15bf-4ff7-bffb-ecb0ee22e251")
 	)
-	(text "Option to use CM33 ADC or ADS7138 here"
+	(text "Option to use CM33 ADC or ADS7138 here\nIf using CM33 _must_ add series resistors to JOY_... inputs to\nensure output is limited to max 1.8V"
 		(exclude_from_sim no)
-		(at 53.34 15.24 0)
+		(at 17.78 15.748 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
+			(justify left)
 		)
 		(uuid "5d49b52b-91a0-4ee4-b348-60312aa9d9e0")
 	)
