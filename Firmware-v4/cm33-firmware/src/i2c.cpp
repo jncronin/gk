@@ -240,6 +240,7 @@ int I2C::Transmit(unsigned int addr, void *buf, size_t nbytes,
     unsigned int err = WaitTimeout(wait_flag);
     if(err != wait_flag)
     {
+        klog("i2c: error in address phase: %08x\n", err);
         return -1;
     }
     else if(is_read)
