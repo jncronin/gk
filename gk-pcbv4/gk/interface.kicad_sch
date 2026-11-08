@@ -2987,7 +2987,7 @@
 	)
 	(text "Throttle style control"
 		(exclude_from_sim no)
-		(at 235.712 128.016 0)
+		(at 235.712 114.808 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -3369,6 +3369,16 @@
 	)
 	(wire
 		(pts
+			(xy 238.76 125.73) (xy 238.76 128.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3b433a8b-703e-42f0-9a13-0b0eaf26f9d4")
+	)
+	(wire
+		(pts
 			(xy 76.2 80.01) (xy 76.2 82.55)
 		)
 		(stroke
@@ -3619,6 +3629,16 @@
 	)
 	(wire
 		(pts
+			(xy 238.76 135.89) (xy 238.76 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "88a9f0e7-b071-472b-989f-dfe7e3a6ae57")
+	)
+	(wire
+		(pts
 			(xy 101.6 33.02) (xy 109.22 33.02)
 		)
 		(stroke
@@ -3786,16 +3806,6 @@
 			(type default)
 		)
 		(uuid "d6db6fcd-4008-4070-989f-ce45f66318c6")
-	)
-	(wire
-		(pts
-			(xy 238.76 137.16) (xy 238.76 138.43)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "dd22835c-f985-42f0-b347-93c62e896ef7")
 	)
 	(wire
 		(pts
@@ -5117,7 +5127,7 @@
 	)
 	(symbol
 		(lib_id "power:VDDA")
-		(at 238.76 137.16 0)
+		(at 238.76 125.73 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -5128,7 +5138,7 @@
 		(fields_autoplaced yes)
 		(uuid "2cc76880-586d-436f-9dd0-d521acf4d80c")
 		(property "Reference" "#PWR0147"
-			(at 238.76 140.97 0)
+			(at 238.76 129.54 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5139,7 +5149,7 @@
 			)
 		)
 		(property "Value" "VDDA"
-			(at 238.76 132.08 0)
+			(at 238.76 120.65 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -5149,7 +5159,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 238.76 137.16 0)
+			(at 238.76 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5160,7 +5170,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 238.76 137.16 0)
+			(at 238.76 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5171,7 +5181,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"VDDA\""
-			(at 238.76 137.16 0)
+			(at 238.76 125.73 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7063,6 +7073,88 @@
 			(project "gk"
 				(path "/a049c72e-5361-408c-ab21-661d491fee9d/49d92768-2753-4845-8f5d-30a44b61f9f1"
 					(reference "#PWR0333")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 238.76 132.08 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "8da66c89-c1b6-4bc7-aab4-52e9b6fff805")
+		(property "Reference" "R67"
+			(at 241.3 131.445 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "10k"
+			(at 241.3 133.985 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 236.982 132.08 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 238.76 132.08 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 238.76 132.08 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "4a370c7b-4f49-4307-bea6-5cd8f807b2db")
+		)
+		(pin "2"
+			(uuid "b02d53f5-4596-4881-8d32-0e353d1bcc03")
+		)
+		(instances
+			(project "gk"
+				(path "/a049c72e-5361-408c-ab21-661d491fee9d/49d92768-2753-4845-8f5d-30a44b61f9f1"
+					(reference "R67")
 					(unit 1)
 				)
 			)
