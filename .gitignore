@@ -598,3 +598,5 @@ jlink-log.txt
 *.chitubox
 !Firmware-v4/ospi_flasher/STM32MP255_QSPI.xml
 test.img
+!gk-pcbv4/bom
+!gk-pcbv4/bom/*.csv
