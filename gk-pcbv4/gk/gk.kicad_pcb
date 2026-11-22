@@ -51124,6 +51124,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "6129eb6d-c3f0-424f-a98a-77aab9f7958c")
 			(effects
 				(font
@@ -55049,6 +55050,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "f2fffcba-7666-4a2a-acbb-d55ccd7a0b02")
 			(effects
 				(font
@@ -55883,6 +55885,7 @@
 		(property "Reference" "C75"
 			(at -0.1016 -1.143 0)
 			(layer "B.SilkS")
+			(hide yes)
 			(uuid "cde5fa96-0964-453a-9432-f5ad2bedabe6")
 			(effects
 				(font
@@ -55895,6 +55898,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "7072ce24-fa68-4331-9844-19fe23c457cf")
 			(effects
 				(font
@@ -56106,6 +56110,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "5d3a7fc0-e2e6-4802-9928-4f9162a5ca5a")
 			(effects
 				(font
@@ -57328,6 +57333,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "9796ec50-7901-418e-abf5-0fb1ebab0ce4")
 			(effects
 				(font
@@ -57963,6 +57969,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 90)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "ff774e97-dd1e-423e-9919-c7ecd5fc9196")
 			(effects
 				(font
@@ -60974,6 +60981,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "2f70db72-4d69-4f37-967b-0018d01594e7")
 			(effects
 				(font
@@ -61185,6 +61193,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "871a1b91-8636-4f18-9d1c-03d9ec5b60ed")
 			(effects
 				(font
@@ -61396,6 +61405,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "6df38d81-3396-4d0f-b076-2bdb1f7d3e66")
 			(effects
 				(font
@@ -64246,6 +64256,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 90)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "c7735280-7483-4fcb-a2bd-27a175f0a9dd")
 			(effects
 				(font
@@ -65820,6 +65831,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "ac613674-57da-4773-9aee-462d3845e05a")
 			(effects
 				(font
@@ -68995,6 +69007,7 @@
 		(property "Value" "100n"
 			(at 0 -1.16 0)
 			(layer "B.Fab")
+			(hide yes)
 			(uuid "ba524413-005c-4802-ba03-cf0d6d2245af")
 			(effects
 				(font
@@ -161453,6 +161466,30 @@
 		(uuid "d944aab2-87d0-45d2-a66e-7c491c01a42c")
 	)
 	(segment
+		(start 54.5276 118.18)
+		(end 55.181 118.8334)
+		(width 0.2)
+		(layer "B.Cu")
+		(net "Net-(R67-Pad2)")
+		(uuid "320cdd31-694b-460c-89c8-206a6f9eef06")
+	)
+	(segment
+		(start 53.83 118.18)
+		(end 54.5276 118.18)
+		(width 0.2)
+		(layer "B.Cu")
+		(net "Net-(R67-Pad2)")
+		(uuid "466159d2-9652-40bf-890c-806cb5b93e0d")
+	)
+	(segment
+		(start 55.181 118.8334)
+		(end 55.9816 118.8334)
+		(width 0.2)
+		(layer "B.Cu")
+		(net "Net-(R67-Pad2)")
+		(uuid "61c3371a-d4dd-4ace-8b1d-4a0ded4e45ed")
+	)
+	(segment
 		(start 116.35 90.5)
 		(end 109.9 90.5)
 		(width 0.2)
@@ -161577,30 +161614,6 @@
 		(layer "B.Cu")
 		(net "Net-(R45-Pad2)")
 		(uuid "e85358f6-19d0-4d89-bf85-94624fea8abd")
-	)
-	(segment
-		(start 54.5276 118.18)
-		(end 55.181 118.8334)
-		(width 0.2)
-		(layer "B.Cu")
-		(net "Net-(R67-Pad2)")
-		(uuid "320cdd31-694b-460c-89c8-206a6f9eef06")
-	)
-	(segment
-		(start 53.83 118.18)
-		(end 54.5276 118.18)
-		(width 0.2)
-		(layer "B.Cu")
-		(net "Net-(R67-Pad2)")
-		(uuid "466159d2-9652-40bf-890c-806cb5b93e0d")
-	)
-	(segment
-		(start 55.181 118.8334)
-		(end 55.9816 118.8334)
-		(width 0.2)
-		(layer "B.Cu")
-		(net "Net-(R67-Pad2)")
-		(uuid "61c3371a-d4dd-4ace-8b1d-4a0ded4e45ed")
 	)
 	(zone
 		(net "+3V3")
