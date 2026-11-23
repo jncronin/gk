@@ -32,7 +32,7 @@ const uint32_t rb_size = 256;
 __attribute__((section(".sram2"))) volatile uint32_t rb[rb_size];
 
 uint32_t adc_vals[5];
-uint16_t extadc_vals[6];
+uint16_t extadc_vals[8];
 int lsm_ret = 0;
 unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
 int ioexp_fail = 0;     // count of number of times ioexp could not be read.  Stop trying if > 16 in a row.
@@ -425,10 +425,10 @@ int main()
 
 void readsensors_task(void *)
 {
-    init_extadc();
-
     while(true)
     {
+        init_extadc();
+
         if(ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
             tick();

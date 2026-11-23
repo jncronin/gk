@@ -10,7 +10,9 @@ static bool has_extadc = false;
 static const constexpr uint8_t extadc_addr = 0x17;
 extern SemaphoreHandle_t m_i2c1;
 
-extern uint16_t extadc_vals[6];
+static uint64_t last_check = 0;
+
+extern uint16_t extadc_vals[8];
 
 /* External ADC is ADS7138 with I2C address 0x17
     All register commands are 2 byte:
@@ -29,22 +31,16 @@ int extadc_set_register(uint8_t reg_id, uint8_t reg_val, uint8_t set_msb = 0x18u
 
 void init_extadc()
 {
+    if(has_extadc)
+        return;
+
+    if(last_check != 0 && clock_cur_ms() < (last_check + 1100))
+        return;
+    last_check = clock_cur_ms();
+    
     klog("extadc: check presence\n");
 
     auto &i2c1 = i2c(1);
-
-    for(auto test_addr = 0x10u; test_addr < 0x18u; test_addr++)
-    {
-        xSemaphoreTake(m_i2c1, portMAX_DELAY);
-        uint8_t sr;
-        auto i2cret = i2c1.RegisterRead(test_addr, (uint16_t)0x1000u, &sr, 1);
-        xSemaphoreGive(m_i2c1);
-
-        if(i2cret == 1)
-        {
-            klog("extadc: found chip on address %02x with SR: %02x\n", test_addr, sr);
-        }
-    }
 
     xSemaphoreTake(m_i2c1, portMAX_DELAY);
     uint8_t sr;
@@ -155,7 +151,8 @@ void init_extadc()
     if(extadc_set_register(0x10, 0x10u, 0x18u) != 0)
         return;
 
-    klog("extadc: init complete\n");   
+    klog("extadc: init complete\n");
+    has_extadc = true;
 }
 
 int extadc_calib()
@@ -232,7 +229,7 @@ int extadc_poll()
     xSemaphoreTake(m_i2c1, portMAX_DELAY);
     auto i2cret = i2c1.RegisterRead(extadc_addr, (uint16_t)0x30a0, extadc_vals, sizeof(extadc_vals));
     xSemaphoreGive(m_i2c1);
-    if(i2cret != 1)
+    if(i2cret != sizeof(extadc_vals))
     {
         klog("extadc: read recent registers failed\n");
         has_extadc = false;
