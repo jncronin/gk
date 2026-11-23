@@ -145,6 +145,7 @@ int I2C::RegisterRead(unsigned int addr, uint8_t reg, void *buf, size_t nbytes, 
 
 int I2C::RegisterRead(unsigned int addr, uint16_t reg, void *buf, size_t nbytes, bool wait)
 {
+    reg = __builtin_bswap16(reg);
     auto ret = Transmit(addr, &reg, 2, nullptr, 0, false, true);
     if(ret != 2)
         return ret;
@@ -158,7 +159,8 @@ int I2C::RegisterWrite(unsigned int addr, uint8_t reg, const void *buf, size_t n
 
 int I2C::RegisterWrite(unsigned int addr, uint16_t reg, const void *buf, size_t nbytes, bool wait)
 {
-    return Transmit(addr, &reg, 2, (void *)buf, nbytes, false, false) - 1;
+    reg = __builtin_bswap16(reg);
+    return Transmit(addr, &reg, 2, (void *)buf, nbytes, false, false) - 2;
 }
 
 static volatile char *cur_buf_p(void *buf, size_t nbytes,
