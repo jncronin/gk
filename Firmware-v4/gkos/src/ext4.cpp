@@ -79,7 +79,7 @@ static int prepare_ext4()
     // now check for valid fs
     klog("ext4: registering partition %s\n", ext_dev->name().c_str());
     int r = ext4_device_register(&sd, "sd");
-    if(r != EOK)
+    if(r != EOK && r != EEXIST)
     {
         klog("ext4: register failed %d\n", r);
         return r;
