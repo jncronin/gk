@@ -146,7 +146,7 @@ int I2C::RegisterRead(unsigned int addr, uint8_t reg, void *buf, size_t nbytes, 
 int I2C::RegisterRead(unsigned int addr, uint16_t reg, void *buf, size_t nbytes, bool wait)
 {
     auto ret = Transmit(addr, &reg, 2, nullptr, 0, false, true);
-    if(ret != 1)
+    if(ret != 2)
         return ret;
     return Transmit(addr, buf, nbytes, nullptr, 0, true, false);
 }
