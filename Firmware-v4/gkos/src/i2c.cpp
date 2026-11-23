@@ -275,7 +275,7 @@ unsigned int I2C::WaitTimeout(unsigned int wait_flag, unsigned int ms)
         }
         else
         {
-            klog(msg_i2c_nackf);
+            //klog(msg_i2c_nackf);
             inst->ICR = I2C_ICR_NACKCF;
             return I2C_ISR_NACKF;
         }
