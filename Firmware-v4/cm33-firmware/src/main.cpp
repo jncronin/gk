@@ -35,6 +35,7 @@ uint32_t adc_vals[5];
 uint16_t extadc_vals[6];
 int lsm_ret = 0;
 unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
+int ioexp_fail = 0;     // count of number of times ioexp could not be read.  Stop trying if > 16 in a row.
 
 volatile bool ticked = false;
 static void tick();
@@ -771,13 +772,22 @@ static void tick()
     uint8_t ioexp_vals[2];
     auto &i2c1 = i2c(1);
     xSemaphoreTake(m_i2c1, portMAX_DELAY);
-    if(i2c1.RegisterRead(0x20, (uint8_t)0, ioexp_vals, 2) == 2)
+    if(ioexp_fail < 16)
     {
-        // catch debug version with no buttons
-        if(ioexp_vals[0] || (ioexp_vals[1] & 0x7f))
+        if(i2c1.RegisterRead(0x20, (uint8_t)0, ioexp_vals, 2) == 2)
         {
-            ioexp_keystate = (unsigned int)ioexp_vals[0] |
-                (((unsigned int)ioexp_vals[1]) << 8);
+            // catch debug version with no buttons
+            if(ioexp_vals[0] || (ioexp_vals[1] & 0x7f))
+            {
+                ioexp_keystate = (unsigned int)ioexp_vals[0] |
+                    (((unsigned int)ioexp_vals[1]) << 8);
+            }
+            if(ioexp_fail)
+                ioexp_fail = 0;
+        }
+        else
+        {
+            ioexp_fail++;
         }
     }
     xSemaphoreGive(m_i2c1);
