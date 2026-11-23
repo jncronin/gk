@@ -18,9 +18,10 @@ struct cm33_data_userspace
     volatile cm33_joystick joy_a_raw, joy_b_raw;    // for calibration purposes
     volatile cm33_joystick throttle, throttle_raw;
     volatile cm33_joystick tilt_raw;
+    volatile cm33_joystick trig, trig_raw;
 };
 
-static_assert(sizeof(cm33_data_userspace) == 26*4);
+static_assert(sizeof(cm33_data_userspace) == 30*4);
 
 struct cm33_joy_calib
 {
@@ -64,6 +65,7 @@ static_assert(sizeof(cm33_data_kernel) == 27*4 + 8 * 1024);
 #define CM33_DK_SR_TILT_STICK_4WAY      0x10000
 #define CM33_DK_SR_OLED_AVAILABLE       0x20000
 #define CM33_DK_SR_OLED_ENABLED         0x40000
+#define CM33_DK_SR_ANALOG_TRIGGERS      0x80000
 
 // commands
 #define CM33_DK_CMD_TILT_ENABLE     1

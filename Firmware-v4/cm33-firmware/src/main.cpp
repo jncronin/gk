@@ -38,6 +38,7 @@ unsigned int ioexp_keystate = 0xffffffffU;  // default is all non-pressed
 int ioexp_fail = 0;     // count of number of times ioexp could not be read.  Stop trying if > 16 in a row.
 
 volatile bool ticked = false;
+static bool use_extadc = false;
 static void tick();
 
 static float mouse_dx = 0.0f;
@@ -505,6 +506,19 @@ static int16_t joy_scale(uint32_t input, bool invert)
     return (int16_t)i_input;
 }
 
+static int16_t extadc_joy_scale(uint32_t input, bool invert)
+{
+    // extadc provides 0-65535 16-bit already
+    int32_t i_input = (int32_t)input;
+    i_input -= 32768;
+    if(invert) i_input = -i_input;
+
+    if(i_input < -32768) i_input = -32768;
+    if(i_input > 32767) i_input = 32767;
+
+    return (int16_t)i_input;
+}
+
 static int16_t joy_apply_calibration(int16_t in, 
     int16_t left, int16_t middle, int16_t right)
 {
@@ -620,12 +634,26 @@ static void joystick_tick()
 
         Add dead zone in the middle of 8k (after scaling and calibration), then pass through a debouncer for digital inputs */
     
-    d.joy_a_raw.x = joy_scale(adc_vals[0] & 0x3fffU, false);
-    d.joy_a_raw.y = joy_scale(adc_vals[1] & 0x3fffU, true);
-    d.joy_b_raw.x = joy_scale(adc_vals[3] & 0x3fffU, false);
-    d.joy_b_raw.y = joy_scale(adc_vals[2] & 0x3fffU, false);
+    if(use_extadc)
+    {
+        d.joy_a_raw.x = extadc_joy_scale(extadc_vals[2], false);
+        d.joy_a_raw.y = extadc_joy_scale(extadc_vals[3], true);
+        d.joy_b_raw.x = extadc_joy_scale(extadc_vals[5], false);
+        d.joy_b_raw.y = extadc_joy_scale(extadc_vals[4], false);
+        d.trig_raw.x = extadc_joy_scale(extadc_vals[0], false);
+        d.trig_raw.y = extadc_joy_scale(extadc_vals[1], false);
+    }
+    else
+    {
+        d.joy_a_raw.x = joy_scale(adc_vals[0] & 0x3fffu, false);
+        d.joy_a_raw.y = joy_scale(adc_vals[1] & 0x3fffu, true);
+        d.joy_b_raw.x = joy_scale(adc_vals[3] & 0x3fffu, false);
+        d.joy_b_raw.y = joy_scale(adc_vals[2] & 0x3fffu, false);
+        d.trig_raw.x = 0;
+        d.trig_raw.y = 0;
+    }
     d.throttle_raw.x = 8192;
-    d.throttle_raw.y = joy_scale(adc_vals[4] & 0x3fffU, false);
+    d.throttle_raw.y = joy_scale(adc_vals[4] & 0x3fffu, false);
 
     joy_apply_calibration(&d.joy_a_raw, &d.joy_a, &dk.joy_a_calib, true);
     joy_apply_calibration(&d.joy_b_raw, &d.joy_b, &dk.joy_b_calib, true);
@@ -792,7 +820,14 @@ static void tick()
     }
     xSemaphoreGive(m_i2c1);
 
-    extadc_poll();
+    use_extadc = extadc_poll() == 0;
+    {
+        UninterruptibleGuard ug;
+        if(use_extadc)
+            dk.sr |= CM33_DK_SR_ANALOG_TRIGGERS;
+        else
+            dk.sr &= ~CM33_DK_SR_ANALOG_TRIGGERS;
+    }
 
     uint32_t sr;
     {
