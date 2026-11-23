@@ -11,6 +11,7 @@ static const constexpr uint8_t extadc_addr = 0x17;
 extern SemaphoreHandle_t m_i2c1;
 
 static uint64_t last_check = 0;
+int extadc_count = 0;
 
 extern uint16_t extadc_vals[8];
 
@@ -123,12 +124,15 @@ void init_extadc()
         tCYCLE with a 1.3 kSPS clock is 768 us
         tSMPL is therefore always > 750 us which should be more than adequate to charge the
         internal capacitor.
+
+        However, for some reason this calculation does not work, and is off by a factor of ~20x.
+        Therefore, set tCYCLE to 32us to get actual ~200 Hz updates on all channels.
     */
 
     // This follows the flowchart in 8.4.4
     // PIN_CFG is already zero (reset value) - all pins are analog in
     // Set channels in the sequence in AUTO_SEQ_CH_SEL
-    if(extadc_set_register(0x12, 0x3fu) != 0)
+    if(extadc_set_register(0x12, 0xffu) != 0)
         return;
 
     // Set SEQ_MODE to auto
@@ -136,7 +140,7 @@ void init_extadc()
         return;
 
     // Configure sampling rate, autonomous mode
-    if(extadc_set_register(0x4, 0x39u) != 0)
+    if(extadc_set_register(0x4, 0x30u) != 0)
         return;
     
     // Configure 16x oversampling to get a 16-bit result
@@ -235,6 +239,8 @@ int extadc_poll()
         has_extadc = false;
         return -1;
     }
+
+    extadc_count++;
 
     return 0;
 }
