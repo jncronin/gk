@@ -5082,13 +5082,14 @@
 		)
 		(uuid "63954cf5-2ef1-4df6-a6b3-fff0c8173929")
 	)
-	(text "Hall effect trigger sensors"
+	(text "Hall effect trigger sensors\nUse A3 version with 3x1 mm N42 disc magnet"
 		(exclude_from_sim no)
-		(at 180.848 126.238 0)
+		(at 169.926 124.714 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
+			(justify left)
 		)
 		(uuid "adc2386a-ffce-4eaa-a24d-5de542e78269")
 	)
