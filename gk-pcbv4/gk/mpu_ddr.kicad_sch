@@ -6297,7 +6297,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "IS43LQ32256A-062BLI"
+		(property "Value" "RS256M32LZ4D2BNP-62BT"
 			(at 113.9033 109.22 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7051,7 +7051,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "IS43LQ32256A-062BLI"
+		(property "Value" "RS256M32LZ4D2BNP-62BT"
 			(at 228.2033 109.22 0)
 			(show_name no)
 			(do_not_autoplace no)
