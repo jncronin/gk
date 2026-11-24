@@ -2142,8 +2142,8 @@
 				(justify right)
 			)
 		)
-		(property "Value" "R_Potentiometer"
-			(at 157.48 90.1699 0)
+		(property "Value" "PST065-201K1-N104"
+			(at 157.48 93.218 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2583,8 +2583,8 @@
 				(justify right)
 			)
 		)
-		(property "Value" "R_Potentiometer"
-			(at 132.08 90.1699 0)
+		(property "Value" "PST065-201K1-N104"
+			(at 131.064 90.932 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3097,7 +3097,7 @@
 				(justify right)
 			)
 		)
-		(property "Value" "R_Potentiometer"
+		(property "Value" "PST065-201K1-N104"
 			(at 191.77 90.1699 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3214,8 +3214,8 @@
 				(justify right)
 			)
 		)
-		(property "Value" "R_Potentiometer"
-			(at 217.17 90.1699 0)
+		(property "Value" "PST065-201K1-N104"
+			(at 217.424 91.186 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
