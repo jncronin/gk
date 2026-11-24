@@ -5,6 +5,8 @@
 #include "logger.h"
 #include <cstring>
 
+#define DEBUG_USB 1
+
 struct scsi_header_6
 {
     uint8_t opcode;
